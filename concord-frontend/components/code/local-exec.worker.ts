@@ -140,3 +140,9 @@ scope.onmessage = (ev: MessageEvent) => {
     });
   }
 };
+
+// Announce that the message handler above is installed. Bundlers may load
+// this module asynchronously (Turbopack does), so a message posted the moment
+// the Worker is constructed can arrive before `onmessage` exists and vanish.
+// The runner waits for this before sending the program (localExec.ts).
+scope.postMessage({ type: 'worker-ready' });

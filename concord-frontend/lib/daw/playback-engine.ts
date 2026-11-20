@@ -31,6 +31,17 @@ function peakDb(an: AnalyserNode | null | undefined): number {
   return m > 1e-6 ? 20 * Math.log10(m) : -120;
 }
 
+/** RMS level of an analyser's current window, in dBFS (−120 when silent or missing). */
+function rmsDbOf(an: AnalyserNode | null | undefined): number {
+  if (!an) return -120;
+  const buf = PEAK_BUF.length >= an.fftSize ? PEAK_BUF.subarray(0, an.fftSize) : new Float32Array(an.fftSize);
+  an.getFloatTimeDomainData(buf as Float32Array<ArrayBuffer>);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+  const rms = Math.sqrt(sum / Math.max(1, buf.length));
+  return rms > 1e-8 ? 20 * Math.log10(rms) : -120;
+}
+
 export class StudioEngine {
   readonly ctx: AudioContext;
   readonly graph: ProjectGraph;
@@ -258,6 +269,8 @@ export class StudioEngine {
   // ── Meters ──
   trackPeakDb(trackId: string): number { return peakDb(this.graph.channels.get(trackId)?.analyser); }
   masterPeakDb(): number { return peakDb(this.graph.masterAnalyser); }
+  /** Master RMS in dBFS: what the Booth's master VU needles integrate. */
+  masterRmsDb(): number { return rmsDbOf(this.graph.masterAnalyser); }
 
   /** Peak, RMS, and correlation from the stereo tap. Correlation is 0 until the tap exists. */
   trackMeter(trackId: string): { peak: number; rms: number; correlation: number } {

@@ -138,11 +138,11 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
   const genre = artifact.song?.genre;
 
   return (
-    <div className="rounded-lg overflow-hidden ring-1 ring-zinc-800 bg-zinc-900/50 p-3 space-y-2" data-testid="song-artifact">
+    <div className="rounded-lg overflow-hidden ring-1 ring-[color:var(--nb-rule,#27272a)] bg-[var(--nb-sheet,rgba(24,24,27,0.5))] p-3 space-y-2" data-testid="song-artifact">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-medium text-zinc-100 truncate">{artifact.title}</div>
-          <div className="text-[11px] text-zinc-400">
+          <div className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)] truncate">{artifact.title}</div>
+          <div className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
             {genre ? `${genre} · ` : ''}{artifact.key} · {artifact.bpm} BPM · ~{Math.round(artifact.durationSec)}s
           </div>
         </div>
@@ -150,7 +150,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
           <button
             onClick={handleMiniPlayer}
             disabled={!!error}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-hl,rgba(245,158,11,0.2))] hover:bg-[var(--nb-hl,rgba(245,158,11,0.3))] text-[color:var(--nb-ochre,#fbbf24)] text-xs disabled:opacity-50"
             title="Play in mini-player"
           >
             {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
@@ -159,7 +159,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
           <button
             onClick={handleDownload}
             disabled={!objectUrl}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs disabled:opacity-50"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ink-2,#d4d4d8)] text-xs disabled:opacity-50"
             title="Download WAV"
           >
             <Download className="w-3 h-3" />
@@ -169,7 +169,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
       </div>
 
       {loading && (
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div className="flex items-center gap-1.5 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           <Loader2 className="w-3 h-3 animate-spin" /> Rendering with Concord Studio…
         </div>
       )}
@@ -178,7 +178,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
       )}
 
       {error && (
-        <div className="flex items-start gap-1.5 text-xs text-red-400">
+        <div className="flex items-start gap-1.5 text-xs text-[color:var(--nb-red,#f87171)]">
           <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -188,7 +188,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
         <button
           onClick={handleSave}
           disabled={saving || !objectUrl}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs disabled:opacity-50"
+          className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ink-2,#d4d4d8)] text-xs disabled:opacity-50"
           title="Save the rendered WAV to your Concord Studio project"
         >
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -197,7 +197,7 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
         {artifact.projectId && (
           <Link
             href={`/lenses/studio?project=${encodeURIComponent(artifact.projectId)}`}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400 text-xs"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)] text-[color:var(--nb-ochre,#fbbf24)] text-xs"
             title="Open in Studio"
           >
             <Disc className="w-3 h-3" />
@@ -207,9 +207,9 @@ export function SongArtifactPlayer({ artifact }: SongArtifactPlayerProps) {
       </div>
 
       {savedUrl && (
-        <div className="text-xs text-zinc-400">
+        <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           Saved to Concord —{' '}
-          <a href={savedUrl} className="text-amber-400 hover:text-amber-300 underline" download>
+          <a href={savedUrl} className="text-[color:var(--nb-ochre,#fbbf24)] hover:text-[color:var(--nb-ochre,#fcd34d)] underline" download>
             download saved WAV
           </a>
         </div>

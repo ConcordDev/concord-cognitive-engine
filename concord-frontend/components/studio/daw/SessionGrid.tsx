@@ -29,7 +29,7 @@ export function SessionGrid(p: SessionGridProps) {
   const tracks = p.project.tracks.filter((t) => t.type !== 'master');
   const [addOpen, setAddOpen] = useState(false);
   return (
-    <div className="h-full overflow-auto bg-[#0e0e13] p-2" data-testid="studio-session">
+    <div className="h-full overflow-auto bg-[var(--bo-room)] p-2" data-testid="studio-session">
       <div className="flex gap-1">
         {tracks.map((t) => {
           const playing = p.launched[t.id]?.clipId;
@@ -37,7 +37,7 @@ export function SessionGrid(p: SessionGridProps) {
             <div key={t.id} className="w-36 flex-shrink-0">
               <button
                 onClick={() => p.onSelectTrack(t.id)}
-                className={cn('mb-1 flex w-full items-center gap-1 truncate rounded px-2 py-1.5 text-left text-xs', p.selectedTrackId === t.id ? 'bg-white/10 text-white' : 'bg-[#16161d] text-zinc-300')}
+                className={cn('mb-1 flex w-full items-center gap-1 truncate rounded px-2 py-1.5 text-left text-xs', p.selectedTrackId === t.id ? 'bg-white/10 text-white' : 'bg-[var(--bo-panel)] text-zinc-300')}
                 style={{ borderTop: `2px solid ${t.color}` }}
               >
                 {trackKind(t) === 'audio' ? <Mic className="h-3 w-3" /> : trackKind(t) === 'drums' ? <Drum className="h-3 w-3" /> : <Piano className="h-3 w-3" />}
@@ -47,17 +47,20 @@ export function SessionGrid(p: SessionGridProps) {
                 const clip = t.clips.find((c) => c.slot === slot);
                 if (!clip) {
                   return (
-                    <div
+                    <button
+                      type="button"
                       key={slot}
                       onClick={() => t.type !== 'audio' && p.onCreateClip(t.id, slot)}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => { e.preventDefault(); const f = Array.from(e.dataTransfer.files || []); if (f.length) p.onDropFiles(t.id, slot, f); }}
-                      className={cn('mb-1 flex h-9 items-center justify-center rounded border border-dashed border-white/5 text-[10px] text-zinc-700', t.type !== 'audio' && 'cursor-pointer hover:border-white/20 hover:text-zinc-400')}
+                      disabled={t.type === 'audio'}
+                      aria-label={t.type === 'audio' ? `${t.name} slot ${slot + 1}: drop audio here` : `New MIDI clip in ${t.name}, slot ${slot + 1}`}
+                      className={cn('mb-1 flex h-9 w-full items-center justify-center rounded border border-dashed border-white/5 text-[10px] text-zinc-700', t.type !== 'audio' && 'cursor-pointer hover:border-white/20 hover:text-zinc-400')}
                       title={t.type === 'audio' ? 'Drop audio here' : 'Click to create a MIDI clip'}
                       data-testid="studio-session-empty"
                     >
                       {t.type !== 'audio' ? <Plus className="h-3 w-3" /> : null}
-                    </div>
+                    </button>
                   );
                 }
                 const isPlaying = playing === clip.id;
@@ -65,8 +68,12 @@ export function SessionGrid(p: SessionGridProps) {
                   <div
                     key={slot}
                     onClick={() => p.onSelectClip(clip.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && e.target === e.currentTarget) { e.preventDefault(); p.onSelectClip(clip.id); } }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${clip.name}: Enter opens it`}
                     className={cn('relative mb-1 flex h-9 items-center overflow-hidden rounded text-[10px] text-white', p.selectedClipId === clip.id && 'ring-1 ring-white')}
-                    style={{ background: `${clip.color || t.color}${isPlaying ? 'ff' : '99'}` }}
+                    style={{ background: `${t.color}${isPlaying ? 'ff' : '99'}` }}
                   >
                     {clip.type !== 'audio' && <MidiThumb clip={clip} width={144} height={36} />}
                     <button

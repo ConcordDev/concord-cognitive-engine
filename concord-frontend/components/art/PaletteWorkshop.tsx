@@ -27,7 +27,8 @@ async function callArt<T>(action: string, input: Record<string, unknown>): Promi
   } catch { return null; }
 }
 
-export function PaletteWorkshop() {
+/** `onPick` (in the Atelier) loads a clicked colour onto the brush instead of copying it. */
+export function PaletteWorkshop({ onPick }: { onPick?: (hex: string) => void } = {}) {
   const [baseColor, setBaseColor] = useState('#3498db');
   const [harmony, setHarmony] = useState<typeof HARMONIES[number]>('analogous');
   const [count, setCount] = useState(5);
@@ -47,7 +48,7 @@ export function PaletteWorkshop() {
     },
   });
 
-  const copyHex = (hex: string) => { void navigator.clipboard.writeText(hex); };
+  const copyHex = (hex: string) => { if (onPick) onPick(hex); else void navigator.clipboard.writeText(hex); };
 
   const harmonyCounts = useMemo(() => {
     if (!harmonyAnalysis?.harmonies) return {} as Record<string, number>;
@@ -56,11 +57,10 @@ export function PaletteWorkshop() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-cyan-500/15 pb-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[color:var(--at-blue)] pb-3">
         <div className="flex items-center gap-2">
-          <Palette className="h-5 w-5 text-fuchsia-400" />
-          <h2 className="text-sm font-semibold text-white">Palette workshop</h2>
-          <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">art.generatePalette + colorHarmony</span>
+          <Palette className="h-5 w-5 text-[color:var(--at-accent-text)]" />
+          <h2 className="text-sm font-semibold text-[color:var(--at-ink)]">Palette workshop</h2>
         </div>
         {palette.length > 0 && (
           <SaveAsDtuButton
@@ -74,48 +74,48 @@ export function PaletteWorkshop() {
           />
         )}
       </header>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Base color</span>
+          <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">Base color</span>
           <div className="mt-1 flex items-center gap-1">
-            <input type="color" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="h-8 w-12 cursor-pointer rounded border border-zinc-800 bg-zinc-950" />
-            <input type="text" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 font-mono text-xs text-white" />
+            <input type="color" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="h-8 w-12 cursor-pointer rounded border border-[color:var(--at-rule)] bg-[var(--at-sunk)]" />
+            <input type="text" value={baseColor} onChange={(e) => setBaseColor(e.target.value)} className="flex-1 rounded border border-[color:var(--at-rule)] bg-[var(--at-sunk)] px-2 py-1 font-mono text-xs text-[color:var(--at-ink)]" />
           </div>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Harmony</span>
-          <select value={harmony} onChange={(e) => setHarmony(e.target.value as typeof HARMONIES[number])} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+          <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">Harmony</span>
+          <select value={harmony} onChange={(e) => setHarmony(e.target.value as typeof HARMONIES[number])} className="mt-1 w-full rounded border border-[color:var(--at-rule)] bg-[var(--at-sunk)] px-2 py-1.5 text-xs text-[color:var(--at-ink)]">
             {HARMONIES.map((h) => <option key={h} value={h}>{h}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-400">Count</span>
-          <input type="number" min={2} max={12} value={count} onChange={(e) => setCount(Math.max(2, Math.min(12, Number(e.target.value) || 5)))} className="mt-1 w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-white" />
+          <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">Count</span>
+          <input type="number" min={2} max={12} value={count} onChange={(e) => setCount(Math.max(2, Math.min(12, Number(e.target.value) || 5)))} className="mt-1 w-full rounded border border-[color:var(--at-rule)] bg-[var(--at-sunk)] px-2 py-1.5 text-xs text-[color:var(--at-ink)]" />
         </label>
-        <button type="button" onClick={() => generate.mutate()} disabled={generate.isPending} className="mt-auto inline-flex items-center justify-center gap-1 rounded border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-1.5 text-xs font-mono text-fuchsia-200 hover:bg-fuchsia-500/25 disabled:opacity-50">
+        <button type="button" onClick={() => generate.mutate()} disabled={generate.isPending} className="mt-auto inline-flex items-center justify-center gap-1 rounded border border-[color:var(--at-accent)] bg-[var(--at-accent)] px-3 py-1.5 text-xs font-mono text-[color:var(--at-accent-text)] hover:bg-[var(--at-accent)] disabled:opacity-50">
           {generate.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
           Generate
         </button>
       </div>
-      {generate.isError && <div className="rounded border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-300">Palette generation failed.</div>}
+      {generate.isError && <div className="rounded border border-[color:var(--at-bad)] bg-[var(--at-bad)] px-3 py-2 text-xs text-[color:var(--at-bad)]">Palette generation failed.</div>}
       {palette.length > 0 && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-1">
             {palette.map((c, i) => (
-              <button key={`${c.hex}-${i}`} type="button" onClick={() => copyHex(c.hex)} className="group relative flex flex-col items-center gap-0.5 rounded border border-zinc-800 p-1 hover:border-zinc-600" title={`Click to copy ${c.hex}`}>
+              <button key={`${c.hex}-${i}`} type="button" onClick={() => copyHex(c.hex)} className="group relative flex flex-col items-center gap-0.5 rounded border border-[color:var(--at-rule)] p-1 hover:border-[color:var(--at-rule-2)]" title={onPick ? `Load ${c.hex} onto the brush` : `Click to copy ${c.hex}`}>
                 <span className="block h-12 w-16 rounded" style={{ backgroundColor: c.hex }} />
-                <span className="font-mono text-[10px] text-zinc-400">{c.hex}</span>
-                {c.role && <span className="font-mono text-[9px] text-zinc-400">{c.role}</span>}
-                <Copy className="absolute right-1 top-1 h-3 w-3 text-zinc-600 opacity-0 group-hover:opacity-100" />
+                <span className="font-mono text-[10px] text-[color:var(--at-muted)]">{c.hex}</span>
+                {c.role && <span className="font-mono text-[9px] text-[color:var(--at-muted)]">{c.role}</span>}
+                <Copy className="absolute right-1 top-1 h-3 w-3 text-[color:var(--at-faint)] opacity-0 group-hover:opacity-100" />
               </button>
             ))}
           </div>
           {harmonyAnalysis?.harmonies && harmonyAnalysis.harmonies.length > 0 && (
-            <div className="rounded-lg border border-fuchsia-500/20 bg-fuchsia-500/5 p-3 text-[11px]">
-              <div className="mb-1 text-[10px] uppercase tracking-wider text-zinc-400">Harmony relationships ({harmonyAnalysis.harmonies.length})</div>
+            <div className="rounded-lg border border-[color:var(--at-accent)] bg-[var(--at-accent)] p-3 text-[11px]">
+              <div className="mb-1 text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">Harmony relationships ({harmonyAnalysis.harmonies.length})</div>
               <div className="flex flex-wrap gap-1.5">
                 {Object.entries(harmonyCounts).map(([type, n]) => (
-                  <span key={type} className="rounded bg-fuchsia-500/20 px-1.5 py-0.5 font-mono text-fuchsia-200">{type} ×{n}</span>
+                  <span key={type} className="rounded bg-[var(--at-accent)] px-1.5 py-0.5 font-mono text-[color:var(--at-accent-text)]">{type} ×{n}</span>
                 ))}
               </div>
             </div>

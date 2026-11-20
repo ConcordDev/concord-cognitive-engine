@@ -120,10 +120,10 @@ const channelLabels: Record<string, string> = {
 };
 
 function SignalIndicator({ available, speed }: { available: boolean; speed?: string }) {
-  if (!available) return <SignalZero size={14} className="text-zinc-400" />;
-  if (speed === 'high') return <SignalHigh size={14} className="text-emerald-500" />;
-  if (speed === 'medium') return <Signal size={14} className="text-amber-500" />;
-  return <SignalLow size={14} className="text-blue-500" />;
+  if (!available) return <SignalZero size={14} className="text-[color:var(--nb-muted,#a1a1aa)]" />;
+  if (speed === 'high') return <SignalHigh size={14} className="text-[color:var(--nb-green,#10b981)]" />;
+  if (speed === 'medium') return <Signal size={14} className="text-[color:var(--nb-ochre,#f59e0b)]" />;
+  return <SignalLow size={14} className="text-[color:var(--nb-blue,#3b82f6)]" />;
 }
 
 function formatBytes(bytes: number): string {
@@ -143,14 +143,14 @@ function formatUptime(ms: number): string {
 
 function MeshStatusView({ metrics }: { metrics: MeshMetrics }) {
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
         {metrics.initialized ? (
-          <Wifi size={18} className="text-cyan-400" />
+          <Wifi size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
         ) : (
-          <WifiOff size={18} className="text-zinc-400" />
+          <WifiOff size={18} className="text-[color:var(--nb-muted,#a1a1aa)]" />
         )}
-        <span className="text-sm font-semibold text-zinc-200">Mesh Status</span>
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Mesh Status</span>
         <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
           metrics.initialized ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
         }`}>
@@ -159,50 +159,50 @@ function MeshStatusView({ metrics }: { metrics: MeshMetrics }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Node ID</div>
-          <div className="text-zinc-300 font-mono truncate">{metrics.nodeId || '—'}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Node ID</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)] font-mono truncate">{metrics.nodeId || '—'}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Uptime</div>
-          <div className="text-zinc-300">{formatUptime(metrics.uptime)}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Uptime</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{formatUptime(metrics.uptime)}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Active Channels</div>
-          <div className="text-cyan-400 font-semibold">{metrics.activeChannelCount} / {metrics.totalChannels}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Active Channels</div>
+          <div className="text-[color:var(--nb-blue,#22d3ee)] font-semibold">{metrics.activeChannelCount} / {metrics.totalChannels}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Peers</div>
-          <div className="text-zinc-300">{metrics.peerCount}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Peers</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{metrics.peerCount}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Transmitted</div>
-          <div className="text-zinc-300">{metrics.stats.totalTransmissions}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Transmitted</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{metrics.stats.totalTransmissions}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Received</div>
-          <div className="text-zinc-300">{metrics.stats.totalReceived}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Received</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{metrics.stats.totalReceived}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Relayed</div>
-          <div className="text-zinc-300">{metrics.stats.totalRelayed}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Relayed</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{metrics.stats.totalRelayed}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Pending Queue</div>
-          <div className="text-zinc-300">{metrics.pendingQueueSize}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Pending Queue</div>
+          <div className="text-[color:var(--nb-ink-2,#d4d4d8)]">{metrics.pendingQueueSize}</div>
         </div>
       </div>
 
-      <div className="flex gap-4 text-xs text-zinc-400">
+      <div className="flex gap-4 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         <span>Sent: {formatBytes(metrics.stats.bytesSent)}</span>
         <span>Received: {formatBytes(metrics.stats.bytesReceived)}</span>
         {metrics.stats.failovers > 0 && (
-          <span className="text-amber-500">Failovers: {metrics.stats.failovers}</span>
+          <span className="text-[color:var(--nb-ochre,#f59e0b)]">Failovers: {metrics.stats.failovers}</span>
         )}
       </div>
 
       {metrics.uptime > 0 && (
-        <div className="flex items-center gap-1 text-xs text-zinc-400">
+        <div className="flex items-center gap-1 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           <Clock size={12} />
           <span>Uptime: {formatUptime(metrics.uptime)}</span>
         </div>
@@ -213,10 +213,10 @@ function MeshStatusView({ metrics }: { metrics: MeshMetrics }) {
 
 function ChannelsView({ channels }: { channels: TransportChannel[] }) {
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Activity size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-zinc-200">Transport Channels</span>
+        <Activity size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Transport Channels</span>
       </div>
 
       <div className="space-y-1">
@@ -224,10 +224,10 @@ function ChannelsView({ channels }: { channels: TransportChannel[] }) {
           <div key={ch.layer} className={`flex items-center gap-2 p-2 rounded text-xs ${
             ch.available ? 'bg-zinc-800' : 'bg-zinc-850 opacity-60'
           }`}>
-            <span className="text-zinc-400">{channelIcons[ch.layer] || <Radio size={16} />}</span>
-            <span className="text-zinc-300 flex-1">{channelLabels[ch.layer] || ch.layer}</span>
+            <span className="text-[color:var(--nb-muted,#a1a1aa)]">{channelIcons[ch.layer] || <Radio size={16} />}</span>
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)] flex-1">{channelLabels[ch.layer] || ch.layer}</span>
             <SignalIndicator available={ch.available} speed={ch.spec?.speed} />
-            <span className="text-zinc-400 w-16 text-right">{ch.spec?.range || '—'}</span>
+            <span className="text-[color:var(--nb-muted,#a1a1aa)] w-16 text-right">{ch.spec?.range || '—'}</span>
             <span className={`w-14 text-right ${ch.available ? 'text-emerald-400' : 'text-zinc-600'}`}>
               {ch.available ? 'Active' : 'Off'}
             </span>
@@ -242,34 +242,34 @@ function PeersView({ peers }: { peers: MeshPeer[] }) {
   const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Users size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-zinc-200">Mesh Peers</span>
-        <span className="ml-auto text-xs text-zinc-400">{peers.length} discovered</span>
+        <Users size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Mesh Peers</span>
+        <span className="ml-auto text-xs text-[color:var(--nb-muted,#a1a1aa)]">{peers.length} discovered</span>
       </div>
 
       {peers.length === 0 ? (
-        <div className="text-xs text-zinc-400 text-center py-3">No peers discovered yet</div>
+        <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)] text-center py-3">No peers discovered yet</div>
       ) : (
         <div className="space-y-1">
           {peers.map(peer => (
             <div key={peer.nodeId}>
               <button
                 onClick={() => setExpanded(expanded === peer.nodeId ? null : peer.nodeId)}
-                className="flex items-center gap-2 w-full p-2 rounded bg-zinc-800 hover:bg-zinc-750 text-xs text-left"
+                className="flex items-center gap-2 w-full p-2 rounded bg-[var(--nb-wash,#27272a)] hover:bg-zinc-750 text-xs text-left"
               >
-                <span className="text-zinc-300 font-mono flex-1 truncate">{peer.nodeId}</span>
-                <span className="text-zinc-400">{peer.channels.length} ch</span>
-                {peer.relay && <ArrowRightLeft size={12} className="text-cyan-500" />}
+                <span className="text-[color:var(--nb-ink-2,#d4d4d8)] font-mono flex-1 truncate">{peer.nodeId}</span>
+                <span className="text-[color:var(--nb-muted,#a1a1aa)]">{peer.channels.length} ch</span>
+                {peer.relay && <ArrowRightLeft size={12} className="text-[color:var(--nb-blue,#06b6d4)]" />}
                 {expanded === peer.nodeId ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
               {expanded === peer.nodeId && (
                 <div className="ml-4 mt-1 p-2 bg-zinc-850 rounded text-xs space-y-1">
-                  <div className="text-zinc-400">Channels: <span className="text-zinc-300">{peer.channels.join(', ') || 'none'}</span></div>
-                  <div className="text-zinc-400">Discovered via: <span className="text-zinc-300">{peer.discoveredVia}</span></div>
-                  <div className="text-zinc-400">Transmissions: <span className="text-zinc-300">{peer.transmissions}</span></div>
-                  <div className="text-zinc-400">First seen: <span className="text-zinc-300">{new Date(peer.firstSeen).toLocaleString()}</span></div>
+                  <div className="text-[color:var(--nb-muted,#a1a1aa)]">Channels: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{peer.channels.join(', ') || 'none'}</span></div>
+                  <div className="text-[color:var(--nb-muted,#a1a1aa)]">Discovered via: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{peer.discoveredVia}</span></div>
+                  <div className="text-[color:var(--nb-muted,#a1a1aa)]">Transmissions: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{peer.transmissions}</span></div>
+                  <div className="text-[color:var(--nb-muted,#a1a1aa)]">First seen: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{new Date(peer.firstSeen).toLocaleString()}</span></div>
                 </div>
               )}
             </div>
@@ -282,20 +282,20 @@ function PeersView({ peers }: { peers: MeshPeer[] }) {
 
 function TopologyView({ topology }: { topology: TopologyData }) {
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Layers size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-zinc-200">Mesh Topology</span>
-        <span className="ml-auto text-xs text-zinc-400">{topology.totalNodes} nodes</span>
+        <Layers size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Mesh Topology</span>
+        <span className="ml-auto text-xs text-[color:var(--nb-muted,#a1a1aa)]">{topology.totalNodes} nodes</span>
       </div>
 
-      <div className="bg-zinc-800 rounded p-3 text-xs space-y-2">
+      <div className="bg-[var(--nb-wash,#27272a)] rounded p-3 text-xs space-y-2">
         <div className="flex items-center gap-2">
-          <Zap size={14} className="text-cyan-400" />
-          <span className="text-cyan-300 font-mono">{topology.selfNodeId}</span>
-          <span className="text-zinc-400">(self)</span>
+          <Zap size={14} className="text-[color:var(--nb-blue,#22d3ee)]" />
+          <span className="text-[color:var(--nb-blue,#67e8f9)] font-mono">{topology.selfNodeId}</span>
+          <span className="text-[color:var(--nb-muted,#a1a1aa)]">(self)</span>
         </div>
-        <div className="text-zinc-400">
+        <div className="text-[color:var(--nb-muted,#a1a1aa)]">
           Active channels: {topology.activeChannels.map(ch => channelLabels[ch] || ch).join(', ')}
         </div>
       </div>
@@ -303,10 +303,10 @@ function TopologyView({ topology }: { topology: TopologyData }) {
       {topology.nodes.length > 0 && (
         <div className="space-y-1">
           {topology.nodes.map(node => (
-            <div key={node.nodeId} className="flex items-center gap-2 p-2 bg-zinc-800 rounded text-xs">
-              <span className="text-zinc-300 font-mono flex-1 truncate">{node.nodeId}</span>
-              {node.relay && <ArrowRightLeft size={12} className="text-cyan-500" />}
-              <span className="text-zinc-400">{node.channels.length} ch</span>
+            <div key={node.nodeId} className="flex items-center gap-2 p-2 bg-[var(--nb-wash,#27272a)] rounded text-xs">
+              <span className="text-[color:var(--nb-ink-2,#d4d4d8)] font-mono flex-1 truncate">{node.nodeId}</span>
+              {node.relay && <ArrowRightLeft size={12} className="text-[color:var(--nb-blue,#06b6d4)]" />}
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{node.channels.length} ch</span>
             </div>
           ))}
         </div>
@@ -321,56 +321,56 @@ function TransferView({ transfer }: { transfer: TransferProgress }) {
     : 0;
 
   const statusColors: Record<string, string> = {
-    completed: 'text-emerald-400',
-    in_progress: 'text-cyan-400',
-    partial: 'text-amber-400',
-    failed: 'text-red-400',
-    pending: 'text-zinc-400',
+    completed: 'text-[color:var(--nb-green,#34d399)]',
+    in_progress: 'text-[color:var(--nb-blue,#22d3ee)]',
+    partial: 'text-[color:var(--nb-ochre,#fbbf24)]',
+    failed: 'text-[color:var(--nb-red,#f87171)]',
+    pending: 'text-[color:var(--nb-muted,#a1a1aa)]',
   };
 
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Send size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-zinc-200">Consciousness Transfer</span>
+        <Send size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Consciousness Transfer</span>
         <span className={`ml-auto text-xs font-semibold ${statusColors[transfer.status] || 'text-zinc-400'}`}>
           {transfer.status.toUpperCase()}
         </span>
       </div>
 
       <div className="space-y-2">
-        <div className="w-full bg-zinc-800 rounded-full h-2">
+        <div className="w-full bg-[var(--nb-wash,#27272a)] rounded-full h-2">
           <div
-            className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 transition-all"
+            className="h-2 rounded-full bg-gradient-to-r from-[var(--nb-blue-soft,#06b6d4)] to-[var(--nb-green-soft,#10b981)] transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex justify-between text-xs text-zinc-400">
+        <div className="flex justify-between text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           <span>{transfer.sentComponents} / {transfer.totalComponents} components sent</span>
           <span>{progress}%</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Verified</div>
-          <div className="text-emerald-400">{transfer.verifiedComponents}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Verified</div>
+          <div className="text-[color:var(--nb-green,#34d399)]">{transfer.verifiedComponents}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Failed</div>
-          <div className={transfer.failedComponents > 0 ? 'text-red-400' : 'text-zinc-400'}>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Failed</div>
+          <div className={transfer.failedComponents > 0 ? 'text-[color:var(--nb-red,#f87171)]' : 'text-[color:var(--nb-muted,#a1a1aa)]'}>
             {transfer.failedComponents}
           </div>
         </div>
       </div>
 
       {transfer.channels.length > 0 && (
-        <div className="text-xs text-zinc-400">
+        <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           Channels: {transfer.channels.map(ch => channelLabels[ch] || ch).join(', ')}
         </div>
       )}
 
-      <div className="flex gap-4 text-xs text-zinc-400">
+      <div className="flex gap-4 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         <span>Started: {new Date(transfer.startedAt).toLocaleTimeString()}</span>
         {transfer.completedAt && (
           <span>Completed: {new Date(transfer.completedAt).toLocaleTimeString()}</span>
@@ -382,23 +382,23 @@ function TransferView({ transfer }: { transfer: TransferProgress }) {
 
 function StatsView({ transmissions }: { transmissions: TransmissionRecord[] }) {
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Activity size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-zinc-200">Recent Transmissions</span>
+        <Activity size={18} className="text-[color:var(--nb-blue,#22d3ee)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Recent Transmissions</span>
       </div>
 
       {(!transmissions || transmissions.length === 0) ? (
-        <div className="text-xs text-zinc-400 text-center py-3">No recent transmissions</div>
+        <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)] text-center py-3">No recent transmissions</div>
       ) : (
         <div className="space-y-1">
           {transmissions.slice(0, 10).map(tx => (
-            <div key={tx.id} className="flex items-center gap-2 p-2 bg-zinc-800 rounded text-xs">
-              <span className="text-zinc-400">{channelIcons[tx.channel] || <Send size={12} />}</span>
-              <span className="text-zinc-300 font-mono truncate flex-1">{tx.destinationNodeId}</span>
-              <span className="text-zinc-400">{formatBytes(tx.totalBytes)}</span>
-              {tx.fragmented && <span className="text-amber-500">fragmented</span>}
-              <span className={tx.status === 'sent' ? 'text-emerald-400' : 'text-zinc-400'}>
+            <div key={tx.id} className="flex items-center gap-2 p-2 bg-[var(--nb-wash,#27272a)] rounded text-xs">
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{channelIcons[tx.channel] || <Send size={12} />}</span>
+              <span className="text-[color:var(--nb-ink-2,#d4d4d8)] font-mono truncate flex-1">{tx.destinationNodeId}</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{formatBytes(tx.totalBytes)}</span>
+              {tx.fragmented && <span className="text-[color:var(--nb-ochre,#f59e0b)]">fragmented</span>}
+              <span className={tx.status === 'sent' ? 'text-[color:var(--nb-green,#34d399)]' : 'text-[color:var(--nb-muted,#a1a1aa)]'}>
                 {tx.status}
               </span>
             </div>

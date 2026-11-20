@@ -12,6 +12,7 @@ import {
 import { getNewsRssPool, ensureNewsRssSource, dedupHashOf } from "../lib/news-sources.js";
 import { summaryForItem } from "../lib/news-summarizer.js";
 import { hostTier, contentPolicyFor } from "../lib/news-outlet-policy.js";
+import { registerNewsSituation } from "./news-situation.js";
 
 // ── Real headlines via GDELT Project (free, no key) ──
 //
@@ -74,7 +75,17 @@ async function getGdeltArticles(category) {
   return raceTimeout(pending, gdelt.userWaitMs, warming);
 }
 
-export default function registerNewsActions(registerLensAction) {
+export default function registerNewsActions(registerLensActionOuter) {
+  // Keep a handle on this domain's own handlers so composite views (the
+  // Situation Room) call them directly: the global macro runner does not
+  // hold lens actions, so going through it reported "macro not found".
+  const own = new Map();
+  let registerLensAction = (domain, name, fn) => { if (domain === "news") own.set(name, fn); return registerLensActionOuter(domain, name, fn); };
+  const callOwn = (name, ctx, params) => {
+    const fn = own.get(name);
+    if (!fn) return { ok: false, error: `news.${name} is not registered` };
+    return fn(ctx, { id: null, data: {}, meta: {} }, params);
+  };
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
    * biasDetection
@@ -1572,5 +1583,7 @@ export default function registerNewsActions(registerLensAction) {
       },
     };
   });
-}
 
+  // ── The Situation Room (news-situation.js): map, timeline, arcs ──
+  registerNewsSituation(registerLensAction, { getNewsState, categories: Object.keys(CATEGORY_QUERIES), callOwn });
+}

@@ -1,0 +1,152 @@
+/*
+ * The Auction House — the Market lens identity. An evening saleroom: a deep
+ * oxblood band over cream catalogue paper, brass rules, lots set like printed
+ * plates with an engraved catalogue number. Colour means one thing each:
+ * oxblood is the house (navigation, the buy action), brass is the drawing
+ * (this hour's showcase, the seed), and a red wax "sold" stamp marks a lot
+ * that has closed. Every colour is a token (var(--ah-*)).
+ */
+
+.ah {
+  --ah-oxblood: #5b1621;
+  --ah-oxblood-deep: #3e0c14;
+  --ah-oxblood-ink: #f5ebdc;
+  --ah-paper: #f4ecdf;
+  --ah-paper-2: #ebe0cd;
+  --ah-card: #fbf6ec;
+  --ah-ink: #22140f;
+  --ah-ink-2: #4b382d;
+  --ah-muted: #7b6757;
+  --ah-faint: #a8957f;
+  --ah-rule: #d8c8ad;
+  --ah-rule-2: #c4ae8a;
+  --ah-brass: #a67c3d;
+  --ah-brass-soft: rgba(166, 124, 61, 0.14);
+  --ah-brass-glow: rgba(214, 170, 92, 0.45);
+  --ah-wax: #a3242c;
+  --ah-good: #3f6b3a;
+  --ah-good-soft: rgba(63, 107, 58, 0.12);
+  --ah-bad: #9b2b23;
+  --ah-bad-soft: rgba(155, 43, 35, 0.1);
+  --ah-focus: rgba(91, 22, 33, 0.55);
+  --ah-shadow: 0 1px 0 rgba(34, 20, 15, 0.06), 0 6px 18px -10px rgba(34, 20, 15, 0.35);
+
+  background: var(--ah-paper);
+  color: var(--ah-ink);
+  font-family: var(--ah-font-body), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ah :focus-visible { outline: 2px solid var(--ah-focus); outline-offset: 2px; }
+.ah ::selection { background: rgba(166, 124, 61, 0.3); }
+
+.ah-display { font-family: var(--ah-font-display), Georgia, serif; letter-spacing: 0.005em; }
+.ah-title { font-family: var(--ah-font-display), Georgia, serif; font-style: italic; font-weight: 600; line-height: 1.12; }
+.ah-no { font-family: var(--ah-font-display), Georgia, serif; font-variant: small-caps; letter-spacing: 0.12em; font-weight: 600; color: var(--ah-brass); }
+.ah-label { font-family: var(--ah-font-body), sans-serif; font-weight: 500; font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ah-muted); }
+.ah-num { font-variant-numeric: tabular-nums lining-nums; }
+.ah-muted { color: var(--ah-muted); }
+.ah-faint { color: var(--ah-faint); }
+.ah-ink-2 { color: var(--ah-ink-2); }
+.ah-brass { color: var(--ah-brass); }
+.ah-good { color: var(--ah-good); }
+.ah-bad { color: var(--ah-bad); }
+.ah-oxblood { color: var(--ah-oxblood); }
+
+/* The house band */
+.ah-band { background: linear-gradient(180deg, var(--ah-oxblood) 0%, var(--ah-oxblood-deep) 100%); color: var(--ah-oxblood-ink); border-bottom: 3px double var(--ah-brass); }
+.ah-band .ah-label { color: rgba(245, 235, 220, 0.62); }
+:where(.ah-room) { display: inline-flex; }
+.ah-room { align-items: center; gap: 6px; height: 34px; padding: 0 12px; font-size: 13px; letter-spacing: 0.04em; color: rgba(245, 235, 220, 0.72); border-bottom: 2px solid transparent; white-space: nowrap; }
+.ah-room:hover { color: var(--ah-oxblood-ink); }
+.ah-room[aria-selected='true'] { color: var(--ah-oxblood-ink); border-bottom-color: var(--ah-brass); }
+.ah-room .ah-kbd { border-color: rgba(245, 235, 220, 0.25); color: rgba(245, 235, 220, 0.55); }
+
+.ah-rule { border-color: var(--ah-rule); }
+.ah-hr { height: 0; border-top: 1px solid var(--ah-rule); }
+.ah-double { border-top: 3px double var(--ah-rule-2); }
+
+/* Controls */
+:where(.ah-btn) { display: inline-flex; }
+.ah-btn {
+  align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 2px;
+  border: 1px solid var(--ah-rule-2); background: var(--ah-card); color: var(--ah-ink); font-size: 13px; font-weight: 500; letter-spacing: 0.02em;
+  transition: background-color 120ms, border-color 120ms, color 120ms, transform 120ms;
+}
+.ah-btn:hover:not(:disabled) { border-color: var(--ah-ink-2); }
+.ah-btn:active:not(:disabled) { transform: translateY(1px); }
+.ah-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ah-btn-house { background: var(--ah-oxblood); border-color: var(--ah-oxblood-deep); color: var(--ah-oxblood-ink); }
+.ah-btn-house:hover:not(:disabled) { background: var(--ah-oxblood-deep); border-color: var(--ah-oxblood-deep); }
+.ah-btn-brass { background: var(--ah-brass); border-color: var(--ah-brass); color: var(--ah-card); }
+.ah-btn-ghost { background: transparent; border-color: transparent; color: var(--ah-ink-2); }
+.ah-btn-ghost:hover:not(:disabled) { border-color: var(--ah-rule-2); }
+
+:where(.ah-input, .ah-select, .ah-textarea) { width: 100%; }
+.ah-input, .ah-select, .ah-textarea {
+  height: 34px; padding: 0 10px; border-radius: 2px; border: 1px solid var(--ah-rule-2); background: var(--ah-card); color: var(--ah-ink); font-size: 13.5px;
+}
+.ah-textarea { height: auto; padding: 8px 10px; line-height: 1.5; }
+.ah-input::placeholder, .ah-textarea::placeholder { color: var(--ah-faint); }
+.ah-input:focus, .ah-select:focus, .ah-textarea:focus { outline: none; border-color: var(--ah-oxblood); }
+:where(.ah-kbd) { display: inline-flex; }
+.ah-kbd { align-items: center; height: 17px; padding: 0 5px; border-radius: 2px; border: 1px solid var(--ah-rule-2); color: var(--ah-muted); font-size: 10px; letter-spacing: 0.04em; }
+
+/* Filter rail */
+:where(.ah-facet) { display: flex; width: 100%; }
+.ah-facet { align-items: baseline; justify-content: space-between; gap: 8px; padding: 3px 6px; border-radius: 2px; font-size: 13px; color: var(--ah-ink-2); text-align: left; }
+.ah-facet:hover { background: var(--ah-paper-2); }
+.ah-facet[aria-pressed='true'] { background: var(--ah-oxblood); color: var(--ah-oxblood-ink); }
+.ah-facet[aria-pressed='true'] .ah-faint { color: rgba(245, 235, 220, 0.7); }
+:where(.ah-chip) { display: inline-flex; }
+.ah-chip { align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--ah-rule-2); font-size: 11.5px; color: var(--ah-ink-2); background: var(--ah-card); }
+.ah-chip[aria-pressed='true'], .ah-chip[aria-selected='true'] { border-color: var(--ah-oxblood); background: var(--ah-oxblood); color: var(--ah-oxblood-ink); }
+
+/* Plates (lot cards) */
+:where(.ah-plate) { display: flex; }
+.ah-plate { position: relative; flex-direction: column; background: var(--ah-card); border: 1px solid var(--ah-rule); box-shadow: var(--ah-shadow); transition: transform 160ms ease, box-shadow 160ms ease; text-align: left; }
+.ah-plate:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(34, 20, 15, 0.06), 0 14px 26px -14px rgba(34, 20, 15, 0.45); }
+.ah-cover { position: relative; aspect-ratio: 4 / 3; overflow: hidden; background: var(--ah-paper-2); border-bottom: 1px solid var(--ah-rule); }
+.ah-cover img { width: 100%; height: 100%; object-fit: cover; }
+.ah-cover-blank { display: flex; height: 100%; flex-direction: column; justify-content: space-between; padding: 14px 16px; background:
+  repeating-linear-gradient(45deg, transparent 0 10px, rgba(166, 124, 61, 0.06) 10px 11px), var(--ah-paper-2); }
+.ah-cover-blank .ah-title { color: var(--ah-ink-2); }
+.ah-sold { position: absolute; right: 10px; top: 10px; transform: rotate(-8deg); border: 2px solid var(--ah-wax); color: var(--ah-wax); background: rgba(251, 246, 236, 0.85); padding: 1px 8px; font-family: var(--ah-font-display), serif; font-weight: 700; letter-spacing: 0.2em; font-size: 13px; }
+.ah-drawn { position: absolute; left: 10px; top: 10px; background: var(--ah-brass); color: var(--ah-card); padding: 1px 8px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; }
+
+/* The front window (this hour's drawing) */
+.ah-window { background: radial-gradient(ellipse at 50% 0%, rgba(214, 170, 92, 0.22) 0%, transparent 65%), var(--ah-oxblood-deep); color: var(--ah-oxblood-ink); border: 1px solid var(--ah-brass); box-shadow: inset 0 0 0 4px var(--ah-oxblood-deep), inset 0 0 0 5px rgba(166, 124, 61, 0.45); }
+.ah-window .ah-label { color: rgba(245, 235, 220, 0.6); }
+.ah-window .ah-plate { box-shadow: 0 0 0 1px var(--ah-brass), 0 0 26px -6px var(--ah-brass-glow); }
+.ah-seed { font-family: ui-monospace, 'SFMono-Regular', monospace; font-size: 11px; letter-spacing: 0.02em; word-break: break-all; }
+
+/* Ledger rows (sales record, checks) */
+.ah-ledger-row { display: grid; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid var(--ah-rule); }
+.ah-ledger-row:hover { background: rgba(235, 224, 205, 0.5); }
+.ah-check { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
+.ah-check[data-pass='true'] .ah-check-mark { color: var(--ah-good); }
+.ah-check[data-pass='false'] .ah-check-mark { color: var(--ah-bad); }
+.ah-check-leader { flex: 1; border-bottom: 1px dotted var(--ah-rule-2); transform: translateY(-3px); min-width: 10px; }
+
+.ah-panel { background: var(--ah-card); border: 1px solid var(--ah-rule); }
+.ah-scrim { background: rgba(34, 20, 15, 0.45); }
+.ah-sheet { background: var(--ah-paper); border-left: 3px double var(--ah-rule-2); box-shadow: -20px 0 40px -20px rgba(34, 20, 15, 0.45); }
+.ah-note { border-left: 3px solid var(--ah-brass); background: var(--ah-brass-soft); padding: 8px 12px; font-size: 13px; }
+.ah-error { border-left: 3px solid var(--ah-bad); background: var(--ah-bad-soft); padding: 8px 12px; font-size: 13px; color: var(--ah-bad); }
+.ah-okay { border-left: 3px solid var(--ah-good); background: var(--ah-good-soft); padding: 8px 12px; font-size: 13px; color: var(--ah-good); }
+
+.ah-scroll { scrollbar-width: thin; scrollbar-color: var(--ah-rule-2) transparent; }
+
+@keyframes ah-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ah-rise { animation: ah-rise 260ms ease-out both; }
+@keyframes ah-stamp { from { opacity: 0; transform: rotate(-8deg) scale(1.6); } to { opacity: 1; transform: rotate(-8deg) scale(1); } }
+.ah-sold[data-fresh='true'] { animation: ah-stamp 380ms cubic-bezier(0.2, 0.9, 0.25, 1.2) both; }
+@keyframes ah-shimmer { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.ah-skeleton { background: var(--ah-paper-2); animation: ah-shimmer 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-rise, .ah-sold[data-fresh='true'], .ah-skeleton { animation: none; }
+  .ah-plate, .ah-plate:hover { transition: none; transform: none; }
+}

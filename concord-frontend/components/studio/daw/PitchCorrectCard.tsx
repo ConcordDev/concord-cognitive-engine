@@ -22,6 +22,7 @@ import {
 import { readPitchMeter } from '@/lib/daw/dsp/pitch/runtime';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
 import { ensurePitchWorklet, pitchWorkletFailed, pitchWorkletReady } from '@/lib/daw/worklets/load-pitch-worklet';
+import { pitchCorrectParams } from '@/lib/daw/tune-vocal';
 
 type Gate = 'loading' | 'ready' | 'failed';
 
@@ -31,19 +32,7 @@ function num(v: unknown, d: number): number {
 }
 
 export function newPitchCorrect(): EffectInstance {
-  return effect('pitchCorrect', 'Pitch Correct', {
-    retuneMs: 0,
-    humanize: 0,
-    flexCents: 200,
-    preserveVibrato: 0,
-    transpose: 0,
-    formantSemitones: 0,
-    quality: 0,
-    range: 1,
-    useProject: 1,
-    keyName: 'C',
-    scaleName: 'chromatic',
-  }, 1);
+  return effect('pitchCorrect', 'Pitch Correct', pitchCorrectParams(), 1);
 }
 
 function Slider({
@@ -127,7 +116,7 @@ export function PitchCorrectCard({
   }, [gate, rangeIndex, quality]);
 
   return (
-    <div className={cn('flex w-72 flex-shrink-0 flex-col rounded-lg border bg-[#17171f] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-60')} data-testid="studio-pitch-correct">
+    <div className={cn('flex w-72 flex-shrink-0 flex-col rounded-lg border bg-[var(--bo-panel)] p-2', fx.enabled ? 'border-white/10' : 'border-white/5 opacity-60')} data-testid="studio-pitch-correct">
       <div className="mb-1 flex items-center gap-1">
         <button type="button" onClick={() => onChange({ ...fx, enabled: !fx.enabled })} className={cn('rounded p-0.5', fx.enabled ? 'text-emerald-400' : 'text-zinc-600')} title="Bypass" aria-label="Bypass Pitch Correct">
           <Power className="h-3 w-3" />

@@ -5,6 +5,7 @@ import type { DAWClip, DAWProject } from '@/lib/daw/types';
 import type { PitchEditDoc } from '@/lib/daw/pitch-edit-types';
 import { sliceClipToGrid } from '@/lib/daw/clip-edit';
 import { PitchEditor } from './PitchEditor';
+import { boothVar } from '../booth/tokens';
 
 interface Pcm {
   channels: Float32Array[];
@@ -60,7 +61,7 @@ function WaveEditor({ clip, project, pcm, onClip, onProject }: {
     const w = node.width;
     const h = node.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#8b5cf6';
+    ctx.fillStyle = boothVar('--bo-amber', 'rgb(255,178,62)', node);
     const view = dur / zoom;
     for (let x = 0; x < w; x++) {
       const t0 = (x / w) * view;

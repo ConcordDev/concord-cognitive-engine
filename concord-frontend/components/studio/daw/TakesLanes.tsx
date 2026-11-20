@@ -44,8 +44,8 @@ export function TakesLanes(p: TakesLanesProps) {
         }
       }}
     >
-      <div className="flex border-b border-white/5 bg-[#12121a]" style={{ height: 28 }}>
-        <div className="sticky left-0 z-10 flex items-center gap-1 border-r border-white/5 bg-[#12121a] px-2" style={{ width: p.headerWidth }}>
+      <div className="flex border-b border-white/5 bg-[var(--bo-console)]" style={{ height: 28 }}>
+        <div className="sticky left-0 z-10 flex items-center gap-1 border-r border-white/5 bg-[var(--bo-console)] px-2" style={{ width: p.headerWidth }}>
           <span className="text-[10px] text-zinc-500">Comp</span>
           <button
             type="button"
@@ -70,7 +70,7 @@ export function TakesLanes(p: TakesLanesProps) {
       </div>
       {takes.length === 0 && (
         <div className="flex border-b border-white/5 text-[10px] text-zinc-600" style={{ height: LANE_H }}>
-          <div className="sticky left-0 border-r border-white/5 bg-[#14141b] px-2 leading-9" style={{ width: p.headerWidth }}>No takes yet</div>
+          <div className="sticky left-0 border-r border-white/5 bg-[var(--bo-panel)] px-2 leading-9" style={{ width: p.headerWidth }}>No takes yet</div>
         </div>
       )}
       {takes.map((take) => {
@@ -78,7 +78,7 @@ export function TakesLanes(p: TakesLanesProps) {
         const audition = p.auditionTakeId === take.id;
         return (
           <div key={take.id} className="flex border-b border-white/5" style={{ height: LANE_H }} data-testid="studio-take-lane">
-            <div className="sticky left-0 z-10 flex items-center gap-1 border-r border-white/5 bg-[#14141b] px-1.5" style={{ width: p.headerWidth }}>
+            <div className="sticky left-0 z-10 flex items-center gap-1 border-r border-white/5 bg-[var(--bo-panel)] px-1.5" style={{ width: p.headerWidth }}>
               {renameId === take.id ? (
                 <input
                   autoFocus

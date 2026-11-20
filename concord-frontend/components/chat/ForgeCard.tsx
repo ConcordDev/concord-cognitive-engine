@@ -87,13 +87,13 @@ const FORMAT_ICONS: Record<string, typeof FileText> = {
 };
 
 const FORMAT_COLORS: Record<string, string> = {
-  Document: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  Audio: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  Image: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-  Code: 'bg-green-500/10 text-green-400 border-green-500/20',
-  Dataset: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  Research: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  Video: 'bg-red-500/10 text-red-400 border-red-500/20',
+  Document: 'bg-[var(--nb-blue-soft,rgba(59,130,246,0.1))] text-[color:var(--nb-blue,#60a5fa)] border-[color:var(--nb-blue,rgba(59,130,246,0.2))]',
+  Audio: 'bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] text-[color:var(--nb-red,#c084fc)] border-[color:var(--nb-red,rgba(168,85,247,0.2))]',
+  Image: 'bg-[var(--nb-red-soft,rgba(236,72,153,0.1))] text-[color:var(--nb-red,#f472b6)] border-[color:var(--nb-red,rgba(236,72,153,0.2))]',
+  Code: 'bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] text-[color:var(--nb-green,#4ade80)] border-[color:var(--nb-green,rgba(34,197,94,0.2))]',
+  Dataset: 'bg-[var(--nb-hl,rgba(249,115,22,0.1))] text-[color:var(--nb-ochre,#fb923c)] border-[color:var(--nb-ochre,rgba(249,115,22,0.2))]',
+  Research: 'bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] text-[color:var(--nb-blue,#22d3ee)] border-[color:var(--nb-blue,rgba(6,182,212,0.2))]',
+  Video: 'bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] text-[color:var(--nb-red,#f87171)] border-[color:var(--nb-red,rgba(239,68,68,0.2))]',
 };
 
 // ── Component ────────────────────────────────────────────────────
@@ -146,19 +146,19 @@ export default function ForgeCard({
 
   return (
     <div className={cn(
-      'rounded-lg border bg-zinc-900/60 backdrop-blur-sm overflow-hidden',
+      'rounded-lg border bg-[var(--nb-sheet,rgba(24,24,27,0.6))] backdrop-blur-sm overflow-hidden',
       'transition-all duration-200',
-      actionTaken === 'saved' && 'border-green-500/30',
-      actionTaken === 'listed' && 'border-amber-500/30',
-      !actionTaken && 'border-zinc-700/50',
+      actionTaken === 'saved' && 'border-[color:var(--nb-green,rgba(34,197,94,0.3))]',
+      actionTaken === 'listed' && 'border-[color:var(--nb-ochre,rgba(245,158,11,0.3))]',
+      !actionTaken && 'border-[color:var(--nb-rule,rgba(63,63,70,0.5))]',
     )}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
         <div className={cn('p-2 rounded-md border', colorClass)}>
           <Icon className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100 truncate">
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)] truncate">
             {presentation.title}
           </h3>
           <div className="flex items-center gap-2 mt-0.5">
@@ -166,7 +166,7 @@ export default function ForgeCard({
               {presentation.format}
             </span>
             {isMultiArtifact && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--nb-hl,rgba(245,158,11,0.1))] text-[color:var(--nb-ochre,#fbbf24)] border border-[color:var(--nb-ochre,rgba(245,158,11,0.2))]">
                 <Layers className="w-3 h-3 inline mr-0.5" />
                 Multi-artifact
               </span>
@@ -175,7 +175,7 @@ export default function ForgeCard({
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-400"
+          className="p-1 rounded hover:bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)]"
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
@@ -183,7 +183,7 @@ export default function ForgeCard({
 
       {/* Preview */}
       <div className={cn(
-        'px-4 py-3 text-xs font-mono text-zinc-400 bg-zinc-950/30',
+        'px-4 py-3 text-xs font-mono text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-paper,rgba(9,9,11,0.3))]',
         !expanded && 'max-h-24 overflow-hidden',
       )}>
         <pre className="whitespace-pre-wrap break-words leading-relaxed">
@@ -192,7 +192,7 @@ export default function ForgeCard({
       </div>
 
       {/* Attribution */}
-      <div className="px-4 py-2 flex items-center gap-4 text-xs text-zinc-400 border-t border-zinc-800/30">
+      <div className="px-4 py-2 flex items-center gap-4 text-xs text-[color:var(--nb-muted,#a1a1aa)] border-t border-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
         {presentation.sourceLenses.length > 0 && (
           <span className="flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
@@ -207,18 +207,18 @@ export default function ForgeCard({
 
       {/* Format ambiguity warning */}
       {presentation.formatAmbiguous && presentation.alternatives && (
-        <div className="px-4 py-2 text-xs text-amber-400 bg-amber-500/5 border-t border-amber-500/10">
+        <div className="px-4 py-2 text-xs text-[color:var(--nb-ochre,#fbbf24)] bg-[var(--nb-hl,rgba(245,158,11,0.05))] border-t border-[color:var(--nb-ochre,rgba(245,158,11,0.1))]">
           Format might also be: {presentation.alternatives.join(', ')}
         </div>
       )}
 
       {/* Actions */}
       {!actionTaken && (
-        <div className="px-4 py-3 flex items-center gap-2 border-t border-zinc-800/50">
+        <div className="px-4 py-3 flex items-center gap-2 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
           {offerForge && (
             <button
               onClick={handleSave}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 transition-colors border border-purple-600/20"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--nb-red-soft,rgba(147,51,234,0.2))] text-[color:var(--nb-red,#c084fc)] hover:bg-[var(--nb-red-soft,rgba(147,51,234,0.3))] transition-colors border border-[color:var(--nb-red,rgba(147,51,234,0.2))]"
             >
               <Sparkles className="w-3.5 h-3.5" />
               Forge
@@ -227,7 +227,7 @@ export default function ForgeCard({
           {actions.save?.available && (
             <button
               onClick={handleSave}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-green-600/20 text-green-400 hover:bg-green-600/30 transition-colors border border-green-600/20"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--nb-green-soft,rgba(22,163,74,0.2))] text-[color:var(--nb-green,#4ade80)] hover:bg-[var(--nb-green-soft,rgba(22,163,74,0.3))] transition-colors border border-[color:var(--nb-green,rgba(22,163,74,0.2))]"
             >
               <Save className="w-3.5 h-3.5" />
               Save
@@ -236,7 +236,7 @@ export default function ForgeCard({
           {actions.saveAndList?.available && (
             <button
               onClick={handleList}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 transition-colors border border-amber-600/20"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--nb-hl,rgba(217,119,6,0.2))] text-[color:var(--nb-ochre,#fbbf24)] hover:bg-[var(--nb-hl,rgba(217,119,6,0.3))] transition-colors border border-[color:var(--nb-ochre,rgba(217,119,6,0.2))]"
             >
               <ShoppingCart className="w-3.5 h-3.5" />
               Save & List
@@ -245,7 +245,7 @@ export default function ForgeCard({
           {actions.iterate?.available && (
             <button
               onClick={() => setIterating(!iterating)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-zinc-700/30 text-zinc-300 hover:bg-zinc-700/50 transition-colors border border-zinc-700/30"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--nb-wash-2,rgba(63,63,70,0.3))] text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash-2,rgba(63,63,70,0.5))] transition-colors border border-[color:var(--nb-rule,rgba(63,63,70,0.3))]"
             >
               <Pencil className="w-3.5 h-3.5" />
               Edit
@@ -254,7 +254,7 @@ export default function ForgeCard({
           {actions.delete?.available && (
             <button
               onClick={handleDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-red-600/10 transition-colors ml-auto"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-red,#f87171)] hover:bg-[var(--nb-red-soft,rgba(220,38,38,0.1))] transition-colors ml-auto"
             aria-label="Delete">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -264,19 +264,19 @@ export default function ForgeCard({
 
       {/* Saved/Listed confirmation */}
       {actionTaken === 'saved' && (
-        <div className="px-4 py-2 text-xs text-green-400 bg-green-500/5 border-t border-green-500/10">
+        <div className="px-4 py-2 text-xs text-[color:var(--nb-green,#4ade80)] bg-[var(--nb-green-soft,rgba(34,197,94,0.05))] border-t border-[color:var(--nb-green,rgba(34,197,94,0.1))]">
           Saved to your substrate. This DTU is now citable, forkable, and listable.
         </div>
       )}
       {actionTaken === 'listed' && (
-        <div className="px-4 py-2 text-xs text-amber-400 bg-amber-500/5 border-t border-amber-500/10">
+        <div className="px-4 py-2 text-xs text-[color:var(--nb-ochre,#fbbf24)] bg-[var(--nb-hl,rgba(245,158,11,0.05))] border-t border-[color:var(--nb-ochre,rgba(245,158,11,0.1))]">
           Saved and listed on marketplace. You keep 96% of every sale.
         </div>
       )}
 
       {/* Iteration input */}
       {iterating && (
-        <div className="px-4 py-3 border-t border-zinc-800/50">
+        <div className="px-4 py-3 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
           <div className="flex gap-2">
             <input
               type="text"
@@ -284,13 +284,13 @@ export default function ForgeCard({
               onChange={(e) => setIterationInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleIterate()}
               placeholder="What should change?"
-              className="flex-1 px-3 py-1.5 text-xs rounded-md bg-zinc-800 border border-zinc-700 text-zinc-200 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-500"
+              className="flex-1 px-3 py-1.5 text-xs rounded-md bg-[var(--nb-wash,#27272a)] border border-[color:var(--nb-rule,#3f3f46)] text-[color:var(--nb-ink,#e4e4e7)] placeholder:text-[color:var(--nb-muted,#a1a1aa)] focus:outline-none focus:border-[color:var(--nb-rule-2,#71717a)]"
               autoFocus
             />
             <button
               onClick={handleIterate}
               disabled={!iterationInput.trim()}
-              className="px-3 py-1.5 text-xs rounded-md bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/20 disabled:opacity-30"
+              className="px-3 py-1.5 text-xs rounded-md bg-[var(--nb-blue-soft,rgba(37,99,235,0.2))] text-[color:var(--nb-blue,#60a5fa)] hover:bg-[var(--nb-blue-soft,rgba(37,99,235,0.3))] border border-[color:var(--nb-blue,rgba(37,99,235,0.2))] disabled:opacity-30"
             >
               Apply
             </button>

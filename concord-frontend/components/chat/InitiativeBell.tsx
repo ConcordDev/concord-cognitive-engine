@@ -94,65 +94,65 @@ export default function InitiativeBell() {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+        className="relative p-2 rounded-md text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink,#f4f4f5)] hover:bg-[var(--nb-wash,#27272a)]"
         title="Initiative — Concord may have something to tell you"
       >
         <Bell className="w-4 h-4" />
         {pending.length > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-amber-500 text-amber-50 text-[10px] font-semibold flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--nb-ochre,#f59e0b)] text-[color:var(--nb-ochre,#fffbeb)] text-[10px] font-semibold flex items-center justify-center">
             {pending.length > 9 ? '9+' : pending.length}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-2 w-96 max-h-[70vh] overflow-y-auto rounded-xl bg-zinc-900/97 backdrop-blur-md ring-1 ring-zinc-800 shadow-2xl z-50">
-          <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+        <div className="absolute top-full right-0 mt-2 w-96 max-h-[70vh] overflow-y-auto rounded-xl bg-[var(--nb-sheet,rgba(24,24,27,0.97))] backdrop-blur-md ring-1 ring-[color:var(--nb-rule,#27272a)] shadow-2xl z-50">
+          <header className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--nb-rule,#27272a)]">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <h3 className="text-sm font-semibold text-zinc-100">Initiatives</h3>
+              <Sparkles className="w-4 h-4 text-[color:var(--nb-ochre,#fbbf24)]" />
+              <h3 className="text-sm font-semibold text-[color:var(--nb-ink,#f4f4f5)]">Initiatives</h3>
             </div>
-            <button onClick={() => setOpen(false)} className="p-1 rounded text-zinc-400 hover:text-zinc-200" aria-label="Close">
+            <button onClick={() => setOpen(false)} className="p-1 rounded text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink,#e4e4e7)]" aria-label="Close">
               <X className="w-4 h-4" />
             </button>
           </header>
           {pending.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs text-zinc-400">
+            <div className="px-4 py-8 text-center text-xs text-[color:var(--nb-muted,#a1a1aa)]">
               <p>No pending initiatives.</p>
-              <p className="mt-1 text-zinc-600">
+              <p className="mt-1 text-[color:var(--nb-faint,#52525b)]">
                 Concord reaches out proactively when there&apos;s something worth saying — a new
                 citation, a discovery in your substrate, a check-in.
               </p>
             </div>
           ) : (
-            <ul className="divide-y divide-zinc-800">
+            <ul className="divide-y divide-[color:var(--nb-rule,#27272a)]">
               {pending.map(init => (
                 <li key={init.id} className="px-4 py-3">
                   <div className="flex items-baseline justify-between gap-2 mb-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[10px] uppercase tracking-wide text-amber-400 font-semibold">
+                      <span className="text-[10px] uppercase tracking-wide text-[color:var(--nb-ochre,#fbbf24)] font-semibold">
                         {TRIGGER_LABELS[init.trigger] || init.trigger}
                       </span>
-                      <span className="text-[10px] text-zinc-400">{fmtAgo(init.created_at)} ago</span>
+                      <span className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">{fmtAgo(init.created_at)} ago</span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => markRead(init.id)}
-                        className="p-1 rounded text-zinc-400 hover:text-emerald-400"
+                        className="p-1 rounded text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-green,#34d399)]"
                         title="Mark read"
                       >
                         <Check className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => dismiss(init.id)}
-                        className="p-1 rounded text-zinc-400 hover:text-red-400"
+                        className="p-1 rounded text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-red,#f87171)]"
                         title="Dismiss"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                  <p className="text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-xs text-[color:var(--nb-ink,#e4e4e7)] leading-relaxed whitespace-pre-wrap">
                     {init.message}
                   </p>
                 </li>

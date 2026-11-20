@@ -21,7 +21,7 @@ export default function LowConfidenceTag({ confidence, reason }: LowConfidenceTa
     <span
       title={title}
       aria-label={title}
-      className="mt-1.5 inline-flex max-w-fit items-center rounded-full border border-zinc-600/60 px-2 py-0.5 text-xs text-zinc-400"
+      className="mt-1.5 inline-flex max-w-fit items-center rounded-full border border-[color:var(--nb-rule-2,rgba(82,82,91,0.6))] px-2 py-0.5 text-xs text-[color:var(--nb-muted,#a1a1aa)]"
     >
       {LABEL}
     </span>

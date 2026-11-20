@@ -1010,6 +1010,30 @@ export default function registerStudioActions(registerLensAction) {
     if (!state[key].has(userId)) state[key].set(userId, []);
     return state[key].get(userId);
   }
+  // Booth input hygiene (sections, MIDI learn, saved chains): strip control
+  // characters, cap length, and read numbers only when they are genuinely
+  // finite (booleans and "1e999" are not numbers here).
+  function cleanStuText(v, max) {
+    // eslint-disable-next-line no-control-regex
+    return String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, max);
+  }
+  function finiteStu(v) {
+    if (typeof v === "boolean" || v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  // Beat positions clamp (the Arrangement Sketch drags past zero on purpose):
+  // junk reads as 0, negatives as 0, anything huge as the ceiling. Never NaN.
+  function clampBeatsStu(v) {
+    const n = finiteStu(v);
+    return n === null ? 0 : Math.max(0, Math.min(STU_MAX_BEATS, n));
+  }
+  const STU_HEX = /^#[0-9a-fA-F]{6}$/;
+  const STU_MAX_BEATS = 100000;
+  const STU_MAX_MARKERS_PER_PROJECT = 256;
+  const STU_MAX_MIDI_MAPS_PER_PROJECT = 128;
+  const STU_MAX_RACKS_PER_USER = 100;
+  const STU_MAX_RACK_UNITS = 24;
   // ── Collaborator-aware project/asset resolution ───────────────────
   //
   // `collab-join` lets a second user seat themselves on another user's
@@ -1458,17 +1482,22 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "markers-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const projectId = String(params.projectId || "");
-    const name = String(params.name || "").trim();
-    const timeBeats = Math.max(0, Number(params.timeBeats) || 0);
+    const name = cleanStuText(params.name, 60);
     if (!projectId || !name) return { ok: false, error: "projectId and name required" };
+    const t = clampBeatsStu(params.timeBeats);
+    const lengthBeats = params.lengthBeats != null ? clampBeatsStu(params.lengthBeats) : undefined;
+    const bucket = ensureStuBucket(s, "markers", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
+    if (bucket.filter(m => m.projectId === projectId).length >= STU_MAX_MARKERS_PER_PROJECT) {
+      return { ok: false, error: `a project holds at most ${STU_MAX_MARKERS_PER_PROJECT} markers` };
+    }
     const marker = {
-      id: uidStu("mk"), projectId, name, timeBeats,
-      colour: String(params.colour || "#fbbf24"),
+      id: uidStu("mk"), projectId, name, timeBeats: t,
+      colour: STU_HEX.test(String(params.colour || "")) ? String(params.colour) : "#fbbf24",
       kind: ["section", "cue", "loop_start", "loop_end"].includes(params.kind) ? params.kind : "section",
       // A section's own length (the Arrangement Sketch reads it); absent = "until the next marker".
-      ...(params.lengthBeats != null ? { lengthBeats: Math.max(0, Number(params.lengthBeats) || 0) } : {}),
+      ...(lengthBeats !== undefined ? { lengthBeats } : {}),
     };
-    ensureStuBucket(s, "markers", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(marker);
+    bucket.push(marker);
     saveStudioState();
     return { ok: true, result: { marker } };
   });
@@ -1479,14 +1508,21 @@ export default function registerStudioActions(registerLensAction) {
     const resolved = resolveOwnerBucketItem(s, ctx, "markers", id);
     if (!resolved.ok) return { ok: false, error: "marker not found" };
     const m = resolved.item;
+    // Validate everything before writing anything: a refused update changes nothing.
+    const next = {};
     if (params.name != null) {
-      const name = String(params.name).trim();
+      const name = cleanStuText(params.name, 60);
       if (!name) return { ok: false, error: "name cannot be empty" };
-      m.name = name;
+      next.name = name;
     }
-    if (params.timeBeats != null) m.timeBeats = Math.max(0, Number(params.timeBeats) || 0);
-    if (params.lengthBeats != null) m.lengthBeats = Math.max(0, Number(params.lengthBeats) || 0);
-    if (params.colour != null) m.colour = String(params.colour);
+    for (const k of ["timeBeats", "lengthBeats"]) {
+      if (params[k] != null) next[k] = clampBeatsStu(params[k]);
+    }
+    if (params.colour != null) {
+      if (!STU_HEX.test(String(params.colour))) return { ok: false, error: "colour must be #rrggbb" };
+      next.colour = String(params.colour);
+    }
+    Object.assign(m, next);
     saveStudioState();
     return { ok: true, result: { marker: m } };
   });
@@ -1844,25 +1880,46 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "fx-rack-save", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = studioActor(ctx);
-    const name = String(params.name || "").trim();
+    const name = cleanStuText(params.name, 60);
     if (!name) return { ok: false, error: "name required" };
     const units = Array.isArray(params.units) ? params.units : [];
     if (units.length === 0) return { ok: false, error: "at least one effect unit required" };
-    const VALID = ["eq", "compressor", "reverb", "delay"];
+    if (units.length > STU_MAX_RACK_UNITS) return { ok: false, error: `a rack holds at most ${STU_MAX_RACK_UNITS} units` };
+    // The four classic rack types plus every device the Studio DAW runs, so
+    // the Booth can save a track's real chain and load it back unchanged.
+    const VALID = [
+      "eq", "compressor", "reverb", "delay",
+      "eq3", "eq8", "parametricEQ", "multibandCompressor", "limiter", "gate", "deesser",
+      "convolutionReverb", "pingPongDelay", "distortion", "overdrive", "bitcrusher", "waveshaper",
+      "chorus", "phaser", "flanger", "tremolo", "vibrato", "filter", "autoFilter", "autoWah",
+      "stereoWidener", "pan", "utility", "pitchShift", "frequencyShifter", "pitchCorrect",
+    ];
+    const cleanUnits = [];
     for (const u of units) {
-      if (!VALID.includes(u.type)) return { ok: false, error: `unit type must be ${VALID.join(" | ")}` };
-    }
-    const rack = {
-      id: uidStu("fxrack"), name,
-      units: units.map(u => ({
+      if (!u || typeof u !== "object" || !VALID.includes(u.type)) return { ok: false, error: `unit type must be ${VALID.join(" | ")}` };
+      const p = {};
+      const src = u.params && typeof u.params === "object" && !Array.isArray(u.params) ? u.params : {};
+      for (const [k, v] of Object.entries(src).slice(0, 48)) {
+        if (!/^[A-Za-z][A-Za-z0-9_]{0,39}$/.test(k)) continue;
+        if (typeof v === "boolean") p[k] = v;
+        else if (typeof v === "number") { if (Number.isFinite(v)) p[k] = v; }
+        else if (typeof v === "string") p[k] = cleanStuText(v, 64);
+        else if (k === "bands" && Array.isArray(v)) p[k] = v.slice(0, 16).filter(b => b && typeof b === "object");
+      }
+      const wet = finiteStu(u.wet);
+      cleanUnits.push({
         id: uidStu("fxu"),
         type: u.type,
+        ...(u.name != null && cleanStuText(u.name, 40) ? { name: cleanStuText(u.name, 40) } : {}),
         bypassed: u.bypassed === true,
-        params: typeof u.params === "object" && u.params ? u.params : {},
-      })),
-      createdAt: new Date().toISOString(),
-    };
-    ensureStuBucket(s, "fxRacks", userId).push(rack);
+        wet: wet === null ? 1 : Math.max(0, Math.min(1, wet)),
+        params: p,
+      });
+    }
+    const racks = ensureStuBucket(s, "fxRacks", userId);
+    if (racks.length >= STU_MAX_RACKS_PER_USER) return { ok: false, error: `you can keep at most ${STU_MAX_RACKS_PER_USER} saved chains` };
+    const rack = { id: uidStu("fxrack"), name, units: cleanUnits, createdAt: new Date().toISOString() };
+    racks.push(rack);
     saveStudioState();
     return { ok: true, result: { rack } };
   });
@@ -1896,22 +1953,38 @@ export default function registerStudioActions(registerLensAction) {
   registerLensAction("studio", "midi-map-add", (ctx, _a, params = {}) => {
     const s = getStudioState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const projectId = String(params.projectId || "");
-    const target = String(params.target || "").trim();
+    const target = cleanStuText(params.target, 120);
     if (!projectId || !target) return { ok: false, error: "projectId and target required" };
     const msgType = ["cc", "note", "pitchbend", "program"].includes(params.msgType) ? params.msgType : "cc";
+    const int = (v, hi) => { const n = finiteStu(v); return n === null ? 0 : Math.max(0, Math.min(hi, Math.round(n))); };
+    const lo = finiteStu(params.rangeMin);
+    const hi = finiteStu(params.rangeMax);
     const map = {
       id: uidStu("mmap"), projectId, target,
       msgType,
-      controller: Math.max(0, Math.min(127, Number(params.controller) || 0)),
-      channel: Math.max(0, Math.min(15, Number(params.channel) || 0)),
-      rangeMin: Number.isFinite(Number(params.rangeMin)) ? Number(params.rangeMin) : 0,
-      rangeMax: Number.isFinite(Number(params.rangeMax)) ? Number(params.rangeMax) : 1,
-      deviceName: params.deviceName ? String(params.deviceName) : "any",
+      controller: int(params.controller, 127),
+      channel: int(params.channel, 15),
+      rangeMin: lo === null ? 0 : lo,
+      rangeMax: hi === null ? 1 : hi,
+      deviceName: cleanStuText(params.deviceName, 80) || "any",
       createdAt: new Date().toISOString(),
     };
-    ensureStuBucket(s, "midiMaps", resolveStudioProjectOwnerOrSelf(s, ctx, projectId)).push(map);
+    const bucket = ensureStuBucket(s, "midiMaps", resolveStudioProjectOwnerOrSelf(s, ctx, projectId));
+    // MIDI learn semantics: one control drives one target and one target
+    // listens to one control, so re-learning either replaces the old map.
+    let replaced = 0;
+    for (let i = bucket.length - 1; i >= 0; i--) {
+      const m = bucket[i];
+      if (m.projectId !== projectId) continue;
+      const sameControl = m.msgType === map.msgType && m.controller === map.controller && m.channel === map.channel;
+      if (sameControl || m.target === map.target) { bucket.splice(i, 1); replaced++; }
+    }
+    if (bucket.filter(m => m.projectId === projectId).length >= STU_MAX_MIDI_MAPS_PER_PROJECT) {
+      return { ok: false, error: `a project holds at most ${STU_MAX_MIDI_MAPS_PER_PROJECT} MIDI maps` };
+    }
+    bucket.push(map);
     saveStudioState();
-    return { ok: true, result: { map } };
+    return { ok: true, result: { map, replaced } };
   });
 
   registerLensAction("studio", "midi-map-delete", (ctx, _a, params = {}) => {
@@ -2374,7 +2447,9 @@ export default function registerStudioActions(registerLensAction) {
     const op = String(params.op || "").trim();
     if (!s.collab) s.collab = new Map();
     const session = s.collab.get(projectId);
-    if (!session) return { ok: false, error: "no active session" };
+    // Edits are logged to a live session only. With no session open there is
+    // nothing to log, which is the normal solo case, not a failure.
+    if (!session) return { ok: true, result: { logged: false, reason: "no active session" } };
     if (!session.collaborators.find(c => c.userId === userId)) return { ok: false, error: "not a collaborator" };
     if (!op) return { ok: false, error: "op required" };
     const entry = {
@@ -2387,7 +2462,7 @@ export default function registerStudioActions(registerLensAction) {
     session.editLog.push(entry);
     if (session.editLog.length > 500) session.editLog.splice(0, session.editLog.length - 500);
     saveStudioState();
-    return { ok: true, result: { entry, logLength: session.editLog.length } };
+    return { ok: true, result: { logged: true, entry, logLength: session.editLog.length } };
   });
 
   registerLensAction("studio", "collab-since", (ctx, _a, params = {}) => {

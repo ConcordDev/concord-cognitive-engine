@@ -1,5 +1,18 @@
 # art — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **Update 2026-11-19 — the Art lens is now the Atelier** (owner-approved redesign,
+> `docs/LENS_REDESIGN_PLAYBOOK.md` registry row `art`). One screen instead of eight
+> tabs: it opens on your latest piece (or a fresh one; `?piece=` and the older
+> `?artwork=` link both work), with the brush tray, the easel and the studio wall
+> (layers, references + museum search, colour, tools, notes). Every `art.*` macro
+> is still reached. Selling moved to the Auction House (owner decision): "Put on
+> sale" renders the canvas, files it as the artist's image DTU via
+> `/api/artifact/upload` and consigns it through `market.house-consign` with
+> `sourceArtworkId`; `market.house-lots-for-piece` shows that piece's lots. The
+> separate art shop desk (`ArtMarketDesk`, artistry in-memory listings) was retired
+> from the UI; its routes stay registered. Pinned by
+> `concord-frontend/tests/art-atelier.test.tsx` and the existing canvas tests.
+
 > Derived, not asserted. Reproduce the macro list:
 > `grep -c 'registerLensAction("art"' server/domains/art.js` → 73
 

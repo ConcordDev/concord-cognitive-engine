@@ -55,10 +55,10 @@ interface ModePanelProps {
 
 function getTimeIcon() {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 8) return <Sunrise className="w-5 h-5 text-amber-400" />;
-  if (hour >= 8 && hour < 17) return <Sun className="w-5 h-5 text-yellow-400" />;
-  if (hour >= 17 && hour < 20) return <Sunset className="w-5 h-5 text-orange-400" />;
-  return <Moon className="w-5 h-5 text-indigo-400" />;
+  if (hour >= 5 && hour < 8) return <Sunrise className="w-5 h-5 text-[color:var(--nb-ochre,#fbbf24)]" />;
+  if (hour >= 8 && hour < 17) return <Sun className="w-5 h-5 text-[color:var(--nb-ochre,#facc15)]" />;
+  if (hour >= 17 && hour < 20) return <Sunset className="w-5 h-5 text-[color:var(--nb-ochre,#fb923c)]" />;
+  return <Moon className="w-5 h-5 text-[color:var(--nb-blue,#818cf8)]" />;
 }
 
 function getTimeGreeting(): string {
@@ -90,10 +90,10 @@ function QuickActionButton({
         'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium',
         'border transition-all duration-200',
         'hover:scale-[1.02] active:scale-[0.98]',
-        color === 'neon-cyan' && 'bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20',
-        color === 'neon-blue' && 'bg-neon-blue/10 border-neon-blue/30 text-neon-blue hover:bg-neon-blue/20',
-        color === 'neon-purple' && 'bg-neon-purple/10 border-neon-purple/30 text-neon-purple hover:bg-neon-purple/20',
-        color === 'neon-pink' && 'bg-neon-pink/10 border-neon-pink/30 text-neon-pink hover:bg-neon-pink/20',
+        color === 'neon-cyan' && 'bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] border-[color:var(--nb-blue,rgba(0,255,247,0.3))] text-[color:var(--nb-blue,#00fff7)] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))]',
+        color === 'neon-blue' && 'bg-[var(--nb-blue-soft,rgba(0,212,255,0.1))] border-[color:var(--nb-blue,rgba(0,212,255,0.3))] text-[color:var(--nb-blue,#00d4ff)] hover:bg-[var(--nb-blue-soft,rgba(0,212,255,0.2))]',
+        color === 'neon-purple' && 'bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] border-[color:var(--nb-red,rgba(168,85,247,0.3))] text-[color:var(--nb-red,#a855f7)] hover:bg-[var(--nb-red-soft,rgba(168,85,247,0.2))]',
+        color === 'neon-pink' && 'bg-[var(--nb-red-soft,rgba(236,72,153,0.1))] border-[color:var(--nb-red,rgba(236,72,153,0.3))] text-[color:var(--nb-red,#ec4899)] hover:bg-[var(--nb-red-soft,rgba(236,72,153,0.2))]',
       )}
     >
       <Icon className="w-3.5 h-3.5" />
@@ -111,8 +111,8 @@ export function WelcomePanel({ currentLens, onSendMessage }: ModePanelProps) {
       <div className="flex items-center gap-3">
         {getTimeIcon()}
         <div>
-          <h3 className="text-sm font-semibold text-white">{getTimeGreeting()}</h3>
-          <p className="text-xs text-zinc-400">
+          <h3 className="text-sm font-semibold text-[color:var(--nb-ink,#ffffff)]">{getTimeGreeting()}</h3>
+          <p className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
             Your conversation context carries across all lenses
           </p>
         </div>
@@ -120,7 +120,7 @@ export function WelcomePanel({ currentLens, onSendMessage }: ModePanelProps) {
 
       {/* Quick action buttons */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#a1a1aa)] font-medium">
           Quick actions
         </p>
         <div className="flex flex-wrap gap-2">
@@ -147,18 +147,18 @@ export function WelcomePanel({ currentLens, onSendMessage }: ModePanelProps) {
 
       {/* Lens context */}
       {currentLens && (
-        <div className="p-2.5 rounded-lg bg-lattice-elevated border border-lattice-border">
-          <div className="flex items-center gap-2 text-xs text-zinc-400">
-            <Compass className="w-3 h-3 text-neon-cyan" />
-            <span>Currently in <span className="text-neon-cyan font-medium">{currentLens}</span> lens</span>
+        <div className="p-2.5 rounded-lg bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+          <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+            <Compass className="w-3 h-3 text-[color:var(--nb-blue,#00fff7)]" />
+            <span>Currently in <span className="text-[color:var(--nb-blue,#00fff7)] font-medium">{currentLens}</span> lens</span>
           </div>
         </div>
       )}
 
       {/* Proactive suggestion placeholder */}
-      <div className="p-2.5 rounded-lg bg-neon-cyan/5 border border-neon-cyan/20">
-        <p className="text-xs text-zinc-400">
-          <Zap className="w-3 h-3 text-neon-cyan inline mr-1" />
+      <div className="p-2.5 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.05))] border border-[color:var(--nb-blue,rgba(0,255,247,0.2))]">
+        <p className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+          <Zap className="w-3 h-3 text-[color:var(--nb-blue,#00fff7)] inline mr-1" />
           I can help you create DTUs, search your knowledge base, run pipelines, or explore connections across your lenses.
         </p>
       </div>
@@ -172,16 +172,16 @@ export function AssistPanel({ currentLens, onSendMessage }: ModePanelProps) {
   return (
     <div className="px-3 py-4 space-y-4">
       {/* Mode header */}
-      <div className="p-2.5 rounded-lg bg-neon-blue/5 border border-neon-blue/20">
-        <p className="text-xs text-neon-blue font-medium mb-1">Task Assistant Mode</p>
-        <p className="text-[11px] text-zinc-400">
+      <div className="p-2.5 rounded-lg bg-[var(--nb-blue-soft,rgba(0,212,255,0.05))] border border-[color:var(--nb-blue,rgba(0,212,255,0.2))]">
+        <p className="text-xs text-[color:var(--nb-blue,#00d4ff)] font-medium mb-1">Task Assistant Mode</p>
+        <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
           I'm here to help you accomplish tasks. Select an action or describe what you need.
         </p>
       </div>
 
       {/* Action buttons grid */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#a1a1aa)] font-medium">
           Common operations
         </p>
         <div className="grid grid-cols-2 gap-2">
@@ -213,12 +213,12 @@ export function AssistPanel({ currentLens, onSendMessage }: ModePanelProps) {
       </div>
 
       {/* Context-aware suggestion */}
-      <div className="p-2.5 rounded-lg bg-lattice-elevated border border-lattice-border">
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <Lightbulb className="w-3 h-3 text-neon-blue" />
-          <span>Context-aware for <span className="text-neon-blue font-medium">{currentLens}</span> lens</span>
+      <div className="p-2.5 rounded-lg bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+        <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+          <Lightbulb className="w-3 h-3 text-[color:var(--nb-blue,#00d4ff)]" />
+          <span>Context-aware for <span className="text-[color:var(--nb-blue,#00d4ff)] font-medium">{currentLens}</span> lens</span>
         </div>
-        <p className="text-[11px] text-zinc-400 mt-1">
+        <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)] mt-1">
           Actions are scoped to your current lens context. I can also work across lenses if needed.
         </p>
       </div>
@@ -248,16 +248,16 @@ export function ExplorePanel({ currentLens, onSendMessage }: ModePanelProps) {
   return (
     <div className="px-3 py-4 space-y-4">
       {/* Mode header */}
-      <div className="p-2.5 rounded-lg bg-neon-purple/5 border border-neon-purple/20">
-        <p className="text-xs text-neon-purple font-medium mb-1">Explore Mode</p>
-        <p className="text-[11px] text-zinc-400">
+      <div className="p-2.5 rounded-lg bg-[var(--nb-red-soft,rgba(168,85,247,0.05))] border border-[color:var(--nb-red,rgba(168,85,247,0.2))]">
+        <p className="text-xs text-[color:var(--nb-red,#a855f7)] font-medium mb-1">Explore Mode</p>
+        <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
           Discover knowledge, find connections, and explore the unknown.
         </p>
       </div>
 
       {/* Discovery buttons */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#a1a1aa)] font-medium">
           Discovery prompts
         </p>
         <div className="flex flex-wrap gap-2">
@@ -288,10 +288,10 @@ export function ExplorePanel({ currentLens, onSendMessage }: ModePanelProps) {
         disabled={surpriseLoading}
         className={cn(
           'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg',
-          'bg-gradient-to-r from-neon-purple/20 to-neon-pink/20',
-          'border border-neon-purple/30',
-          'text-sm font-medium text-neon-purple',
-          'hover:from-neon-purple/30 hover:to-neon-pink/30',
+          'bg-gradient-to-r from-[var(--nb-red-soft,rgba(168,85,247,0.2))] to-[var(--nb-red-soft,rgba(236,72,153,0.2))]',
+          'border border-[color:var(--nb-red,rgba(168,85,247,0.3))]',
+          'text-sm font-medium text-[color:var(--nb-red,#a855f7)]',
+          'hover:from-[var(--nb-red-soft,rgba(168,85,247,0.3))] hover:to-[var(--nb-red-soft,rgba(236,72,153,0.3))]',
           'transition-all duration-200',
           'disabled:opacity-50',
         )}
@@ -301,10 +301,10 @@ export function ExplorePanel({ currentLens, onSendMessage }: ModePanelProps) {
       </button>
 
       {/* Related suggestion */}
-      <div className="p-2.5 rounded-lg bg-lattice-elevated border border-lattice-border">
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <Compass className="w-3 h-3 text-neon-purple" />
-          <span>Exploring from <span className="text-neon-purple font-medium">{currentLens}</span></span>
+      <div className="p-2.5 rounded-lg bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+        <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+          <Compass className="w-3 h-3 text-[color:var(--nb-red,#a855f7)]" />
+          <span>Exploring from <span className="text-[color:var(--nb-red,#a855f7)] font-medium">{currentLens}</span></span>
         </div>
       </div>
     </div>
@@ -317,16 +317,16 @@ export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
   return (
     <div className="px-3 py-4 space-y-4">
       {/* Mode header */}
-      <div className="p-2.5 rounded-lg bg-neon-pink/5 border border-neon-pink/20">
-        <p className="text-xs text-neon-pink font-medium mb-1">Connect Mode</p>
-        <p className="text-[11px] text-zinc-400">
+      <div className="p-2.5 rounded-lg bg-[var(--nb-red-soft,rgba(236,72,153,0.05))] border border-[color:var(--nb-red,rgba(236,72,153,0.2))]">
+        <p className="text-xs text-[color:var(--nb-red,#ec4899)] font-medium mb-1">Connect Mode</p>
+        <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
           Collaborate with others, share sessions, and work together.
         </p>
       </div>
 
       {/* Collaboration actions */}
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400 font-medium">
+        <p className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#a1a1aa)] font-medium">
           Collaboration tools
         </p>
         <div className="flex flex-wrap gap-2">
@@ -352,25 +352,25 @@ export function ConnectPanel({ currentLens, onSendMessage }: ModePanelProps) {
       </div>
 
       {/* Active sessions placeholder */}
-      <div className="p-3 rounded-lg bg-lattice-elevated border border-lattice-border space-y-2">
+      <div className="p-3 rounded-lg bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-zinc-400">Active sessions</span>
-          <span className="text-[10px] text-zinc-400">0 live</span>
+          <span className="text-xs font-medium text-[color:var(--nb-muted,#a1a1aa)]">Active sessions</span>
+          <span className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">0 live</span>
         </div>
-        <p className="text-[11px] text-zinc-400">
+        <p className="text-[11px] text-[color:var(--nb-muted,#a1a1aa)]">
           No active shared sessions. Invite someone to start collaborating.
         </p>
       </div>
 
       {/* Workspace suggestion */}
-      <div className="p-2.5 rounded-lg bg-neon-pink/5 border border-neon-pink/20">
-        <p className="text-xs text-zinc-400">
-          <Lightbulb className="w-3 h-3 text-neon-pink inline mr-1" />
+      <div className="p-2.5 rounded-lg bg-[var(--nb-red-soft,rgba(236,72,153,0.05))] border border-[color:var(--nb-red,rgba(236,72,153,0.2))]">
+        <p className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+          <Lightbulb className="w-3 h-3 text-[color:var(--nb-red,#ec4899)] inline mr-1" />
           Collaborative workspaces let you share DTUs, chat in real-time, and co-create artifacts.
         </p>
-        <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1.5">
-          <Eye className="w-3 h-3 text-neon-pink" />
-          <span>Current lens: <span className="text-neon-pink font-medium">{currentLens}</span></span>
+        <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)] mt-1.5">
+          <Eye className="w-3 h-3 text-[color:var(--nb-red,#ec4899)]" />
+          <span>Current lens: <span className="text-[color:var(--nb-red,#ec4899)] font-medium">{currentLens}</span></span>
         </div>
       </div>
     </div>
@@ -385,10 +385,10 @@ export function ChatPanel({ currentLens }: ModePanelProps) {
   if (!currentLens) return null;
   return (
     <div className="px-3 py-2">
-      <div className="p-2 rounded-lg bg-lattice-elevated border border-lattice-border">
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <MessageSquare className="w-3 h-3 text-neon-cyan" />
-          <span>Chatting in <span className="text-neon-cyan font-medium">{currentLens}</span></span>
+      <div className="p-2 rounded-lg bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
+        <div className="flex items-center gap-2 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
+          <MessageSquare className="w-3 h-3 text-[color:var(--nb-blue,#00fff7)]" />
+          <span>Chatting in <span className="text-[color:var(--nb-blue,#00fff7)] font-medium">{currentLens}</span></span>
         </div>
       </div>
     </div>
@@ -430,7 +430,7 @@ export function ModeSelector({ activeMode, onModeChange }: ModeSelectorProps) {
   const modes: ChatMode[] = ['welcome', 'assist', 'explore', 'connect', 'chat'];
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 border-b border-lattice-border bg-lattice-surface/50 overflow-x-auto no-scrollbar">
+    <div className="flex items-center gap-1 px-3 py-2 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.5))] overflow-x-auto no-scrollbar">
       {modes.map(mode => {
         const Icon = MODE_ICONS[mode];
         const isActive = mode === activeMode;
@@ -475,7 +475,7 @@ interface MessageActionsProps {
 
 export function MessageActions({ messageContent, onSendMessage }: MessageActionsProps) {
   return (
-    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/30">
+    <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[color:var(--nb-rule,rgba(63,63,70,0.3))]">
       <SaveAsDtuButton
         apiSource="chat-message"
         title={(messageContent || 'Chat message').slice(0, 80)}
@@ -483,11 +483,11 @@ export function MessageActions({ messageContent, onSendMessage }: MessageActions
         extraTags={['chat', 'message']}
         compact
         confirm
-        className="!text-zinc-400 hover:!text-neon-cyan hover:!bg-neon-cyan/10"
+        className="!text-[color:var(--nb-muted,#a1a1aa)] hover:!text-[color:var(--nb-blue,#00fff7)] hover:!bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))]"
       />
       <button
         onClick={() => onSendMessage(`Explore this topic deeper: "${messageContent.slice(0, 80)}"`)}
-        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
+        className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-red,#a855f7)] hover:bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] transition-colors"
         title="Explore deeper"
       >
         <Compass className="w-2.5 h-2.5" />
@@ -552,7 +552,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
   if (!showSaveAsDtu && actions.length === 0 && !onViewContext && !onForgeDTU) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-zinc-700/30">
+    <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-[color:var(--nb-rule,rgba(63,63,70,0.3))]">
       {showSaveAsDtu && (
         <SaveAsDtuButton
           apiSource="chat-message"
@@ -561,7 +561,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
           extraTags={['chat', 'response', mode, currentLens].filter(Boolean)}
           compact
           confirm
-          className="!text-zinc-400 hover:!text-zinc-300 hover:!bg-lattice-elevated"
+          className="!text-[color:var(--nb-muted,#a1a1aa)] hover:!text-[color:var(--nb-ink-2,#d4d4d8)] hover:!bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))]"
         />
       )}
       {actions.map((action, i) => {
@@ -570,7 +570,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
           <button
             key={i}
             onClick={() => onSendMessage(action.prompt)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-zinc-400 hover:text-zinc-300 hover:bg-lattice-elevated transition-colors"
+            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] transition-colors"
           >
             <Icon className="w-2.5 h-2.5" />
             {action.label}
@@ -582,7 +582,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
       {onViewContext && (
         <button
           onClick={onViewContext}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-neon-cyan/60 hover:text-neon-cyan hover:bg-neon-cyan/10 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-[color:var(--nb-blue,rgba(0,255,247,0.6))] hover:text-[color:var(--nb-blue,#00fff7)] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] transition-colors"
           title="View DTU context that informed this response"
         >
           <Eye className="w-2.5 h-2.5" />
@@ -613,7 +613,7 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
               }
             })();
           }}
-          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-neon-purple/60 hover:text-neon-purple hover:bg-neon-purple/10 transition-colors"
+          className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-[color:var(--nb-red,rgba(168,85,247,0.6))] hover:text-[color:var(--nb-red,#a855f7)] hover:bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] transition-colors"
           title="Promote this exchange to a permanent DTU"
         >
           <Hammer className="w-2.5 h-2.5" />
@@ -625,11 +625,11 @@ export function ResponseActions({ mode, responseContent, currentLens, onSendMess
           dtuId={forgedDtuId}
           title={responseContent.slice(0, 80)}
           content={responseContent}
-          className="px-2 py-1 rounded text-[10px] text-neon-purple/60"
+          className="px-2 py-1 rounded text-[10px] text-[color:var(--nb-red,rgba(168,85,247,0.6))]"
         />
       )}
       {forgeNote && (
-        <span role="status" className="text-[10px] text-zinc-400">{forgeNote}</span>
+        <span role="status" className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">{forgeNote}</span>
       )}
     </div>
   );
@@ -657,7 +657,7 @@ export function CrossLensMemoryBar({
   if (totalLensCount <= 1) return null;
 
   return (
-    <div className="px-3 py-1.5 border-b border-lattice-border bg-lattice-surface/30">
+    <div className="px-3 py-1.5 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.3))]">
       <button
         onClick={() => setExpanded(!expanded)}
         className="flex items-center gap-2 w-full text-left"
@@ -666,44 +666,44 @@ export function CrossLensMemoryBar({
           {trail.slice(-4).map((entry, i) => (
             <span
               key={`${entry.lens}-${i}`}
-              className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700"
+              className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)] border border-[color:var(--nb-rule,#3f3f46)]"
             >
               {entry.lens}
             </span>
           ))}
           {trail.length > 4 && (
-            <span className="text-[9px] text-zinc-400">+{trail.length - 4}</span>
+            <span className="text-[9px] text-[color:var(--nb-muted,#a1a1aa)]">+{trail.length - 4}</span>
           )}
         </div>
-        <span className="ml-auto text-[10px] text-zinc-400 flex items-center gap-1">
+        <span className="ml-auto text-[10px] text-[color:var(--nb-muted,#a1a1aa)] flex items-center gap-1">
           <Database className="w-2.5 h-2.5" />
           {totalLensCount} lens{totalLensCount !== 1 ? 'es' : ''} of context
         </span>
       </button>
 
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1">
+        <div className="mt-2 pt-2 border-t border-[color:var(--nb-rule,#27272a)] space-y-1">
           {trail.map((entry, i) => (
             <div key={`${entry.lens}-expanded-${i}`} className="flex items-center justify-between text-[10px]">
-              <span className="text-zinc-400">{entry.lens}</span>
-              <span className="text-zinc-600">{entry.messageCount} msg{entry.messageCount !== 1 ? 's' : ''}</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{entry.lens}</span>
+              <span className="text-[color:var(--nb-faint,#52525b)]">{entry.messageCount} msg{entry.messageCount !== 1 ? 's' : ''}</span>
             </div>
           ))}
-          <div className="flex items-center gap-2 pt-1.5 mt-1.5 border-t border-zinc-800">
+          <div className="flex items-center gap-2 pt-1.5 mt-1.5 border-t border-[color:var(--nb-rule,#27272a)]">
             <button
               onClick={(e) => { e.stopPropagation(); onToggleMemory(); }}
               className={cn(
                 'text-[10px] px-2 py-0.5 rounded transition-colors',
                 memoryPreserved
-                  ? 'text-neon-cyan bg-neon-cyan/10 hover:bg-neon-cyan/20'
-                  : 'text-zinc-400 bg-zinc-800 hover:bg-zinc-700',
+                  ? 'text-[color:var(--nb-blue,#00fff7)] bg-[var(--nb-blue-soft,rgba(0,255,247,0.1))] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))]'
+                  : 'text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)]',
               )}
             >
               Memory: {memoryPreserved ? 'ON' : 'OFF'}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onClearTrail(); }}
-              className="text-[10px] px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-400 bg-zinc-800 hover:bg-zinc-700 transition-colors"
+              className="text-[10px] px-2 py-0.5 rounded text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-wash,#27272a)] hover:bg-[var(--nb-wash-2,#3f3f46)] transition-colors"
             >
               Clear trail
             </button>
@@ -725,23 +725,23 @@ interface ProactiveChipProps {
 
 export function ProactiveChip({ content, actionLabel, onAction, onDismiss }: ProactiveChipProps) {
   return (
-    <div className="mx-3 my-1.5 p-2.5 rounded-lg bg-neon-cyan/5 border border-neon-cyan/20 animate-in slide-in-from-top-2 duration-300">
+    <div className="mx-3 my-1.5 p-2.5 rounded-lg bg-[var(--nb-blue-soft,rgba(0,255,247,0.05))] border border-[color:var(--nb-blue,rgba(0,255,247,0.2))] animate-in slide-in-from-top-2 duration-300">
       <div className="flex items-start gap-2">
-        <Lightbulb className="w-3.5 h-3.5 text-neon-cyan mt-0.5 shrink-0" />
+        <Lightbulb className="w-3.5 h-3.5 text-[color:var(--nb-blue,#00fff7)] mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] text-zinc-300 leading-relaxed">{content}</p>
+          <p className="text-[11px] text-[color:var(--nb-ink-2,#d4d4d8)] leading-relaxed">{content}</p>
           <div className="flex items-center gap-2 mt-1.5">
             {actionLabel && (
               <button
                 onClick={onAction}
-                className="text-[10px] font-medium text-neon-cyan hover:text-neon-cyan/80 transition-colors"
+                className="text-[10px] font-medium text-[color:var(--nb-blue,#00fff7)] hover:text-[color:var(--nb-blue,rgba(0,255,247,0.8))] transition-colors"
               >
                 {actionLabel}
               </button>
             )}
             <button
               onClick={onDismiss}
-              className="text-[10px] text-zinc-400 hover:text-zinc-400 transition-colors"
+              className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-muted,#a1a1aa)] transition-colors"
             >
               Dismiss
             </button>

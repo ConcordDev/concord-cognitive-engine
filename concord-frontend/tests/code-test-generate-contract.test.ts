@@ -140,6 +140,11 @@ class HarnessWorker {
   onmessage: ((ev: { data: unknown }) => void) | null = null;
   onerror: ((ev: { message: string }) => void) | null = null;
   terminated = false;
+  private listeners = new Set<(ev: { data: unknown }) => void>();
+  // Like local-exec.worker.ts: announce the handler once loaded.
+  constructor() { queueMicrotask(() => { for (const fn of [...this.listeners]) fn({ data: { type: 'worker-ready' } }); }); }
+  addEventListener(type: string, fn: (ev: { data: unknown }) => void) { if (type === 'message') this.listeners.add(fn); }
+  removeEventListener(_type: string, fn: (ev: { data: unknown }) => void) { this.listeners.delete(fn); }
 
   postMessage(msg: { type: string; id: number; source: string; testCode: string }) {
     const id = msg.id;

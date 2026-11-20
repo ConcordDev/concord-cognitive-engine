@@ -100,7 +100,8 @@ export function LiveBuildStream({ id, onSnapshot, onMissing, hideViewer = false 
 }
 
 /** LiveBuild — /conkay/designs/[id]/live: the site chrome around LiveBuildStream. */
-export function LiveBuild({ id }: { id: string }) {
+export function LiveBuild({ id, embedded = false }: { id: string; embedded?: boolean }) {
+  if (embedded) return <LiveBuildStream id={id} />;
   return (
     <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
       <DesignsHeader crumb={{ label: `${id} · live` }} />

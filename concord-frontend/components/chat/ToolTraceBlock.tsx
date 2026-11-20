@@ -34,8 +34,8 @@ export function ToolTraceBlock({ trace }: ToolTraceBlockProps) {
         // Match the Concord-side message shape; trace is "Concord did a thing"
       )}
     >
-      <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
-        <Hammer className="w-4 h-4 text-cyan-300" aria-hidden="true" />
+      <div className="w-10 h-10 rounded-lg bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] border border-[color:var(--nb-blue,rgba(6,182,212,0.3))] flex items-center justify-center flex-shrink-0">
+        <Hammer className="w-4 h-4 text-[color:var(--nb-blue,#67e8f9)]" aria-hidden="true" />
       </div>
       <div className="flex-1 max-w-2xl">
         <button
@@ -44,8 +44,8 @@ export function ToolTraceBlock({ trace }: ToolTraceBlockProps) {
           className={cn(
             'inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-mono',
             failed
-              ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
-              : 'border-cyan-500/30 bg-cyan-500/10 text-cyan-200',
+              ? 'border-[color:var(--nb-red,rgba(244,63,94,0.4))] bg-[var(--nb-red-soft,rgba(244,63,94,0.1))] text-[color:var(--nb-red,#fecdd3)]'
+              : 'border-[color:var(--nb-blue,rgba(6,182,212,0.3))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] text-[color:var(--nb-blue,#a5f3fc)]',
             'hover:brightness-110'
           )}
           aria-expanded={open}
@@ -57,7 +57,7 @@ export function ToolTraceBlock({ trace }: ToolTraceBlockProps) {
           </span>
         </button>
         {open && (
-          <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-lattice-border bg-black/60 p-3 text-[11px] font-mono text-gray-300">
+          <pre className="mt-2 max-h-64 overflow-auto rounded-md border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgba(0,0,0,0.6))] p-3 text-[11px] font-mono text-[color:var(--nb-ink-2,#d1d5db)]">
             {trace.error
               ? trace.error
               : JSON.stringify(trace.result, null, 2)}

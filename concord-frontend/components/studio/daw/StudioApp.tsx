@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { DAWProject } from '@/lib/daw/types';
 import { loadProject, resolveAudio } from '@/lib/daw/persistence';
@@ -38,7 +38,11 @@ export function StudioApp() {
   }, []);
 
   // Reload / crash recovery: reopen the project named in the URL (or the last one this session).
+  // Runs once per page load, even under a dev double-mount: a second run would reopen the project and repeat its toasts.
+  const booted = useRef(false);
   useEffect(() => {
+    if (booted.current) return;
+    booted.current = true;
     const id = new URLSearchParams(window.location.search).get('project');
     if (!id) { setBooting(false); return; }
     void openProject(id).finally(() => setBooting(false));
@@ -54,7 +58,7 @@ export function StudioApp() {
     } catch { /* noop */ }
   }, []);
 
-  if (booting) return <div className="flex h-full items-center justify-center bg-[#0c0c11] text-zinc-500"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+  if (booting) return <div className="flex h-full items-center justify-center text-zinc-500" role="status" aria-label="Opening your session"><Loader2 className="h-5 w-5 animate-spin" /></div>;
   if (open) return <StudioEditor key={open.key} initial={open.project} initialRev={open.rev} onBack={back} />;
   return (
     <Opener

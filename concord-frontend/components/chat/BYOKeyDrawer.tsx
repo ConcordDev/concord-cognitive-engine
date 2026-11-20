@@ -159,45 +159,45 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
   return (
     <div className="fixed inset-0 z-50 flex" role="dialog" aria-modal="true" aria-labelledby="byo-key-title">
       <button
-        className="flex-1 bg-black/60 backdrop-blur-sm cursor-default"
+        className="flex-1 bg-[var(--nb-paper,rgba(0,0,0,0.6))] backdrop-blur-sm cursor-default"
         onClick={onClose}
         aria-label="Close drawer"
       />
-      <aside className="w-full max-w-md bg-zinc-950 border-l border-white/10 overflow-y-auto p-5 text-sm">
+      <aside className="w-full max-w-md bg-[var(--nb-paper,#09090b)] border-l border-[color:var(--nb-rule,rgba(255,255,255,0.1))] overflow-y-auto p-5 text-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 id="byo-key-title" className="text-base font-semibold flex items-center gap-2">
-            <Key className="w-4 h-4 text-neon-cyan" /> BYO API Keys
+            <Key className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)]" /> BYO API Keys
           </h2>
-          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-white">
+          <button onClick={onClose} aria-label="Close" className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)]">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] mb-4">
           Plug your own Anthropic / OpenAI / xAI / Google key into a brain slot. Your key
           is encrypted at rest and never returned to the browser after save.
         </p>
 
-        {errorMsg && <div className="mb-3 p-2 rounded bg-red-500/15 border border-red-400/30 text-red-300 text-xs">{errorMsg}</div>}
-        {okMsg && <div className="mb-3 p-2 rounded bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs">{okMsg}</div>}
+        {errorMsg && <div className="mb-3 p-2 rounded bg-[var(--nb-red-soft,rgba(239,68,68,0.15))] border border-[color:var(--nb-red,rgba(248,113,113,0.3))] text-[color:var(--nb-red,#fca5a5)] text-xs">{errorMsg}</div>}
+        {okMsg && <div className="mb-3 p-2 rounded bg-[var(--nb-green-soft,rgba(16,185,129,0.15))] border border-[color:var(--nb-green,rgba(52,211,153,0.3))] text-[color:var(--nb-green,#6ee7b7)] text-xs">{okMsg}</div>}
 
-        <fieldset className="space-y-2 mb-5 p-3 rounded-lg border border-white/10 bg-white/[0.02]">
-          <legend className="px-1 text-xs uppercase tracking-wide text-gray-400">Add / replace</legend>
+        <fieldset className="space-y-2 mb-5 p-3 rounded-lg border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-wash,rgba(255,255,255,0.02))]">
+          <legend className="px-1 text-xs uppercase tracking-wide text-[color:var(--nb-muted,#9ca3af)]">Add / replace</legend>
           <label className="block">
-            <span className="text-xs text-gray-400">Slot</span>
+            <span className="text-xs text-[color:var(--nb-muted,#9ca3af)]">Slot</span>
             <select
               value={slot}
               onChange={(e) => setSlot(e.target.value)}
-              className="mt-1 w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 text-sm"
+              className="mt-1 w-full bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded px-2 py-1.5 text-sm"
             >
               {SLOTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="text-xs text-gray-400">Provider</span>
+            <span className="text-xs text-[color:var(--nb-muted,#9ca3af)]">Provider</span>
             <select
               value={provider}
               onChange={(e) => { setProvider(e.target.value); setModelId(''); }}
-              className="mt-1 w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 text-sm"
+              className="mt-1 w-full bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded px-2 py-1.5 text-sm"
             >
               {providers.length === 0
                 ? <option value="anthropic">anthropic</option>
@@ -206,11 +206,11 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
           </label>
           {modelOptions.length > 0 && (
             <label className="block">
-              <span className="text-xs text-gray-400">Model (optional override)</span>
+              <span className="text-xs text-[color:var(--nb-muted,#9ca3af)]">Model (optional override)</span>
               <select
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
-                className="mt-1 w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 text-sm"
+                className="mt-1 w-full bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded px-2 py-1.5 text-sm"
               >
                 <option value="">(provider default)</option>
                 {modelOptions.map((m) => <option key={m} value={m}>{m}</option>)}
@@ -218,20 +218,20 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
             </label>
           )}
           <label className="block">
-            <span className="text-xs text-gray-400">API key</span>
+            <span className="text-xs text-[color:var(--nb-muted,#9ca3af)]">API key</span>
             <input
               type="password"
               autoComplete="off"
               placeholder="sk-ant-… / sk-… / xai-… / AIza…"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              className="mt-1 w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 text-sm font-mono"
+              className="mt-1 w-full bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded px-2 py-1.5 text-sm font-mono"
             />
           </label>
           <button
             onClick={save}
             disabled={saving || !apiKey.trim()}
-            className="mt-1 w-full px-3 py-1.5 rounded bg-neon-cyan/20 hover:bg-neon-cyan/30 border border-neon-cyan/40 text-neon-cyan disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            className="mt-1 w-full px-3 py-1.5 rounded bg-[var(--nb-blue-soft,rgba(0,255,247,0.2))] hover:bg-[var(--nb-blue-soft,rgba(0,255,247,0.3))] border border-[color:var(--nb-blue,rgba(0,255,247,0.4))] text-[color:var(--nb-blue,#00fff7)] disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
             {saving ? 'Saving…' : 'Save key'}
@@ -239,21 +239,21 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
         </fieldset>
 
         <div>
-          <h3 className="text-xs uppercase tracking-wide text-gray-400 mb-2">Active overrides</h3>
+          <h3 className="text-xs uppercase tracking-wide text-[color:var(--nb-muted,#9ca3af)] mb-2">Active overrides</h3>
           {loading ? (
-            <p className="text-xs text-gray-400">Loading…</p>
+            <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">Loading…</p>
           ) : overrides.length === 0 ? (
-            <p className="text-xs text-gray-400">No overrides yet — Concord uses its built-in 5-brain Ollama setup.</p>
+            <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">No overrides yet — Concord uses its built-in 5-brain Ollama setup.</p>
           ) : (
             <ul className="space-y-2">
               {overrides.map((o) => {
                 const isActive = !!o.active;
                 return (
-                  <li key={o.slot} className="p-2 rounded border border-white/10 bg-white/[0.02]">
+                  <li key={o.slot} className="p-2 rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-wash,rgba(255,255,255,0.02))]">
                     <div className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
                         <div className="text-sm font-medium">{o.slot}</div>
-                        <div className="text-[11px] text-gray-400 font-mono truncate">
+                        <div className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] font-mono truncate">
                           {o.provider}{o.model_id ? ` · ${o.model_id}` : ''} · {o.key_preview || '••••'}
                         </div>
                       </div>
@@ -261,7 +261,7 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
                         <button
                           onClick={() => test(o.slot)}
                           disabled={testing === o.slot}
-                          className="p-1.5 rounded text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50"
+                          className="p-1.5 rounded text-[color:var(--nb-green,#6ee7b7)] hover:bg-[var(--nb-green-soft,rgba(16,185,129,0.15))] disabled:opacity-50"
                           aria-label={`Test ${o.slot} key`}
                           title="Test connection"
                         >
@@ -277,7 +277,7 @@ export default function BYOKeyDrawer({ open, onClose }: BYOKeyDrawerProps) {
                         </button>
                         <button
                           onClick={() => remove(o.slot)}
-                          className="p-1.5 rounded text-red-400 hover:bg-red-500/15"
+                          className="p-1.5 rounded text-[color:var(--nb-red,#f87171)] hover:bg-[var(--nb-red-soft,rgba(239,68,68,0.15))]"
                           aria-label={`Remove ${o.slot} override`}
                           title="Remove"
                         >

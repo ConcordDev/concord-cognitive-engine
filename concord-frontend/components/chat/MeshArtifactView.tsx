@@ -106,7 +106,7 @@ function Readout({ mesh, partList }: { mesh: MeshSize; partList?: MeshArtifact['
   const bar = span > 0 ? scaleBarLength(span) : 0;
   if (!label && !unitless && step <= 0) return null;
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent px-3 pb-2 pt-6 text-[11px] text-zinc-200">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-[var(--nb-paper,rgba(0,0,0,0.8))] to-transparent px-3 pb-2 pt-6 text-[11px] text-[color:var(--nb-ink,#e4e4e7)]">
       {label ? <div data-testid="mesh-dimensions">{label}</div> : null}
       {unitless ? (
         <div data-testid="mesh-unit-grid">grid (mesh units)</div>
@@ -225,9 +225,9 @@ export default function MeshArtifactView({
   return (
     <div className={shell} data-testid={testId ?? 'mesh-artifact'}>
       {mediaUrl && !scene && !failed ? (
-        <div className="h-full w-full animate-pulse bg-white/5" />
+        <div className="h-full w-full animate-pulse bg-[var(--nb-wash,rgba(255,255,255,0.05))]" />
       ) : mediaUrl && failed && !hasPositions ? (
-        <div className="flex h-full items-center justify-center px-4 text-center text-xs text-zinc-400">
+        <div className="flex h-full items-center justify-center px-4 text-center text-xs text-[color:var(--nb-muted,#a1a1aa)]">
           This 3D model could not be loaded.
         </div>
       ) : (
@@ -260,30 +260,30 @@ export default function MeshArtifactView({
         </Canvas>
       )}
       <Readout mesh={size} partList={partList} />
-      <div className="pointer-events-auto absolute inset-x-0 top-0 z-10 flex flex-wrap items-center gap-1 bg-black/55 px-2 py-1 text-[11px] text-zinc-100">
-        <button type="button" data-testid="mesh-measure" aria-pressed={measuring} className="rounded px-1.5 py-0.5 hover:bg-white/10" onClick={() => { setMeasuring((v) => !v); setMeasurePts([]); }}>Measure</button>
-        <button type="button" data-testid="mesh-section-toggle" aria-pressed={sectionOn} className="rounded px-1.5 py-0.5 hover:bg-white/10" onClick={() => setSectionOn((v) => !v)}>Section</button>
+      <div className="pointer-events-auto absolute inset-x-0 top-0 z-10 flex flex-wrap items-center gap-1 bg-[var(--nb-paper,rgba(0,0,0,0.55))] px-2 py-1 text-[11px] text-[color:var(--nb-ink,#f4f4f5)]">
+        <button type="button" data-testid="mesh-measure" aria-pressed={measuring} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))]" onClick={() => { setMeasuring((v) => !v); setMeasurePts([]); }}>Measure</button>
+        <button type="button" data-testid="mesh-section-toggle" aria-pressed={sectionOn} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))]" onClick={() => setSectionOn((v) => !v)}>Section</button>
         {(Object.keys(VIEW_DIRECTION) as StandardView[]).map((id) => (
-          <button key={id} type="button" data-testid={`view-${id}`} aria-pressed={view === id} className="rounded px-1.5 py-0.5 hover:bg-white/10" onClick={() => setView(id)}>{VIEW_DIRECTION[id].label}</button>
+          <button key={id} type="button" data-testid={`view-${id}`} aria-pressed={view === id} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))]" onClick={() => setView(id)}>{VIEW_DIRECTION[id].label}</button>
         ))}
-        <button type="button" data-testid="view-orbit" aria-pressed={view === 'orbit'} className="rounded px-1.5 py-0.5 hover:bg-white/10" onClick={() => setView('orbit')}>Orbit</button>
+        <button type="button" data-testid="view-orbit" aria-pressed={view === 'orbit'} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))]" onClick={() => setView('orbit')}>Orbit</button>
         <span data-testid="mesh-mass">{massLabel(engineering) || (unitless ? '' : '')}</span>
-        <button type="button" data-testid="export-stl" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40" onClick={() => save('stl')}>STL</button>
-        <button type="button" data-testid="export-glb" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40" onClick={() => save('glb')}>GLB</button>
-        <button type="button" data-testid="export-step" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-white/10 disabled:opacity-40" onClick={() => save('step')}>{STEP_EXPORT.label}</button>
+        <button type="button" data-testid="export-stl" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('stl')}>STL</button>
+        <button type="button" data-testid="export-glb" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('glb')}>GLB</button>
+        <button type="button" data-testid="export-step" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('step')}>{STEP_EXPORT.label}</button>
       </div>
       {sectionOn ? (
-        <label className="pointer-events-auto absolute left-2 top-8 z-10 text-[11px] text-zinc-200">
+        <label className="pointer-events-auto absolute left-2 top-8 z-10 text-[11px] text-[color:var(--nb-ink,#e4e4e7)]">
           section x = {unitless ? cut.toFixed(2) : `${Math.round(cut)} mm`}
           <input data-testid="mesh-section" type="range" min={0} max={1000} value={Math.round(sectionT * 1000)} onChange={(e) => setSectionT(Number(e.target.value) / 1000)} />
         </label>
       ) : null}
       {measuring ? (
-        <div data-testid="mesh-measure-readout" className="pointer-events-none absolute right-2 top-8 z-10 text-[11px] text-zinc-100">
+        <div data-testid="mesh-measure-readout" className="pointer-events-none absolute right-2 top-8 z-10 text-[11px] text-[color:var(--nb-ink,#f4f4f5)]">
           {distance == null ? 'Click two points on the model.' : `${Math.round(distance * 1000) / 1000} ${unitless ? 'mesh units' : 'mm'}`}
         </div>
       ) : null}
-      <ul data-testid="mesh-parts-tree" className="pointer-events-auto absolute bottom-16 left-2 z-10 max-h-24 overflow-auto text-[11px] text-zinc-200">
+      <ul data-testid="mesh-parts-tree" className="pointer-events-auto absolute bottom-16 left-2 z-10 max-h-24 overflow-auto text-[11px] text-[color:var(--nb-ink,#e4e4e7)]">
         {parts.map((p) => {
           const shown = partVisibility(p.id, hiddenSet, isolated);
           return (
@@ -295,7 +295,7 @@ export default function MeshArtifactView({
           );
         })}
       </ul>
-      <p data-testid="step-note" className="pointer-events-none absolute bottom-10 right-2 z-10 max-w-[14rem] text-[10px] text-zinc-400">{STEP_EXPORT.note}</p>
+      <p data-testid="step-note" className="pointer-events-none absolute bottom-10 right-2 z-10 max-w-[14rem] text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">{STEP_EXPORT.note}</p>
     </div>
   );
 }

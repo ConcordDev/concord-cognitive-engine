@@ -25,7 +25,7 @@ export function Modal({ title, icon, onClose, children, wide }: { title: string;
   }, [onClose]);
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div role="dialog" aria-label={title} className={cn('max-h-[90vh] w-full overflow-y-auto rounded-xl border border-white/10 bg-[#16161d] p-4 text-zinc-200 shadow-2xl', wide ? 'max-w-2xl' : 'max-w-md')}>
+      <div role="dialog" aria-label={title} className={cn('max-h-[90vh] w-full overflow-y-auto rounded-xl border border-white/10 bg-[var(--bo-panel)] p-4 text-zinc-200 shadow-2xl', wide ? 'max-w-2xl' : 'max-w-md')}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-sm font-semibold">{icon}{title}</h2>
           <button onClick={onClose} className="rounded p-1 text-zinc-500 hover:bg-white/10 hover:text-white" aria-label="Close"><X className="h-4 w-4" /></button>

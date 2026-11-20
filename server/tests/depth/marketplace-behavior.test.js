@@ -13,6 +13,8 @@
 // Money note: marketplace fee/royalty constants are constitutional invariants
 // and are NOT touched here. AI/LLM macros (ai-optimize-listing brain path) are
 // skipped; ai-price-suggest is exercised on its deterministic peer-stats path.
+import { setLedgerBalance } from "../lib/ledger-fund.js";
+import { getBalance } from "../../economy/balances.js";
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx, macroRuntime } from "./_harness.js";
@@ -1213,7 +1215,7 @@ describe("marketplace — purchaseWithRoyalties money path (register family)", (
 
   // helper: read an economic-wallet balance (0 when the wallet doesn't exist yet)
   function bal(userId) {
-    return STATE.economic?.wallets?.get(userId)?.balance || 0;
+    return getBalance(STATE.db, userId).balance;
   }
   function seedListedDtu(id, { price, seller, parents = [] } = {}) {
     STATE.dtus.set(id, {
@@ -1237,8 +1239,7 @@ describe("marketplace — purchaseWithRoyalties money path (register family)", (
   it("a paid purchase with NO ancestors pays seller 95% + platform 5% and credits the seller wallet exactly", async () => {
     // buyer must have funds; ctx.actor.userId is the buyer
     const buyer = ctx.actor.userId;
-    STATE.economic = STATE.economic || { wallets: new Map() };
-    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 1000, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer, 1000);
     seedListedDtu("rk-noanc", { price: 100, seller: "seller-noanc" });
 
     const sellerBefore = bal("seller-noanc");
@@ -1258,12 +1259,13 @@ describe("marketplace — purchaseWithRoyalties money path (register family)", (
 
   it("a paid purchase WITH one cited ancestor pays the reference royalty (5% of creator pool) and the seller the remainder", async () => {
     const buyer = ctx.actor.userId;
-    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 1000, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer, 1000);
     // ancestor DTU authored by a creator with an existing wallet so it pays direct (not escrow)
     STATE.dtus.set("rk-parent", {
       id: "rk-parent", title: "Ancestor", scope: "personal", ownerId: "creator-anc",
       meta: { createdBy: "creator-anc" }, human: { summary: "ancestor work" }, lineage: { parents: [] },
     });
+    // The ancestor already holds a wallet, so the royalty pays direct (not escrow).
     STATE.economic.wallets.set("creator-anc", { odId: "creator-anc", balance: 0, tokensEarned: 0, tokensSpent: 0 });
     seedListedDtu("rk-deriv", { price: 200, seller: "seller-deriv", parents: ["rk-parent"] });
 
@@ -1284,6 +1286,23 @@ describe("marketplace — purchaseWithRoyalties money path (register family)", (
     assert.equal(bal("seller-deriv") - sellerBefore, 180.5);
   });
 
+  it("a royalty to a real account with no in-memory wallet is paid, not escrowed (the ledger is the balance)", async () => {
+    const buyer = ctx.actor.userId;
+    setLedgerBalance(STATE.db, buyer, 1000);
+    STATE.db.prepare("INSERT OR IGNORE INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))").run("creator-known", "creatorknown", "creator-known@example.com");
+    STATE.economic.wallets.delete("creator-known");
+    STATE.dtus.set("rk-known-parent", {
+      id: "rk-known-parent", title: "Known ancestor", scope: "personal", ownerId: "creator-known",
+      meta: { createdBy: "creator-known" }, human: { summary: "ancestor" }, lineage: { parents: [] },
+    });
+    seedListedDtu("rk-known-deriv", { price: 200, seller: "seller-known", parents: ["rk-known-parent"] });
+    const before = bal("creator-known");
+    const r = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-known-deriv" }, ctx);
+    assert.equal(r.ok, true);
+    assert.equal(r.breakdown.royaltiesPaid[0].recipient, "creator-known");
+    assert.equal(bal("creator-known") - before, 9.5);
+  });
+
   it("an unlisted DTU is rejected", async () => {
     STATE.dtus.set("rk-unlisted", { id: "rk-unlisted", title: "Nope", scope: "personal", meta: {}, lineage: { parents: [] } });
     const bad = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-unlisted" }, ctx);
@@ -1293,7 +1312,7 @@ describe("marketplace — purchaseWithRoyalties money path (register family)", (
 
   it("a paid purchase with insufficient buyer balance is rejected before any settlement", async () => {
     const buyer = ctx.actor.userId;
-    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 5, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer, 5);
     seedListedDtu("rk-broke", { price: 50, seller: "seller-broke" });
     const sellerBefore = bal("seller-broke");
     const bad = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId: "rk-broke" }, ctx);

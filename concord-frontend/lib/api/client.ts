@@ -282,6 +282,9 @@ const QUIET_LENS_ERRORS = new Set([
   // Voice TTS is gated behind an explicit session opt-in. A 422 here just means
   // the user has not turned voice on; it is not an action failure to toast.
   'session voice opt-in required',
+  // The GitHub trending feed is a read-only discovery card; when GitHub is in
+  // backoff the card itself says so, so a global toast only repeats it.
+  'github unavailable',
 ]);
 
 /** True when the server is shedding/warming (not a permission gate). */

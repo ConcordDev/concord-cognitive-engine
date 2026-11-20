@@ -80,7 +80,7 @@ interface ContextOverlayProps {
 function SourceBadge({ label, icon: Icon, active }: { label: string; icon: typeof Database; active: boolean }) {
   if (!active) return null;
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-white/5 text-zinc-400 border border-white/5">
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#a1a1aa)] border border-[color:var(--nb-rule,rgba(255,255,255,0.05))]">
       <Icon className="w-2.5 h-2.5" />
       {label}
     </span>
@@ -90,29 +90,29 @@ function SourceBadge({ label, icon: Icon, active }: { label: string; icon: typeo
 // ── Tier Badge ───────────────────────────────────────────────────────────────
 
 const TIER_COLORS: Record<string, string> = {
-  regular: 'bg-neon-blue/10 text-neon-blue border-neon-blue/30',
-  mega: 'bg-neon-purple/10 text-neon-purple border-neon-purple/30',
-  hyper: 'bg-neon-pink/10 text-neon-pink border-neon-pink/30',
-  shadow: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30',
+  regular: 'bg-[var(--nb-blue-soft,rgba(0,212,255,0.1))] text-[color:var(--nb-blue,#00d4ff)] border-[color:var(--nb-blue,rgba(0,212,255,0.3))]',
+  mega: 'bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] text-[color:var(--nb-red,#a855f7)] border-[color:var(--nb-red,rgba(168,85,247,0.3))]',
+  hyper: 'bg-[var(--nb-red-soft,rgba(236,72,153,0.1))] text-[color:var(--nb-red,#ec4899)] border-[color:var(--nb-red,rgba(236,72,153,0.3))]',
+  shadow: 'bg-[var(--nb-wash-2,rgba(113,113,122,0.1))] text-[color:var(--nb-muted,#a1a1aa)] border-[color:var(--nb-rule-2,rgba(113,113,122,0.3))]',
 };
 
 // ── Budget Bar ───────────────────────────────────────────────────────────────
 
 function BudgetBar({ budget }: { budget: TokenBudget }) {
   const segments = [
-    { label: 'System', pct: budget.ratios.systemPrompt * 100, color: 'bg-neon-cyan' },
-    { label: 'Summary', pct: budget.ratios.conversationSummary * 100, color: 'bg-neon-green' },
-    { label: 'DTUs', pct: budget.ratios.dtuContext * 100, color: 'bg-neon-purple' },
-    { label: 'Response', pct: budget.ratios.responseSpace * 100, color: 'bg-neon-pink' },
+    { label: 'System', pct: budget.ratios.systemPrompt * 100, color: 'bg-[var(--nb-blue,#00fff7)]' },
+    { label: 'Summary', pct: budget.ratios.conversationSummary * 100, color: 'bg-[var(--nb-green,#22c55e)]' },
+    { label: 'DTUs', pct: budget.ratios.dtuContext * 100, color: 'bg-[var(--nb-red,#a855f7)]' },
+    { label: 'Response', pct: budget.ratios.responseSpace * 100, color: 'bg-[var(--nb-red,#ec4899)]' },
   ];
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+      <div className="flex items-center gap-1.5 text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
         <BarChart3 className="w-3 h-3" />
         Token Budget ({budget.contextWindow.toLocaleString()} tokens)
       </div>
-      <div className="flex h-2 rounded-full overflow-hidden bg-zinc-800">
+      <div className="flex h-2 rounded-full overflow-hidden bg-[var(--nb-wash,#27272a)]">
         {segments.map((seg) => (
           <div
             key={seg.label}
@@ -122,7 +122,7 @@ function BudgetBar({ budget }: { budget: TokenBudget }) {
           />
         ))}
       </div>
-      <div className="flex gap-3 text-[9px] text-zinc-400">
+      <div className="flex gap-3 text-[9px] text-[color:var(--nb-muted,#a1a1aa)]">
         {segments.map((seg) => (
           <span key={seg.label} className="flex items-center gap-1">
             <span className={cn('w-1.5 h-1.5 rounded-full', seg.color)} />
@@ -166,22 +166,22 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-lg max-h-[80vh] bg-lattice-deep border border-lattice-border rounded-xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--nb-scrim,rgba(0,0,0,0.5))] backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[80vh] bg-[var(--nb-sheet,rgb(var(--lattice-deep-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border bg-lattice-surface">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))]">
           <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-neon-cyan" />
-            <span className="text-sm font-medium text-white">Context Working Set</span>
+            <Eye className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)]" />
+            <span className="text-sm font-medium text-[color:var(--nb-ink,#ffffff)]">Context Working Set</span>
             {data && (
-              <span className="text-xs text-zinc-400 px-2 py-0.5 rounded-full bg-zinc-800">
+              <span className="text-xs text-[color:var(--nb-muted,#a1a1aa)] px-2 py-0.5 rounded-full bg-[var(--nb-wash,#27272a)]">
                 {data.workingSet.length} DTUs
               </span>
             )}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-lattice-elevated text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[var(--nb-wash,rgb(var(--lattice-elevated-rgb)))] text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
           aria-label="Close">
             <X className="w-4 h-4" />
           </button>
@@ -191,12 +191,12 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
           {loading && (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-pulse text-zinc-400 text-sm">Loading context...</div>
+              <div className="animate-pulse text-[color:var(--nb-muted,#a1a1aa)] text-sm">Loading context...</div>
             </div>
           )}
 
           {error && (
-            <div className="text-sm text-red-400 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20">
+            <div className="text-sm text-[color:var(--nb-red,#f87171)] bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] px-3 py-2 rounded-lg border border-[color:var(--nb-red,rgba(239,68,68,0.2))]">
               {error}
             </div>
           )}
@@ -209,11 +209,11 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
               {/* Conversation Summary */}
               {data.conversationSummary && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
                     <Brain className="w-3 h-3" />
                     Conversation Summary
                   </div>
-                  <div className="text-xs text-zinc-300 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/30">
+                  <div className="text-xs text-[color:var(--nb-ink-2,#d4d4d8)] bg-[var(--nb-wash,rgba(39,39,42,0.5))] rounded-lg px-3 py-2 border border-[color:var(--nb-rule,rgba(63,63,70,0.3))]">
                     {data.conversationSummary}
                   </div>
                 </div>
@@ -222,11 +222,11 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
               {/* Entity State */}
               {data.entityState && Object.keys(data.entityState).length > 0 && (
                 <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+                  <div className="flex items-center gap-1.5 text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
                     <Cpu className="w-3 h-3" />
                     Entity State
                   </div>
-                  <div className="text-[10px] text-zinc-400 bg-zinc-800/50 rounded-lg px-3 py-2 border border-zinc-700/30 font-mono">
+                  <div className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-wash,rgba(39,39,42,0.5))] rounded-lg px-3 py-2 border border-[color:var(--nb-rule,rgba(63,63,70,0.3))] font-mono">
                     {Object.entries(data.entityState).map(([key, val]) => (
                       <div key={key}>{key}: {JSON.stringify(val)}</div>
                     ))}
@@ -235,11 +235,11 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
               )}
 
               {/* Sources */}
-              <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+              <div className="flex items-center gap-2 text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
                 <Layers className="w-3 h-3" />
                 Sources:
                 {data.sources && Object.entries(data.sources).map(([key, val]) => (
-                  <span key={key} className="px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-400">
+                  <span key={key} className="px-1.5 py-0.5 bg-[var(--nb-wash,#27272a)] rounded text-[color:var(--nb-muted,#a1a1aa)]">
                     {key}: {String(val)}
                   </span>
                 ))}
@@ -247,7 +247,7 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
 
               {/* Working Set DTUs */}
               <div className="space-y-1">
-                <div className="text-[10px] text-zinc-400 uppercase tracking-wider">
+                <div className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)] uppercase tracking-wider">
                   DTU Working Set ({data.workingSet.length} / {data.totalActivated} activated)
                 </div>
                 <div className="space-y-1">
@@ -255,13 +255,13 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
                     <div
                       key={dtu.id}
                       className={cn(
-                        'rounded-lg border bg-zinc-900/50 transition-all cursor-pointer',
-                        expandedDtu === dtu.id ? 'border-neon-cyan/30' : 'border-zinc-800/50 hover:border-zinc-700'
+                        'rounded-lg border bg-[var(--nb-sheet,rgba(24,24,27,0.5))] transition-all cursor-pointer',
+                        expandedDtu === dtu.id ? 'border-[color:var(--nb-blue,rgba(0,255,247,0.3))]' : 'border-[color:var(--nb-rule,rgba(39,39,42,0.5))] hover:border-[color:var(--nb-rule,#3f3f46)]'
                       )}
                       onClick={() => setExpandedDtu(expandedDtu === dtu.id ? null : dtu.id)} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
                       <div className="flex items-center gap-2 px-3 py-2">
-                        <Database className="w-3 h-3 text-zinc-400 shrink-0" />
-                        <span className="text-xs text-zinc-200 truncate flex-1">{dtu.title}</span>
+                        <Database className="w-3 h-3 text-[color:var(--nb-muted,#a1a1aa)] shrink-0" />
+                        <span className="text-xs text-[color:var(--nb-ink,#e4e4e7)] truncate flex-1">{dtu.title}</span>
                         <span className={cn(
                           'text-[9px] px-1.5 py-0.5 rounded border',
                           TIER_COLORS[dtu.tier] || TIER_COLORS.regular
@@ -269,18 +269,18 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
                           {dtu.tier}
                         </span>
                         {expandedDtu === dtu.id
-                          ? <ChevronUp className="w-3 h-3 text-zinc-400" />
-                          : <ChevronDown className="w-3 h-3 text-zinc-400" />
+                          ? <ChevronUp className="w-3 h-3 text-[color:var(--nb-muted,#a1a1aa)]" />
+                          : <ChevronDown className="w-3 h-3 text-[color:var(--nb-muted,#a1a1aa)]" />
                         }
                       </div>
 
                       {expandedDtu === dtu.id && (
-                        <div className="px-3 pb-2 pt-1 border-t border-zinc-800/50 space-y-1.5">
+                        <div className="px-3 pb-2 pt-1 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.5))] space-y-1.5">
                           {/* Tags */}
                           {dtu.tags && dtu.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {dtu.tags.map((tag) => (
-                                <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 text-zinc-400 rounded">
+                                <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)] rounded">
                                   {tag}
                                 </span>
                               ))}
@@ -297,14 +297,14 @@ export function ContextOverlay({ sessionId, lens, isOpen, onClose }: ContextOver
                             </div>
                           )}
 
-                          <div className="text-[9px] text-zinc-400 font-mono">{dtu.id}</div>
+                          <div className="text-[9px] text-[color:var(--nb-muted,#a1a1aa)] font-mono">{dtu.id}</div>
                         </div>
                       )}
                     </div>
                   ))}
 
                   {data.workingSet.length === 0 && (
-                    <div className="text-xs text-zinc-400 text-center py-4">
+                    <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)] text-center py-4">
                       No DTUs in working set. The substrate will fill as conversations happen.
                     </div>
                   )}

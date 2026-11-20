@@ -134,25 +134,25 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[460px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col">
-      <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-emerald-950/40 to-transparent">
+    <div className="fixed inset-y-0 right-0 w-[460px] max-w-[100vw] z-40 bg-[var(--nb-sheet,#0d1117)] border-l border-[color:var(--nb-blue,rgba(6,182,212,0.2))] shadow-2xl overflow-hidden flex flex-col">
+      <header className="px-4 py-3 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex items-center justify-between bg-gradient-to-r from-[var(--nb-green-soft,rgba(2,44,34,0.4))] to-transparent">
         <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm font-semibold text-gray-200">Saved Prompts</span>
-          <span className="text-[10px] text-gray-400 ml-1">{prompts.length}</span>
+          <BookOpen className="w-4 h-4 text-[color:var(--nb-green,#34d399)]" />
+          <span className="text-sm font-semibold text-[color:var(--nb-ink,#e5e7eb)]">Saved Prompts</span>
+          <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] ml-1">{prompts.length}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={startCreate}
-            className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:brightness-110"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-green,rgba(16,185,129,0.3))] bg-[var(--nb-green-soft,rgba(16,185,129,0.1))] px-2 py-1 text-xs text-[color:var(--nb-green,#a7f3d0)] hover:brightness-110"
           >
             <Plus className="w-3 h-3" /> New
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-md hover:bg-white/5 text-gray-400"
+            className="p-1 rounded-md hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]"
             aria-label="Close prompts library"
           >
             <X className="w-4 h-4" />
@@ -160,29 +160,29 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
         </div>
       </header>
 
-      <div className="px-3 py-2 border-b border-white/10">
+      <div className="px-3 py-2 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))]">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[color:var(--nb-muted,#9ca3af)]" />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by name, content, tag, or shortcut"
-            className="w-full pl-7 pr-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none"
+            className="w-full pl-7 pr-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none"
           />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {(creating || editingId) && (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+          <div className="rounded-md border border-[color:var(--nb-green,rgba(16,185,129,0.3))] bg-[var(--nb-green-soft,rgba(16,185,129,0.05))] p-3 space-y-2">
             <input
               type="text"
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               placeholder="Prompt name (e.g. 'Code review checklist')"
               maxLength={60}
-              className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none"
+              className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none"
             />
             <textarea
               value={draft.content}
@@ -190,7 +190,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
               placeholder="Prompt content (variables like {topic} are passed through verbatim)"
               maxLength={8000}
               rows={6}
-              className="w-full px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none resize-none font-mono"
+              className="w-full px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none resize-none font-mono"
             />
             <div className="grid grid-cols-2 gap-2">
               <input
@@ -198,7 +198,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                 value={draft.tags}
                 onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
                 placeholder="Tags (comma-separated)"
-                className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none"
+                className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none"
               />
               <input
                 type="text"
@@ -206,7 +206,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                 onChange={(e) => setDraft({ ...draft, shortcut: e.target.value })}
                 placeholder="Shortcut (e.g. 'review')"
                 maxLength={24}
-                className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none"
+                className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none"
               />
             </div>
             <div className="flex items-center gap-2 pt-1">
@@ -214,7 +214,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                 type="button"
                 onClick={save}
                 disabled={saving || !draft.name.trim() || !draft.content.trim()}
-                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs text-emerald-100 hover:brightness-110 disabled:opacity-40"
+                className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-green,rgba(16,185,129,0.4))] bg-[var(--nb-green-soft,rgba(16,185,129,0.15))] px-3 py-1 text-xs text-[color:var(--nb-green,#d1fae5)] hover:brightness-110 disabled:opacity-40"
               >
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 {creating ? 'Save prompt' : 'Update'}
@@ -222,7 +222,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
               <button
                 type="button"
                 onClick={cancelEdit}
-                className="px-3 py-1 text-xs text-gray-400 hover:text-gray-200"
+                className="px-3 py-1 text-xs text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#e5e7eb)]"
               >
                 Cancel
               </button>
@@ -231,17 +231,17 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-xs text-gray-400">
+          <div className="flex items-center justify-center py-8 text-xs text-[color:var(--nb-muted,#9ca3af)]">
             <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading prompts…
           </div>
         ) : filtered.length === 0 && !creating ? (
           <div className="text-center py-8 px-4">
-            <BookOpen className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-            <p className="text-xs text-gray-400">
+            <BookOpen className="w-8 h-8 mx-auto text-[color:var(--nb-faint,#4b5563)] mb-2" />
+            <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">
               {prompts.length === 0 ? 'No saved prompts' : 'No matches'}
             </p>
             {prompts.length === 0 && (
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1">
                 Save reusable prompt templates. Insert with one click.
               </p>
             )}
@@ -250,19 +250,19 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
           filtered.map((p) => (
             <div
               key={p.id}
-              className="rounded-md border border-white/10 bg-black/20 p-3 hover:bg-white/5 transition group"
+              className="rounded-md border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] transition group"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-100 truncate">{p.name}</span>
+                    <span className="text-sm font-medium text-[color:var(--nb-ink,#f3f4f6)] truncate">{p.name}</span>
                     {p.shortcut && (
-                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+                      <code className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--nb-green-soft,rgba(16,185,129,0.1))] border border-[color:var(--nb-green,rgba(16,185,129,0.2))] text-[color:var(--nb-green,#6ee7b7)]">
                         /{p.shortcut}
                       </code>
                     )}
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1 line-clamp-2 font-mono">
+                  <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] mt-1 line-clamp-2 font-mono">
                     {p.content}
                   </p>
                   {p.tags.length > 0 && (
@@ -270,7 +270,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                       {p.tags.map((t) => (
                         <span
                           key={t}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]"
                         >
                           {t}
                         </span>
@@ -286,7 +286,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                         onInsert(p.content);
                         onClose();
                       }}
-                      className="p-1 text-gray-400 hover:text-emerald-300"
+                      className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-green,#6ee7b7)]"
                       aria-label="Insert prompt into composer"
                       title="Insert into composer"
                     >
@@ -296,7 +296,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                   <button
                     type="button"
                     onClick={() => startEdit(p)}
-                    className="p-1 text-gray-400 hover:text-cyan-300"
+                    className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-blue,#67e8f9)]"
                     aria-label="Edit prompt"
                   >
                     <Edit3 className="w-3 h-3" />
@@ -304,7 +304,7 @@ export function PromptsLibrary({ open, onClose, onInsert }: Props) {
                   <button
                     type="button"
                     onClick={() => remove(p.id)}
-                    className="p-1 text-gray-400 hover:text-rose-300"
+                    className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)]"
                     aria-label="Delete prompt"
                   >
                     <Trash2 className="w-3 h-3" />

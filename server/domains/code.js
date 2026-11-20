@@ -26,6 +26,7 @@ import { retrieveRelevantFiles, candidatesFromLocalFiles, candidatesFromGitHubTr
 // lives in the lib (mirrors repair-remediation.js's shape); these are thin
 // macro wrappers only.
 import codePushGovernance from "../lib/code-push-governance.js";
+import { registerCodeProof } from "./code-proof.js";
 import { createHash } from "node:crypto";
 import { analyzeSourceComplexity } from "../lib/code-ast-complexity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
@@ -2664,6 +2665,11 @@ Rules:
       } catch { /* skip individual blob failures */ }
     }
     const git = ensureGit(s, userId, projectId);
+    // The content GitHub had at pull time is the base a proof measures
+    // against and the `before` a push proposal conflict-checks with.
+    git.remoteBase = {};
+    for (const path of pulled) git.remoteBase[path] = files.get(path).content;
+    git.remoteBaseRef = ref || meta?.default_branch || "main";
     if (!git.remote || typeof git.remote !== "object") git.remote = {};
     git.remote = {
       provider: "github", owner, repo,
@@ -3182,6 +3188,19 @@ Rules:
     };
     } catch (e) { return handlerFailure(e); }
 });
+
+  // ── Proof: the evidence ledger every change carries (code-proof.js) ──
+  registerCodeProof(registerLensAction, {
+    getWorkspaceState, saveWS, aidC, bucketC, ensureFiles, ensureGit, headTree,
+    tsLang, analyzeFile, lineDiff, codePushGovernance, isTextPath,
+    newProject: (s, userId, { name, description }) => {
+      const seq = ensureSeqC(s, userId);
+      const proj = { id: uidC("proj"), number: `P-${String(seq.proj).padStart(4, "0")}`, name, description: description || "", language: "", createdAt: isoC(), lastOpenedAt: isoC() };
+      seq.proj++;
+      bucketC(s.projects, userId).push(proj);
+      return proj;
+    },
+  });
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────

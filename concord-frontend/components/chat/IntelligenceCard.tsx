@@ -81,10 +81,10 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Globe size={18} className="text-violet-400" />
-        <span className="text-sm font-semibold text-zinc-200">Foundation Intelligence</span>
+        <Globe size={18} className="text-[color:var(--nb-red,#a78bfa)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Foundation Intelligence</span>
         <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
           metrics.classifierActive ? 'bg-emerald-900 text-emerald-300' : 'bg-amber-900 text-amber-300'
         }`}>
@@ -94,32 +94,32 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
 
       {/* Tier Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <Eye size={16} className="text-emerald-400 mx-auto mb-1" />
-          <div className="text-xs text-zinc-400">Public</div>
-          <div className="text-sm font-semibold text-zinc-200">{metrics.tiers.public.totalDTUs}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <Eye size={16} className="text-[color:var(--nb-green,#34d399)] mx-auto mb-1" />
+          <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">Public</div>
+          <div className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">{metrics.tiers.public.totalDTUs}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <FileSearch size={16} className="text-amber-400 mx-auto mb-1" />
-          <div className="text-xs text-zinc-400">Research</div>
-          <div className="text-sm font-semibold text-zinc-200">{metrics.tiers.research.totalDTUs}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <FileSearch size={16} className="text-[color:var(--nb-ochre,#fbbf24)] mx-auto mb-1" />
+          <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">Research</div>
+          <div className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">{metrics.tiers.research.totalDTUs}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <ShieldAlert size={16} className="text-red-400 mx-auto mb-1" />
-          <div className="text-xs text-zinc-400">Sovereign</div>
-          <div className="text-sm font-semibold text-zinc-200">{metrics.tiers.sovereign.count}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <ShieldAlert size={16} className="text-[color:var(--nb-red,#f87171)] mx-auto mb-1" />
+          <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">Sovereign</div>
+          <div className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">{metrics.tiers.sovereign.count}</div>
         </div>
       </div>
 
       {/* Classifier Stats */}
-      <div className="flex items-center gap-4 text-xs text-zinc-400">
+      <div className="flex items-center gap-4 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         <span>Classified: {metrics.classifier.totalClassified}</span>
         <span>Upgraded: {metrics.classifier.ambiguousUpgraded}</span>
       </div>
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-zinc-400 hover:text-zinc-300 flex items-center gap-1"
+        className="text-xs text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink-2,#d4d4d8)] flex items-center gap-1"
       >
         {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         {expanded ? 'Hide categories' : 'Show categories'}
@@ -128,10 +128,10 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
       {expanded && (
         <div className="space-y-1">
           {Object.entries(metrics.tiers.public.categories).map(([cat, count]) => (
-            <div key={cat} className="flex items-center gap-2 p-1.5 bg-zinc-800 rounded text-xs">
-              <span className="text-zinc-400">{categoryIcons[cat] || <Eye size={14} />}</span>
-              <span className="text-zinc-300 flex-1">{cat.replace(/_/g, ' ')}</span>
-              <span className="text-zinc-400">{count} DTUs</span>
+            <div key={cat} className="flex items-center gap-2 p-1.5 bg-[var(--nb-wash,#27272a)] rounded text-xs">
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{categoryIcons[cat] || <Eye size={14} />}</span>
+              <span className="text-[color:var(--nb-ink-2,#d4d4d8)] flex-1">{cat.replace(/_/g, ' ')}</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)]">{count} DTUs</span>
             </div>
           ))}
         </div>
@@ -142,25 +142,25 @@ function OverviewView({ metrics }: { metrics: IntelMetrics }) {
 
 function PublicDataView({ data }: { data: PublicIntelligence }) {
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
         {categoryIcons[data.category] || <Eye size={18} />}
-        <span className="text-sm font-semibold text-zinc-200">
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">
           {data.category.replace(/_/g, ' ')} Intelligence
         </span>
-        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-emerald-900 text-emerald-300">
+        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--nb-green-soft,#064e3b)] text-[color:var(--nb-green,#6ee7b7)]">
           PUBLIC
         </span>
       </div>
 
       {data.count === 0 ? (
-        <div className="text-xs text-zinc-400 text-center py-3">No intelligence data yet</div>
+        <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)] text-center py-3">No intelligence data yet</div>
       ) : (
         <div className="space-y-1">
           {data.data.slice(0, 10).map(dtu => (
-            <div key={dtu.id} className="p-2 bg-zinc-800 rounded text-xs space-y-1">
+            <div key={dtu.id} className="p-2 bg-[var(--nb-wash,#27272a)] rounded text-xs space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-zinc-300 flex-1">
+                <span className="text-[color:var(--nb-ink-2,#d4d4d8)] flex-1">
                   {dtu.data.summary || dtu.category}
                 </span>
                 <span className={`px-1.5 py-0.5 rounded ${
@@ -171,7 +171,7 @@ function PublicDataView({ data }: { data: PublicIntelligence }) {
                   {Math.round(dtu.confidence * 100)}%
                 </span>
               </div>
-              <div className="flex items-center gap-3 text-zinc-400">
+              <div className="flex items-center gap-3 text-[color:var(--nb-muted,#a1a1aa)]">
                 <span>{dtu.sources} sources</span>
                 <span>{dtu.coverage_area.radius_km}km radius</span>
                 <span>{new Date(dtu.created).toLocaleTimeString()}</span>
@@ -181,7 +181,7 @@ function PublicDataView({ data }: { data: PublicIntelligence }) {
         </div>
       )}
 
-      <div className="text-xs text-zinc-400">
+      <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         {data.total} total entries | Commercially licensable
       </div>
     </div>
@@ -195,10 +195,10 @@ function ClassifierView({ status }: { status: ClassifierStatus }) {
   const sovereignPct = Math.round((status.stats.routedSovereign / total) * 100);
 
   return (
-    <div className="rounded-lg border border-zinc-700 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-rule,#3f3f46)] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <BarChart3 size={18} className="text-violet-400" />
-        <span className="text-sm font-semibold text-zinc-200">Sovereign Classifier</span>
+        <BarChart3 size={18} className="text-[color:var(--nb-red,#a78bfa)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Sovereign Classifier</span>
         <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
           status.active ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300'
         }`}>
@@ -208,40 +208,40 @@ function ClassifierView({ status }: { status: ClassifierStatus }) {
 
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-emerald-400 w-16">Public</span>
-          <div className="flex-1 bg-zinc-800 rounded-full h-2">
-            <div className="h-2 rounded-full bg-emerald-500" style={{ width: `${publicPct}%` }} />
+          <span className="text-[color:var(--nb-green,#34d399)] w-16">Public</span>
+          <div className="flex-1 bg-[var(--nb-wash,#27272a)] rounded-full h-2">
+            <div className="h-2 rounded-full bg-[var(--nb-green,#10b981)]" style={{ width: `${publicPct}%` }} />
           </div>
-          <span className="text-zinc-400 w-8 text-right">{publicPct}%</span>
+          <span className="text-[color:var(--nb-muted,#a1a1aa)] w-8 text-right">{publicPct}%</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-amber-400 w-16">Research</span>
-          <div className="flex-1 bg-zinc-800 rounded-full h-2">
-            <div className="h-2 rounded-full bg-amber-500" style={{ width: `${researchPct}%` }} />
+          <span className="text-[color:var(--nb-ochre,#fbbf24)] w-16">Research</span>
+          <div className="flex-1 bg-[var(--nb-wash,#27272a)] rounded-full h-2">
+            <div className="h-2 rounded-full bg-[var(--nb-ochre,#f59e0b)]" style={{ width: `${researchPct}%` }} />
           </div>
-          <span className="text-zinc-400 w-8 text-right">{researchPct}%</span>
+          <span className="text-[color:var(--nb-muted,#a1a1aa)] w-8 text-right">{researchPct}%</span>
         </div>
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-red-400 w-16">Sovereign</span>
-          <div className="flex-1 bg-zinc-800 rounded-full h-2">
-            <div className="h-2 rounded-full bg-red-500" style={{ width: `${sovereignPct}%` }} />
+          <span className="text-[color:var(--nb-red,#f87171)] w-16">Sovereign</span>
+          <div className="flex-1 bg-[var(--nb-wash,#27272a)] rounded-full h-2">
+            <div className="h-2 rounded-full bg-[var(--nb-red,#ef4444)]" style={{ width: `${sovereignPct}%` }} />
           </div>
-          <span className="text-zinc-400 w-8 text-right">{sovereignPct}%</span>
+          <span className="text-[color:var(--nb-muted,#a1a1aa)] w-8 text-right">{sovereignPct}%</span>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Total Classified</div>
-          <div className="text-zinc-200 font-semibold">{status.stats.totalClassified}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Total Classified</div>
+          <div className="text-[color:var(--nb-ink,#e4e4e7)] font-semibold">{status.stats.totalClassified}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2">
-          <div className="text-zinc-400">Ambiguous Upgraded</div>
-          <div className="text-zinc-200 font-semibold">{status.stats.ambiguousUpgraded}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Ambiguous Upgraded</div>
+          <div className="text-[color:var(--nb-ink,#e4e4e7)] font-semibold">{status.stats.ambiguousUpgraded}</div>
         </div>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-zinc-400">
+      <div className="flex items-center gap-4 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         <span>Sensitivity: {status.thresholds.sensitivity}</span>
         <span>Sovereign: {status.thresholds.sovereign}</span>
       </div>
@@ -251,31 +251,31 @@ function ClassifierView({ status }: { status: ClassifierStatus }) {
 
 function ResearchView({ metrics }: { metrics: IntelMetrics }) {
   return (
-    <div className="rounded-lg border border-amber-900/50 bg-zinc-900 p-4 space-y-3">
+    <div className="rounded-lg border border-[color:var(--nb-ochre,rgba(120,53,15,0.5))] bg-[var(--nb-sheet,#18181b)] p-4 space-y-3">
       <div className="flex items-center gap-2">
-        <Lock size={18} className="text-amber-400" />
-        <span className="text-sm font-semibold text-zinc-200">Research Partition</span>
-        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-amber-900 text-amber-300">
+        <Lock size={18} className="text-[color:var(--nb-ochre,#fbbf24)]" />
+        <span className="text-sm font-semibold text-[color:var(--nb-ink,#e4e4e7)]">Research Partition</span>
+        <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-[var(--nb-hl,#78350f)] text-[color:var(--nb-ochre,#fcd34d)]">
           RESTRICTED
         </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-400">Entries</div>
-          <div className="text-zinc-200 font-semibold">{metrics.tiers.research.entries}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Entries</div>
+          <div className="text-[color:var(--nb-ink,#e4e4e7)] font-semibold">{metrics.tiers.research.entries}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-400">Active Grants</div>
-          <div className="text-zinc-200 font-semibold">{metrics.tiers.research.activeGrants}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Active Grants</div>
+          <div className="text-[color:var(--nb-ink,#e4e4e7)] font-semibold">{metrics.tiers.research.activeGrants}</div>
         </div>
-        <div className="bg-zinc-800 rounded p-2 text-center">
-          <div className="text-zinc-400">Pending</div>
-          <div className="text-zinc-200 font-semibold">{metrics.tiers.research.pendingApplications}</div>
+        <div className="bg-[var(--nb-wash,#27272a)] rounded p-2 text-center">
+          <div className="text-[color:var(--nb-muted,#a1a1aa)]">Pending</div>
+          <div className="text-[color:var(--nb-ink,#e4e4e7)] font-semibold">{metrics.tiers.research.pendingApplications}</div>
         </div>
       </div>
 
-      <div className="text-xs text-zinc-400">
+      <div className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">
         Lineage tracking enforced | Transfer prohibited | Governance-approved access only
       </div>
     </div>

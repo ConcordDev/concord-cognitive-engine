@@ -19,11 +19,14 @@ const FE = path.resolve(__dirname, '..');
 const read = (rel: string) => fs.readFileSync(path.join(FE, rel), 'utf8');
 
 describe('CB-0456 stale-display genus', () => {
-  it('FIX-studio-003: clip bodies render with track.color, not the clip colour copy', () => {
-    const src = read('components/studio/ArrangementView.tsx');
-    expect(src).toContain("backgroundColor: track.color + '40'");
-    expect(src).toContain('borderColor: track.color,');
-    expect(src).not.toContain('clip.color || track.color');
+  it('FIX-studio-003: clip bodies render with the track colour, not the stale clip colour copy', () => {
+    // A clip copies its track's colour when it is made; recolouring the track must recolour its clips.
+    const arrange = read('components/studio/daw/ArrangeView.tsx');
+    expect(arrange).toContain('background: `${t.color}cc`');
+    expect(arrange).not.toContain('c.color || t.color');
+    const session = read('components/studio/daw/SessionGrid.tsx');
+    expect(session).toContain("background: `${t.color}${isPlaying ? 'ff' : '99'}`");
+    expect(session).not.toContain('clip.color || t.color');
   });
 
   it('FIX-mail-015: claim note is stored and rendered per-mail', () => {

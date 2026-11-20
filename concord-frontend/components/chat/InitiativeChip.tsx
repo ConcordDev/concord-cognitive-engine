@@ -86,10 +86,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   substrateDiscovery: {
     icon: Sparkles,
     label: 'Discovery',
-    bgColor: 'bg-blue-950/60',
-    borderColor: 'border-blue-500/40',
-    textColor: 'text-blue-100',
-    accentColor: 'text-blue-400',
+    bgColor: 'bg-[var(--nb-blue-soft,rgba(23,37,84,0.6))]',
+    borderColor: 'border-[color:var(--nb-blue,rgba(59,130,246,0.4))]',
+    textColor: 'text-[color:var(--nb-blue,#dbeafe)]',
+    accentColor: 'text-[color:var(--nb-blue,#60a5fa)]',
     glowColor: 'shadow-blue-500/10',
     actions: [
       { label: 'Check it out', action: 'view_dtu', primary: true },
@@ -99,10 +99,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   citationAlert: {
     icon: Quote,
     label: 'Citation',
-    bgColor: 'bg-yellow-950/60',
-    borderColor: 'border-yellow-500/40',
-    textColor: 'text-yellow-100',
-    accentColor: 'text-yellow-400',
+    bgColor: 'bg-[var(--nb-hl,rgba(66,32,6,0.6))]',
+    borderColor: 'border-[color:var(--nb-ochre,rgba(234,179,8,0.4))]',
+    textColor: 'text-[color:var(--nb-ochre,#fef9c3)]',
+    accentColor: 'text-[color:var(--nb-ochre,#facc15)]',
     glowColor: 'shadow-yellow-500/10',
     actions: [
       { label: 'See citation', action: 'view_citation', primary: true },
@@ -112,10 +112,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   genuineCheckIn: {
     icon: Heart,
     label: 'Check-in',
-    bgColor: 'bg-zinc-800/60',
-    borderColor: 'border-zinc-600/40',
-    textColor: 'text-zinc-200',
-    accentColor: 'text-zinc-400',
+    bgColor: 'bg-[var(--nb-wash,rgba(39,39,42,0.6))]',
+    borderColor: 'border-[color:var(--nb-rule-2,rgba(82,82,91,0.4))]',
+    textColor: 'text-[color:var(--nb-ink,#e4e4e7)]',
+    accentColor: 'text-[color:var(--nb-muted,#a1a1aa)]',
     glowColor: 'shadow-zinc-500/10',
     actions: [
       { label: 'Catch me up', action: 'catch_up', primary: true },
@@ -125,10 +125,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   pendingWorkReminder: {
     icon: Clock,
     label: 'Pending Work',
-    bgColor: 'bg-orange-950/60',
-    borderColor: 'border-orange-500/40',
-    textColor: 'text-orange-100',
-    accentColor: 'text-orange-400',
+    bgColor: 'bg-[var(--nb-hl,rgba(67,20,7,0.6))]',
+    borderColor: 'border-[color:var(--nb-ochre,rgba(249,115,22,0.4))]',
+    textColor: 'text-[color:var(--nb-ochre,#ffedd5)]',
+    accentColor: 'text-[color:var(--nb-ochre,#fb923c)]',
     glowColor: 'shadow-orange-500/10',
     actions: [
       { label: "Let's finish it", action: 'resume_work', primary: true },
@@ -138,10 +138,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   worldEventConnection: {
     icon: Globe,
     label: 'World Event',
-    bgColor: 'bg-purple-950/60',
-    borderColor: 'border-purple-500/40',
-    textColor: 'text-purple-100',
-    accentColor: 'text-purple-400',
+    bgColor: 'bg-[var(--nb-red-soft,rgba(59,7,100,0.6))]',
+    borderColor: 'border-[color:var(--nb-red,rgba(168,85,247,0.4))]',
+    textColor: 'text-[color:var(--nb-red,#f3e8ff)]',
+    accentColor: 'text-[color:var(--nb-red,#c084fc)]',
     glowColor: 'shadow-purple-500/10',
     actions: [
       { label: 'Analyze', action: 'analyze_event', primary: true },
@@ -151,10 +151,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   reflectiveFollowUp: {
     icon: Brain,
     label: 'Reflection',
-    bgColor: 'bg-emerald-950/60',
-    borderColor: 'border-emerald-500/40',
-    textColor: 'text-emerald-100',
-    accentColor: 'text-emerald-400',
+    bgColor: 'bg-[var(--nb-green-soft,rgba(2,44,34,0.6))]',
+    borderColor: 'border-[color:var(--nb-green,rgba(16,185,129,0.4))]',
+    textColor: 'text-[color:var(--nb-green,#d1fae5)]',
+    accentColor: 'text-[color:var(--nb-green,#34d399)]',
     glowColor: 'shadow-emerald-500/10',
     actions: [
       { label: 'Tell me more', action: 'expand_thought', primary: true },
@@ -164,10 +164,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   morningContext: {
     icon: Sun,
     label: 'Morning',
-    bgColor: 'bg-amber-950/50',
-    borderColor: 'border-amber-500/30',
-    textColor: 'text-amber-100',
-    accentColor: 'text-amber-400',
+    bgColor: 'bg-[var(--nb-hl,rgba(69,26,3,0.5))]',
+    borderColor: 'border-[color:var(--nb-ochre,rgba(245,158,11,0.3))]',
+    textColor: 'text-[color:var(--nb-ochre,#fef3c7)]',
+    accentColor: 'text-[color:var(--nb-ochre,#fbbf24)]',
     glowColor: 'shadow-amber-500/10',
     actions: [
       { label: 'Morning brief', action: 'morning_brief', primary: true },
@@ -177,10 +177,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
   doubleText: {
     icon: MessageCircle,
     label: 'Follow-up',
-    bgColor: 'bg-cyan-950/60',
-    borderColor: 'border-cyan-500/40',
-    textColor: 'text-cyan-100',
-    accentColor: 'text-cyan-400',
+    bgColor: 'bg-[var(--nb-blue-soft,rgba(8,51,68,0.6))]',
+    borderColor: 'border-[color:var(--nb-blue,rgba(6,182,212,0.4))]',
+    textColor: 'text-[color:var(--nb-blue,#cffafe)]',
+    accentColor: 'text-[color:var(--nb-blue,#22d3ee)]',
     glowColor: 'shadow-cyan-500/10',
     actions: [
       { label: 'Got it', action: 'acknowledge', primary: true },
@@ -191,10 +191,10 @@ const TRIGGER_CONFIGS: Record<string, TriggerConfig> = {
 const DEFAULT_TRIGGER_CONFIG: TriggerConfig = {
   icon: Zap,
   label: 'Initiative',
-  bgColor: 'bg-zinc-800/60',
-  borderColor: 'border-zinc-600/40',
-  textColor: 'text-zinc-200',
-  accentColor: 'text-zinc-400',
+  bgColor: 'bg-[var(--nb-wash,rgba(39,39,42,0.6))]',
+  borderColor: 'border-[color:var(--nb-rule-2,rgba(82,82,91,0.4))]',
+  textColor: 'text-[color:var(--nb-ink,#e4e4e7)]',
+  accentColor: 'text-[color:var(--nb-muted,#a1a1aa)]',
   glowColor: 'shadow-zinc-500/10',
   actions: [
     { label: 'Tell me more', action: 'explain', primary: true },
@@ -205,9 +205,9 @@ const DEFAULT_TRIGGER_CONFIG: TriggerConfig = {
 
 function PriorityDot({ priority }: { priority: string }) {
   const colorMap: Record<string, string> = {
-    high: 'bg-red-400 shadow-red-400/50',
-    normal: 'bg-blue-400 shadow-blue-400/50',
-    low: 'bg-zinc-500 shadow-zinc-500/50',
+    high: 'bg-[var(--nb-red,#f87171)] shadow-red-400/50',
+    normal: 'bg-[var(--nb-blue,#60a5fa)] shadow-blue-400/50',
+    low: 'bg-[var(--nb-wash-2,#71717a)] shadow-zinc-500/50',
   };
 
   const pulseMap: Record<string, string> = {
@@ -303,7 +303,7 @@ export function InitiativeChip({
         </p>
         <button
           onClick={handleDismiss}
-          className="p-0.5 rounded hover:bg-white/10 text-zinc-400 hover:text-zinc-300 transition-colors"
+          className="p-0.5 rounded hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink-2,#d4d4d8)] transition-colors"
           aria-label="Dismiss initiative"
         >
           <X className="w-3 h-3" />
@@ -332,7 +332,7 @@ export function InitiativeChip({
       )}
     >
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3.5 py-2 border-b border-white/5">
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.05))]">
         <div className="flex items-center gap-2">
           <Icon className={cn('w-4 h-4', config.accentColor)} />
           <span className={cn('text-xs font-medium', config.accentColor)}>
@@ -341,12 +341,12 @@ export function InitiativeChip({
           <PriorityDot priority={initiative.priority} />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-zinc-300">
+          <span className="text-[10px] text-[color:var(--nb-ink-2,#d4d4d8)]">
             {formatRelativeTime(initiative.createdAt)}
           </span>
           <button
             onClick={handleDismiss}
-            className="p-1 rounded-md hover:bg-white/10 text-zinc-400 hover:text-zinc-300 transition-colors"
+            className="p-1 rounded-md hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink-2,#d4d4d8)] transition-colors"
             aria-label="Dismiss initiative"
           >
             <X className="w-3.5 h-3.5" />
@@ -374,7 +374,7 @@ export function InitiativeChip({
               'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
               action.primary
                 ? cn(config.bgColor, config.borderColor, config.accentColor, 'border hover:brightness-125')
-                : 'bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 hover:text-zinc-100 hover:border-zinc-600',
+                : 'bg-[var(--nb-wash,rgba(39,39,42,0.5))] border border-[color:var(--nb-rule,rgba(63,63,70,0.5))] text-[color:var(--nb-ink-2,#d4d4d8)] hover:text-[color:var(--nb-ink,#f4f4f5)] hover:border-[color:var(--nb-rule-2,#52525b)]',
             )}
           >
             {action.primary && <ArrowUpRight className="w-3 h-3" />}
@@ -389,7 +389,7 @@ export function InitiativeChip({
           className="absolute top-2 right-10 flex items-center gap-1"
           title={`Relevance score: ${Math.round(initiative.score * 100)}%`}
         >
-          <AlertCircle className="w-3 h-3 text-zinc-600" />
+          <AlertCircle className="w-3 h-3 text-[color:var(--nb-faint,#52525b)]" />
         </div>
       )}
     </div>
@@ -419,12 +419,12 @@ function renderMetadata(
             </span>
           )}
           {domain && (
-            <span className="text-zinc-300">
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">
               Domain: {domain}
             </span>
           )}
           {totalNew !== undefined && totalNew > 1 && (
-            <span className="text-zinc-300">
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">
               +{totalNew - 1} more
             </span>
           )}
@@ -440,13 +440,13 @@ function renderMetadata(
       return (
         <div className="mt-2 space-y-1 text-[10px]">
           {citingDtuTitle && (
-            <div className="flex items-center gap-1 text-zinc-300">
+            <div className="flex items-center gap-1 text-[color:var(--nb-ink-2,#d4d4d8)]">
               <Quote className="w-2.5 h-2.5" />
               <span className="truncate">Cited in: {citingDtuTitle}</span>
             </div>
           )}
           {totalCitations !== undefined && totalCitations > 1 && (
-            <div className="flex items-center gap-1 text-zinc-300">
+            <div className="flex items-center gap-1 text-[color:var(--nb-ink-2,#d4d4d8)]">
               <Eye className="w-2.5 h-2.5" />
               {totalCitations} citation{totalCitations !== 1 ? 's' : ''} total
             </div>
@@ -470,12 +470,12 @@ function renderMetadata(
             </span>
           )}
           {dtuTitle && (
-            <span className="text-zinc-300 truncate max-w-[150px]">
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)] truncate max-w-[150px]">
               {dtuTitle}
             </span>
           )}
           {pendingCount !== undefined && pendingCount > 1 && (
-            <span className="text-zinc-300">
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">
               {pendingCount} pending item{pendingCount !== 1 ? 's' : ''}
             </span>
           )}
@@ -493,7 +493,7 @@ function renderMetadata(
           {matchedDomains && matchedDomains.length > 0 && matchedDomains.map((d) => (
             <span
               key={d}
-              className="px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-400"
+              className="px-1.5 py-0.5 rounded-full bg-[var(--nb-red-soft,rgba(88,28,135,0.4))] text-[color:var(--nb-red,#c084fc)]"
             >
               {d}
             </span>
@@ -519,7 +519,7 @@ function renderMetadata(
           {summary.domains && summary.domains.length > 0 && summary.domains.map((d) => (
             <span
               key={d}
-              className="px-1.5 py-0.5 rounded-full bg-zinc-800/50 text-zinc-400"
+              className="px-1.5 py-0.5 rounded-full bg-[var(--nb-wash,rgba(39,39,42,0.5))] text-[color:var(--nb-muted,#a1a1aa)]"
             >
               {d}
             </span>
@@ -542,7 +542,7 @@ function renderMetadata(
             </span>
           )}
           {confidence !== undefined && (
-            <span className="text-zinc-300">
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">
               Confidence: {Math.round(confidence * 100)}%
             </span>
           )}
@@ -597,7 +597,7 @@ export function InitiativeList({
       {overflow > 0 && (
         <div className="text-center">
           <button
-            className="text-[10px] text-zinc-300 hover:text-zinc-100 transition-colors"
+            className="text-[10px] text-[color:var(--nb-ink-2,#d4d4d8)] hover:text-[color:var(--nb-ink,#f4f4f5)] transition-colors"
             onClick={() => setShowAll((prev) => !prev)}
           >
             {showAll ? 'Show fewer' : `+${overflow} more initiative${overflow !== 1 ? 's' : ''}`}

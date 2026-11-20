@@ -98,7 +98,7 @@ export function KeyScaleControl({
         {busy ? 'Detecting…' : 'Detect key'}
       </button>
       {custom && (
-        <div className="absolute left-0 top-8 z-30 flex w-56 flex-wrap gap-1 rounded-md border border-white/10 bg-[#1b1b24] p-1 shadow-xl">
+        <div className="absolute left-0 top-8 z-30 flex w-56 flex-wrap gap-1 rounded-md border border-white/10 bg-[var(--bo-panel-hi)] p-1 shadow-xl">
           {PITCH_ROOTS.map((name, pc) => {
             const on = (mask & (1 << pc)) !== 0;
             return (

@@ -128,14 +128,14 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
     <div className="fixed inset-0 z-50 flex lg:relative lg:inset-auto lg:z-auto">
       {/* Backdrop (mobile) */}
       <div
-        className="absolute inset-0 bg-black/50 lg:hidden"
+        className="absolute inset-0 bg-[var(--nb-scrim,rgba(0,0,0,0.5))] lg:hidden"
         onClick={onClose} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
 
       {/* Sidebar panel */}
-      <div className="relative z-10 flex flex-col w-72 max-w-[85vw] h-full bg-lattice-void border-r border-white/10">
+      <div className="relative z-10 flex flex-col w-72 max-w-[85vw] h-full bg-[var(--nb-paper,rgb(var(--lattice-void-rgb)))] border-r border-[color:var(--nb-rule,rgba(255,255,255,0.1))]">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-white/10">
-          <h2 className="text-sm font-semibold text-white/80">Sessions</h2>
+        <div className="flex items-center justify-between p-3 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))]">
+          <h2 className="text-sm font-semibold text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))]">Sessions</h2>
           <div className="flex gap-1">
             <button
               onClick={() => setShowArchived(!showArchived)}
@@ -146,7 +146,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-white/40 hover:text-white/70 lg:hidden"
+              className="p-1.5 text-[color:var(--nb-muted,rgba(255,255,255,0.4))] hover:text-[color:var(--nb-ink-2,rgba(255,255,255,0.7))] lg:hidden"
             >
               &times;
             </button>
@@ -156,7 +156,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
         {/* New Session Button */}
         <button
           onClick={handleNew}
-          className="m-2 px-3 py-2 rounded-lg bg-neon-blue/20 text-neon-blue text-sm font-medium hover:bg-neon-blue/30 transition-colors flex items-center gap-2"
+          className="m-2 px-3 py-2 rounded-lg bg-[var(--nb-blue-soft,rgba(0,212,255,0.2))] text-[color:var(--nb-blue,#00d4ff)] text-sm font-medium hover:bg-[var(--nb-blue-soft,rgba(0,212,255,0.3))] transition-colors flex items-center gap-2"
         >
           <span className="text-lg leading-none">+</span>
           New Session
@@ -169,22 +169,22 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
             placeholder="Search sessions..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-full px-3 py-1.5 bg-white/5 rounded border border-white/10 text-sm text-white/80 placeholder:text-white/30 focus:outline-none focus:border-neon-blue/50"
+            className="w-full px-3 py-1.5 bg-[var(--nb-wash,rgba(255,255,255,0.05))] rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] placeholder:text-[color:var(--nb-faint,rgba(255,255,255,0.3))] focus:outline-none focus:border-[color:var(--nb-blue,rgba(0,212,255,0.5))]"
           />
         </div>
 
         {/* Session List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-center text-white/30 text-sm">Loading...</div>
+            <div className="p-4 text-center text-[color:var(--nb-faint,rgba(255,255,255,0.3))] text-sm">Loading...</div>
           ) : filteredSessions.length === 0 ? (
-            <div className="p-4 text-center text-white/30 text-sm">
+            <div className="p-4 text-center text-[color:var(--nb-faint,rgba(255,255,255,0.3))] text-sm">
               {searchQuery ? 'No matching sessions' : 'No sessions yet'}
             </div>
           ) : (
             Object.entries(grouped).map(([label, items]) => (
               <div key={label}>
-                <div className="px-3 py-1.5 text-[10px] font-semibold text-white/30 uppercase tracking-wider">
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-[color:var(--nb-faint,rgba(255,255,255,0.3))] uppercase tracking-wider">
                   {label}
                 </div>
                 {items.map(session => (
@@ -211,22 +211,22 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
                             if (e.key === 'Enter') handleRename(session.id);
                             if (e.key === 'Escape') setEditingId(null);
                           }}
-                          className="w-full bg-transparent text-sm text-white border-b border-neon-blue/50 outline-none"
+                          className="w-full bg-transparent text-sm text-[color:var(--nb-ink,#ffffff)] border-b border-[color:var(--nb-blue,rgba(0,212,255,0.5))] outline-none"
                           onClick={e => e.stopPropagation()}
                         />
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          {session.pinned && <span className="text-[10px] text-amber-400">*</span>}
-                          <span className="text-sm text-white/80 truncate flex-1">
+                          {session.pinned && <span className="text-[10px] text-[color:var(--nb-ochre,#fbbf24)]">*</span>}
+                          <span className="text-sm text-[color:var(--nb-ink-2,rgba(255,255,255,0.8))] truncate flex-1">
                             {session.title}
                           </span>
-                          <span className="text-[10px] text-white/20">
+                          <span className="text-[10px] text-[color:var(--nb-faint,rgba(255,255,255,0.2))]">
                             {session.messageCount}
                           </span>
                         </div>
                       )}
                       {session.lastMessagePreview && (
-                        <p className="text-[11px] text-white/30 truncate mt-0.5">
+                        <p className="text-[11px] text-[color:var(--nb-faint,rgba(255,255,255,0.3))] truncate mt-0.5">
                           {session.lastMessagePreview}
                         </p>
                       )}
@@ -236,7 +236,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
                     <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
                       <button
                         onClick={e => { e.stopPropagation(); handleContextAction('rename', session.id); }}
-                        className="p-1 text-white/30 hover:text-white/70 text-[10px]"
+                        className="p-1 text-[color:var(--nb-faint,rgba(255,255,255,0.3))] hover:text-[color:var(--nb-ink-2,rgba(255,255,255,0.7))] text-[10px]"
                         title="Rename"
                       >
                         Edit
@@ -246,7 +246,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
                           e.stopPropagation();
                           setContextMenu({ id: session.id, x: e.clientX, y: e.clientY });
                         }}
-                        className="p-1 text-white/30 hover:text-white/70 text-[10px]"
+                        className="p-1 text-[color:var(--nb-faint,rgba(255,255,255,0.3))] hover:text-[color:var(--nb-ink-2,rgba(255,255,255,0.7))] text-[10px]"
                         title="More"
                       >
                         ...
@@ -260,7 +260,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
         </div>
 
         {/* Footer stats */}
-        <div className="p-2 border-t border-white/10 text-[10px] text-white/20 text-center">
+        <div className="p-2 border-t border-[color:var(--nb-rule,rgba(255,255,255,0.1))] text-[10px] text-[color:var(--nb-faint,rgba(255,255,255,0.2))] text-center">
           {sessions.filter(s => !s.archived).length} sessions
           {sessions.some(s => s.archived) && ` / ${sessions.filter(s => s.archived).length} archived`}
         </div>
@@ -269,7 +269,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
       {/* Context Menu */}
       {contextMenu && (
         <div
-          className="fixed z-[100] bg-zinc-900 border border-white/20 rounded-lg shadow-xl py-1 min-w-[140px]"
+          className="fixed z-[100] bg-[var(--nb-sheet,#18181b)] border border-[color:var(--nb-rule-2,rgba(255,255,255,0.2))] rounded-lg shadow-xl py-1 min-w-[140px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={e => e.stopPropagation()} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
           {(() => {
@@ -286,7 +286,7 @@ export function SessionSidebar({ isOpen, onClose }: SessionSidebarProps) {
                   ? <CtxItem label="Unarchive" onClick={() => handleContextAction('unarchive', s.id)} />
                   : <CtxItem label="Archive" onClick={() => handleContextAction('archive', s.id)} />
                 }
-                <div className="h-px bg-white/10 my-1" />
+                <div className="h-px bg-[var(--nb-wash,rgba(255,255,255,0.1))] my-1" />
                 <CtxItem label="Delete" onClick={() => handleContextAction('delete', s.id)} danger />
               </>
             );
@@ -301,7 +301,7 @@ function CtxItem({ label, onClick, danger }: { label: string; onClick: () => voi
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-white/10 ${danger ? 'text-red-400' : 'text-white/70'}`}
+      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] ${danger ? 'text-red-400' : 'text-white/70'}`}
     >
       {label}
     </button>

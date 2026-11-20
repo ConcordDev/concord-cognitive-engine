@@ -25,7 +25,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { CONKAY_WORKSPACE_PATH, conkayWorkspaceHref } from '@/lib/conkay/workspace-link';
 import dynamic from 'next/dynamic';
-import { X, Send, Mic, MicOff, Sparkles, Volume2, VolumeX, Box, MapPin, Activity, Layers, Type, Package, Sword } from 'lucide-react';
+import { X, Send, MicOff, Volume2, VolumeX, Box, MapPin, Activity, Layers, Type, Package, Sword } from 'lucide-react';
+import { KayRing, type KayState } from '@/components/conkay/workshop/KayRing';
+import '@/components/conkay/workshop/workshop.css';
+import { workshopFontVars } from '@/components/conkay/workshop/workshopFonts';
 import { ConKayMessage, type ConKayReplyFields } from './ConKayViz';
 import { useConKayVoice } from './useConKayVoice';
 import { matchConKaySkill, type ConKaySkill } from './conkay-skills';
@@ -1717,13 +1720,19 @@ export function ConKayOverlay() {
   // toolbar (LensToolbar), ⌘/Ctrl+J, or the command palette.
   if (!open) return null;
 
+  // Kay's ring, from the overlay's real state (never decorative).
+  const kayRingState: KayState = conkayState === 'listening' ? 'listening'
+    : conkayState === 'presenting' ? 'speaking'
+      : conkayState === 'processing' || running ? 'working' : 'idle';
+
   return (
-    <div className="fixed inset-0 z-[80] flex flex-col" role="dialog" aria-modal="true" aria-label="ConKay">
+    <div className={`ws-tokens ${workshopFontVars} fixed inset-0 z-[80] flex flex-col`} role="dialog" aria-modal="true" aria-label="ConKay">
       {/* world-tree presence — Studio only (Claude-clean chat hides the 3D cockpit) */}
       {studioOpen && (
         <ConKayBackdrop state={conkayState} listening={voice.listening} muted={muted} ttsAmplitudeRef={voice.ttsAmplitudeRef} className="pointer-events-none absolute inset-0 -z-10" />
       )}
-      <div className={`absolute inset-0 -z-10 ${studioOpen ? 'bg-black/55' : 'bg-black/90'} backdrop-blur-sm`} aria-hidden onClick={() => setOpen(false)} />
+      {/* Click outside dismisses; the keyboard path is Escape (handled above), so the backdrop stays out of the tab order. */}
+      <button type="button" tabIndex={-1} aria-hidden className={`absolute inset-0 -z-10 cursor-default ${studioOpen ? 'bg-black/55' : 'bg-black/90'} backdrop-blur-sm`} onClick={() => setOpen(false)} />
 
       {/* Phase 3 — exploded view of a real artifact (Studio only) */}
       {studioOpen && inspecting && (
@@ -1732,8 +1741,9 @@ export function ConKayOverlay() {
 
       {/* header */}
       <div className="flex items-center gap-3 px-5 py-3 text-cyan-100">
-        <Sparkles className="h-5 w-5 text-cyan-300" />
-        <span className="text-sm font-semibold tracking-wide">ConKay</span>
+        {/* The same Kay as the Workshop: the ring reflects the overlay's real state. */}
+        <KayRing state={kayRingState} size={36} />
+        <span className="font-[family-name:var(--ws-font-hud)] text-sm font-semibold tracking-[0.28em] text-[color:var(--ws-arc)]">CONKAY</span>
         {lens && !onChatLens && (
           <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-0.5 text-[11px] text-cyan-200">
             Operating: {lens.name}
@@ -2101,12 +2111,13 @@ export function ConKayOverlay() {
 
       {/* command bar */}
       <form onSubmit={onSubmitForm} className="px-5 pb-5 pt-2">
-        <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-2xl border border-cyan-400/25 bg-black/50 px-3 py-2 backdrop-blur">
+        <div className="ws-glass ws-corners mx-auto flex max-w-2xl items-center gap-2 rounded-full py-1.5 pl-1.5 pr-2">
           {voice.supported && (
             <button type="button" onClick={() => setMuted((x) => !x)}
               title={muted ? 'Voice off — click to enable' : voice.listening ? 'Listening…' : 'Voice on'} aria-label="Toggle voice"
-              className={`rounded-lg p-2 ${voice.listening ? 'bg-cyan-400/20 text-cyan-200' : muted ? 'text-cyan-300/40' : 'text-cyan-300 hover:bg-cyan-400/10'}`}>
-              {muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              className="relative flex shrink-0 items-center justify-center rounded-full">
+              <KayRing state={muted ? 'unavailable' : kayRingState} size={40} />
+              {muted && <MicOff className="absolute h-3.5 w-3.5 text-[color:var(--ws-faint)]" />}
             </button>
           )}
           <input
@@ -2118,7 +2129,7 @@ export function ConKayOverlay() {
             aria-label="Message ConKay"
           />
           <button type="submit" disabled={!input.trim() || running}
-            className="rounded-lg bg-cyan-500 p-2 text-black disabled:opacity-40" aria-label="Send">
+            className="rounded-full bg-[color:var(--ws-arc)] p-2.5 text-[color:var(--ws-void)] shadow-[0_0_16px_rgba(89,227,255,0.35)] disabled:opacity-40" aria-label="Send">
             <Send className="h-4 w-4" />
           </button>
         </div>

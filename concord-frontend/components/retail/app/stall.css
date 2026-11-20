@@ -1,0 +1,304 @@
+/*
+ * The Stall — retail lens identity. A market stall at dusk: chalkboard,
+ * warm wood, brass, a till roll of receipt paper. Every colour the lens
+ * uses is a token here; components reference var(--stall-*) only.
+ */
+
+.stall {
+  --stall-board: #18211d;
+  --stall-board-2: #1f2a25;
+  --stall-board-3: #27342e;
+  --stall-chalk: #efeadb;
+  --stall-chalk-dim: #a9b2a7;
+  --stall-chalk-faint: #6f7b72;
+  --stall-line: rgba(239, 234, 219, 0.1);
+  --stall-wood: #9a6234;
+  --stall-wood-dark: #5e3a1d;
+  --stall-wood-light: #c08552;
+  --stall-brass: #e2ac45;
+  --stall-brass-dim: rgba(226, 172, 69, 0.16);
+  --stall-tomato: #e5563f;
+  --stall-tomato-dim: rgba(229, 86, 63, 0.14);
+  --stall-leaf: #79c46a;
+  --stall-leaf-strong: #5fae51;
+  --stall-leaf-dim: rgba(121, 196, 106, 0.14);
+  --stall-paper: #f6eedb;
+  --stall-paper-2: #ece2c8;
+  --stall-ink: #2b2620;
+  --stall-ink-dim: #7a6f5e;
+
+  background: var(--stall-board);
+  color: var(--stall-chalk);
+}
+
+/* Chalkboard: faint smudge texture, no image assets. */
+.stall-board {
+  background:
+    radial-gradient(1200px 400px at 20% -10%, rgba(255, 255, 255, 0.035), transparent 60%),
+    radial-gradient(800px 300px at 90% 120%, rgba(255, 255, 255, 0.025), transparent 60%),
+    var(--stall-board-2);
+}
+
+/* Plank: the shop sign and crate rims. */
+.stall-wood {
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.07) 0 2px, transparent 2px 23px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 61px),
+    linear-gradient(180deg, var(--stall-wood-light), var(--stall-wood) 45%, var(--stall-wood-dark));
+}
+
+.stall-chalk-text {
+  color: var(--stall-chalk);
+  text-shadow: 0 0 1px rgba(239, 234, 219, 0.35);
+}
+
+/* A crate: slatted wooden frame around the product. */
+.stall-crate {
+  background: var(--stall-board-3);
+  border: 1px solid rgba(192, 133, 82, 0.28);
+  box-shadow: inset 0 -6px 0 rgba(94, 58, 29, 0.35);
+}
+.stall-crate[data-in-cart='true'] {
+  border-color: var(--stall-leaf);
+  box-shadow: inset 0 -6px 0 rgba(95, 174, 81, 0.35), 0 0 0 1px var(--stall-leaf);
+}
+
+/* A hanging price tag. */
+.stall-tag {
+  background: var(--stall-paper);
+  color: var(--stall-ink);
+  transform: rotate(-2.5deg);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.stall-tag::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  margin-top: -2.5px;
+  border-radius: 9999px;
+  background: var(--stall-board-3);
+}
+
+/* Till roll: receipt paper with a perforated top and torn bottom. */
+.stall-paper {
+  background:
+    repeating-linear-gradient(0deg, rgba(43, 38, 32, 0.025) 0 1px, transparent 1px 26px),
+    var(--stall-paper);
+  color: var(--stall-ink);
+}
+.stall-perf-top {
+  -webkit-mask: radial-gradient(circle 5px at 8px 0, transparent 98%, #000) -8px 0 / 16px 100% repeat-x;
+  mask: radial-gradient(circle 5px at 8px 0, transparent 98%, #000) -8px 0 / 16px 100% repeat-x;
+}
+.stall-torn-bottom {
+  -webkit-mask: conic-gradient(from -45deg at bottom, transparent, #000 1deg 89deg, transparent 90deg) 50% / 14px 100%;
+  mask: conic-gradient(from -45deg at bottom, transparent, #000 1deg 89deg, transparent 90deg) 50% / 14px 100%;
+}
+.stall-dashed {
+  border-top: 1px dashed rgba(43, 38, 32, 0.35);
+}
+
+/* Rubber stamp for milestones. */
+.stall-stamp {
+  color: var(--stall-tomato);
+  border: 2px solid var(--stall-tomato);
+  transform: rotate(-6deg);
+  mix-blend-mode: multiply;
+}
+
+/* Motion — every keyframe here is triggered by a confirmed server event. */
+@keyframes stall-ink-in {
+  from { opacity: 0; transform: translateY(-6px); filter: blur(0.6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.stall-ink-in { animation: stall-ink-in 260ms ease-out both; }
+
+@keyframes stall-stamp-in {
+  0% { opacity: 0; transform: rotate(-6deg) scale(1.6); }
+  70% { opacity: 1; transform: rotate(-6deg) scale(0.94); }
+  100% { opacity: 1; transform: rotate(-6deg) scale(1); }
+}
+.stall-stamp-in { animation: stall-stamp-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
+@keyframes stall-bell {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(18deg); }
+  40% { transform: rotate(-14deg); }
+  60% { transform: rotate(9deg); }
+  80% { transform: rotate(-4deg); }
+}
+.stall-bell-ring { animation: stall-bell 700ms ease-in-out; transform-origin: 50% 10%; }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .stall-ink-in, .stall-stamp-in, .stall-bell-ring { animation: none; }
+}
+[data-reduced-motion='true'] .stall-ink-in,
+[data-reduced-motion='true'] .stall-stamp-in,
+[data-reduced-motion='true'] .stall-bell-ring { animation: none; }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * Stall pages — the section views (Products, Customers, Marketing, …)
+ * host the domain's existing macro-backed panels. Inside .stall-page the
+ * panels' neutral / action / state palette resolves to Stall tokens, so
+ * every section reads as the same shop without forking 25 components.
+ * Category hues (cyan, indigo, pink, sky, violet…) keep their meaning.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/* Surfaces */
+.stall-page .bg-lattice-void,
+.stall-page .bg-zinc-950,
+.stall-page .bg-zinc-950\/40 { background-color: var(--stall-board); }
+.stall-page .bg-lattice-deep,
+.stall-page .bg-lattice-deep\/40,
+.stall-page .bg-lattice-deep\/60,
+.stall-page .bg-zinc-900,
+.stall-page .bg-zinc-900\/40 { background-color: var(--stall-board-2); }
+.stall-page .bg-lattice-surface,
+.stall-page .bg-lattice-surface\/40,
+.stall-page .bg-lattice-elevated { background-color: var(--stall-board-3); }
+.stall-page .hover\:bg-lattice-elevated\/60:hover,
+.stall-page .hover\:bg-zinc-800:hover,
+.stall-page .hover\:bg-zinc-900:hover { background-color: var(--stall-board-3); }
+
+/* Borders + dividers */
+.stall-page .border-lattice-border,
+.stall-page .border-white\/10,
+.stall-page .border-white\/5,
+.stall-page .border-zinc-700,
+.stall-page .border-zinc-800,
+.stall-page .border-gray-700,
+.stall-page .border-gray-500\/20,
+.stall-page .border-gray-500\/30 { border-color: var(--stall-line); }
+.stall-page .divide-white\/10 > * + *,
+.stall-page .divide-white\/5 > * + * { border-color: var(--stall-line); }
+
+/* Text */
+.stall-page .text-white,
+.stall-page .text-zinc-50,
+.stall-page .text-zinc-100,
+.stall-page .text-zinc-200,
+.stall-page .text-gray-100,
+.stall-page .text-gray-200 { color: var(--stall-chalk); }
+.stall-page .text-zinc-300,
+.stall-page .text-zinc-400,
+.stall-page .text-gray-300,
+.stall-page .text-gray-400 { color: var(--stall-chalk-dim); }
+.stall-page .text-zinc-500,
+.stall-page .text-gray-500,
+.stall-page .text-gray-600 { color: var(--stall-chalk-faint); }
+.stall-page .hover\:text-white:hover,
+.stall-page .hover\:text-gray-300:hover { color: var(--stall-chalk); }
+
+/* Action colour: emerald → leaf green (money / go) */
+.stall-page .bg-emerald-500,
+.stall-page .bg-emerald-400\/70,
+.stall-page .hover\:bg-emerald-400:hover,
+.stall-page .hover\:bg-emerald-500:hover { background-color: var(--stall-leaf); color: var(--stall-ink); }
+.stall-page .bg-emerald-500\/5,
+.stall-page .bg-emerald-500\/10,
+.stall-page .bg-emerald-500\/15,
+.stall-page .bg-emerald-500\/20,
+.stall-page .bg-emerald-500\/\[0\.06\],
+.stall-page .hover\:bg-emerald-500\/25:hover,
+.stall-page .hover\:bg-emerald-500\/30:hover { background-color: var(--stall-leaf-dim); }
+.stall-page .text-emerald-200,
+.stall-page .text-emerald-300,
+.stall-page .text-emerald-300\/80,
+.stall-page .text-emerald-400,
+.stall-page .text-emerald-500,
+.stall-page .hover\:text-emerald-300:hover { color: var(--stall-leaf); }
+.stall-page .border-emerald-400,
+.stall-page .border-emerald-500\/20,
+.stall-page .border-emerald-500\/30,
+.stall-page .border-emerald-500\/40,
+.stall-page .border-emerald-900\/30,
+.stall-page .focus\:border-emerald-500:focus { border-color: color-mix(in srgb, var(--stall-leaf) 45%, transparent); }
+
+/* Warning: amber → brass */
+.stall-page .text-amber-200,
+.stall-page .text-amber-300,
+.stall-page .text-amber-400,
+.stall-page .hover\:text-amber-300:hover { color: var(--stall-brass); }
+.stall-page .bg-amber-500,
+.stall-page .bg-amber-400,
+.stall-page .hover\:bg-amber-400:hover { background-color: var(--stall-brass); color: var(--stall-ink); }
+.stall-page .bg-amber-500\/5,
+.stall-page .bg-amber-500\/10,
+.stall-page .bg-amber-500\/15,
+.stall-page .bg-amber-500\/20,
+.stall-page .hover\:bg-amber-500\/30:hover { background-color: var(--stall-brass-dim); }
+.stall-page .border-amber-500\/20,
+.stall-page .border-amber-500\/30 { border-color: color-mix(in srgb, var(--stall-brass) 40%, transparent); }
+
+/* Danger: rose / red → tomato */
+.stall-page .text-rose-200,
+.stall-page .text-rose-300,
+.stall-page .text-rose-400,
+.stall-page .text-red-200,
+.stall-page .text-red-300,
+.stall-page .text-red-400,
+.stall-page .hover\:text-rose-300:hover,
+.stall-page .hover\:text-rose-400:hover { color: var(--stall-tomato); }
+.stall-page .bg-rose-500,
+.stall-page .bg-rose-500\/90,
+.stall-page .hover\:bg-rose-400:hover,
+.stall-page .hover\:bg-rose-500:hover { background-color: var(--stall-tomato); }
+.stall-page .bg-rose-500\/5,
+.stall-page .bg-rose-500\/10,
+.stall-page .bg-rose-500\/15,
+.stall-page .bg-rose-950\/30,
+.stall-page .bg-red-500\/5,
+.stall-page .bg-red-500\/10,
+.stall-page .hover\:bg-rose-500\/20:hover { background-color: var(--stall-tomato-dim); }
+.stall-page .border-rose-500\/10,
+.stall-page .border-rose-500\/20,
+.stall-page .border-rose-500\/30,
+.stall-page .border-rose-500\/40,
+.stall-page .border-rose-900\/40,
+.stall-page .border-red-500\/30 { border-color: color-mix(in srgb, var(--stall-tomato) 40%, transparent); }
+
+/* Form controls read as chalkboard fields */
+.stall-page input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.stall-page select,
+.stall-page textarea {
+  background-color: rgba(0, 0, 0, 0.22);
+  border-color: var(--stall-line);
+  color: var(--stall-chalk);
+}
+.stall-page input::placeholder,
+.stall-page textarea::placeholder { color: var(--stall-chalk-faint); }
+.stall-page select option { background-color: var(--stall-board-2); color: var(--stall-chalk); }
+.stall-page input:focus,
+.stall-page select:focus,
+.stall-page textarea:focus { border-color: var(--stall-brass); outline: none; }
+.stall-page input[type='checkbox'],
+.stall-page input[type='radio'] { accent-color: var(--stall-leaf); }
+
+/* Panel headings are chalked, not typeset */
+.stall-page h2,
+.stall-page h3 {
+  font-family: var(--stall-font-hand), cursive;
+  font-size: 1.45em;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--stall-chalk);
+}
+
+/* Each panel's solid primary button (purple / orange / pink / blue /
+ * indigo submits) is the stall's one primary action colour: brass. The
+ * tinted chips (…-500/10, /20) keep their category hues. */
+.stall-page .bg-purple-500,
+.stall-page .bg-orange-500,
+.stall-page .bg-pink-500,
+.stall-page .bg-blue-500,
+.stall-page .bg-indigo-500,
+.stall-page .hover\:bg-purple-400:hover,
+.stall-page .hover\:bg-orange-400:hover,
+.stall-page .hover\:bg-pink-400:hover,
+.stall-page .hover\:bg-blue-400:hover,
+.stall-page .hover\:bg-indigo-400:hover { background-color: var(--stall-brass); color: var(--stall-ink); }

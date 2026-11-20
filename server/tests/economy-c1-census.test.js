@@ -56,6 +56,9 @@ const sourceOf = new Map(productionFiles.map((p) => [rel(p), fs.readFileSync(p, 
 // file -> sorted list of ledger types its executeTransfer calls pass
 const EXECUTE_TRANSFER_CENSUS = {
   "domains/wallet.js": ["TRANSFER"],
+  // Auction House pay board (2026-11-19): the escrow release to the maker. Holds and
+  // returns are fee-free two-row TRANSFERs written by escrowMove, not executeTransfer.
+  "domains/market-board.js": ["MARKETPLACE_PURCHASE"],
   "economy/commission-service.js": ["MARKETPLACE_PURCHASE", "MARKETPLACE_PURCHASE", "TRANSFER", "TRANSFER"],
   "economy/lens-economy-wiring.js": ["BOUNTY_CLAIM", "BOUNTY_ESCROW", "MARKETPLACE_PURCHASE", "TRANSFER"],
   "economy/routes.js": ["TRANSFER"],

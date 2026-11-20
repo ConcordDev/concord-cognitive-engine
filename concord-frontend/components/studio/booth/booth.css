@@ -1,0 +1,310 @@
+/*
+ * The Booth — Studio's identity. A real recording booth and control room:
+ * warm black walls, a brushed-metal console, cream VU faces with amber
+ * backlight, scribble-strip tape for track names, and one tape-red light
+ * that only burns while you are actually recording. Every colour Studio uses
+ * is a token here (var(--bo-*)). Needles and lights move only from the audio
+ * graph (analyser peak/RMS, loudness meter, the pitch worklet) or from a
+ * confirmed engine state (recording, playing) — see LENS_REDESIGN_PLAYBOOK.
+ */
+
+.booth {
+  --bo-room: #0d0a08;
+  --bo-wall: #120e0b;
+  --bo-console: #1a1512;
+  --bo-panel: #211b17;
+  --bo-panel-hi: #2b241f;
+  --bo-metal-1: #3a332d;
+  --bo-metal-2: #27211c;
+  --bo-edge: rgba(255, 226, 190, 0.08);
+  --bo-edge-strong: rgba(255, 226, 190, 0.18);
+  --bo-text: #f1e8da;
+  --bo-soft: #d5c8b6;
+  --bo-muted: #9c8f7f;
+  --bo-faint: #6b6056;
+  --bo-amber: #ffb23e;
+  --bo-amber-soft: rgba(255, 178, 62, 0.14);
+  --bo-amber-glow: rgba(255, 178, 62, 0.42);
+  --bo-cream: #f3e4c0;
+  --bo-cream-ink: #2a1f14;
+  --bo-tape: #ff3b2f;
+  --bo-tape-soft: rgba(255, 59, 47, 0.16);
+  --bo-tape-glow: rgba(255, 59, 47, 0.55);
+  --bo-signal: #6fd36a;
+  --bo-signal-soft: rgba(111, 211, 106, 0.14);
+  --bo-hot: #ffd23e;
+  --bo-clip: #ff4d3d;
+  --bo-cue: #66c6ff;
+  --bo-cue-soft: rgba(102, 198, 255, 0.16);
+  --bo-scribble: #ece3cf;
+  --bo-scribble-ink: #1d1712;
+
+  background:
+    radial-gradient(1200px 380px at 50% -140px, rgba(255, 178, 62, 0.07), transparent 70%),
+    linear-gradient(var(--bo-room), var(--bo-wall));
+  color: var(--bo-text);
+}
+
+/* ── Surfaces ─────────────────────────────────────────────────────────── */
+
+/* Brushed console metal: fine vertical grain over a top-lit gradient. */
+.bo-metal {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, var(--bo-metal-1), var(--bo-metal-2));
+  border-color: var(--bo-edge-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.08), 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+/* Recessed well: meters, counters and the tuner sit in these. */
+.bo-well {
+  background: linear-gradient(180deg, #0a0806, #15110e);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 226, 190, 0.06);
+}
+/* Engraved console label. */
+.bo-engrave {
+  font-family: var(--bo-font-label), system-ui, sans-serif;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bo-muted);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+/* LED counter digits. */
+.bo-led {
+  font-family: var(--bo-font-led), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--bo-amber);
+  text-shadow: 0 0 10px var(--bo-amber-glow);
+}
+/* Scribble strip: a strip of console tape with a marker name on it. */
+.bo-scribble {
+  font-family: var(--bo-font-hand), cursive;
+  background: var(--bo-scribble);
+  color: var(--bo-scribble-ink);
+  border-radius: 2px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45), inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+  transform: rotate(-0.6deg);
+}
+
+/* Chunky console key (room switch, transport). */
+.bo-key {
+  font-family: var(--bo-font-label), system-ui, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bo-soft);
+  background: linear-gradient(180deg, #3d352e, #2a241f);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.12), 0 2px 0 rgba(0, 0, 0, 0.7);
+  transition: transform 80ms ease, box-shadow 80ms ease, color 120ms ease, background 120ms ease;
+}
+.bo-key:hover { color: var(--bo-text); }
+.bo-key:active { transform: translateY(1px); box-shadow: inset 0 1px 0 rgba(255, 240, 220, 0.08), 0 1px 0 rgba(0, 0, 0, 0.7); }
+.bo-key[aria-pressed='true'],
+.bo-key[aria-selected='true'] {
+  color: var(--bo-cream-ink);
+  background: linear-gradient(180deg, #ffd27a, var(--bo-amber));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 16px var(--bo-amber-glow), 0 2px 0 rgba(0, 0, 0, 0.7);
+}
+.bo-key:focus-visible { outline: 2px solid var(--bo-amber); outline-offset: 2px; }
+
+/* ── The record light ─────────────────────────────────────────────────── */
+
+.bo-rec-light {
+  background: radial-gradient(circle at 40% 35%, #5a1e1a, #2a0d0b);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+/* Lit only while the engine is actually recording (data-on is set from that state). */
+.bo-rec-light[data-on='true'] {
+  background: radial-gradient(circle at 40% 35%, #ff9b8f, var(--bo-tape));
+  box-shadow: 0 0 18px var(--bo-tape-glow), 0 0 42px var(--bo-tape-soft);
+}
+.bo-on-air[data-on='true'] {
+  color: var(--bo-tape);
+  text-shadow: 0 0 10px var(--bo-tape-glow);
+}
+
+/* ── VU meter ─────────────────────────────────────────────────────────── */
+
+.bo-vu-face {
+  background:
+    radial-gradient(120% 90% at 50% 120%, rgba(255, 178, 62, 0.35), transparent 60%),
+    linear-gradient(180deg, #f7ebcc, var(--bo-cream));
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 6px 14px rgba(0, 0, 0, 0.18);
+  color: var(--bo-cream-ink);
+}
+.bo-vu-needle { stroke: #1c140d; }
+.bo-vu-red { stroke: #c4291f; }
+.bo-vu-ink { stroke: #2a1f14; fill: #2a1f14; }
+
+/* ── Meter bars (channel strips) ──────────────────────────────────────── */
+
+.bo-meter-fill { background: var(--bo-signal); }
+.bo-meter-fill[data-zone='hot'] { background: var(--bo-hot); }
+.bo-meter-fill[data-zone='clip'] { background: var(--bo-clip); }
+.bo-peak[data-zone='clip'] { color: var(--bo-clip); }
+
+/* ── Tuner ────────────────────────────────────────────────────────────── */
+
+.bo-tuner-needle { stroke: var(--bo-amber); filter: drop-shadow(0 0 4px var(--bo-amber-glow)); }
+.bo-tuner[data-locked='true'] .bo-tuner-needle { stroke: var(--bo-signal); filter: drop-shadow(0 0 5px rgba(111, 211, 106, 0.6)); }
+.bo-tuner-tick { stroke: rgba(241, 232, 218, 0.28); }
+.bo-tuner-tick-major { stroke: rgba(241, 232, 218, 0.6); }
+
+/* ── Motion ───────────────────────────────────────────────────────────── */
+
+@keyframes bo-rise {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.bo-rise { animation: bo-rise 220ms ease-out both; }
+@keyframes bo-land {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 0 var(--bo-amber-glow); }
+  60% { transform: scale(1.01); box-shadow: 0 0 0 6px transparent; }
+  100% { transform: scale(1); }
+}
+/* Played once when a confirmed server/DSP result lands (tune report, saved chain, learned control). */
+.bo-land { animation: bo-land 420ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bo-rise, .bo-land { animation: none; }
+  .bo-key { transition: none; }
+}
+[data-reduced-motion='true'] .bo-rise,
+[data-reduced-motion='true'] .bo-land { animation: none; }
+
+/* ─────────────────────────────────────────────────────────────────────
+ * The DAW panes (arrange, session, piano roll, devices, dialogs, opener)
+ * and the macro panels the Booth mounts were written against a cold
+ * zinc/violet palette. Inside .booth those utilities resolve to Booth
+ * tokens so every view reads as the same room.
+ * ───────────────────────────────────────────────────────────────────── */
+
+.booth .text-white,
+.booth .text-zinc-50,
+.booth .text-zinc-100,
+.booth .text-gray-100,
+.booth .hover\:text-white:hover { color: var(--bo-text); }
+.booth .text-zinc-200,
+.booth .text-zinc-300,
+.booth .text-gray-200,
+.booth .text-gray-300,
+.booth .hover\:text-zinc-300:hover { color: var(--bo-soft); }
+.booth .text-zinc-400,
+.booth .text-zinc-500,
+.booth .text-gray-400,
+.booth .text-gray-500,
+.booth .hover\:text-zinc-400:hover { color: var(--bo-muted); }
+.booth .text-zinc-600,
+.booth .text-zinc-700,
+.booth .text-gray-600,
+.booth .placeholder\:text-zinc-500::placeholder,
+.booth .placeholder\:text-zinc-600::placeholder { color: var(--bo-faint); }
+
+.booth .bg-white\/\[0\.02\],
+.booth .bg-white\/\[0\.03\],
+.booth .hover\:bg-white\/\[0\.04\]:hover,
+.booth .bg-white\/5,
+.booth .focus\:bg-white\/5:focus,
+.booth .hover\:bg-white\/5:hover { background-color: rgba(255, 226, 190, 0.045); }
+.booth .bg-white\/\[0\.06\],
+.booth .bg-white\/\[0\.07\],
+.booth .bg-white\/10,
+.booth .hover\:bg-white\/10:hover { background-color: rgba(255, 226, 190, 0.085); }
+.booth .bg-white\/15,
+.booth .bg-white\/20,
+.booth .hover\:bg-white\/15:hover,
+.booth .hover\:bg-white\/20:hover { background-color: rgba(255, 226, 190, 0.13); }
+.booth .bg-black\/20,
+.booth .bg-black\/30,
+.booth .bg-black\/40,
+.booth .bg-black\/50,
+.booth .bg-black\/60,
+.booth .hover\:bg-black\/50:hover { background-color: rgba(8, 5, 3, 0.55); }
+
+.booth .border-white\/5,
+.booth .border-white\/10,
+.booth .border-white\/15,
+.booth .divide-white\/5 > * + *,
+.booth .border-lattice-border,
+.booth .border-violet-900\/30 { border-color: var(--bo-edge); }
+.booth .border-white\/30,
+.booth .hover\:border-white\/20:hover,
+.booth .hover\:border-white\/30:hover { border-color: var(--bo-edge-strong); }
+.booth .bg-lattice-deep,
+.booth .bg-lattice-surface { background-color: var(--bo-console); }
+
+/* The old violet accent becomes the console's amber. */
+.booth .accent-violet-400,
+.booth .accent-zinc-200,
+.booth .accent-zinc-300 { accent-color: var(--bo-amber); }
+.booth .accent-red-400 { accent-color: var(--bo-tape); }
+.booth .text-violet-100,
+.booth .text-violet-200,
+.booth .text-violet-300,
+.booth .hover\:text-violet-200:hover,
+.booth .hover\:text-violet-300:hover { color: var(--bo-amber); }
+.booth .bg-violet-500\/15,
+.booth .bg-violet-500\/30,
+.booth .bg-violet-600\/30,
+.booth .bg-violet-900\/10,
+.booth .hover\:bg-violet-900\/10:hover,
+.booth .hover\:bg-violet-500\/25:hover { background-color: var(--bo-amber-soft); }
+.booth .bg-violet-600,
+.booth .bg-violet-400,
+.booth .hover\:bg-violet-500:hover {
+  background-color: var(--bo-amber);
+  color: var(--bo-cream-ink);
+}
+.booth .border-violet-400,
+.booth .border-violet-400\/20,
+.booth .border-violet-500\/20,
+.booth .hover\:border-violet-400\/40:hover { border-color: color-mix(in srgb, var(--bo-amber) 40%, transparent); }
+
+.booth .text-emerald-200,
+.booth .text-emerald-300,
+.booth .text-emerald-400 { color: var(--bo-signal); }
+.booth .bg-emerald-500\/10,
+.booth .bg-emerald-500\/15,
+.booth .bg-emerald-500\/20,
+.booth .hover\:bg-emerald-500\/25:hover { background-color: var(--bo-signal-soft); }
+.booth .text-red-200,
+.booth .text-red-300,
+.booth .text-red-400,
+.booth .text-rose-300,
+.booth .hover\:text-red-300:hover,
+.booth .hover\:text-red-400:hover { color: var(--bo-tape); }
+.booth .bg-red-500\/10,
+.booth .bg-red-500\/15,
+.booth .hover\:bg-red-500\/15:hover,
+.booth .hover\:bg-red-500\/20:hover,
+.booth .hover\:bg-red-500\/25:hover { background-color: var(--bo-tape-soft); }
+.booth .text-sky-200,
+.booth .text-sky-300,
+.booth .text-cyan-300 { color: var(--bo-cue); }
+.booth .bg-sky-500\/20,
+.booth .bg-sky-500\/25,
+.booth .bg-sky-400\/20 { background-color: var(--bo-cue-soft); }
+
+.booth input:not([type='checkbox']):not([type='radio']):not([type='range']),
+.booth select,
+.booth textarea { caret-color: var(--bo-amber); }
+.booth select option { background-color: var(--bo-console); color: var(--bo-text); }
+.booth input[type='range'],
+.booth input[type='checkbox'] { accent-color: var(--bo-amber); }
+
+/* Input clip LED (record panel): lit only when the analyser saw a clipped sample. */
+.bo-clip-led { background: rgba(255, 226, 190, 0.08); }
+.bo-clip-led[data-on='true'] { background: var(--bo-clip); box-shadow: 0 0 10px rgba(255, 77, 61, 0.6); }
+.booth .bg-zinc-900\/40,
+.booth .hover\:bg-zinc-800:hover { background-color: rgba(8, 5, 3, 0.45); }
+.booth .border-zinc-700,
+.booth .border-emerald-500\/20 { border-color: var(--bo-edge-strong); }
+.booth .bg-emerald-500\/90,
+.booth .hover\:bg-emerald-500:hover { background-color: var(--bo-signal); color: var(--bo-scribble-ink); }
+.booth .bg-zinc-950 { background-color: var(--bo-console); }
+.booth .bg-zinc-900 { background-color: var(--bo-panel); }
+.booth .border-zinc-800,
+.booth .hover\:border-zinc-700:hover { border-color: var(--bo-edge-strong); }
+.booth .text-rose-400 { color: var(--bo-tape); }
+.booth .bg-rose-950\/40 { background-color: var(--bo-tape-soft); }
+.booth .border-rose-900 { border-color: color-mix(in srgb, var(--bo-tape) 40%, transparent); }

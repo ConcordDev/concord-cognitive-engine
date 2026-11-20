@@ -50,10 +50,10 @@ const PRO_TABS: { id: ProTab; label: string; icon: typeof Aperture }[] = [
 ];
 
 const tile = 'flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] rounded-lg transition-colors';
-const onCls = 'bg-violet-600 text-white';
-const offCls = 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700';
-const mini = 'flex items-center gap-1 px-2 py-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded';
-const primary = 'flex items-center gap-1 px-2.5 py-1 text-[11px] bg-violet-600 hover:bg-violet-500 text-white rounded font-medium disabled:opacity-50';
+const onCls = 'bg-[var(--at-accent)] text-[color:var(--at-accent-ink)]';
+const offCls = 'bg-[var(--at-raised)] text-[color:var(--at-ink-2)] hover:bg-[var(--at-press)]';
+const mini = 'flex items-center gap-1 px-2 py-1 text-[10px] bg-[var(--at-raised)] hover:bg-[var(--at-press)] text-[color:var(--at-ink)] rounded';
+const primary = 'flex items-center gap-1 px-2.5 py-1 text-[11px] bg-[var(--at-accent)] hover:bg-[var(--at-accent)] text-[color:var(--at-accent-ink)] rounded font-medium disabled:opacity-50';
 
 export function ProStudioPanel({
   artworkId,
@@ -297,10 +297,10 @@ export function ProStudioPanel({
   };
 
   return (
-    <div className="bg-zinc-900/80 border border-violet-900/40 rounded-xl p-3 space-y-3">
+    <div className="bg-[var(--at-gesso)] border border-[color:var(--at-accent)] rounded-xl p-3 space-y-3">
       <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-violet-400" />
-        <h3 className="text-xs font-bold text-zinc-100">Pro Studio</h3>
+        <Sparkles className="w-4 h-4 text-[color:var(--at-accent-text)]" />
+        <h3 className="text-xs font-bold text-[color:var(--at-ink)]">Pro Studio</h3>
       </div>
 
       <nav className="flex flex-wrap gap-1">
@@ -316,7 +316,7 @@ export function ProStudioPanel({
       </nav>
 
       {note && (
-        <div className="text-[11px] text-violet-200 bg-violet-950/50 border border-violet-900/50 rounded px-2 py-1">
+        <div className="text-[11px] text-[color:var(--at-accent-text)] bg-[var(--at-accent-soft)] border border-[color:var(--at-accent)] rounded px-2 py-1">
           {note}
         </div>
       )}
@@ -324,22 +324,22 @@ export function ProStudioPanel({
       {/* ── Raster filters ── */}
       {tab === 'filters' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Non-destructive filter stack on the active layer. Replays on rasterisation.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <select value={filterKind} onChange={(e) => setFilterKind(e.target.value)}
-              className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100">
+              className="bg-[var(--at-sunk)] border border-[color:var(--at-rule-2)] rounded px-2 py-1 text-[11px] text-[color:var(--at-ink)]">
               {(kinds?.filterKinds || ['gaussian-blur', 'sharpen', 'liquify']).map((k) => (
                 <option key={k} value={k}>{k.replace(/-/g, ' ')}</option>
               ))}
             </select>
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-muted)]">
               {filterKind === 'gaussian-blur' ? <Wind className="w-3 h-3" /> : <Aperture className="w-3 h-3" />}
               Amount {filterAmount}
               <input type="range" min={0.5} max={filterKind === 'sharpen' ? 5 : 200} step={0.5}
                 value={filterAmount} onChange={(e) => setFilterAmount(Number(e.target.value))}
-                className="w-28 accent-violet-500" />
+                className="w-28 accent-[color:var(--at-accent)]" />
             </label>
             <button type="button" onClick={applyFilter} disabled={busy != null} className={primary}>
               {busy === 'layer-apply-filter' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Aperture className="w-3 h-3" />}
@@ -349,9 +349,9 @@ export function ProStudioPanel({
           {filters.length > 0 ? (
             <ul className="space-y-1">
               {filters.map((f) => (
-                <li key={f.id} className="flex items-center justify-between text-[11px] text-zinc-300 bg-zinc-950/70 rounded px-2 py-1">
+                <li key={f.id} className="flex items-center justify-between text-[11px] text-[color:var(--at-ink-2)] bg-[var(--at-sunk)] rounded px-2 py-1">
                   <span className="capitalize">{f.kind.replace(/-/g, ' ')}</span>
-                  <span className="text-zinc-400">amt {f.amount}</span>
+                  <span className="text-[color:var(--at-muted)]">amt {f.amount}</span>
                 </li>
               ))}
               <li>
@@ -361,7 +361,7 @@ export function ProStudioPanel({
               </li>
             </ul>
           ) : (
-            <p className="text-[10px] text-zinc-400 italic">No filters on this layer yet.</p>
+            <p className="text-[10px] text-[color:var(--at-muted)] italic">No filters on this layer yet.</p>
           )}
         </div>
       )}
@@ -369,20 +369,20 @@ export function ProStudioPanel({
       {/* ── Pressure dynamics ── */}
       {tab === 'dynamics' && dynamics && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Maps stylus / pointer pressure onto stroke width &amp; opacity for variable-width ribbons.
           </p>
           <div className="flex flex-wrap gap-3">
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-300">
+            <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-ink-2)]">
               <input type="checkbox" checked={dynamics.pressureSize}
                 onChange={(e) => saveDynamics({ pressureSize: e.target.checked })}
-                className="accent-violet-500" />
+                className="accent-[color:var(--at-accent)]" />
               Pressure &rarr; size
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-300">
+            <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-ink-2)]">
               <input type="checkbox" checked={dynamics.pressureOpacity}
                 onChange={(e) => saveDynamics({ pressureOpacity: e.target.checked })}
-                className="accent-violet-500" />
+                className="accent-[color:var(--at-accent)]" />
               Pressure &rarr; opacity
             </label>
           </div>
@@ -392,12 +392,12 @@ export function ProStudioPanel({
             ['smoothing', 'Smoothing', dynamics.smoothing],
             ['velocityTaper', 'Velocity taper', dynamics.velocityTaper],
           ] as const).map(([key, label, val]) => (
-            <label key={key} className="flex items-center gap-2 text-[11px] text-zinc-400">
+            <label key={key} className="flex items-center gap-2 text-[11px] text-[color:var(--at-muted)]">
               <span className="w-24">{label}</span>
               <input type="range" min={0} max={1} step={0.05} value={val}
                 onChange={(e) => saveDynamics({ [key]: Number(e.target.value) } as Partial<Dynamics>)}
-                className="flex-1 accent-violet-500" />
-              <span className="w-8 text-right text-zinc-300">{val.toFixed(2)}</span>
+                className="flex-1 accent-[color:var(--at-accent)]" />
+              <span className="w-8 text-right text-[color:var(--at-ink-2)]">{val.toFixed(2)}</span>
             </label>
           ))}
         </div>
@@ -406,15 +406,15 @@ export function ProStudioPanel({
       {/* ── Free-angle rotation ── */}
       {tab === 'rotate' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Rotate the active layer {selectedIds.length ? `(${selectedIds.length} selected)` : ''} by any angle
             about the canvas centre.
           </p>
-          <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+          <label className="flex items-center gap-2 text-[11px] text-[color:var(--at-muted)]">
             <span className="w-14">Angle {rotateDeg}&deg;</span>
             <input type="range" min={-180} max={180} value={rotateDeg}
               onChange={(e) => setRotateDeg(Number(e.target.value))}
-              className="flex-1 accent-violet-500" />
+              className="flex-1 accent-[color:var(--at-accent)]" />
           </label>
           <div className="flex flex-wrap gap-1.5">
             <button type="button" onClick={() => rotate(rotateDeg)} disabled={busy != null} className={primary}>
@@ -433,29 +433,29 @@ export function ProStudioPanel({
       {/* ── Selection refinement ── */}
       {tab === 'select' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Magic-wand by perceptual ΔE colour distance, plus selection feathering.
             Freehand lasso is drawn directly on the canvas.
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-muted)]">
               <Crosshair className="w-3 h-3" /> Target
               <input type="color" value={wandColor} onChange={(e) => setWandColor(e.target.value)}
                 className="w-7 h-7 bg-transparent cursor-pointer" />
             </label>
-            <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+            <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-muted)]">
               Tolerance {tolerance}
               <input type="range" min={0} max={100} value={tolerance}
-                onChange={(e) => setTolerance(Number(e.target.value))} className="w-24 accent-violet-500" />
+                onChange={(e) => setTolerance(Number(e.target.value))} className="w-24 accent-[color:var(--at-accent)]" />
             </label>
             <button type="button" onClick={magicWand} disabled={busy != null} className={primary}>
               <Wand2 className="w-3 h-3" /> Magic wand
             </button>
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+          <label className="flex items-center gap-2 text-[11px] text-[color:var(--at-muted)]">
             <span className="w-20">Feather {feather}px</span>
             <input type="range" min={0} max={100} value={feather}
-              onChange={(e) => setFeather(Number(e.target.value))} className="flex-1 accent-violet-500" />
+              onChange={(e) => setFeather(Number(e.target.value))} className="flex-1 accent-[color:var(--at-accent)]" />
             <button type="button" onClick={applyFeather} disabled={busy != null || !selection} className={mini}>
               Apply
             </button>
@@ -469,7 +469,7 @@ export function ProStudioPanel({
             </button>
           </div>
           {selection && (
-            <div className="text-[11px] text-violet-200 bg-violet-950/40 border border-violet-900/50 rounded px-2 py-1">
+            <div className="text-[11px] text-[color:var(--at-accent-text)] bg-[var(--at-accent-soft)] border border-[color:var(--at-accent)] rounded px-2 py-1">
               {selection.kind} selection &middot; {selection.matched ?? selection.ids?.length ?? 0} element(s)
               {selection.feather ? ` · feather ${selection.feather}px` : ''}
             </div>
@@ -480,7 +480,7 @@ export function ProStudioPanel({
       {/* ── Symmetry & perspective guides ── */}
       {tab === 'guides' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Drawing guides — symmetry mirrors and 1/2-point perspective vanishing lines.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -492,14 +492,14 @@ export function ProStudioPanel({
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+          <label className="flex items-center gap-2 text-[11px] text-[color:var(--at-muted)]">
             <span className="w-20">Radial sectors</span>
             <input type="range" min={2} max={24} value={sectors}
-              onChange={(e) => setSectors(Number(e.target.value))} className="flex-1 accent-violet-500" />
-            <span className="w-6 text-right text-zinc-300">{sectors}</span>
+              onChange={(e) => setSectors(Number(e.target.value))} className="flex-1 accent-[color:var(--at-accent)]" />
+            <span className="w-6 text-right text-[color:var(--at-ink-2)]">{sectors}</span>
           </label>
           {guides && guides.kind !== 'off' && (
-            <div className="text-[11px] text-violet-200 bg-violet-950/40 border border-violet-900/50 rounded px-2 py-1">
+            <div className="text-[11px] text-[color:var(--at-accent-text)] bg-[var(--at-accent-soft)] border border-[color:var(--at-accent)] rounded px-2 py-1">
               Active: {guides.kind.replace(/-/g, ' ')}
               {guides.vp1 ? ` · VP1 (${guides.vp1.x}, ${guides.vp1.y})` : ''}
               {guides.vp2 ? ` · VP2 (${guides.vp2.x}, ${guides.vp2.y})` : ''}
@@ -512,7 +512,7 @@ export function ProStudioPanel({
       {/* ── Timelapse recording ── */}
       {tab === 'timelapse' && (
         <div className="space-y-2.5">
-          <p className="text-[10px] text-zinc-400">
+          <p className="text-[10px] text-[color:var(--at-muted)]">
             Record the drawing session as scrubbable frames; play it back below.
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -529,32 +529,32 @@ export function ProStudioPanel({
               <Trash2 className="w-3 h-3" /> Clear
             </button>
             {tlRecording && (
-              <span className="flex items-center gap-1 text-[11px] text-rose-400">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> recording
+              <span className="flex items-center gap-1 text-[11px] text-[color:var(--at-bad)]">
+                <span className="w-2 h-2 rounded-full bg-[var(--at-bad)] animate-pulse" /> recording
               </span>
             )}
           </div>
           {tlFrames.length > 0 ? (
             <div className="space-y-1.5">
-              <div className="rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
+              <div className="rounded-lg overflow-hidden border border-[color:var(--at-rule)] bg-[var(--at-sunk)]">
                 {/* eslint-disable-next-line @next/next/no-img-element -- timelapse frame is a data URL */}
                 <img src={tlFrames[Math.min(tlIndex, tlFrames.length - 1)].snapshot}
                   alt={`Timelapse frame ${tlIndex + 1}`} className="w-full max-h-44 object-contain" />
               </div>
-              <label className="flex items-center gap-2 text-[11px] text-zinc-400">
+              <label className="flex items-center gap-2 text-[11px] text-[color:var(--at-muted)]">
                 <Play className="w-3 h-3" />
                 <input type="range" min={0} max={tlFrames.length - 1} value={Math.min(tlIndex, tlFrames.length - 1)}
-                  onChange={(e) => setTlIndex(Number(e.target.value))} className="flex-1 accent-violet-500" />
+                  onChange={(e) => setTlIndex(Number(e.target.value))} className="flex-1 accent-[color:var(--at-accent)]" />
                 <span className="w-16 text-right">
                   {Math.min(tlIndex, tlFrames.length - 1) + 1}/{tlFrames.length}
                 </span>
               </label>
-              <p className="text-[10px] text-zinc-400">
+              <p className="text-[10px] text-[color:var(--at-muted)]">
                 {tlFrames[Math.min(tlIndex, tlFrames.length - 1)].strokeCount} strokes at this frame
               </p>
             </div>
           ) : (
-            <p className="text-[10px] text-zinc-400 italic">No timelapse frames captured yet.</p>
+            <p className="text-[10px] text-[color:var(--at-muted)] italic">No timelapse frames captured yet.</p>
           )}
         </div>
       )}
@@ -564,24 +564,24 @@ export function ProStudioPanel({
         <div className="space-y-3">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Waves className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[11px] font-semibold text-zinc-200">Gradient</span>
+              <Waves className="w-3.5 h-3.5 text-[color:var(--at-accent-text)]" />
+              <span className="text-[11px] font-semibold text-[color:var(--at-ink)]">Gradient</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select value={gradientKind} onChange={(e) => setGradientKind(e.target.value)}
-                className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100">
+                className="bg-[var(--at-sunk)] border border-[color:var(--at-rule-2)] rounded px-2 py-1 text-[11px] text-[color:var(--at-ink)]">
                 {(kinds?.gradientKinds || ['linear', 'radial']).map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
               </select>
               {stops.map((s, i) => (
-                <label key={i} className="flex items-center gap-1 text-[10px] text-zinc-400">
+                <label key={i} className="flex items-center gap-1 text-[10px] text-[color:var(--at-muted)]">
                   <input type="color" value={s.color}
                     onChange={(e) => setStops((prev) => prev.map((x, j) => j === i ? { ...x, color: e.target.value } : x))}
                     className="w-6 h-6 bg-transparent cursor-pointer" />
                   <input type="range" min={0} max={1} step={0.05} value={s.offset}
                     onChange={(e) => setStops((prev) => prev.map((x, j) => j === i ? { ...x, offset: Number(e.target.value) } : x))}
-                    className="w-14 accent-violet-500" />
+                    className="w-14 accent-[color:var(--at-accent)]" />
                 </label>
               ))}
               <button type="button" onClick={() => setStops((p) => [...p, { color: '#888888', offset: 0.5 }])}
@@ -590,7 +590,7 @@ export function ProStudioPanel({
                 <button type="button" onClick={() => setStops((p) => p.slice(0, -1))} className={mini}>− stop</button>
               )}
             </div>
-            <div className="h-5 rounded border border-zinc-700"
+            <div className="h-5 rounded border border-[color:var(--at-rule-2)]"
               style={{
                 background: `linear-gradient(to right, ${[...stops]
                   .sort((a, b) => a.offset - b.offset)
@@ -602,32 +602,32 @@ export function ProStudioPanel({
             </button>
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-zinc-800">
+          <div className="space-y-2 pt-2 border-t border-[color:var(--at-rule)]">
             <div className="flex items-center gap-2">
-              <Grid3x3 className="w-3.5 h-3.5 text-violet-400" />
-              <span className="text-[11px] font-semibold text-zinc-200">Pattern fill</span>
+              <Grid3x3 className="w-3.5 h-3.5 text-[color:var(--at-accent-text)]" />
+              <span className="text-[11px] font-semibold text-[color:var(--at-ink)]">Pattern fill</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select value={patternKind} onChange={(e) => setPatternKind(e.target.value)}
-                className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100">
+                className="bg-[var(--at-sunk)] border border-[color:var(--at-rule-2)] rounded px-2 py-1 text-[11px] text-[color:var(--at-ink)]">
                 {(kinds?.patternKinds || ['dots', 'grid', 'diagonal', 'checker', 'crosshatch']).map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
               </select>
-              <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+              <label className="flex items-center gap-1 text-[10px] text-[color:var(--at-muted)]">
                 Fg
                 <input type="color" value={patternFg} onChange={(e) => setPatternFg(e.target.value)}
                   className="w-6 h-6 bg-transparent cursor-pointer" />
               </label>
-              <label className="flex items-center gap-1 text-[10px] text-zinc-400">
+              <label className="flex items-center gap-1 text-[10px] text-[color:var(--at-muted)]">
                 Bg
                 <input type="color" value={patternBg} onChange={(e) => setPatternBg(e.target.value)}
                   className="w-6 h-6 bg-transparent cursor-pointer" />
               </label>
-              <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+              <label className="flex items-center gap-1.5 text-[11px] text-[color:var(--at-muted)]">
                 Scale {patternScale}
                 <input type="range" min={2} max={120} value={patternScale}
-                  onChange={(e) => setPatternScale(Number(e.target.value))} className="w-20 accent-violet-500" />
+                  onChange={(e) => setPatternScale(Number(e.target.value))} className="w-20 accent-[color:var(--at-accent)]" />
               </label>
             </div>
             <button type="button" onClick={commitPattern} disabled={busy != null} className={primary}>

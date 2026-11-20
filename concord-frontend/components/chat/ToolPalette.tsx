@@ -123,52 +123,52 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm pt-[10vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--nb-scrim,rgba(0,0,0,0.6))] backdrop-blur-sm pt-[10vh]"
       role="dialog"
       aria-modal="true"
       aria-label="Tool palette"
       onClick={onClose} tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl rounded-xl border border-lattice-border bg-lattice-bg shadow-2xl overflow-hidden" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-        <header className="flex items-center gap-2 border-b border-lattice-border px-4 py-3">
-          <Sparkles className="w-4 h-4 text-neon-cyan" />
-          <span className="text-sm font-semibold text-white">Tool palette</span>
-          <span className="text-[11px] text-gray-400">
+        className="w-full max-w-2xl rounded-xl border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] shadow-2xl overflow-hidden" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
+        <header className="flex items-center gap-2 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] px-4 py-3">
+          <Sparkles className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)]" />
+          <span className="text-sm font-semibold text-[color:var(--nb-ink,#ffffff)]">Tool palette</span>
+          <span className="text-[11px] text-[color:var(--nb-muted,#9ca3af)]">
             every tool Concord can run · {catalog.length} actions across {Object.keys(LENS_MANIFEST_INDEX).length} lenses
           </span>
           <button
             onClick={onClose}
-            className="ml-auto text-gray-400 hover:text-white"
+            className="ml-auto text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)]"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </header>
 
-        <div className="border-b border-lattice-border px-3 py-2">
+        <div className="border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] px-3 py-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[color:var(--nb-muted,#9ca3af)]" />
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by action, domain, or lens…"
-              className="w-full pl-8 pr-3 py-2 bg-lattice-surface/40 border border-lattice-border rounded-md text-sm text-white focus:outline-none focus:border-neon-cyan/40"
+              className="w-full pl-8 pr-3 py-2 bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.4))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-md text-sm text-[color:var(--nb-ink,#ffffff)] focus:outline-none focus:border-[color:var(--nb-blue,rgba(0,255,247,0.4))]"
             />
           </div>
         </div>
 
         <div className="max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-gray-400">
+            <div className="px-4 py-8 text-center text-sm text-[color:var(--nb-muted,#9ca3af)]">
               No tool matches.
             </div>
           ) : (
             grouped.map(([lensLabel, entries]) => (
-              <div key={lensLabel} className="border-b border-lattice-border/50 last:border-0">
-                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-gray-400 bg-lattice-surface/20">
-                  {lensLabel} · <span className="font-mono text-gray-600">{entries[0]?.domain}</span>
+              <div key={lensLabel} className="border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)/0.5))] last:border-0">
+                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.2))]">
+                  {lensLabel} · <span className="font-mono text-[color:var(--nb-faint,#4b5563)]">{entries[0]?.domain}</span>
                 </div>
                 <ul>
                   {entries.map((entry) => {
@@ -182,22 +182,22 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
                           disabled={isRunning}
                           className={cn(
                             'w-full text-left px-4 py-2 flex items-center gap-3',
-                            'hover:bg-lattice-surface/40 disabled:opacity-50',
-                            'focus:outline-none focus:bg-lattice-surface/40',
+                            'hover:bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.4))] disabled:opacity-50',
+                            'focus:outline-none focus:bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)/0.4))]',
                           )}
                         >
                           <span className="flex-1">
-                            <span className="text-sm font-medium text-white">
+                            <span className="text-sm font-medium text-[color:var(--nb-ink,#ffffff)]">
                               {humanizeAction(entry.action)}
                             </span>
-                            <span className="ml-2 text-xs text-gray-400 font-mono">
+                            <span className="ml-2 text-xs text-[color:var(--nb-muted,#9ca3af)] font-mono">
                               {entry.domain}.{entry.action}
                             </span>
                           </span>
                           {isRunning ? (
-                            <Loader2 className="w-3.5 h-3.5 text-neon-cyan animate-spin" />
+                            <Loader2 className="w-3.5 h-3.5 text-[color:var(--nb-blue,#00fff7)] animate-spin" />
                           ) : (
-                            <Play className="w-3.5 h-3.5 text-gray-400" />
+                            <Play className="w-3.5 h-3.5 text-[color:var(--nb-muted,#9ca3af)]" />
                           )}
                         </button>
                       </li>
@@ -209,7 +209,7 @@ export function ToolPalette({ open, onClose, onRunStart, onRunResult }: ToolPale
           )}
         </div>
 
-        <footer className="border-t border-lattice-border px-4 py-2 flex items-center justify-between text-[11px] text-gray-400">
+        <footer className="border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] px-4 py-2 flex items-center justify-between text-[11px] text-[color:var(--nb-muted,#9ca3af)]">
           <span>↵ run · esc close</span>
           <span>{filtered.length} of {catalog.length} shown</span>
         </footer>

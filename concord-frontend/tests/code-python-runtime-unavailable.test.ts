@@ -56,13 +56,20 @@ class FakeWorker {
   static instances: FakeWorker[] = [];
   terminated = false;
   url = '';
-  private onmessage: ((ev: { data: unknown }) => void) | null = null;
-  constructor(url?: URL | string) { this.url = String(url || ''); FakeWorker.instances.push(this); }
-  addEventListener(type: string, fn: (ev: { data: unknown }) => void) { if (type === 'message') this.onmessage = fn; }
-  removeEventListener() { /* single listener per run */ }
+  onmessage: ((ev: { data: unknown }) => void) | null = null;
+  private listeners = new Set<(ev: { data: unknown }) => void>();
+  constructor(url?: URL | string) {
+    this.url = String(url || '');
+    FakeWorker.instances.push(this);
+    // The JS worker announces its handler (local-exec.worker.ts posts worker-ready).
+    if (!this.isPython) queueMicrotask(() => this.dispatch({ type: 'worker-ready' }));
+  }
+  private dispatch(data: unknown) { this.onmessage?.({ data }); for (const fn of [...this.listeners]) fn({ data }); }
+  addEventListener(type: string, fn: (ev: { data: unknown }) => void) { if (type === 'message') { if (this.isPython) this.onmessage = fn; else this.listeners.add(fn); } }
+  removeEventListener(_type: string, fn: (ev: { data: unknown }) => void) { this.listeners.delete(fn); }
   get isPython() { return this.url.includes('python-exec'); }
   postMessage(msg: { id: number }) {
-    const emit = (data: unknown) => queueMicrotask(() => this.onmessage?.({ data }));
+    const emit = (data: unknown) => queueMicrotask(() => this.dispatch(data));
     if (this.isPython) {
       emit({ type: 'loading', id: msg.id });
       queueMicrotask(() => emit({ type: 'unavailable', id: msg.id, text: 'its files are served with Concord and could not be loaded.' }));

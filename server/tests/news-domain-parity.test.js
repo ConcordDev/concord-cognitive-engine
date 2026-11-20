@@ -1,6 +1,12 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerNewsActions, { __resetGdeltCacheForTests, __configureGdeltForTests } from "../domains/news.js";
+// News fetches through the SSRF-guarded public-fetch (its own DNS lookup and
+// pinned request), which never reaches globalThis.fetch. Route it through the
+// test transport so each test's fetch stub is what actually answers, instead
+// of the box's DNS deciding the outcome. Production never sets this.
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+__setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }

@@ -1,5 +1,70 @@
 # code — capability map (Frontend Rebuild Program, Wave 3)
 
+> **Proof redesign (2026-11-19, `docs/LENS_REDESIGN_PLAYBOOK.md`).**
+> Newest truth; everything below is history.
+>
+> - **One editor, one ledger.** `components/code/proof/` replaces the old
+>   workspace panel, the extras tabs (IntelliSense / Breakpoints / Remote
+>   Git / Codebase Chat / Extensions / Split View / Live Share), the Review
+>   workbench and the trending tab. Every real capability has a designed
+>   home: Files (tree, outline, bookmarks), Search (search, replace with a
+>   preview, TODO scan), History (stage, commit, branches, merge, stash,
+>   log, blame), Agent (ask, project change, edit, refactor, tests, new
+>   file), Library (snippets, run target, snapshots, shared session,
+>   extensions), the dock (problems, output, tests, references, blame) and
+>   the start screen (projects, new project, import, trending).
+> - **The Proof ledger** (`server/domains/code-proof.js`, 6 macros:
+>   `proof-get`, `proof-attest`, `proof-review`, `proof-diff`, `proof-push`,
+>   `github-import`; plus the pull baseline recorded by `github-pull`). Types come
+>   from the TypeScript service, lint from the lens rules, and both are
+>   recomputed on every read. Tests and a run are executed by the browser
+>   runner and reported against a fingerprint of the project's code; a
+>   report for code that has since changed is refused. Review is per file,
+>   bound to its content hash. "No tests" is open, never a pass. Packages
+>   that are not installed are named as unchecked, not counted either way.
+>   The change being proved is the change a push sends: files against what
+>   GitHub had at import (or the last local commit).
+> - **Push only on green.** `proof-push` refuses unless every check that
+>   applies is proved, then creates a governed proposal
+>   (`code-push-governance.js`) to a NEW branch; nothing reaches GitHub
+>   until `push-proposal-approve`, which conflict-checks each file against
+>   GitHub's fresh content. New files are now created (a 404 on an empty
+>   `before` was failing the whole push). Deletions are refused with the
+>   reason, since the push path cannot delete yet.
+> - **AI edits are proposals.** `propose-verified-patch`, `inline-edit`,
+>   `refactor-suggest`, `test-generate` (through the test-code contract),
+>   `build` (run in a private scratch bucket) and `forge-generate` all
+>   return a diff to accept or discard; accepting re-checks that the file
+>   has not changed since. A partner's edits in a shared session arrive the
+>   same way.
+> - **Fixed on the way** (all pinned by tests):
+>   TypeScript service resolved no relative imports between project files
+>   (`lib/ts-language-service.js`, every `./x` import read as missing);
+>   the browser runner lost its first message under Turbopack and timed
+>   out, started module workers that Turbopack's `importScripts` bootstrap
+>   cannot load, measured load time as run time, and failed any file with
+>   `export` (`exports is not defined`) (`components/code/localExec.ts`);
+>   the PWA service worker answered web-worker scripts cache-first and
+>   Chromium never finished loading them, so once it controlled the page
+>   every in-browser run hung (`public/sw-policy.js` now passes worker
+>   scripts through; `tests/lib/pwa-sw-policy.test.ts`);
+>   the editor depended on a CDN copy of Monaco and is now served from the
+>   bundle as the core editor plus every syntax highlighter, without the
+>   in-browser language services whose workers were misrouted
+>   (`proof/monacoCore.ts`, generated from the package's own
+>   `editor.main.js`; intelligence comes from the server's TypeScript
+>   service); a controlled editor dropped keystrokes; the diff viewer
+>   disposed its models out of order on unmount, which blanked the next
+>   editor.
+> - **Not surfaced, on purpose:** `exec` (host execution retired, INC-145;
+>   runs are in the browser), `debug-run` (retired, refuses),
+>   `coverageAnalysis` (needs instrumented run data, refuses on source),
+>   `github-push` (a local manifest that never delivered; replaced by the
+>   proof push), `github-remote-status` (the ledger carries the remote),
+>   `push-proposal-create` (superseded by `proof-push`, which uses the same
+>   governance), `dsl`. The old direct-to-GitHub file commit panel is gone:
+>   GitHub writes go through the proof.
+
 > **Re-verified 2026-10-28 (HANDOFF-3 Workstream B, batch L4).** Every
 > row re-checked against main 31ac4719. State since the Wave 3/4
 > editions:

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Music, Plus, Loader2, Clock, Play } from 'lucide-react';
+import { Music, Mic2, Plus, Loader2, Clock, Play } from 'lucide-react';
 import { StickyDeleteConfirm } from '@/components/common/StickyDeleteConfirm';
 import { useAuth } from '@/hooks/useAuth';
 import type { DAWProject } from '@/lib/daw/types';
@@ -36,50 +36,50 @@ export function Opener({ onOpenProject, onNew, opening }: OpenerProps) {
     }
   };
   return (
-    <div className="h-full overflow-y-auto bg-[#0c0c11] text-zinc-200" data-testid="studio-opener">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600/30"><Music className="h-5 w-5 text-violet-200" /></div>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-zinc-500">Studio</p>
-            <h1 className="font-vault text-3xl leading-tight text-zinc-100" data-testid="studio-greeting">
+    <div className="h-full overflow-y-auto" data-testid="studio-opener">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+        <header className="bo-metal mb-7 flex flex-wrap items-center gap-4 rounded-xl border px-5 py-4">
+          <div className="bo-well flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full"><Mic2 className="h-5 w-5 text-[var(--bo-amber)]" aria-hidden /></div>
+          <div className="min-w-0 flex-1">
+            <p className="bo-engrave text-sm">The Booth</p>
+            <h1 className="font-vault text-2xl leading-tight text-zinc-100 sm:text-3xl" data-testid="studio-greeting">
               What are we making{user?.username ? `, ${user.username}` : ''}
             </h1>
-            <p className="text-xs text-zinc-500">Record, produce, mix and master. Everything saves automatically.</p>
+            <p className="text-xs text-zinc-500">Write and record in the booth, build it in Produce, finish it in Mix. Everything saves as you go.</p>
           </div>
-        </div>
+        </header>
 
-        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Start something</h2>
-        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <h2 className="bo-engrave mb-2 text-base">Start a session</h2>
+        <div className="mb-9 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3">
           {STUDIO_TEMPLATES.map((t) => (
             <button
               key={t.id}
               onClick={() => onNew(buildTemplate(t.id))}
-              className="group rounded-xl border border-white/5 bg-[#14141b] p-4 text-left transition-colors hover:border-violet-400/40 hover:bg-[#191922]"
+              className="bo-metal group rounded-lg border p-3 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--bo-amber)]"
               data-testid={`studio-template-${t.id}`}
             >
-              <div className="mb-1 flex items-center gap-2 text-sm font-medium">
-                {t.id === 'empty' ? <Plus className="h-4 w-4 text-zinc-400" /> : t.id === 'demo' ? <Play className="h-4 w-4 text-emerald-300" /> : <Music className="h-4 w-4 text-violet-300" />}
-                {t.name}
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="bo-scribble truncate px-2 text-base leading-6">{t.name}</span>
+                {t.id === 'empty' ? <Plus className="h-4 w-4 text-zinc-400" aria-hidden /> : t.id === 'demo' ? <Play className="h-4 w-4 text-emerald-300" aria-hidden /> : <Music className="h-4 w-4 text-violet-300" aria-hidden />}
               </div>
-              <p className="text-[11px] leading-relaxed text-zinc-500">{t.description}</p>
-              <p className="mt-2 text-[10px] text-zinc-600">{t.bpm} BPM</p>
+              <p className="text-[11px] leading-relaxed text-zinc-400">{t.description}</p>
+              <p className="bo-led mt-2 text-[11px]">{t.bpm} BPM</p>
             </button>
           ))}
         </div>
 
-        <h2 className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Recent projects</h2>
+        <h2 className="bo-engrave mb-2 text-base">Your sessions</h2>
         {recent === null ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-500"><Loader2 className="h-3 w-3 animate-spin" /> Loading…</div>
+          <div className="flex items-center gap-2 text-xs text-zinc-500" role="status"><Loader2 className="h-3 w-3 animate-spin" /> Loading your sessions…</div>
         ) : recent.length === 0 ? (
-          <p className="text-xs text-zinc-600">{error ? 'Could not reach your projects right now. New work is still kept on this device and saved when you are back online.' : 'No projects yet. Pick a template above.'}</p>
+          <p className="text-xs text-zinc-500">{error ? 'Could not reach your projects right now. New work is still kept on this device and saved when you are back online.' : 'No sessions yet. Start one above.'}</p>
         ) : (
-          <ul className="divide-y divide-white/5 overflow-hidden rounded-xl border border-white/5">
+          <ul className="bo-well grid gap-1.5 rounded-lg p-2 sm:grid-cols-2">
             {recent.slice(0, 30).map((r) => (
-              <li key={r.id} className="flex items-center bg-[#121219]">
-                <button onClick={() => onOpenProject(r.id)} disabled={!!opening} className="flex min-w-0 flex-1 items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-[#191922] disabled:opacity-60" data-testid="studio-recent">
-                  <span className="truncate">{r.name}</span>
-                  <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+              <li key={r.id} className="bo-metal flex items-center rounded-md border">
+                <button onClick={() => onOpenProject(r.id)} disabled={!!opening} className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2.5 py-2 text-left disabled:opacity-60" data-testid="studio-recent">
+                  <span className="bo-scribble truncate px-1.5 text-sm leading-5">{r.name}</span>
+                  <span className="flex flex-shrink-0 items-center gap-1 text-[11px] text-zinc-500">
                     {opening === r.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
                     {new Date(r.updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </span>

@@ -26,6 +26,8 @@
 //
 // Run: node --test server/tests/forge-marketplace-purchase-e2e.test.js
 
+import { setLedgerBalance } from "./lib/ledger-fund.js";
+import { getBalance } from "../economy/balances.js";
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
@@ -33,7 +35,7 @@ import { macroRuntime, load } from "./depth/_harness.js";
 import { mintForgeAppAsDtu, listForgeAppOnMarketplace } from "../lib/forge-marketplace.js";
 
 function bal(STATE, userId) {
-  return STATE.economic?.wallets?.get(userId)?.balance || 0;
+  return getBalance(STATE.db, userId).balance;
 }
 
 // `dtus.owner_user_id` FKs to `users(id)` (ON DELETE SET NULL) — seed a real
@@ -107,7 +109,7 @@ describe("forge-marketplace listing e2e — mint -> list (real macro) -> purchas
 
     // Step 3 — purchase via the real, unmodified purchaseWithRoyalties macro.
     const buyer = `buyer-forge-e2e-${crypto.randomUUID()}`;
-    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 100, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer, 100);
     const buyerCtx = { ...ctx, actor: { ...ctx.actor, userId: buyer, id: buyer } };
 
     const sellerBefore = bal(STATE, sellerId);

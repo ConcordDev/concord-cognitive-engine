@@ -11,11 +11,15 @@ const src = readFileSync(join(__dirname, 'ChatWorkspacePanel.tsx'), 'utf8');
 
 describe('Chat composer tap targets (FIX-chat-013)', () => {
   it('the + (attachments and tools) button is a 44x44 box', () => {
-    expect(src).toContain('className="flex h-11 w-11 items-center justify-center text-white/70 hover:text-white transition-colors"');
+    expect(src).toMatch(/className="flex h-11 w-11 items-center justify-center[^"]*"/);
     expect(src).not.toContain('className="p-2 text-white/70 hover:text-white transition-colors"');
   });
 
-  it('the mode pill carries a 44px minimum height', () => {
-    expect(src).toContain('inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-3 py-1');
+  it('the Answer-as pill carries a 44px minimum height', () => {
+    // The mode pill became the Notebook's "Answer as" picker; its height
+    // lives in the Notebook stylesheet.
+    const css = readFileSync(join(__dirname, 'notebook', 'notebook.css'), 'utf8');
+    expect(css).toMatch(/\.nb-answer-as \{[^}]*min-height: 44px/);
+    expect(src).toContain('<AnswerAsPicker');
   });
 });

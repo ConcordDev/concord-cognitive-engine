@@ -32,7 +32,7 @@ export function readChatMessages(db, { userId, sessionId, limit = 200 } = {}) {
     // returned the OLDEST n, so a long thread never showed its latest turns
     // (and the chat lens could not find a just-saved reply).
     rows = db.prepare(`
-      SELECT role, content, ts, meta_json FROM (
+      SELECT id, role, content, ts, meta_json FROM (
         SELECT id, role, content, ts, meta_json
         FROM chat_messages
         WHERE session_id = ?
@@ -48,6 +48,7 @@ export function readChatMessages(db, { userId, sessionId, limit = 200 } = {}) {
     let meta = null;
     try { meta = r.meta_json ? JSON.parse(r.meta_json) : null; } catch { /* corrupt meta — drop */ }
     return {
+      id: r.id, // the row id: what "branch from here" points at
       role: r.role,
       content: r.content,
       ts: new Date(r.ts).toISOString(),

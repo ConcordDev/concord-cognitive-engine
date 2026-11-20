@@ -1,4 +1,4 @@
 'use client';
 
-/** Thin shell — CodeEditorWorkspacePanel + one extras view-SM in components/code/CodeApp.tsx */
-export { default } from '@/components/code/CodeApp';
+/** Thin shell — Proof, the Code lens, lives in components/code/proof/ProofApp.tsx. */
+export { default } from '@/components/code/proof/ProofApp';

@@ -85,7 +85,7 @@ export function ChatDraftInThreadButton({ dtuId, title, content, className }: Pr
         onClick={() => void draft()}
         disabled={!verified || busy || Boolean(draftId)}
         className={cn(
-          'hover:text-neon-cyan transition-colors flex items-center gap-1 disabled:opacity-50',
+          'hover:text-[color:var(--nb-blue,#00fff7)] transition-colors flex items-center gap-1 disabled:opacity-50',
           className,
         )}
         title={verified ? 'Cite this DTU in a Thread draft' : 'Forge a DTU first'}
@@ -95,7 +95,7 @@ export function ChatDraftInThreadButton({ dtuId, title, content, className }: Pr
         <span className="hidden sm:inline">{label}</span>
       </button>
       {note && (
-        <span role="status" className="text-[10px] text-zinc-400">
+        <span role="status" className="text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">
           {note}
         </span>
       )}

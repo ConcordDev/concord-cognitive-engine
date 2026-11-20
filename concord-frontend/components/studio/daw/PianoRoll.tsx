@@ -240,13 +240,13 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, son
       </div>
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto" onScroll={(e) => setScrollLeft(e.currentTarget.scrollLeft)}>
         <div className="flex" style={{ width: width + 56 }}>
-          <div className="sticky left-0 z-10 w-14 flex-shrink-0 bg-[#121218]">
+          <div className="sticky left-0 z-10 w-14 flex-shrink-0 bg-[var(--bo-console)]">
             {rows.map((pitch) => (
               <button
                 key={pitch}
                 onPointerDown={() => onAudition(pitch, 100)}
                 data-scale={inScale(pitch) ? 'in' : 'out'}
-                className={cn('block w-full border-b border-black/40 pr-1 text-right text-[9px]', drums ? 'bg-[#1b1b23] text-zinc-300' : isBlack(pitch) ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-200 text-zinc-600', !inScale(pitch) && 'opacity-35')}
+                className={cn('block w-full border-b border-black/40 pr-1 text-right text-[9px]', drums ? 'bg-[var(--bo-panel-hi)] text-zinc-300' : isBlack(pitch) ? 'bg-zinc-800 text-zinc-500' : 'bg-zinc-200 text-zinc-600', !inScale(pitch) && 'opacity-35')}
                 style={{ height: rowH }}
               >
                 {drums ? DRUM_LANES.find((l) => l.pitch === pitch)?.name : pitch % 12 === 0 ? nameOf(pitch) : ''}
@@ -259,7 +259,7 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, son
               onPointerDown={(e) => { if (e.button === 0 && e.target === e.currentTarget) { setSel(new Set()); addAt(e); } }}
               style={{
                 backgroundImage: `repeating-linear-gradient(90deg, rgba(255,255,255,0.09) 0 1px, transparent 1px ${bw * 4}px), repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px ${bw * grid}px), repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0 1px, transparent 1px ${rowH}px)`,
-                backgroundColor: '#15151c',
+                backgroundColor: 'var(--bo-panel)',
               }}
             />
             {!drums && rows.map((pitch, i) => isBlack(pitch) ? <div key={pitch} className="pointer-events-none absolute w-full bg-black/20" style={{ top: i * rowH, height: rowH }} /> : null)}
@@ -289,7 +289,7 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, son
       </div>
       {!drums && (
         <>
-          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[#101018]" data-testid="cc-lane">
+          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[var(--bo-console)]" data-testid="cc-lane">
             <div className="absolute left-1 top-0.5 z-10 flex items-center gap-1 text-[9px] text-zinc-400">
               <span>CC</span>
               <select aria-label="Controller lane" value={ccNumber} onChange={(e) => setCcNumber(Number(e.target.value))} className="rounded bg-white/5 px-1 text-zinc-200">
@@ -303,7 +303,7 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, son
               ))}
             </div>
           </div>
-          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[#101018]" data-testid="pitch-bend-lane">
+          <div className="relative h-10 flex-shrink-0 border-t border-white/5 bg-[var(--bo-console)]" data-testid="pitch-bend-lane">
             <span className="absolute left-1 top-0.5 text-[9px] text-zinc-400">Bend</span>
             <div className="absolute inset-0 cursor-crosshair" style={{ marginLeft: 56 }} onPointerDown={(e) => writeLane('bend', e)}>
               <div className="pointer-events-none absolute left-14 right-0 top-1/2 h-px bg-white/10" />
@@ -314,7 +314,7 @@ export function PianoRoll({ track, clip, onChange, onClipChange, onAudition, son
           </div>
         </>
       )}
-      <div className="relative h-12 flex-shrink-0 border-t border-white/5 bg-[#111117]" style={{ marginLeft: 56 }}>
+      <div className="relative h-12 flex-shrink-0 border-t border-white/5 bg-[var(--bo-console)]" style={{ marginLeft: 56 }}>
         <div className="absolute inset-0 cursor-ns-resize" onPointerDown={setVelocityAt} onPointerMove={(e) => { if (e.buttons === 1) setVelocityAt(e); }} title="Velocity — drag to set">
           {notes.map((n) => (
             <div key={n.id} className={cn('pointer-events-none absolute bottom-0 w-1 rounded-t', sel.has(n.id) ? 'bg-white' : 'bg-zinc-400')} style={{ left: n.startBeat * bw - scrollLeft, height: `${(n.velocity / 127) * 100}%` }} />

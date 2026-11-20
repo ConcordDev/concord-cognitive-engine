@@ -4,6 +4,14 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerMusicActions from "../domains/music.js";
+import { clearExternalFetchCache } from "../lib/external-fetch.js";
+// The music fetchers go through the SSRF-guarded fetchPublicUrl chokepoint
+// (lib/external-fetch.js), which never touches globalThis.fetch. Without this
+// test transport every per-test fetch stub below was bypassed and the
+// iTunes / LRCLIB / MusicBrainz cases tested nothing (the same fix
+// travel-domain-parity.test.js carries). Production never calls this.
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
+__setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -19,6 +27,8 @@ before(() => { registerMusicActions(register); });
 
 beforeEach(() => {
   globalThis.fetch = async () => { throw new Error("network disabled in tests"); };
+  // Responses are cached by URL; each test's stub must be the one answering.
+  clearExternalFetchCache();
 });
 
 const ctxA = { actor: { userId: "user_a" }, userId: "user_a" };

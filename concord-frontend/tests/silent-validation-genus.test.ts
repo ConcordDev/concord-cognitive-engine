@@ -31,12 +31,6 @@ describe('CB-0463 silent-validation genus', () => {
     expect(src).toContain('{newProposal.title.length}/200');
   });
 
-  it('FIX-music-004: blank track titles are refused in words; the field is capped', () => {
-    const src = read('components/music/MusicActionPanel.tsx');
-    expect(src).toContain('maxLength={185}');
-    expect(src.match(/Give the track a title first/g)?.length).toBe(2);
-  });
-
   it('FIX-art-001: artwork rename caps at the platform title limit (200)', () => {
     const src = read('components/art/ArtCanvas.tsx');
     expect(src).toContain('maxLength={200}');

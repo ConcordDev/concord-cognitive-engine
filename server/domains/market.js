@@ -3,6 +3,9 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { getYahooQuotes, getYahooChart } from "../lib/market-feed-sources.js";
+import { registerMarketHouse } from "./market-house.js";
+import { registerMarketShowcase } from "./market-showcase.js";
+import { registerMarketBoard } from "./market-board.js";
 export default function registerMarketActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   /**
@@ -1148,4 +1151,9 @@ export default function registerMarketActions(registerLensAction) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   });
+
+  // The Auction House (Market lens): lots, the hourly showcase, the pay board.
+  registerMarketHouse(registerLensAction);
+  registerMarketShowcase(registerLensAction);
+  registerMarketBoard(registerLensAction);
 }

@@ -34,13 +34,15 @@
 //
 // Run: node --test server/tests/marketplace-sql-shadow-hydration.test.js
 
+import { setLedgerBalance } from "./lib/ledger-fund.js";
+import { getBalance } from "../economy/balances.js";
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { macroRuntime, load } from "./depth/_harness.js";
 
 function bal(STATE, userId) {
-  return STATE.economic?.wallets?.get(userId)?.balance || 0;
+  return getBalance(STATE.db, userId).balance;
 }
 
 // `dtus.owner_user_id` carries a real FK to `users(id)` (ON DELETE SET
@@ -118,7 +120,7 @@ describe("marketplace SQL-shadow hydration — raw INSERT INTO dtus victims", ()
     assert.equal(hydrated.human.summary, body.human.summary);
 
     const buyer = `buyer-bp-${crypto.randomUUID()}`;
-    STATE.economic.wallets.set(buyer, { odId: buyer, balance: 1000, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer, 1000);
     const buyerCtx = { ...ctx, actor: { ...ctx.actor, userId: buyer, id: buyer } };
 
     const sellerBefore = bal(STATE, sellerId);
@@ -174,7 +176,7 @@ describe("marketplace SQL-shadow hydration — raw INSERT INTO dtus victims", ()
     assert.equal(STATE.dtus.get(dtuId).ownerId, sellerId);
 
     const buyer2 = `buyer-forge-${crypto.randomUUID()}`;
-    STATE.economic.wallets.set(buyer2, { odId: buyer2, balance: 500, tokensEarned: 0, tokensSpent: 0 });
+    setLedgerBalance(STATE.db, buyer2, 500);
     const buyerCtx2 = { ...ctx, actor: { ...ctx.actor, userId: buyer2, id: buyer2 } };
 
     const purchase = await runMacro("marketplace", "purchaseWithRoyalties", { dtuId }, buyerCtx2);
