@@ -13,6 +13,7 @@
 
 // Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { mountPodcastPublicRoutes } from "./domains/podcast-studio.js";
 import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normalize.js";
 import { getBalance as ledgerBalanceOf } from "./economy/balances.js";
@@ -8901,6 +8902,11 @@ function authMiddleware(req, res, next) {
   // only (domains/market-house.js PUBLIC_READS — catalogue, lot, trending,
   // showcase, pay board), run with no actor. Nothing here can write.
   if (req.method === "GET" && /^\/api\/market\/house\/public\/[a-z-]{3,40}$/.test(req.path)) return next();
+  // Podcast public feed + its WebVTT transcripts (domains/podcast-studio.js):
+  // GET-only, read-only, built from published for-everyone episodes of a show
+  // made on Concord. Podcast apps (Apple Podcasts, Spotify) fetch these with
+  // no account, so they cannot sit behind auth.
+  if (req.method === "GET" && /^\/api\/podcast\/(shows\/[A-Za-z0-9_:-]{3,120}\/feed\.xml|episodes\/[A-Za-z0-9_:-]{3,120}\/transcript\.vtt)$/.test(req.path)) return next();
   // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
   // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.
@@ -63132,6 +63138,9 @@ function _runAnimationShareAction(token) {
 }
 
 // GET — anyone with the share link opens it. Public, no auth.
+// Podcast: a show's public RSS feed and its episodes' WebVTT transcripts.
+mountPodcastPublicRoutes(app);
+
 app.get("/api/animation/share/:token", async (req, res) => {
   try {
     const result = await _runAnimationShareAction(req.params.token);

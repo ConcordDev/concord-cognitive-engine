@@ -28,6 +28,10 @@ vi.mock('next/font/google', () => {
     Source_Serif_4: face('Source Serif 4'),
     Instrument_Serif: face('Instrument Serif'),
     Montserrat: face('Montserrat'),
+    // Podcast — the Transcript Page (components/podcast/press/pressFonts.ts)
+    DM_Serif_Display: face('DM Serif Display'),
+    Archivo: face('Archivo'),
+    DM_Mono: face('DM Mono'),
     // ConKay — the Workshop (components/conkay/workshop/workshopFonts.ts)
     Chakra_Petch: face('Chakra Petch'),
     // Retail — The Stall (components/retail/app/stallFonts.ts)
