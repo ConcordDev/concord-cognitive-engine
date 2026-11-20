@@ -98,6 +98,9 @@ class ReplayRun:
             if "PENDING_CAPTURE" in str(res.get("notes") or ""):
                 block["pending_capture"] = block.get("pending_capture", 0) + 1
         block["second_walks"] = self.rv.live_walk_count - walks_before
+        # ULW v3 W4: recipe-reported NOT_RUN items for this lens (e.g. formfuzz
+        # budget cuts) ride the block; the sweep queues them as carry-over.
+        block["not_run"] = [it for it in getattr(self.rv, "not_run", []) if it.get("slug") == slug]
         self.blocks[slug] = block
         self.log("  replay %s: %s%s" % (slug, block["counts"] or "-", (" skipped %d" % len(block["skipped"])) if block["skipped"] else ""))
         return block

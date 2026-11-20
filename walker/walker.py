@@ -209,7 +209,9 @@ def cmd_walk(args, cfg, log):
     manifest.data["deploy"] = run_deploy
     # no-deploy guard: the build sha is polled at start and around every lens; a change mid-walk STOPS the sweep.
     from concord_walker import longwalk as _LW
-    guard = _LW.DeployGuard(lambda: deploy_stamp(cfg["base_url"], None)["backend_sha"], log=log)
+    from concord_walker import sha_gate as _sha_gate
+    guard = _LW.DeployGuard(lambda: deploy_stamp(cfg["base_url"], None)["backend_sha"], log=log,
+                            fetch_uptime=lambda: _sha_gate.health_uptime(cfg["base_url"]))
     g_ok, g_why = guard.start(prior_sha=manifest.prior_sha, known=run_deploy.get("backend_sha"))
     if not g_ok:
         append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), _LW.DEPLOY, g_why))
@@ -356,6 +358,10 @@ def cmd_walk(args, cfg, log):
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
                               checks_not_run=checks_not_run(res), deploy=deploy, state=res["state"])
                 summary.append(res)
+                # ULW v3 W4: recipe-reported NOT_RUN items (validation-recipe
+                # budget cuts) queue as carry-over with the walk's own NOT_RUNs.
+                for _nr in (res.get("replay") or {}).get("not_run") or []:
+                    carryover.add(slug, _nr["check"], _nr.get("reason"))
                 carryover.add_from_result(res)
                 write_root_causes(cfg["audit_dir"], log=log)
             # ULW C7: run-end revisit — every queued NOT_RUN check gets ONE

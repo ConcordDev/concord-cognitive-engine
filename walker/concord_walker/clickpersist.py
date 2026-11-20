@@ -458,13 +458,17 @@ def _fixture_png_bytes():
             + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
 
-def _open_driver_walk(rv, t, label):
+def _open_driver_walk(rv, t, label, account=None):
     """Open this driver's own LensWalk on the ticket's lens and account,
-    assert the account, and navigate. Returns (lw, ctx, page, cdp)."""
+    assert the account, and navigate. Returns (lw, ctx, page, cdp).
+    `account` overrides the walk account (ULW v3 W4: uploads are test
+    writes and run as the write account, not the observer)."""
     from .checks import LensWalk
     from .auth import assert_account
     lens = t["lens"]
     acct, admin = rv.account_for(lens)
+    if account:
+        acct = account
     lw = LensWalk(rv.b, rv.cfg, rv.rec, rv.inv[lens], acct, rv.log,
                   admin=admin, inv_entry=rv.inv[lens])
     ctx, page, cdp = lw.open()
@@ -479,7 +483,13 @@ def run_clickpersist_check(rv, t, cat):
     Reverifier (browser, cfg, rec, inv, account_for). Returns the standing
     verdict dict shape, from the recipes above."""
     from .reverify import elements, ticket_text
-    lw, ctx, page, cdp = _open_driver_walk(rv, t, "clickpersist %s check" % cat)
+    # ULW v3 W4: the upload recipe writes a fixture file to the lens - a test
+    # write, routed through the write account like every other write recipe.
+    _acct = None
+    if cat == "upload":
+        from .auth import write_account_key
+        _acct = write_account_key(rv.cfg)
+    lw, ctx, page, cdp = _open_driver_walk(rv, t, "clickpersist %s check" % cat, account=_acct)
     try:
         if cat == "dead_click":
             elems = elements(t)

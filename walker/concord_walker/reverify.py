@@ -107,6 +107,7 @@ class Reverifier:
         # the SB-38 DB clone with --clone-legs; None on every normal run.
         self.clone_permit = clone_permit
         self.walks = {}
+        self.not_run = []  # ULW v3 W4: recipe-reported NOT_RUN items ({slug, check, reason}); replay folds them into the block, the sweep queues them as carry-over
         self.recipes = {"FIX-007": self.r_fix007, "FIX-deities-002": self.r_deities_002,
                         # WALK-04g prod rows — POST-DEPLOY ONLY (GB-1544):
                         # recipes exist; no live run until the deploy lands.
@@ -415,8 +416,11 @@ class Reverifier:
                     "notes": "repro needs a create/delete; rerun with --allow-write (own labelled fixture) or a tester"}
         if cat == "chat":
             # WALK-04h: the chat recipe drives its own walk (send budget on self).
+            # ULW v3 W4: a chat check SENDS - it is a test write, so it runs as
+            # the write account (write_account_key / GB-1561 t2), never as the
+            # observer t1 whose sends polluted the evidence lanes.
             from .chatcheck import run_chat_check
-            return run_chat_check(self, t)
+            return run_chat_check(self, t, account=write_account_key(self.cfg) or "t1")
         if cat == "validation":
             # WALK-04a: the form bad-input recipe drives its own walk.
             return run_validation_recipe(self, t)
