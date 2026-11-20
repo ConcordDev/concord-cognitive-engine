@@ -892,9 +892,12 @@ class LensWalk:
         spec = _cv.spec_for(doc, self.slug)
         p = _cv.plan(spec, has_observer=has_session(self.cfg, observer))
         if not p["run"]:
+            # No log call here: the trust legs' not-run paths are silent
+            # for the same reason — a harness may drive the phase with
+            # log=None (the C28 runtime suite does), and the block in the
+            # result is the report.
             self.result["core_verb"] = _cv.core_verb_block(
                 spec, "CORE_VERB_UNSPECIFIED", p["reason"])
-            self.log("  core verb %s: CORE_VERB_UNSPECIFIED (%s)" % (self.slug, p["reason"]))
             return
         base = self.cfg["base_url"].rstrip("/")
         run_url = base + "/api/lens/run"
