@@ -186,7 +186,7 @@ export function LegalActionPanel() {
     { id: 'conflict' as ActionId, label: 'Conflict', desc: 'conflictCheck party A vs B', icon: ShieldAlert, accent: '#ef4444', handler: actConflict },
     { id: 'audit' as ActionId, label: 'Audit', desc: 'complianceAudit + score', icon: ClipboardCheck, accent: '#eab308', handler: actAudit },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private matter DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to counsel', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to counsel', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized legal note + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Risk', desc: 'Agent: highest-risk action this week', icon: Wand2, accent: '#f97316', handler: actAgent },
   ];

@@ -144,7 +144,7 @@ export function SavedSearchesPanel({
           className="w-40 bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-100 focus:border-violet-500 focus:outline-none" />
         {/* FIX-genesis-005: the 40-char cap was silent — the label just
             stopped growing. The bound is named with a live counter. */}
-        <span id="saved-search-label-count" className="text-[10px] text-zinc-500">{label.length}/40</span>
+        <span id="saved-search-label-count" className="text-[10px] text-zinc-400">{label.length}/40</span>
         <span className="flex-1 min-w-[8rem] truncate text-[11px] text-zinc-400" title={filterSummary(currentFilters) || undefined}>
           {hasActiveFilters ? `Saves: ${filterSummary(currentFilters)}` : 'No active filters on the roster below'}
         </span>

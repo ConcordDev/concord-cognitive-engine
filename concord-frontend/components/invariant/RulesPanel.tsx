@@ -103,7 +103,7 @@ export function RulesPanel() {
               <div key={m.id} className="lens-card">
                 <p className="font-mono text-sm font-bold">{m.name}</p>
                 <p className="text-xs text-gray-400 mt-1 font-mono">{m.expression}</p>
-                <p className="text-[11px] mt-2 text-gray-500">
+                <p className="text-[11px] mt-2 text-lattice-muted">
                   {m.active ? 'active' : 'paused'} · severity {m.severity}
                   {m.lastResult ? ` · last check: ${m.lastResult}` : ' · not checked yet'}
                 </p>
@@ -132,7 +132,7 @@ export function RulesPanel() {
                 statusFilter === s
                   ? s === 'enforced' ? 'border-neon-green/40 bg-neon-green/15 text-neon-green'
                   : s === 'warning'  ? 'border-yellow-500/40 bg-yellow-500/15 text-yellow-400'
-                  : s === 'violated' ? 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink'
+                  : s === 'violated' ? 'border-neon-pink/40 bg-neon-pink/15 text-neon-pink-bright'
                   : 'border-neon-blue/40 bg-neon-blue/15 text-neon-blue'
                   : 'border-white/10 bg-white/5 text-gray-400 hover:text-white'
               }`}
@@ -201,7 +201,7 @@ export function RulesPanel() {
                         setConfirmDeleteId(null);
                         void remove(inv.id).then(() => refetch());
                       }}
-                      className={`mt-2 inline-flex items-center gap-1 text-[11px] underline ${confirmDeleteId === inv.id ? 'text-rose-300' : 'text-gray-500 hover:text-gray-300'}`}
+                      className={`mt-2 inline-flex items-center gap-1 text-[11px] underline ${confirmDeleteId === inv.id ? 'text-rose-300' : 'text-lattice-muted hover:text-gray-300'}`}
                     >
                       <Trash2 className="w-3 h-3" />
                       {confirmDeleteId === inv.id ? `Delete \u201c${inv.name}\u201d? Click again` : 'Delete'}

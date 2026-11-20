@@ -194,13 +194,13 @@ export function AlbumsPanel() {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Album name"
-            className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
           />
           <input
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             placeholder="Description (optional)"
-            className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
           />
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-gray-400 mr-1">Who can see it:</span>
@@ -258,7 +258,7 @@ export function AlbumsPanel() {
                 {album.coverUrl ? (
                   <img src={album.coverUrl} alt={album.name} className="w-full h-full object-cover" />
                 ) : (
-                  <LayoutGrid className="w-8 h-8 text-gray-600" />
+                  <LayoutGrid className="w-8 h-8 text-lattice-muted" />
                 )}
               </div>
               <div className="p-2">
@@ -422,14 +422,14 @@ export function AlbumsPanel() {
                 value={mediaUrl}
                 onChange={(e) => setMediaUrl(e.target.value)}
                 placeholder={`${mediaKind === 'video' ? 'Video' : 'Photo'} URL`}
-                className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
               />
               <div className="flex gap-2">
                 <input
                   value={mediaCaption}
                   onChange={(e) => setMediaCaption(e.target.value)}
                   placeholder="Caption (optional)"
-                  className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   onClick={() => void addByUrl(active.id)}
@@ -458,7 +458,7 @@ export function AlbumsPanel() {
                   }}
                 />
               </div>
-              <p className="text-[11px] text-gray-500">Uploads: images or MP4/WebM video, up to 10 MB. Links are checked before they attach.</p>
+              <p className="text-[11px] text-lattice-muted">Uploads: images or MP4/WebM video, up to 10 MB. Links are checked before they attach.</p>
               {mediaError && <p className="text-[11px] text-rose-300">{mediaError}</p>}
             </div>
           </div>

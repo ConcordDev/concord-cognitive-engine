@@ -640,7 +640,7 @@ export function DecisionJournal() {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1 text-xs rounded-full capitalize transition-colors ${
-                filter === f ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-gray-200'
+                filter === f ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-gray-200'
               }`}
             >
               {f}
@@ -678,7 +678,7 @@ export function DecisionJournal() {
                       <p className="text-sm font-medium">{d.title}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-0.5">
                         <span>Conf: {(d.confidence * 100).toFixed(0)}%</span>
-                        <span className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple">{d.domain}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright">{d.domain}</span>
                         <span>{fmtDate(d.createdAt)}</span>
                       </div>
                     </div>

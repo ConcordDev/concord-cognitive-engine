@@ -14,6 +14,10 @@ interface MonacoDiffViewerProps {
   renderSideBySide?: boolean;
   onAcceptHunk?: (hunkIndex: number, modifiedText: string) => void;
   className?: string;
+  /** A lens-owned theme; defaults to Concord Dark. */
+  theme?: { name: string; data: editor.IStandaloneThemeData };
+  /** Font stack for the diff; defaults to JetBrains Mono. */
+  fontFamily?: string;
 }
 
 const CONCORD_DARK: editor.IStandaloneThemeData = {
@@ -56,17 +60,34 @@ export default function MonacoDiffViewer({
   height = 320,
   renderSideBySide = true,
   className,
+  theme,
+  fontFamily,
 }: MonacoDiffViewerProps) {
   const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
 
   const handleMount = useCallback((ed: editor.IStandaloneDiffEditor, monaco: typeof import('monaco-editor')) => {
     editorRef.current = ed;
     monaco.editor.defineTheme('concord-dark-diff', CONCORD_DARK);
-    monaco.editor.setTheme('concord-dark-diff');
-  }, []);
+    if (theme) monaco.editor.defineTheme(theme.name, theme.data);
+    monaco.editor.setTheme(theme ? theme.name : 'concord-dark-diff');
+  }, [theme]);
 
+  // Release the models in the order Monaco requires: detach them from the
+  // widget first, then dispose. Letting the wrapper dispose them on unmount
+  // throws "TextModel got disposed before DiffEditorWidget model got reset",
+  // which also broke the next editor mounted in its place.
   useEffect(() => {
-    return () => { editorRef.current = null; };
+    return () => {
+      const ed = editorRef.current;
+      editorRef.current = null;
+      if (!ed) return;
+      try {
+        const models = ed.getModel();
+        ed.setModel(null);
+        models?.original.dispose();
+        models?.modified.dispose();
+      } catch { /* already gone */ }
+    };
   }, []);
 
   return (
@@ -76,13 +97,16 @@ export default function MonacoDiffViewer({
         modified={modified}
         language={resolveLanguage(language)}
         onMount={handleMount}
+        keepCurrentOriginalModel
+        keepCurrentModifiedModel
         theme="vs-dark"
         options={{
           renderSideBySide,
+          automaticLayout: true,
           readOnly: true,
           originalEditable: false,
           fontSize: 13,
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+          fontFamily: fontFamily || "'JetBrains Mono', 'Fira Code', monospace",
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           renderOverviewRuler: false,

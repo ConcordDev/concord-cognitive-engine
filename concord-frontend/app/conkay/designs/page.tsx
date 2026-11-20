@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { DesignsIndex } from '@/components/conkay/designs/DesignsIndex';
+import { WorkshopPage } from '@/components/conkay/workshop/WorkshopPage';
 
 export const metadata: Metadata = {
   title: 'ConKay results — Concord',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ConKayDesignsPage() {
-  return <DesignsIndex />;
+  return <WorkshopPage initialView="wall" />;
 }

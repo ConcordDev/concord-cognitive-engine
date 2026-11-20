@@ -143,7 +143,7 @@ function PatentClaimsPanel({ patentId, fallbackTitle }: { patentId: string; fall
           </div>
 
           {result.titleLookupFailed && (
-            <p className="text-[10px] text-gray-500">(Title/date lookup failed — showing claims only.)</p>
+            <p className="text-[10px] text-lattice-muted">(Title/date lookup failed — showing claims only.)</p>
           )}
 
           {result.claims.length === 0 && (
@@ -161,7 +161,7 @@ function PatentClaimsPanel({ patentId, fallbackTitle }: { patentId: string; fall
                       </span>
                     )}
                     {c.dependent != null && (
-                      <span className="text-[10px] text-gray-500">(depends on claim {c.dependent})</span>
+                      <span className="text-[10px] text-lattice-muted">(depends on claim {c.dependent})</span>
                     )}
                   </div>
                   <p className="mt-0.5 whitespace-pre-wrap">{c.text}</p>

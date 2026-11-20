@@ -141,7 +141,7 @@ export function RealtorShell({
                       <MapPin className="w-8 h-8 text-cyan-500/40" aria-hidden="true" />
                     )}
                     {l.hotScore != null && l.hotScore >= 65 && (
-                      <span className="absolute top-1 left-1 text-[9px] px-1 py-0.5 rounded bg-rose-500 text-white font-bold uppercase">🔥 Hot</span>
+                      <span className="absolute top-1 left-1 text-[9px] px-1 py-0.5 rounded bg-rose-600 text-white font-bold uppercase">🔥 Hot</span>
                     )}
                   </div>
 

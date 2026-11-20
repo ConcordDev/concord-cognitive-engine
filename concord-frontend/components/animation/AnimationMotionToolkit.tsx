@@ -78,7 +78,7 @@ function KeyframeTool() {
           <input type="number" min={1} max={60} value={fps} onChange={(e) => setFps(e.target.value)} className={cn(fieldClass(), 'w-16')} />
         </label>
         <button type="button" onClick={run} disabled={busy || rows.length < 2}
-          className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+          className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
           {busy ? 'Interpolating…' : 'Interpolate'}
         </button>
       </div>
@@ -142,7 +142,7 @@ function TimingTool() {
         ]}
       />
       <button type="button" onClick={run} disabled={busy || rows.filter((r) => r.name.trim()).length === 0}
-        className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+        className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
         {busy ? 'Analyzing…' : 'Analyze timing'}
       </button>
       {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
@@ -205,7 +205,7 @@ function FpsTool() {
           </select>
         </label>
         <button type="button" onClick={run} disabled={busy}
-          className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+          className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
           {busy ? 'Checking…' : 'Recommend FPS'}
         </button>
       </div>
@@ -267,7 +267,7 @@ function StoryboardTool() {
         ]}
       />
       <button type="button" onClick={run} disabled={busy || rows.filter((r) => r.name.trim()).length === 0}
-        className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+        className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
         {busy ? 'Sequencing…' : 'Build sequence'}
       </button>
       {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
@@ -355,7 +355,7 @@ export function AnimationMotionToolkit() {
         {TOOLS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTool(t.id)}
             className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] rounded-lg',
-              tool === t.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5')}>
+              tool === t.id ? 'bg-cyan-700 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5')}>
             <t.icon className="w-3.5 h-3.5" /> {t.label}
           </button>
         ))}

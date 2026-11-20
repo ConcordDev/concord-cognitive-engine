@@ -232,7 +232,7 @@ function PhaseProgressBar({ phase, onPhaseSelect }: { phase: DebatePhase; onPhas
           <button key={p} onClick={() => onPhaseSelect(p)}
             className={cn(
               'flex-1 py-1.5 text-[10px] font-semibold uppercase tracking-wider rounded transition-all text-center',
-              isCurrent ? 'bg-neon-purple/30 text-neon-purple border border-neon-purple/40' :
+              isCurrent ? 'bg-neon-purple/30 text-neon-purple-bright border border-neon-purple/40' :
               isPast ? 'bg-white/5 text-gray-400 border border-white/5' :
               'bg-white/[0.02] text-gray-600 border border-white/5'
             )}>
@@ -353,7 +353,7 @@ function DebateRoundTimer({ onTimeUp, turnKey, autoStart, phase, currentTurn }: 
             <button onClick={() => finished ? reset() : setRunning(r => !r)}
               className={cn('px-3 py-1 rounded text-xs font-medium transition-colors',
                 running ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-                        : 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30')}>
+                        : 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30')}>
               {finished ? 'Reset' : running ? 'Pause' : 'Start'}
             </button>
             {finished && (
@@ -660,7 +660,7 @@ export function LiveFloorPanel() {
               key={action}
               onClick={() => handleDebateAction(action)}
               disabled={activeAction !== null || !items[0]?.id}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-neon-purple/10 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded bg-neon-purple/10 border border-neon-purple/30 text-neon-purple-bright hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
             >
               {activeAction === action ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
               {action === 'evaluateArgument' ? 'Evaluate Argument' : action === 'steelmanPosition' ? 'Steelman Position' : action === 'scoreDebate' ? 'Score Debate' : 'Fallacy Check'}

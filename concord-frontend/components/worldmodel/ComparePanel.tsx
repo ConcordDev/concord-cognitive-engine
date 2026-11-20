@@ -48,7 +48,7 @@ export function ComparePanel() {
       <div className={card}>
         <h3 className="mb-3 text-sm font-semibold text-emerald-300">Scenario vs counterfactual</h3>
         {entities.length === 0 ? (
-          <p className="text-xs text-emerald-700">Create entities before comparing scenarios.</p>
+          <p className="text-xs text-emerald-500">Create entities before comparing scenarios.</p>
         ) : (
           <div className="flex flex-wrap items-end gap-4">
             <label className="text-[11px] text-emerald-600">steps {steps}
@@ -108,7 +108,7 @@ export function ComparePanel() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="text-[10px] uppercase tracking-wider text-emerald-700">
+                  <tr className="text-[10px] uppercase tracking-wider text-emerald-500">
                     <th className="py-1 pr-3 font-medium">Entity</th>
                     <th className="py-1 pr-3 font-medium">Baseline final</th>
                     <th className="py-1 pr-3 font-medium">Counterfactual final</th>

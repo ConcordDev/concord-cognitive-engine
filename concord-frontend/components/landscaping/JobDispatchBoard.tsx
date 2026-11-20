@@ -314,7 +314,7 @@ function JobRow({ job, onComplete, onDelete, onSaved }: { job: Job; onComplete: 
         {job.status !== 'completed' && job.status !== 'cancelled' && (
           <button
             onClick={() => onComplete(job.id)}
-            className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500"
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-emerald-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-600"
           >
             <CheckCircle2 className="h-3 w-3" /> Complete
           </button>

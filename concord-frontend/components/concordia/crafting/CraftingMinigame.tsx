@@ -139,7 +139,7 @@ export function CraftingMinigame({ skillLevel, itemName, onComplete, onCancel }:
             onTouchEnd={handleRelease}
             className={`px-8 py-3 rounded-xl font-bold text-sm transition-all select-none ${
               holding
-                ? 'bg-blue-500 text-white scale-95'
+                ? 'bg-blue-600 text-white scale-95'
                 : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
             }`}
           >

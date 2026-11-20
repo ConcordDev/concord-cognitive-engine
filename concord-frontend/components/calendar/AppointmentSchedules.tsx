@@ -245,7 +245,7 @@ export function AppointmentSchedules() {
                     title={!s.available && s.conflictTitle ? `Busy — ${s.conflictTitle}` : undefined}
                     className={cn('px-2 py-1.5 text-xs rounded border tabular-nums',
                       selectedSlot === s.slotStart ? 'border-blue-400 bg-blue-600/30 text-white'
-                      : s.available ? 'border-blue-700/50 text-blue-300 hover:bg-blue-600/20' : 'border-lattice-border text-gray-600 line-through cursor-not-allowed')}>
+                      : s.available ? 'border-blue-700/50 text-blue-300 hover:bg-blue-600/20' : 'border-lattice-border text-lattice-muted line-through cursor-not-allowed')}>
                     {s.label}
                   </button>
                 ))}

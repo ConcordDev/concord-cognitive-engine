@@ -154,7 +154,7 @@ export function StageCard({
           disabled={marking}
           onClick={() => mark(!stage.done)}
           className={`flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
-            stage.done ? 'bg-emerald-600/30 text-emerald-200 hover:bg-emerald-600/40' : 'bg-emerald-600 text-white hover:bg-emerald-500'
+            stage.done ? 'bg-emerald-700/30 text-emerald-200 hover:bg-emerald-700/40' : 'bg-emerald-700 text-white hover:bg-emerald-600'
           }`}
         >
           {marking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}

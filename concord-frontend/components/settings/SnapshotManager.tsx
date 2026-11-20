@@ -103,7 +103,7 @@ export function SnapshotManager({ onApplied }: { onApplied?: () => void }) {
         <button
           onClick={capture}
           disabled={busy === 'capture'}
-          className="px-3 py-1.5 text-xs bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="px-3 py-1.5 text-xs bg-amber-700 hover:bg-amber-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
         >
           {busy === 'capture' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />}
           Capture

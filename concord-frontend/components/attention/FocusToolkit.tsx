@@ -470,7 +470,7 @@ export function FocusToolkit() {
             Minutes
             <input type="number" min={5} max={720} value={taskDuration} onChange={(e) => setTaskDuration(e.target.value)} className="input-lattice w-20" />
           </label>
-          <button onClick={addPlannerTask} disabled={busy === 'plan-add' || !taskName.trim()} className="flex items-center gap-1 rounded bg-neon-purple/15 px-3 py-2 text-xs text-neon-purple ring-1 ring-neon-purple/30 hover:bg-neon-purple/25 disabled:opacity-50">
+          <button onClick={addPlannerTask} disabled={busy === 'plan-add' || !taskName.trim()} className="flex items-center gap-1 rounded bg-neon-purple/15 px-3 py-2 text-xs text-neon-purple-bright ring-1 ring-neon-purple/30 hover:bg-neon-purple/25 disabled:opacity-50">
             <Plus className="h-3.5 w-3.5" /> Add
           </button>
         </div>

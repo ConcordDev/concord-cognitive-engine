@@ -119,7 +119,7 @@ function DeltaVBudgetTool() {
             <Field label="Δv (km/s)">
               <input inputMode="decimal" value={m.deltaV} onChange={(e) => updateRow(i, { deltaV: e.target.value })} className={cn(inputCls, 'w-24')} />
             </Field>
-            <button type="button" aria-label="Remove maneuver" onClick={() => removeRow(i)} className="text-zinc-600 hover:text-rose-400 pb-2">
+            <button type="button" aria-label="Remove maneuver" onClick={() => removeRow(i)} className="text-lattice-muted hover:text-rose-400 pb-2">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -206,7 +206,7 @@ function LaunchWindowTool() {
           <span className="text-zinc-400">Windows / day</span><span className="text-zinc-100 text-right">{result.windowsPerDay}</span>
           <span className="text-zinc-400">Window duration</span><span className="text-zinc-100 text-right">{result.windowDuration}</span>
           <span className="text-zinc-400">Inclination penalty</span><span className={cn('text-right', result.inclinationPenalty.startsWith('Dogleg') ? 'text-amber-400' : 'text-emerald-400')}>{result.inclinationPenalty}</span>
-          <span className="col-span-2 text-zinc-500 italic">{result.nextWindowApprox}</span>
+          <span className="col-span-2 text-lattice-muted italic">{result.nextWindowApprox}</span>
         </div>
       )}
     </div>
@@ -276,7 +276,7 @@ export function MissionPlanningPanel() {
       <header className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800 bg-gradient-to-r from-indigo-900/20 to-transparent">
         <Orbit className="w-5 h-5 text-indigo-400" />
         <h2 className="text-sm font-bold text-white">Mission Planning</h2>
-        <span className="text-[11px] text-gray-500">Real orbital-mechanics math — not an LLM guess</span>
+        <span className="text-[11px] text-lattice-muted">Real orbital-mechanics math — not an LLM guess</span>
       </header>
       <nav className="flex gap-1 px-2 pt-2 border-b border-zinc-800 overflow-x-auto">
         {TOOLS.map((t) => {

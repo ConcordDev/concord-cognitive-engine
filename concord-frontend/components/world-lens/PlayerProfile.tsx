@@ -543,7 +543,7 @@ export default function PlayerProfile({
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 following
                   ? 'bg-cyan-600/30 text-cyan-400 border border-cyan-500/30'
-                  : 'bg-cyan-600/80 hover:bg-cyan-500 text-white'
+                  : 'bg-cyan-700/80 hover:bg-cyan-500 text-white'
               }`}
             >
               {following ? <><UserCheck size={12} /> Following</> : <><Heart size={12} /> Follow</>}

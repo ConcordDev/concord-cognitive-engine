@@ -15,6 +15,7 @@
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
 import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normalize.js";
+import { getBalance as ledgerBalanceOf } from "./economy/balances.js";
 installSlowSyncIoOnce();
 import expressRateLimit from "express-rate-limit";
 import { findActiveUserRowByEmail, emailsMatchIgnoreCase } from "./lib/user-email-lookup.js";
@@ -8896,6 +8897,10 @@ function authMiddleware(req, res, next) {
   if (req.method === "POST" && /^\/api\/spectate\/[^/]+\/subscribe$/.test(req.path)) return next();
   if (req.method === "POST" && req.path === "/api/spectate/heartbeat") return next();
   if (req.method === "GET" && /^\/api\/spectate\/[^/]+\/feed$/.test(req.path)) return next();
+  // The Auction House (Market lens) public window: GET-only, read handlers
+  // only (domains/market-house.js PUBLIC_READS — catalogue, lot, trending,
+  // showcase, pay board), run with no actor. Nothing here can write.
+  if (req.method === "GET" && /^\/api\/market\/house\/public\/[a-z-]{3,40}$/.test(req.path)) return next();
   // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
   // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.
@@ -13752,6 +13757,10 @@ function saveStateDebounced() {
 // Eagerly expose so domain files loaded before saveStateDebounced first
 // runs can still trigger persistence (snippets, snapshots, etc.).
 globalThis._concordSaveStateDebounced = saveStateDebounced;
+// Domain code that changes an existing DTU's visibility or licence (e.g. a
+// music release publishing its cover) persists it through the normal DTU write
+// path instead of mutating STATE.dtus in memory only.
+globalThis._concordUpsertDTU = (dtu) => upsertDTU(dtu, { broadcast: false });
 
 /**
  * Synchronous state save — bypasses debounce entirely.
@@ -15869,6 +15878,10 @@ async function runMacro(domain, name, input, ctx) {
     // CONCORD_CIVIC_BONDS — these resolve only when the kill-switch is enabled.
     civic_bonds: new Set(["list", "get", "spillover", "ledger"]),
     sonic_glyph: new Set(["spell_to_chord"]),
+    // Music storefront reads (Liner Notes): published releases, artist pages by
+    // handle, new releases and search. Drafts stay owner-only inside the
+    // handlers; buy/follow/play/edit stay actor-gated.
+    music: new Set(["artist-page", "release-get", "releases-new", "catalog-search"]),
     // Phase 9.4 — economy primitives (auth-gated for write ops; reads here)
     sponsorship: new Set(["list_for_user"]),
     staking: new Set(["list_for_user"]),
@@ -40221,6 +40234,7 @@ configureMiddleware(app, {
   productionWriteAuthMiddleware,
   csrfMiddleware,
   NODE_ENV,
+  AUTH_MODE,
 });
 
 // One hub id (lib/world-ids.js). Older clients and saved state still send the
@@ -49345,8 +49359,9 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     const buyerId = ctx?.actor?.userId || ctx?.actor?.id;
     if (!buyerId) return { ok: false, error: "authentication_required" };
     try { ensureEconomicState(); } catch { /* idempotent — best-effort init */ }
-    const buyerWallet = STATE.economic?.wallets?.get(buyerId);
-    const buyerBalance = buyerWallet?.balance || 0;
+    // The ledger is the balance (the number the wallet shows; coin purchases
+    // and every credit/debit bridge land there). getWallet syncs the cache.
+    const buyerBalance = getWallet(buyerId).balance || 0;
     if (buyerBalance < price) {
       return { ok: false, error: "insufficient_balance", balance: buyerBalance, price };
     }
@@ -49383,8 +49398,10 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
     const amount = Math.round(creatorPool * royalty.rate * 100) / 100;
     remainingPool -= amount;
 
-    // Check if recipient wallet exists — hold in escrow if not
-    const recipientWallet = STATE.economic?.wallets?.get(royalty.originalCreator);
+    // Hold in escrow only when the recipient is no account at all: a real user
+    // with no in-memory wallet entry yet is still paid (their balance lives on
+    // the ledger).
+    const recipientWallet = STATE.economic?.wallets?.get(royalty.originalCreator) || (isKnownAccount(royalty.originalCreator) ? getWallet(royalty.originalCreator) : null);
     const paymentTarget = recipientWallet ? royalty.originalCreator : "escrow";
     payments.push({
       recipient: paymentTarget,
@@ -57274,6 +57291,41 @@ app.delete("/api/chat/sessions/:id", requireAuth(), async (req, res) => {
       if (mem && (!mem.ownerId || mem.ownerId === userId)) STATE.sessions.delete(sessionId);
     } catch { /* in-memory copy is best-effort */ }
     res.json({ ok: true, sessionId, deletedMessages: r.deleted });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// Rename one of the signed-in user's conversations. Owner-only.
+app.patch("/api/chat/sessions/:id", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { renameChatSession } = await import("./lib/chat-session-store.js");
+    const r = renameChatSession(STATE.db, String(req.params.id || "").slice(0, 200), userId, req.body?.title);
+    if (!r.ok) return res.status(r.error === "not_found" ? 404 : r.error === "forbidden" ? 403 : 400).json(r);
+    res.json(r);
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err?.message || err) });
+  }
+});
+
+// "Branch from here": copy the owner's thread up to one message into a new
+// session on the server, so the branch follows the user to every device and
+// the model sees exactly that history on its next turn.
+app.post("/api/chat/sessions/:id/fork", requireAuth(), async (req, res) => {
+  try {
+    const userId = req.user?.id || req.actor?.userId;
+    if (!userId) return res.status(401).json({ ok: false, error: "auth_required" });
+    const { forkChatSession } = await import("./lib/chat-session-store.js");
+    const r = forkChatSession(STATE.db, {
+      sessionId: String(req.params.id || "").slice(0, 200),
+      ownerId: userId,
+      uptoId: req.body?.uptoId,
+      newSessionId: `chat-${crypto.randomUUID()}`,
+    });
+    if (!r.ok) return res.status(r.error === "not_found" || r.error === "message_not_in_session" ? 404 : r.error === "forbidden" ? 403 : 400).json(r);
+    res.json(r);
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err?.message || err) });
   }
@@ -69478,7 +69530,10 @@ app.get("/api/economy/balance", requireAuth(), (req, res) => {
     }
     userId = requestedUserId;
   }
-  const wallet = STATE.economic?.wallets?.get(userId);
+  // getWallet keeps the cache in step with economy_ledger, so this is the same
+  // balance the marketplace spends from (a raw map read showed 0 for CC that
+  // arrived through a coin purchase).
+  const wallet = getWallet(userId);
   res.json({ ok: true, balance: wallet?.balance || 0, tier: wallet?.tier || "free" });
 });
 
@@ -88272,8 +88327,26 @@ function ensureEconomicState() {
 }
 
 // ---- Wallet Management ----
+// A real account (users table) — royalties to it are paid, not escrowed.
+function isKnownAccount(userId) {
+  if (!userId || !db) return false;
+  try { return !!db.prepare("SELECT 1 FROM users WHERE id = ?").get(String(userId)); } catch { return false; }
+}
+
 function getWallet(odId) {
   ensureEconomicState();
+  const synced = () => {
+    // economy_ledger is the source of truth for CC balances: Stripe coin
+    // purchases, the test credit and every creditWallet/debitWallet bridge
+    // write there. The in-memory wallet is a cache kept in step with it, so a
+    // balance check here sees the same number the wallet UI shows.
+    const w = STATE.economic.wallets.get(odId);
+    if (w && db) {
+      try { w.balance = ledgerBalanceOf(db, odId).balance; } catch { /* no ledger table yet: keep the cache */ }
+    }
+    return w;
+  };
+  if (STATE.economic.wallets.has(odId)) return synced();
   if (!STATE.economic.wallets.has(odId)) {
     STATE.economic.wallets.set(odId, {
       odId,
@@ -88287,7 +88360,7 @@ function getWallet(odId) {
       updatedAt: Date.now(),
     });
   }
-  return STATE.economic.wallets.get(odId);
+  return synced();
 }
 
 function creditWallet(odId, amount, reason = '', refId = null) {
@@ -89805,7 +89878,10 @@ function createAsset({ type, title, description, tags, genre, subGenre, bpm, key
 
 app.post('/api/artistry/assets', (req, res) => {
   try {
-    const asset = createAsset(req.body);
+    // The owner is the signed-in account (lib/actor-identity.js refuses a body
+    // ownerId that names anyone else); a body ownerId is only honoured with no
+    // session, i.e. AUTH_MODE=public single-user mode.
+    const asset = createAsset({ ...req.body, ownerId: req.user?.id || req.body?.ownerId });
     res.json({ ok: true, asset });
   } catch (e) {
     serverError(res, e, 400);
@@ -90320,8 +90396,11 @@ const LICENSE_TYPES = Object.freeze({
 app.post('/api/artistry/marketplace/beats', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetId, bpm, key, genre, tags, licenses, ownerId, previewAssetId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetId, bpm, key, genre, tags, licenses, previewAssetId } = req.body;
+    // The seller is the signed-in account, never a body field (a body ownerId let
+    // anyone list under someone else's name).
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     const listingId = `beat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const listing = {
       id: listingId, type: 'beat', title: title || 'Untitled Beat', assetId,
@@ -90362,8 +90441,9 @@ app.get('/api/artistry/marketplace/beats', (req, res) => {
 app.post('/api/artistry/marketplace/stems', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetIds, parentTrackId, genre, tags, price, ownerId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetIds, parentTrackId, genre, tags, price } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `stem_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.stemStore.set(listingId, {
@@ -90388,8 +90468,9 @@ app.get('/api/artistry/marketplace/stems', (req, res) => {
 app.post('/api/artistry/marketplace/samples', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetIds, sampleCount, genre, tags, price, description, ownerId } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetIds, sampleCount, genre, tags, price, description } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `samp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.sampleStore.set(listingId, {
@@ -90414,8 +90495,9 @@ app.get('/api/artistry/marketplace/samples', (req, res) => {
 app.post('/api/artistry/marketplace/art', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { title, assetId, artType, style, tags, price, description, ownerId, dimensions } = req.body;
-    if (!ownerId) return res.status(400).json({ error: 'Missing ownerId' });
+    const { title, assetId, artType, style, tags, price, description, dimensions } = req.body;
+    const ownerId = req.user?.id; // the signed-in seller, never a body field
+    if (!ownerId) return res.status(401).json({ error: 'auth_required' });
     if (price != null && (typeof price !== 'number' || price < 0)) return res.status(400).json({ error: 'Invalid price' });
     const listingId = `art_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     art.artStore.set(listingId, {
@@ -90561,8 +90643,13 @@ function computeCitationRoyaltyRate(usageCount) {
 app.post('/api/artistry/marketplace/purchase', (req, res) => {
   try {
     const art = ensureArtistryState();
-    const { buyerId, listingId, listingType, licenseType, purchaseId: clientPurchaseId } = req.body;
-    if (!buyerId || !listingId) return res.status(400).json({ error: 'Missing buyerId or listingId' });
+    const { listingId, listingType, licenseType, purchaseId: clientPurchaseId } = req.body;
+    // SECURITY: the buyer is the signed-in account. This used to read buyerId
+    // from the body, so any signed-in user could debit ANOTHER user's balance
+    // to buy their own listing. A body buyerId is ignored.
+    const buyerId = req.user?.id;
+    if (!buyerId) return res.status(401).json({ error: 'auth_required' });
+    if (!listingId) return res.status(400).json({ error: 'Missing listingId' });
 
     // ── Deterministic purchaseId ────────────────────────────────────────
     // Client can send a purchaseId for idempotency; otherwise server generates one.

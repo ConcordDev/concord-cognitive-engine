@@ -184,7 +184,7 @@ export function EnergyCheapestWindowPanel() {
         );
       })()}
 
-      <div className="text-[10px] text-zinc-500 border-t border-zinc-800 pt-2">
+      <div className="text-[10px] text-lattice-muted border-t border-zinc-800 pt-2">
         Advisory only: Concord computes the cheapest time to run a load from your real rate
         data. It does not, and cannot, switch any device on your behalf — actually running your
         dishwasher or EV charger at the recommended time needs real smart-plug / CT-clamp

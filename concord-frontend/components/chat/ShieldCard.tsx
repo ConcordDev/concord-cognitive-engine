@@ -115,10 +115,10 @@ interface ShieldCardProps {
 // ── Severity Config ──────────────────────────────────────────────
 
 const SEVERITY_CONFIG: Record<string, { color: string; label: string; icon: typeof Flame }> = {
-  critical: { color: 'text-red-400 bg-red-500/10 border-red-500/20', label: 'Critical', icon: Flame },
-  high: { color: 'text-orange-400 bg-orange-500/10 border-orange-500/20', label: 'High', icon: AlertTriangle },
-  medium: { color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', label: 'Medium', icon: Bug },
-  low: { color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', label: 'Low', icon: Eye },
+  critical: { color: 'text-[color:var(--nb-red,#f87171)] bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] border-[color:var(--nb-red,rgba(239,68,68,0.2))]', label: 'Critical', icon: Flame },
+  high: { color: 'text-[color:var(--nb-ochre,#fb923c)] bg-[var(--nb-hl,rgba(249,115,22,0.1))] border-[color:var(--nb-ochre,rgba(249,115,22,0.2))]', label: 'High', icon: AlertTriangle },
+  medium: { color: 'text-[color:var(--nb-ochre,#fbbf24)] bg-[var(--nb-hl,rgba(245,158,11,0.1))] border-[color:var(--nb-ochre,rgba(245,158,11,0.2))]', label: 'Medium', icon: Bug },
+  low: { color: 'text-[color:var(--nb-blue,#60a5fa)] bg-[var(--nb-blue-soft,rgba(59,130,246,0.1))] border-[color:var(--nb-blue,rgba(59,130,246,0.2))]', label: 'Low', icon: Eye },
 };
 
 function getSeverityLevel(severity: number): string {
@@ -129,11 +129,11 @@ function getSeverityLevel(severity: number): string {
 }
 
 const GRADE_COLORS: Record<string, string> = {
-  A: 'text-green-400 bg-green-500/10 border-green-500/20',
-  B: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  C: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  D: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
-  F: 'text-red-400 bg-red-500/10 border-red-500/20',
+  A: 'text-[color:var(--nb-green,#4ade80)] bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] border-[color:var(--nb-green,rgba(34,197,94,0.2))]',
+  B: 'text-[color:var(--nb-blue,#60a5fa)] bg-[var(--nb-blue-soft,rgba(59,130,246,0.1))] border-[color:var(--nb-blue,rgba(59,130,246,0.2))]',
+  C: 'text-[color:var(--nb-ochre,#fbbf24)] bg-[var(--nb-hl,rgba(245,158,11,0.1))] border-[color:var(--nb-ochre,rgba(245,158,11,0.2))]',
+  D: 'text-[color:var(--nb-ochre,#fb923c)] bg-[var(--nb-hl,rgba(249,115,22,0.1))] border-[color:var(--nb-ochre,rgba(249,115,22,0.2))]',
+  F: 'text-[color:var(--nb-red,#f87171)] bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] border-[color:var(--nb-red,rgba(239,68,68,0.2))]',
 };
 
 // ── Component ────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ export default function ShieldCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="rounded-lg border bg-zinc-900/60 backdrop-blur-sm overflow-hidden border-zinc-700/50">
+    <div className="rounded-lg border bg-[var(--nb-sheet,rgba(24,24,27,0.6))] backdrop-blur-sm overflow-hidden border-[color:var(--nb-rule,rgba(63,63,70,0.5))]">
       {/* Scan Result */}
       {type === 'scan' && scanResult && (
         <ScanResultCard result={scanResult} expanded={expanded} onToggle={() => setExpanded(!expanded)} />
@@ -194,17 +194,17 @@ function ScanResultCard({
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
         <div className={cn(
           'p-2 rounded-md border',
           isClean
-            ? 'bg-green-500/10 text-green-400 border-green-500/20'
-            : 'bg-red-500/10 text-red-400 border-red-500/20'
+            ? 'bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] text-[color:var(--nb-green,#4ade80)] border-[color:var(--nb-green,rgba(34,197,94,0.2))]'
+            : 'bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] text-[color:var(--nb-red,#f87171)] border-[color:var(--nb-red,rgba(239,68,68,0.2))]'
         )}>
           {isClean ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)]">
             {isClean ? 'File is Clean' : `Threat Detected: ${threat?.subtype?.toUpperCase() || 'UNKNOWN'}`}
           </h3>
           <div className="flex items-center gap-2 mt-0.5">
@@ -212,14 +212,14 @@ function ScanResultCard({
               <SeverityBadge severity={threat.severity} />
             )}
             {result.cached && (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+              <span className="text-xs px-1.5 py-0.5 rounded bg-[var(--nb-wash-2,rgba(113,113,122,0.1))] text-[color:var(--nb-muted,#a1a1aa)] border border-[color:var(--nb-rule-2,rgba(113,113,122,0.2))]">
                 Cached
               </span>
             )}
           </div>
         </div>
         {!isClean && (
-          <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+          <button onClick={onToggle} className="p-1 rounded hover:bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)]">
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
         )}
@@ -227,7 +227,7 @@ function ScanResultCard({
 
       {/* Hash info */}
       {result.hash?.sha256 && (
-        <div className="px-4 py-2 text-xs text-zinc-400 border-b border-zinc-800/30 font-mono">
+        <div className="px-4 py-2 text-xs text-[color:var(--nb-muted,#a1a1aa)] border-b border-[color:var(--nb-rule,rgba(39,39,42,0.3))] font-mono">
           SHA256: {result.hash.sha256.slice(0, 32)}...
         </div>
       )}
@@ -238,13 +238,13 @@ function ScanResultCard({
           {/* Signatures */}
           {(threat.signatures?.clamav || (threat.signatures?.yara?.length ?? 0) > 0) && (
             <div>
-              <span className="text-zinc-400 font-medium">Signatures:</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)] font-medium">Signatures:</span>
               <div className="mt-1 space-y-1">
                 {threat.signatures?.clamav && (
-                  <div className="text-zinc-400">ClamAV: <span className="text-zinc-300">{threat.signatures.clamav}</span></div>
+                  <div className="text-[color:var(--nb-muted,#a1a1aa)]">ClamAV: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{threat.signatures.clamav}</span></div>
                 )}
                 {threat.signatures?.yara?.map((rule, i) => (
-                  <div key={i} className="text-zinc-400">YARA: <span className="text-zinc-300">{rule}</span></div>
+                  <div key={i} className="text-[color:var(--nb-muted,#a1a1aa)]">YARA: <span className="text-[color:var(--nb-ink-2,#d4d4d8)]">{rule}</span></div>
                 ))}
               </div>
             </div>
@@ -253,18 +253,18 @@ function ScanResultCard({
           {/* Vector */}
           {threat.vector && (
             <div>
-              <span className="text-zinc-400 font-medium">Attack Vector:</span>
-              <span className="ml-2 text-zinc-300">{threat.vector}</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)] font-medium">Attack Vector:</span>
+              <span className="ml-2 text-[color:var(--nb-ink-2,#d4d4d8)]">{threat.vector}</span>
             </div>
           )}
 
           {/* Behavior */}
           {threat.behavior && threat.behavior.length > 0 && (
             <div>
-              <span className="text-zinc-400 font-medium">Behavior:</span>
+              <span className="text-[color:var(--nb-muted,#a1a1aa)] font-medium">Behavior:</span>
               <div className="flex flex-wrap gap-1 mt-1">
                 {threat.behavior.map((b, i) => (
-                  <span key={i} className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+                  <span key={i} className="px-1.5 py-0.5 rounded bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)] border border-[color:var(--nb-rule,rgba(63,63,70,0.5))]">
                     {b}
                   </span>
                 ))}
@@ -274,14 +274,14 @@ function ScanResultCard({
 
           {/* Neutralization */}
           {threat.neutralization && (
-            <div className="p-2 rounded bg-zinc-800/50 border border-zinc-700/30">
-              <span className="text-zinc-400 font-medium">Neutralization:</span>
-              <p className="mt-1 text-zinc-300 leading-relaxed">{threat.neutralization}</p>
+            <div className="p-2 rounded bg-[var(--nb-wash,rgba(39,39,42,0.5))] border border-[color:var(--nb-rule,rgba(63,63,70,0.3))]">
+              <span className="text-[color:var(--nb-muted,#a1a1aa)] font-medium">Neutralization:</span>
+              <p className="mt-1 text-[color:var(--nb-ink-2,#d4d4d8)] leading-relaxed">{threat.neutralization}</p>
             </div>
           )}
 
           {/* Detection stats */}
-          <div className="flex items-center gap-4 text-zinc-400 pt-1 border-t border-zinc-800/30">
+          <div className="flex items-center gap-4 text-[color:var(--nb-muted,#a1a1aa)] pt-1 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
             {threat.times_detected && (
               <span>Detected {threat.times_detected} time{threat.times_detected !== 1 ? 's' : ''}</span>
             )}
@@ -294,7 +294,7 @@ function ScanResultCard({
 
       {/* Clean confirmation */}
       {isClean && (
-        <div className="px-4 py-2 text-xs text-green-400 bg-green-500/5 border-t border-green-500/10 flex items-center gap-2">
+        <div className="px-4 py-2 text-xs text-[color:var(--nb-green,#4ade80)] bg-[var(--nb-green-soft,rgba(34,197,94,0.05))] border-t border-[color:var(--nb-green,rgba(34,197,94,0.1))] flex items-center gap-2">
           <CheckCircle2 className="w-3 h-3" />
           No threats detected. File verified against the threat lattice.
         </div>
@@ -318,12 +318,12 @@ function SecurityScoreCard({
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
         <div className={cn('p-2 rounded-md border', gradeColor)}>
           <Shield className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">Security Score</h3>
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)]">Security Score</h3>
           <div className="flex items-center gap-2 mt-0.5">
             <span className={cn('text-lg font-bold', gradeColor.split(' ')[0])}>
               {score.score}/100
@@ -333,7 +333,7 @@ function SecurityScoreCard({
             </span>
           </div>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)]">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -350,7 +350,7 @@ function SecurityScoreCard({
           </div>
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-zinc-400 pt-2 border-t border-zinc-800/30">
+          <div className="flex items-center gap-4 text-[color:var(--nb-muted,#a1a1aa)] pt-2 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
             <span>{score.stats.totalScanned} scanned</span>
             <span>{score.stats.threatsDetected} threats</span>
             <span>{score.stats.firewallRules} rules</span>
@@ -358,12 +358,12 @@ function SecurityScoreCard({
 
           {/* Recommendations */}
           {score.recommendations.length > 0 && (
-            <div className="p-2 rounded bg-amber-500/5 border border-amber-500/10">
-              <span className="text-amber-400 font-medium">Recommendations:</span>
+            <div className="p-2 rounded bg-[var(--nb-hl,rgba(245,158,11,0.05))] border border-[color:var(--nb-ochre,rgba(245,158,11,0.1))]">
+              <span className="text-[color:var(--nb-ochre,#fbbf24)] font-medium">Recommendations:</span>
               <ul className="mt-1 space-y-1">
                 {score.recommendations.map((rec, i) => (
-                  <li key={i} className="text-zinc-400 flex items-start gap-1">
-                    <Zap className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+                  <li key={i} className="text-[color:var(--nb-muted,#a1a1aa)] flex items-start gap-1">
+                    <Zap className="w-3 h-3 text-[color:var(--nb-ochre,#fbbf24)] mt-0.5 shrink-0" />
                     {rec}
                   </li>
                 ))}
@@ -377,14 +377,14 @@ function SecurityScoreCard({
 }
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
-  const color = value >= 75 ? 'bg-green-500' : value >= 50 ? 'bg-amber-500' : 'bg-red-500';
+  const color = value >= 75 ? 'bg-[var(--nb-green,#22c55e)]' : value >= 50 ? 'bg-[var(--nb-ochre,#f59e0b)]' : 'bg-[var(--nb-red,#ef4444)]';
   return (
     <div>
-      <div className="flex justify-between text-zinc-400 mb-0.5">
+      <div className="flex justify-between text-[color:var(--nb-muted,#a1a1aa)] mb-0.5">
         <span>{label}</span>
         <span>{value}%</span>
       </div>
-      <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-[var(--nb-wash,#27272a)] rounded-full overflow-hidden">
         <div className={cn('h-full rounded-full transition-all', color)} style={{ width: `${value}%` }} />
       </div>
     </div>
@@ -406,32 +406,32 @@ function SweepResultCard({
 
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
         <div className={cn(
           'p-2 rounded-md border',
           hasThreats
-            ? 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-            : 'bg-green-500/10 text-green-400 border-green-500/20'
+            ? 'bg-[var(--nb-hl,rgba(249,115,22,0.1))] text-[color:var(--nb-ochre,#fb923c)] border-[color:var(--nb-ochre,rgba(249,115,22,0.2))]'
+            : 'bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] text-[color:var(--nb-green,#4ade80)] border-[color:var(--nb-green,rgba(34,197,94,0.2))]'
         )}>
           <Activity className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)]">
             System Sweep {sweep.status === 'complete' ? 'Complete' : 'In Progress'}
           </h3>
-          <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400">
+          <div className="flex items-center gap-2 mt-0.5 text-xs text-[color:var(--nb-muted,#a1a1aa)]">
             <span>{sweep.scanCount} scanned</span>
-            <span className="text-zinc-600">|</span>
+            <span className="text-[color:var(--nb-faint,#52525b)]">|</span>
             <span>{sweep.cleanCount} clean</span>
             {hasThreats && (
               <>
-                <span className="text-zinc-600">|</span>
-                <span className="text-red-400">{sweep.threatsFound.length} threats</span>
+                <span className="text-[color:var(--nb-faint,#52525b)]">|</span>
+                <span className="text-[color:var(--nb-red,#f87171)]">{sweep.threatsFound.length} threats</span>
               </>
             )}
           </div>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)]">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
@@ -439,20 +439,20 @@ function SweepResultCard({
       {expanded && (
         <div className="px-4 py-3 space-y-2 text-xs">
           {sweep.toolsUsed.length > 0 && (
-            <div className="text-zinc-400">
+            <div className="text-[color:var(--nb-muted,#a1a1aa)]">
               Tools used: {sweep.toolsUsed.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ')}
             </div>
           )}
           {sweep.durationMs && (
-            <div className="text-zinc-400">
+            <div className="text-[color:var(--nb-muted,#a1a1aa)]">
               Duration: {(sweep.durationMs / 1000).toFixed(1)}s
             </div>
           )}
           {hasThreats && (
-            <div className="space-y-1 pt-1 border-t border-zinc-800/30">
+            <div className="space-y-1 pt-1 border-t border-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
               {sweep.threatsFound.map((t, i) => (
-                <div key={i} className="flex items-center gap-2 text-zinc-400">
-                  <XCircle className="w-3 h-3 text-red-400" />
+                <div key={i} className="flex items-center gap-2 text-[color:var(--nb-muted,#a1a1aa)]">
+                  <XCircle className="w-3 h-3 text-[color:var(--nb-red,#f87171)]" />
                   <span className="font-mono">{t.dtuId.slice(0, 20)}</span>
                   {t.severity && <SeverityBadge severity={t.severity} />}
                 </div>
@@ -460,7 +460,7 @@ function SweepResultCard({
             </div>
           )}
           {!hasThreats && (
-            <div className="flex items-center gap-2 text-green-400">
+            <div className="flex items-center gap-2 text-[color:var(--nb-green,#4ade80)]">
               <CheckCircle2 className="w-3 h-3" />
               No threats found. Your system is clean.
             </div>
@@ -484,20 +484,20 @@ function ThreatFeedCard({
 }) {
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
-        <div className="p-2 rounded-md border bg-red-500/10 text-red-400 border-red-500/20">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
+        <div className="p-2 rounded-md border bg-[var(--nb-red-soft,rgba(239,68,68,0.1))] text-[color:var(--nb-red,#f87171)] border-[color:var(--nb-red,rgba(239,68,68,0.2))]">
           <ShieldAlert className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">Threat Intelligence Feed</h3>
-          <span className="text-xs text-zinc-400">{threats.length} recent threats</span>
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)]">Threat Intelligence Feed</h3>
+          <span className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">{threats.length} recent threats</span>
         </div>
-        <button onClick={onToggle} className="p-1 rounded hover:bg-zinc-800 text-zinc-400">
+        <button onClick={onToggle} className="p-1 rounded hover:bg-[var(--nb-wash,#27272a)] text-[color:var(--nb-muted,#a1a1aa)]">
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
       </div>
 
-      <div className="divide-y divide-zinc-800/30">
+      <div className="divide-y divide-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
         {threats.slice(0, expanded ? 20 : 5).map((threat, i) => {
           const level = getSeverityLevel(threat.severity);
           const config = SEVERITY_CONFIG[level];
@@ -508,10 +508,10 @@ function ThreatFeedCard({
               <span className={cn('px-1.5 py-0.5 rounded border font-medium uppercase', config.color)}>
                 {threat.subtype}
               </span>
-              <span className="text-zinc-400 truncate flex-1">
+              <span className="text-[color:var(--nb-muted,#a1a1aa)] truncate flex-1">
                 {threat.hash?.sha256?.slice(0, 16) || threat.id?.slice(0, 16)}
               </span>
-              <span className="text-zinc-600 tabular-nums shrink-0">
+              <span className="text-[color:var(--nb-faint,#52525b)] tabular-nums shrink-0">
                 {threat.severity}/10
               </span>
             </div>
@@ -531,24 +531,24 @@ function PredictionsCard({
 }) {
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800/50">
-        <div className="p-2 rounded-md border bg-purple-500/10 text-purple-400 border-purple-500/20">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[color:var(--nb-rule,rgba(39,39,42,0.5))]">
+        <div className="p-2 rounded-md border bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] text-[color:var(--nb-red,#c084fc)] border-[color:var(--nb-red,rgba(168,85,247,0.2))]">
           <Lock className="w-4 h-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">Prophet Predictions</h3>
-          <span className="text-xs text-zinc-400">{predictions.length} predicted variants</span>
+          <h3 className="text-sm font-medium text-[color:var(--nb-ink,#f4f4f5)]">Prophet Predictions</h3>
+          <span className="text-xs text-[color:var(--nb-muted,#a1a1aa)]">{predictions.length} predicted variants</span>
         </div>
       </div>
 
-      <div className="divide-y divide-zinc-800/30">
+      <div className="divide-y divide-[color:var(--nb-rule,rgba(39,39,42,0.3))]">
         {predictions.slice(0, 10).map((pred, i) => (
           <div key={i} className="px-4 py-2 flex items-center gap-3 text-xs">
-            <Zap className="w-3 h-3 text-purple-400 shrink-0" />
-            <span className="text-zinc-300 capitalize font-medium">{pred.family}</span>
-            <span className="text-zinc-600">→</span>
-            <span className="text-zinc-400 truncate flex-1">{pred.predictedVariant}</span>
-            <span className="text-zinc-600 tabular-nums shrink-0">
+            <Zap className="w-3 h-3 text-[color:var(--nb-red,#c084fc)] shrink-0" />
+            <span className="text-[color:var(--nb-ink-2,#d4d4d8)] capitalize font-medium">{pred.family}</span>
+            <span className="text-[color:var(--nb-faint,#52525b)]">→</span>
+            <span className="text-[color:var(--nb-muted,#a1a1aa)] truncate flex-1">{pred.predictedVariant}</span>
+            <span className="text-[color:var(--nb-faint,#52525b)] tabular-nums shrink-0">
               {Math.round(pred.confidence * 100)}%
             </span>
           </div>

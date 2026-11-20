@@ -1147,7 +1147,7 @@ export function PhysicsSandboxPanel() {
             <button
               key={t.id}
               onClick={() => setTool(t.id as Tool)}
-              className={`p-2 rounded transition-colors ${tool === t.id ? 'bg-neon-purple/30 text-neon-purple' : 'hover:bg-white/10'}`}
+              className={`p-2 rounded transition-colors ${tool === t.id ? 'bg-neon-purple/30 text-neon-purple-bright' : 'hover:bg-white/10'}`}
               title={t.label}
             >
               <t.icon className="w-5 h-5" />
@@ -1537,7 +1537,7 @@ export function PhysicsSandboxPanel() {
                       addToast({ type: 'error', message: `Could not save "${title}".` });
                     }
                   }}
-                  className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple rounded hover:bg-neon-purple/30 flex items-center gap-1"
+                  className="text-xs px-2 py-1 bg-neon-purple/20 text-neon-purple-bright rounded hover:bg-neon-purple/30 flex items-center gap-1"
                   disabled={bodies.length === 0}
                 >
                   <Download className="w-3 h-3" /> Save

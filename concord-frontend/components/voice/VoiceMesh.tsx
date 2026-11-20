@@ -304,7 +304,7 @@ export function VoiceMesh({ roomId, selfUserId }: { roomId: string; selfUserId: 
         <button
           type="button"
           onClick={join}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm rounded-lg"
+          className="flex items-center gap-2 px-4 py-2 bg-cyan-700 hover:bg-cyan-500 text-white text-sm rounded-lg"
         >
           <Mic className="w-4 h-4" />
           Join voice room

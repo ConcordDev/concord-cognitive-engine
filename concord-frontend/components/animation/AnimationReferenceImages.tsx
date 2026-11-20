@@ -155,7 +155,7 @@ export function AnimationReferenceImages() {
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f); if (fileRef.current) fileRef.current.value = ''; }} />
         <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadMutation.isPending || !user?.id}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg shrink-0">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg shrink-0">
           {uploadMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
           Upload reference
         </button>

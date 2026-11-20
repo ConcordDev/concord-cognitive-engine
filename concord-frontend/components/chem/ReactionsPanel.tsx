@@ -9,7 +9,7 @@ import { useLensData } from '@/lib/hooks/use-lens-data';
 import type { Compound, Reaction } from './types';
 
 const typeColors = {
-  catalyst: 'bg-neon-purple/20 text-neon-purple border-neon-purple/30',
+  catalyst: 'bg-neon-purple/20 text-neon-purple-bright border-neon-purple/30',
   reagent: 'bg-neon-blue/20 text-neon-blue border-neon-blue/30',
   product: 'bg-neon-green/20 text-neon-green border-neon-green/30',
 };
@@ -161,7 +161,7 @@ export function ReactionsPanel({ onGotoCompounds }: { onGotoCompounds?: () => vo
                 <p className="font-mono text-sm mb-2">{reaction.formula}</p>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">{new Date(reaction.ranAt || reaction.createdAt || reaction.timestamp).toLocaleString()}</span>
-                  <span className={`px-2 py-0.5 rounded ${reaction.success ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-pink/20 text-neon-pink'}`}>
+                  <span className={`px-2 py-0.5 rounded ${reaction.success ? 'bg-neon-green/20 text-neon-green' : 'bg-neon-pink/20 text-neon-pink-bright'}`}>
                     {reaction.success ? 'Success' : 'Failed'}
                   </span>
                 </div>

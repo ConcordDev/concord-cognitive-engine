@@ -89,7 +89,7 @@ const SCOPE_OPTIONS: ScopeOption[] = [
     description: (_, national) =>
       national ? `Everyone in ${national}` : 'People in your country',
     icon: Flag,
-    color: 'text-neon-purple border-neon-purple/30 bg-neon-purple/5',
+    color: 'text-neon-purple-bright border-neon-purple/30 bg-neon-purple/5',
     requires: 'national',
   },
   {

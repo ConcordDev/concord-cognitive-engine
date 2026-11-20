@@ -73,7 +73,7 @@ export function MobileTabBar({ tabs, active, onSelect, className }: MobileTabBar
             </span>
             <span className="text-[10px]">{t.label}</span>
             {typeof t.badgeCount === 'number' && t.badgeCount > 0 && (
-              <span className="absolute top-1 right-[calc(50%-1rem)] min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-mono flex items-center justify-center">
+              <span className="absolute top-1 right-[calc(50%-1rem)] min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-mono flex items-center justify-center">
                 {t.badgeCount > 99 ? '99+' : t.badgeCount}
               </span>
             )}

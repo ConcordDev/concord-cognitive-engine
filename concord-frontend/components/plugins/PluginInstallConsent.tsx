@@ -149,7 +149,7 @@ export function PluginInstallConsent({ plugin, onCancel, onInstalled }: PluginIn
           <button
             onClick={confirmInstall}
             disabled={installing}
-            className="flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-cyan-500 disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-cyan-500 disabled:opacity-60"
           >
             {installing && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
             {installing ? 'Installing…' : 'Grant & Install'}

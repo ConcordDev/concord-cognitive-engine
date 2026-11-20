@@ -574,7 +574,7 @@ function BountyForm({
           );
         }}
         disabled={postBountyMutation.isPending || !bountyDesc.trim() || !amountOk}
-        className="px-3 py-1 bg-neon-purple/20 text-neon-purple rounded text-sm hover:bg-neon-purple/30 transition disabled:opacity-50"
+        className="px-3 py-1 bg-neon-purple/20 text-neon-purple-bright rounded text-sm hover:bg-neon-purple/30 transition disabled:opacity-50"
       >
         {postBountyMutation.isPending ? 'Posting...' : 'Post Bounty'}
       </button>

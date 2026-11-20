@@ -250,9 +250,9 @@ export function HlrTracesPanel({
 
           {traces.length === 0 ? (
             <div className="flex flex-col items-center gap-2 rounded border border-cyan-500/20 bg-zinc-900/30 py-16 text-center">
-              <Brain className="h-6 w-6 text-zinc-600" aria-hidden="true" />
+              <Brain className="h-6 w-6 text-lattice-muted" aria-hidden="true" />
               <p className="text-sm text-zinc-300">No reasoning traces yet.</p>
-              <p className="max-w-md text-xs text-zinc-500">
+              <p className="max-w-md text-xs text-lattice-muted">
                 The HLR engine records a trace each time it runs a reasoning pass — from the
                 drift-scan constraint-check cycle, the lattice orchestrator, or a manual
                 <code className="mx-1 rounded bg-zinc-800 px-1 text-cyan-300">reasoning.run</code> call.
@@ -262,7 +262,7 @@ export function HlrTracesPanel({
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1" role="listbox" aria-label="Reasoning traces">
-                {filtered.length === 0 && <p className="text-xs text-zinc-500">No traces match this mode.</p>}
+                {filtered.length === 0 && <p className="text-xs text-lattice-muted">No traces match this mode.</p>}
                 {filtered.map((t) => (
                   <button
                     key={t.id}
@@ -280,14 +280,14 @@ export function HlrTracesPanel({
                       <span className="text-[10px] text-amber-300/70">conf {Math.round((t.confidence || 0) * 100)}%</span>
                     </div>
                     {t.input_summary && <div className="text-[10px] text-zinc-400">{t.input_summary.slice(0, 80)}</div>}
-                    <div className="text-[9px] text-zinc-500">chains: {t.chain_count ?? '?'}</div>
+                    <div className="text-[9px] text-lattice-muted">chains: {t.chain_count ?? '?'}</div>
                   </button>
                 ))}
               </div>
 
               <div className="rounded border border-cyan-500/30 bg-zinc-900/40 p-3 text-xs">
                 {!activeTrace ? (
-                  <p className="text-zinc-500">{activeId ? 'Loading trace…' : 'Pick a trace.'}</p>
+                  <p className="text-lattice-muted">{activeId ? 'Loading trace…' : 'Pick a trace.'}</p>
                 ) : (
                   <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-all font-mono text-[10px] text-cyan-100">
                     {JSON.stringify(activeTrace, null, 2)}
@@ -308,7 +308,7 @@ export function HlrTracesPanel({
             </header>
 
             {agentTraces.length === 0 ? (
-              <p className="text-xs text-zinc-500">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
+              <p className="text-xs text-lattice-muted">No agent deliberations recorded — the agent is on instinct (or none deployed). Set CONCORD_AWARENESS_LOOP=1 + deploy an agent.</p>
             ) : (
               <>
                 <AwarenessCurve traces={agentTraces} />

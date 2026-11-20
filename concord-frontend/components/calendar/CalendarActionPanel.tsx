@@ -238,10 +238,10 @@ export function CalendarActionPanel() {
   const actions = [
     { id: 'conf' as ActionId, label: 'Conflicts', desc: 'This week, real events', icon: AlertOctagon, accent: '#ef4444', handler: actConf },
     { id: 'avail' as ActionId, label: 'Free time', desc: 'Today, your work hours', icon: Clock, accent: '#22c55e', handler: actAvail },
-    { id: 'opt' as ActionId, label: 'Optimize', desc: 'Place open tasks', icon: ListChecks, accent: '#a855f7', handler: actOpt },
+    { id: 'opt' as ActionId, label: 'Optimize', desc: 'Place open tasks', icon: ListChecks, accent: '#c084fc', handler: actOpt },
     { id: 'ical' as ActionId, label: 'ICS', desc: 'Export real events', icon: Download, accent: '#06b6d4', handler: actIcal },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private plan DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send day plan', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send day plan', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public template', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Plan', desc: 'Agent: top change', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
@@ -309,7 +309,7 @@ export function CalendarActionPanel() {
             {optResult.proposals.length === 0 && <div className="text-[10px] text-gray-400 mt-1">No open unblocked tasks to place.</div>}
             {optResult.proposals.map((p) => (
               <div key={p.taskId} className="flex items-center gap-2 text-[11px] text-gray-200 mt-1">
-                <span className="flex-1 truncate">→ {p.title} <span className="text-gray-500">({p.priority} · {p.estimateMin}m)</span></span>
+                <span className="flex-1 truncate">→ {p.title} <span className="text-lattice-muted">({p.priority} · {p.estimateMin}m)</span></span>
                 <span className="font-mono tabular-nums text-gray-400">{fmtTime(p.proposedStart)}–{fmtTime(p.proposedEnd)}</span>
                 {committed.has(p.taskId)
                   ? <span className="text-emerald-300 inline-flex items-center gap-1"><Check className="w-3 h-3" />Blocked</span>

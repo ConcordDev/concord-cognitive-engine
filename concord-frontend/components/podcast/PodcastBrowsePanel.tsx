@@ -179,7 +179,7 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
                   <button type="button" onClick={() => setConfirmRemove(false)} className="text-zinc-400 hover:text-zinc-200">Keep</button>
                 </>
               ) : (
-                <button type="button" onClick={() => setConfirmRemove(true)} className="inline-flex items-center gap-1 text-zinc-500 transition-colors hover:text-rose-300">
+                <button type="button" onClick={() => setConfirmRemove(true)} className="inline-flex items-center gap-1 text-lattice-muted transition-colors hover:text-rose-300">
                   <Trash2 className="w-3 h-3" /> Remove this show
                 </button>
               )}
@@ -215,11 +215,11 @@ export function PodcastBrowsePanel({ onChange }: { onChange: () => void }) {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button aria-label="Add to queue" type="button" onClick={() => queueEp(e.id)}
-                    className={cn('p-1 rounded', e.inQueue ? 'text-violet-400' : 'text-zinc-600 hover:text-violet-400')}>
+                    className={cn('p-1 rounded', e.inQueue ? 'text-violet-400' : 'text-lattice-muted hover:text-violet-400')}>
                     <ListPlus className="w-3.5 h-3.5" />
                   </button>
                   <button aria-label="Download" type="button" onClick={() => downloadEp(e.id)}
-                    className={cn('p-1 rounded', e.downloaded ? 'text-emerald-400' : 'text-zinc-600 hover:text-emerald-400')}>
+                    className={cn('p-1 rounded', e.downloaded ? 'text-emerald-400' : 'text-lattice-muted hover:text-emerald-400')}>
                     <Download className="w-3.5 h-3.5" />
                   </button>
                 </div>

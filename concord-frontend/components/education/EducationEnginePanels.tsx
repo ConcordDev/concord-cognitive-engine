@@ -287,7 +287,7 @@ export function LearningPathPanel() {
           type="button"
           onClick={() => goal && pathMutation.mutate(goal)}
           disabled={!goal || pathMutation.isPending}
-          className="px-4 py-2 bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded-lg hover:bg-neon-purple/30 text-sm disabled:opacity-50"
+          className="px-4 py-2 bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30 rounded-lg hover:bg-neon-purple/30 text-sm disabled:opacity-50"
         >
           {pathMutation.isPending ? 'Computing…' : 'Plan Path'}
         </button>
@@ -455,7 +455,7 @@ export function ProofByCitationPanel() {
             {selectedCitations.map(c => (
               <span
                 key={c.id}
-                className="flex items-center gap-1 px-2 py-1 bg-neon-pink/10 border border-neon-pink/30 text-neon-pink rounded-full text-xs"
+                className="flex items-center gap-1 px-2 py-1 bg-neon-pink/10 border border-neon-pink/30 text-neon-pink-bright rounded-full text-xs"
               >
                 {c.title}
                 <button type="button" onClick={() => removeCitation(c.id)} className="hover:text-white" aria-label="Close">
@@ -498,7 +498,7 @@ export function ProofByCitationPanel() {
           type="button"
           onClick={() => submit.mutate()}
           disabled={!claim || selectedCitations.length === 0 || submit.isPending}
-          className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink border border-neon-pink/30 rounded-lg hover:bg-neon-pink/30 text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/30 rounded-lg hover:bg-neon-pink/30 text-sm disabled:opacity-50"
         >
           {submit.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           {submit.isPending ? 'Evaluating…' : 'Submit for Evaluation'}
@@ -658,7 +658,7 @@ export function TutorPanel() {
           className={cn(
             'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors',
             socratic
-              ? 'bg-neon-purple/20 text-neon-purple border-neon-purple/30'
+              ? 'bg-neon-purple/20 text-neon-purple-bright border-neon-purple/30'
               : 'bg-lattice-deep text-gray-400 border-lattice-border',
           )}
         >
@@ -830,7 +830,7 @@ export function CohortPanel() {
             type="button"
             onClick={() => formCohort.mutate()}
             disabled={!newCohortName || !newCohortDomain || formCohort.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded-lg text-sm disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30 rounded-lg text-sm disabled:opacity-50"
           >
             <UserPlus className="w-4 h-4" /> Form
           </button>
@@ -957,7 +957,7 @@ export function AssessmentPanel() {
           type="button"
           onClick={() => gen.mutate()}
           disabled={gen.isPending || !domain}
-          className="px-4 py-2 bg-neon-pink/20 text-neon-pink border border-neon-pink/30 rounded-lg text-sm disabled:opacity-50"
+          className="px-4 py-2 bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/30 rounded-lg text-sm disabled:opacity-50"
         >
           {gen.isPending ? 'Generating…' : 'Generate Assessment'}
         </button>

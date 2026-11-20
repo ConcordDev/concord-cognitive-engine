@@ -165,7 +165,7 @@ export function TeamPanel({ crisisId }: { crisisId?: string }) {
                     <span className="min-w-0 truncate">
                       {m.responder}
                       {(m.assignedByName || m.assignedByIsMe) && (
-                        <span className="ml-2 text-[10px] text-zinc-500">
+                        <span className="ml-2 text-[10px] text-lattice-muted">
                           assigned by {m.assignedByName || 'you'}
                           {m.assignedByName && m.assignedByIsMe ? ' (you)' : ''}
                         </span>

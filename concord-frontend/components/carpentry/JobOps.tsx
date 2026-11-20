@@ -40,7 +40,7 @@ async function run<T = any>(action: string, params: Record<string, unknown> = {}
 const card = 'overflow-hidden rounded-xl border border-amber-700/30 bg-gradient-to-br from-zinc-950 via-amber-950/10 to-zinc-950';
 const head = 'flex items-center justify-between border-b border-amber-700/30 bg-zinc-900/40 px-4 py-2';
 const inp = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-white';
-const btn = 'rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50 inline-flex items-center gap-1';
+const btn = 'rounded bg-amber-700 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50 inline-flex items-center gap-1';
 const ghostBtn = 'rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-amber-500/40 inline-flex items-center gap-1';
 const macroTag = (m: string) => <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">carpentry.{m}</span>;
 
@@ -138,7 +138,7 @@ function CutListOptimizer() {
                   </div>
                   <div className="flex h-5 w-full overflow-hidden rounded bg-zinc-900">
                     {b.cuts.map((c, ci) => (
-                      <div key={ci} title={`${c.label} — ${c.length}"`} className="flex items-center justify-center border-r border-zinc-950 bg-amber-600/60 text-[8px] text-amber-50"
+                      <div key={ci} title={`${c.label} — ${c.length}"`} className="flex items-center justify-center border-r border-zinc-950 bg-amber-700/60 text-[8px] text-amber-50"
                         style={{ width: `${(c.length / result.stockLength) * 100}%` }}>
                         {c.length}
                       </div>
@@ -403,7 +403,7 @@ function CrewSchedule() {
                 {crew.map((m) => (
                   <button key={m.id} type="button"
                     onClick={() => setSCrew((cs) => cs.includes(m.id) ? cs.filter((x) => x !== m.id) : [...cs, m.id])}
-                    className={`rounded px-1.5 py-0.5 text-[10px] ${sCrew.includes(m.id) ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+                    className={`rounded px-1.5 py-0.5 text-[10px] ${sCrew.includes(m.id) ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
                     {m.name}
                   </button>
                 ))}
@@ -573,7 +573,7 @@ function TimeTracking() {
                   <div className="flex items-center gap-1.5">
                     <input aria-label={`Hours for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" step="0.25" value={editHours} onChange={(ev) => setEditHours(ev.target.value)} />
                     <input aria-label={`Rate for ${e.jobName}`} className={`${inp} w-16 font-mono`} type="number" value={editRate} onChange={(ev) => setEditRate(ev.target.value)} />
-                    <button onClick={() => { void saveEntry(e.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                    <button onClick={() => { void saveEntry(e.id); }} disabled={busy} className="rounded bg-amber-700 px-1.5 py-0.5 text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
                     <button onClick={() => setEditEntryId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-300">Cancel</button>
                   </div>
                 ) : (
@@ -819,7 +819,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                     <div className="mt-1 flex items-center gap-1.5">
                       <input aria-label={`Client for ${iv.invoiceNumber}`} className={`${inp} flex-1`} value={editClient} onChange={(e) => setEditClient(e.target.value)} />
                       <input aria-label={`Amount for ${iv.invoiceNumber}`} className={`${inp} w-24 font-mono`} type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
-                      <button onClick={() => { void saveInvoice(iv.id); }} disabled={busy} className="rounded bg-amber-600 px-1.5 py-0.5 text-[10px] text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
+                      <button onClick={() => { void saveInvoice(iv.id); }} disabled={busy} className="rounded bg-amber-700 px-1.5 py-0.5 text-[10px] text-white hover:bg-amber-500 disabled:opacity-40">Save</button>
                       <button onClick={() => setEditingInvoiceId(null)} className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300">Cancel</button>
                     </div>
                   )}
@@ -841,7 +841,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                       )}
                       {iv.status === 'paid'
                         ? <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">paid</span>
-                        : <button onClick={() => markPaid(iv.id)} className="rounded bg-amber-600 px-1.5 py-0.5 text-white hover:bg-amber-500">Mark paid</button>}
+                        : <button onClick={() => markPaid(iv.id)} className="rounded bg-amber-700 px-1.5 py-0.5 text-white hover:bg-amber-500">Mark paid</button>}
                     </span>
                   </div>
                 </div>
@@ -921,7 +921,7 @@ function InvoicingPortal({ estimate }: { estimate: TakeoffResult | null }) {
                   <div className="flex gap-1">
                     {[25, 50, 75, 100].map((v) => (
                       <button key={v} onClick={() => bumpProgress(p.token, v)} disabled={busy}
-                        className={`rounded px-1 py-0.5 text-[9px] ${p.progressPct >= v ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{v}%</button>
+                        className={`rounded px-1 py-0.5 text-[9px] ${p.progressPct >= v ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{v}%</button>
                     ))}
                   </div>
                 </div>
@@ -965,7 +965,7 @@ export function JobOps() {
       <nav className="flex flex-wrap gap-1.5">
         {SUB_TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${tab === t.id ? 'bg-amber-600/20 text-amber-300' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}>
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors ${tab === t.id ? 'bg-amber-700/20 text-amber-300' : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'}`}>
             <t.icon className="h-3.5 w-3.5" />{t.label}
           </button>
         ))}

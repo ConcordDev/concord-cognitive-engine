@@ -152,7 +152,7 @@ export function LightroomCollectionsPanel({ onChange }: { onChange: () => void }
                 <div className="flex items-center">
                   <button type="button" onClick={() => openAlbumDetail(al.id)}
                     className="flex-1 flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-900">
-                    <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openAlbum === al.id && 'rotate-90')} />
+                    <ChevronRight className={cn('w-4 h-4 text-lattice-muted transition-transform', openAlbum === al.id && 'rotate-90')} />
                     <span className="text-sm font-semibold text-zinc-100">{al.name}</span>
                     <span className="text-[11px] text-zinc-400">{al.photoCount} photos</span>
                   </button>

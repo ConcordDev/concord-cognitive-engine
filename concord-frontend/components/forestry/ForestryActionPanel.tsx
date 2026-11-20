@@ -172,7 +172,7 @@ export function ForestryActionPanel() {
     { id: 'harvest' as ActionId, label: 'Harvest', desc: 'harvestPlan rotation schedule', icon: Axe, accent: '#f97316', handler: actHarvest },
     { id: 'carbon' as ActionId, label: 'Carbon', desc: 'carbonSequestration t/yr', icon: Leaf, accent: '#06b6d4', handler: actCarbon },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private stand DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send stand brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send stand brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public carbon record + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Steward', desc: 'Agent: best stewardship move', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

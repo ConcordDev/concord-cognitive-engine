@@ -567,14 +567,14 @@ export function SovereigntyPanel({
                 <h4 className="text-xs font-semibold">Live Enforcement</h4>
               </div>
               {enforcementStats && (
-                <span className="text-[10px] text-gray-500 font-mono">
+                <span className="text-[10px] text-lattice-muted font-mono">
                   {enforcementStats.totalChecks} checks · {enforcementStats.totalBlocked} blocked · since boot
                 </span>
               )}
             </div>
 
             {recentEnforcement.length === 0 ? (
-              <p className="text-xs text-gray-500 italic py-2">
+              <p className="text-xs text-lattice-muted italic py-2">
                 No enforcement events since boot.
               </p>
             ) : (
@@ -598,14 +598,14 @@ export function SovereigntyPanel({
                           {ev.invariant}
                         </span>
                       )}
-                      <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                      <span className="text-[10px] text-lattice-muted whitespace-nowrap">
                         {new Date(ev.at).toLocaleTimeString()}
                       </span>
                     </div>
                   ))}
               </div>
             )}
-            <p className="text-[10px] text-gray-600 mt-2">
+            <p className="text-[10px] text-lattice-muted mt-2">
               Runtime, in-memory since boot{enforcementStats ? ` (${enforcementStats.bootAt ? new Date(enforcementStats.bootAt).toLocaleString() : 'unknown'})` : ''}
               — not persisted, not a CI/detector result.
             </p>

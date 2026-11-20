@@ -18,6 +18,7 @@ import { guardAnonWrites } from "../lib/lens-authz.js";
 import crypto from "node:crypto";
 import { cachedFetchJson } from "../lib/external-fetch.js";
 import { presentOwnedId } from "../lib/public-actor.js";
+import registerMusicReleases from "./music-releases.js";
 
 const ADAPTIVE_STEM_NAMES = new Set([
   "ambient_bed",
@@ -2033,4 +2034,7 @@ export default function registerMusicActions(registerLensAction) {
     }
     return { ok: true, result: { stems, count: stems.length } };
   });
+
+  // Releases, artist storefronts and CC sales (Liner Notes). Same guarded registrar.
+  registerMusicReleases(registerLensAction, { getMusicState, saveMusicState, actorOf: muAid, newId: muId });
 }

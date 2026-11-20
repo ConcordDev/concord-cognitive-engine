@@ -18,6 +18,7 @@ import {
 } from '@/lib/daw/pitch-edit-types';
 import { analyzePitch, editorNoteLabel, projectSnapMask, seedEdits, snapMidi, splitPitchNote, mergePitchNote } from '@/lib/daw/dsp/pitch/editor';
 import { analyzeOffThread, loadCachedAnalysis, rememberAnalysis } from '@/lib/daw/pitch-edit-cache';
+import { boothVar } from '../booth/tokens';
 
 const LOW_MIDI = 48;
 const HIGH_MIDI = 84;
@@ -99,7 +100,7 @@ export function PitchEditor({ clip, project, pcm, onEdits }: Props) {
     if (!g) return;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
-    g.fillStyle = '#09090d';
+    g.fillStyle = boothVar('--bo-room', 'rgb(13,10,8)', canvas);
     g.fillRect(0, 0, w, h);
     const yOf = (midi: number) => (1 - (midi - LOW_MIDI) / (HIGH_MIDI - LOW_MIDI)) * h;
     for (let midi = LOW_MIDI; midi <= HIGH_MIDI; midi++) {
@@ -128,7 +129,7 @@ export function PitchEditor({ clip, project, pcm, onEdits }: Props) {
       const width = Math.max(4, ((note.endSec - note.startSec) / duration) * w);
       const midi = shownMidi(note, macro);
       const y = yOf(midi);
-      g.fillStyle = note.id === selected ? '#f59e0b' : '#7c3aed';
+      g.fillStyle = note.id === selected ? boothVar('--bo-amber', 'rgb(255,178,62)', canvas) : boothVar('--bo-cue', 'rgb(102,198,255)', canvas);
       g.fillRect(x, y - 6, width, 12);
     }
   }, [analysis, notes, duration, mask, selected, doc?.macroCenter]);

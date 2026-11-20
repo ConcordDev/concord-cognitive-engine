@@ -124,7 +124,7 @@ export function WearableImportPanel() {
             {parsed.length > 0 ? `${parsed.length} reading${parsed.length > 1 ? 's' : ''} parsed` : 'no readings parsed yet'}
           </span>
           <button type="button" onClick={importNow} disabled={busy || parsed.length === 0}
-            className="ml-auto inline-flex items-center gap-1.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded font-semibold">
+            className="ml-auto inline-flex items-center gap-1.5 bg-teal-700 hover:bg-teal-500 disabled:opacity-50 text-white text-xs px-3 py-1.5 rounded font-semibold">
             {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
             Import {parsed.length || ''}
           </button>

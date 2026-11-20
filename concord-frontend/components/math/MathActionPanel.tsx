@@ -245,7 +245,7 @@ export function MathActionPanel() {
     { id: 'polyGeneral' as ActionId, label: 'Poly⁺', desc: 'polynomialRootsGeneral — any degree, complex roots (Durand-Kerner)', icon: Orbit, accent: '#14b8a6', handler: actPolyGeneral },
     { id: 'regress' as ActionId, label: 'Regress', desc: 'regressionFit R² + equation', icon: TrendingUp, accent: '#f97316', handler: actRegress },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private analysis DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send analysis brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send analysis brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public derivation + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Steps', desc: 'Agent: step-by-step solution path', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

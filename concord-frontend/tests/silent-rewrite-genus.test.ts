@@ -25,15 +25,6 @@ describe('code-003: a blank rename is cancelled in words, not in silence', () =>
   });
 });
 
-describe('music-005: tempo commits inside its declared range, reverting in words', () => {
-  const src = read('components/music/SessionView.tsx');
-  it('out-of-range tempo names the 20–400 bound', () => {
-    expect(src).toContain('Tempo must be 20–400 BPM.');
-    expect(src).toContain('v >= 20 && v <= 400');
-    expect(src).toContain('onBlur={commitTempo}');
-  });
-});
-
 describe('forge-005: a sanitised table name is announced with its stored form', () => {
   const src = read('components/forge/ForgeWorkbench.tsx');
   it('the note names both the rule and the stored name', () => {

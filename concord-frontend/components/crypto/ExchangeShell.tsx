@@ -85,7 +85,7 @@ export function ExchangeShell({ activeNav, onNavChange, badges = {}, totalValueU
                     onClick={() => onNavChange(n.id)}
                     className={cn(
                       'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
-                      active ? 'bg-blue-500/10 text-blue-200 border-l-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
+                      active ? 'bg-blue-600/10 text-blue-200 border-l-2 border-blue-400' : 'text-gray-400 hover:text-white hover:bg-white/[0.04] border-l-2 border-transparent',
                     )}
                   >
                     <Icon className="w-3.5 h-3.5" />

@@ -1,5 +1,28 @@
 # Market Lens — Capability Map (Frontend Rebuild Program)
 
+> **Update 2026-11-19 — the Market lens is now the Auction House** (owner-approved
+> redesign, `docs/LENS_REDESIGN_PLAYBOOK.md` registry row `market`). The lens
+> sells DTUs people made for Concord Coin. Its macros, all in the `market` domain:
+> lots on `economy/marketplace-service.js` (`house-terms`, `house-catalogue`,
+> `house-lot`, `house-open`, `house-my-dtus`, `house-consign`, `house-withdraw`,
+> `house-reprice`, `house-buy`, `house-trending`, `house-mine`, `house-library`,
+> `server/domains/market-house.js`), the hourly showcase drawn by lot from a
+> published seed (`house-showcase`, `house-showcase-draw`, `house-showcase-enter`,
+> `server/domains/market-showcase.js`), and the commission pay board with the
+> reward held in `__ESCROW__` (`board-list`, `board-get`, `board-post`,
+> `board-submit`, `board-recheck`, `board-accept`, `board-decline`,
+> `board-withdraw`, `board-cancel`, `board-mine`, `server/domains/market-board.js`).
+> Signed-out visitors read through `GET /api/market/house/public/:name` (read
+> handlers only). Pinned by `server/tests/depth/market-house-behavior.test.js`
+> and `concord-frontend/tests/market-auction-house.test.tsx`.
+>
+> The competitive-intelligence surfaces this map describes below are unchanged
+> and still run the same `market` macros, but they now live in the **Marketing**
+> lens (`components/marketing/MarketResearchSection.tsx`: Competitors, Intel,
+> Analysis, Sectors). The four legacy inline `register("market", ...)` macros
+> stay registered; the old listings panel that used `/api/marketplace/listings`
+> was retired in favour of the ledger-backed lots.
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 

@@ -227,7 +227,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
                     height={180} stacked />
                 </div>
                 {!trends.spendTrend.hasTrend && (
-                  <p className="text-[10px] text-gray-500 italic mt-1">
+                  <p className="text-[10px] text-lattice-muted italic mt-1">
                     Only one month of history so far — trend will appear once contracts span multiple months.
                   </p>
                 )}
@@ -246,7 +246,7 @@ export const LawContracts = forwardRef<LawContractsHandle, { onContractsChange?:
                     series={[{ key: 'renewalRate', label: 'Renewal rate %' }]} height={180} />
                 </div>
                 {!trends.renewalTrend.hasTrend && (
-                  <p className="text-[10px] text-gray-500 italic mt-1">
+                  <p className="text-[10px] text-lattice-muted italic mt-1">
                     Only one month of renewal obligations so far — trend will appear once more months are tracked.
                   </p>
                 )}

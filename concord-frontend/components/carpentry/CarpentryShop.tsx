@@ -112,7 +112,7 @@ function BoardFootCalc() {
         ))}
         <div className="flex items-center justify-between">
           <button type="button" onClick={() => setPieces((ps) => [...ps, { thickness: '', width: '', length: '', pricePerBF: '', species: 'pine' }])} className="inline-flex items-center gap-1 rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-300 hover:border-amber-500/40"><Plus className="h-3 w-3" />Add piece</button>
-          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || pieces.filter((p) => p.thickness && p.width && p.length).length === 0} className="rounded bg-amber-600 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
+          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || pieces.filter((p) => p.thickness && p.width && p.length).length === 0} className="rounded bg-amber-700 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Tally'}
           </button>
         </div>

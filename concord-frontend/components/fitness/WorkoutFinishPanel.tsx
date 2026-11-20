@@ -331,7 +331,7 @@ export function WorkoutFinishPanel() {
     { id: 'hrzones',     label: 'HR zones',       desc: 'Karvonen zones from resting HR + age, with a verdict for your avg HR',          icon: Heart,      accent: '#ef4444', handler: actHr },
     { id: 'save',        label: savedWorkoutId   ? 'Saved'     : 'Save workout',  desc: savedWorkoutId   ? `id ${savedWorkoutId}`  : 'Persist to your workout log (Log view)',          icon: Save,      accent: '#06b6d4', handler: actSave,      disabled: !ready || !!savedWorkoutId },
     { id: 'mint',        label: mintedDtuId      ? 'Minted'    : 'Mint DTU',      desc: mintedDtuId      ? `DTU ${mintedDtuId}`     : 'Private DTU with full set table',              icon: Sparkles,  accent: '#3b82f6', handler: actMint,      disabled: !ready || !!mintedDtuId },
-    { id: 'dm',          label: 'DM partner',     desc: 'Send workout summary to training partner',  icon: Send,       accent: '#ec4899', handler: actDm,        disabled: !ready },
+    { id: 'dm',          label: 'DM partner',     desc: 'Send workout summary to training partner',  icon: Send,       accent: '#f472b6', handler: actDm,        disabled: !ready },
     { id: 'publish',     label: publishedDtuId   ? 'PR published' : 'Publish PR', desc: publishedDtuId   ? `DTU ${publishedDtuId}` : isPr ? 'Public PR DTU + federation' : 'Mark as PR first', icon: Globe, accent: '#15803d', handler: actPublish, disabled: !ready || !isPr || !!publishedDtuId },
     { id: 'agent',       label: 'Next workout',   desc: 'Agent drafts the next session',             icon: Wand2,      accent: '#eab308', handler: actAgent,     disabled: !ready },
   ];

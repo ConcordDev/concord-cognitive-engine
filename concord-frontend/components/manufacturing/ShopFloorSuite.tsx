@@ -37,7 +37,7 @@ const SUITE_TABS: { id: SuiteTab; label: string; icon: typeof Cpu }[] = [
 
 const card = 'rounded-xl border border-zinc-800 bg-zinc-950/50 p-4';
 const btn = 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors';
-const btnPrimary = `${btn} bg-amber-600 hover:bg-amber-500 text-white`;
+const btnPrimary = `${btn} bg-amber-700 hover:bg-amber-500 text-white`;
 const btnGhost = `${btn} border border-zinc-700 text-zinc-300 hover:bg-zinc-800`;
 const input = 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-100 focus:border-amber-500 focus:outline-none';
 const label = 'mb-1 block text-xs font-medium text-zinc-400';
@@ -483,7 +483,7 @@ function SchedulingTab() {
                       return (
                         <div
                           key={j.id}
-                          className={`absolute top-0.5 flex h-7 items-center overflow-hidden rounded px-1.5 text-[10px] text-white ${j.late ? 'bg-rose-600' : 'bg-amber-600'}`}
+                          className={`absolute top-0.5 flex h-7 items-center overflow-hidden rounded px-1.5 text-[10px] text-white ${j.late ? 'bg-rose-600' : 'bg-amber-700'}`}
                           style={{ left: `${left}%`, width: `${Math.max(width, 4)}%` }}
                           title={`${j.name} · ${j.durationHours}h${j.late ? ` · ${j.lateHours}h late` : ''}`}
                         >

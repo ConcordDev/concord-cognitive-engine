@@ -317,7 +317,7 @@ export function PaillierPanel({ engine }: { engine: FrontierEngineDef }) {
               <p className={cn(ds.textBody, 'text-sm')}>
                 Session <span className={ds.monoXs}>{session.sessionId}</span> — {session.bits}-bit key
               </p>
-              <p className={cn(ds.monoXs, 'text-gray-500 break-all')}>n = {truncateCiphertext(session.publicKey.n)}</p>
+              <p className={cn(ds.monoXs, 'text-lattice-muted break-all')}>n = {truncateCiphertext(session.publicKey.n)}</p>
               <p className={cn(ds.textMuted, 'text-xs')}>{session.note}</p>
             </div>
           )}
@@ -360,7 +360,7 @@ export function PaillierPanel({ engine }: { engine: FrontierEngineDef }) {
                 <p className={cn(ds.textMuted, 'mb-1')}>{sealed.length} sealed entr{sealed.length === 1 ? 'y' : 'ies'} in the box (ciphertext only — no plaintext is ever stored client-side):</p>
                 <table className={cn(ds.monoXs, 'w-full border-collapse')}>
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-lattice-border">
+                    <tr className="text-left text-lattice-muted border-b border-lattice-border">
                       <th className="py-1 pr-4">#</th>
                       <th className="py-1 pr-4">Contribution id</th>
                       <th className="py-1 pr-4">Ciphertext (opaque)</th>

@@ -174,10 +174,10 @@ export function TelecommunicationsActionPanel() {
   const actions = [
     { id: 'cap' as ActionId, label: 'Capacity', desc: 'networkCapacity', icon: Radio, accent: '#3b82f6', handler: actCap },
     { id: 'sig' as ActionId, label: 'Signal', desc: 'signalQuality MOS', icon: Signal, accent: '#22c55e', handler: actSig },
-    { id: 'cov' as ActionId, label: 'Coverage', desc: 'coverageMap', icon: Map, accent: '#a855f7', handler: actCov },
+    { id: 'cov' as ActionId, label: 'Coverage', desc: 'coverageMap', icon: Map, accent: '#c084fc', handler: actCov },
     { id: 'cost' as ActionId, label: 'Unit econ', desc: 'costPerLine', icon: DollarSign, accent: '#f59e0b', handler: actCost },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private NOC DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send NOC brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send NOC brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon perf card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Action', desc: 'Agent: urgent capex', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

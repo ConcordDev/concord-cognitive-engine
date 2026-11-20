@@ -74,7 +74,7 @@ export default function SavedLensPage() {
                   aria-current={on ? 'page' : undefined}
                   className={cn(
                     'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -84,7 +84,7 @@ export default function SavedLensPage() {
               );
             })}
           </nav>
-          <Link href="/lenses/social" className="text-[13px] text-zinc-500 transition-colors hover:text-zinc-200">
+          <Link href="/lenses/social" className="text-[13px] text-lattice-muted transition-colors hover:text-zinc-200">
             ← Social
           </Link>
         </div>

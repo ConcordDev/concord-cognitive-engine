@@ -228,7 +228,7 @@ function ImageGridTab({ channels, onMutate, focus }: { channels: ChannelMeta[]; 
         />
         <button
           onClick={addImage} disabled={busy || !imgUrl.trim() || !caption.trim()}
-          className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
+          className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add image
         </button>
@@ -344,7 +344,7 @@ function SearchTab({ channels, onOpenChannel }: { channels: ChannelMeta[]; onOpe
         </div>
         <button
           onClick={() => runSearch(query)} disabled={loading || !query.trim()}
-          className="px-3 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
+          className="px-3 py-1.5 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
         >
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}Search
         </button>
@@ -449,7 +449,7 @@ function DiscoverTab() {
             className="w-full pl-7 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-xs text-zinc-200"
           />
         </div>
-        <button onClick={() => search(query)} className="px-3 py-1.5 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold">
+        <button onClick={() => search(query)} className="px-3 py-1.5 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold">
           Search
         </button>
       </div>
@@ -578,7 +578,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
             onClick={togglePublish}
             className={cn(
               'px-3 py-1 text-xs rounded font-semibold',
-              isPublic ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200',
+              isPublic ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200',
             )}
           >
             {isPublic ? 'Public' : 'Make public'}
@@ -604,7 +604,7 @@ function CollaboratorsTab({ channels }: { channels: ChannelMeta[] }) {
             />
             <button
               onClick={add} disabled={busy || !newUser.trim()}
-              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
+              className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
             >
               Add
             </button>
@@ -682,7 +682,7 @@ function EmbedTab({ channels, onMutate }: { channels: ChannelMeta[]; onMutate: (
         />
         <button
           onClick={embed} disabled={busy || !title.trim()}
-          className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
+          className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1"
         >
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}Embed
         </button>
@@ -768,7 +768,7 @@ function ReferenceTab() {
         </button>
         <button
           onClick={() => lookup(true)} disabled={busy || !topic.trim()}
-          className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
+          className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
         >
           Save page
         </button>
@@ -1026,7 +1026,7 @@ function DebateTab() {
         <p className="text-[11px] text-zinc-400">Private unless you mark a debate public. Support, object, rebut, or clarify.</p>
         <button
           onClick={() => setShowNew((s) => !s)}
-          className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold inline-flex items-center gap-1"
+          className="ml-auto px-2.5 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold inline-flex items-center gap-1"
         >
           <Plus className="w-3 h-3" />New debate
         </button>
@@ -1062,7 +1062,7 @@ function DebateTab() {
             </select>
             <button
               onClick={createThread} disabled={busy || !draft.title.trim() || !draft.claim.trim()}
-              className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
+              className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
             >
               Create
             </button>
@@ -1194,7 +1194,7 @@ function DebateTab() {
                   />
                   <button
                     onClick={submitPost} disabled={busy || !post.body.trim()}
-                    className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
+                    className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40"
                   >
                     Post
                   </button>

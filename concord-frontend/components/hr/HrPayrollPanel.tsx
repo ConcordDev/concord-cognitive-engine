@@ -144,7 +144,7 @@ export function HrPayrollPanel() {
       </div>
       <div className="flex items-center justify-between">
         <button type="button" onClick={runPayroll} disabled={busy}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />} Run payroll
         </button>
         <span className="text-[11px] text-zinc-400">YTD net paid: <span className="text-emerald-300 font-semibold">{usd(ytdPaid)}</span></span>

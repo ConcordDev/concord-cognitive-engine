@@ -262,7 +262,7 @@ export default function WorldTravel({
         <div className="flex gap-2">
           <button
             onClick={() => handleTravel(world.id)}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-cyan-600/80 hover:bg-cyan-500 text-white text-sm font-medium transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-cyan-700/80 hover:bg-cyan-500 text-white text-sm font-medium transition-colors"
           >
             <ArrowRight size={14} /> Travel
           </button>
@@ -319,7 +319,7 @@ export default function WorldTravel({
         </div>
         <button
           onClick={() => handleTravel('concordia')}
-          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600/80 hover:bg-emerald-500 text-white text-xs font-medium transition-colors"
+          className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-700/80 hover:bg-emerald-600 text-white text-xs font-medium transition-colors"
         >
           <Home size={12} /> Return to Concordia
         </button>
@@ -337,7 +337,7 @@ export default function WorldTravel({
                 </p>
                 <span className="text-[10px] text-white/30">{inv.timestamp}</span>
               </div>
-              <button onClick={() => onAcceptInvite?.(inv.id)} className="px-2.5 py-1 rounded bg-green-600/80 hover:bg-green-500 text-white text-xs font-medium transition-colors">
+              <button onClick={() => onAcceptInvite?.(inv.id)} className="px-2.5 py-1 rounded bg-green-700/80 hover:bg-green-500 text-white text-xs font-medium transition-colors">
                 Accept
               </button>
               <button onClick={() => onDeclineInvite?.(inv.id)} className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 text-white/60 text-xs transition-colors">

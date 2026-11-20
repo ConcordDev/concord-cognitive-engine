@@ -93,7 +93,7 @@ function AshbyTab() {
           </select>
         </label>
         <button onClick={() => void plot()} disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ScatterChart className="h-3.5 w-3.5" />}
           Plot
         </button>
@@ -205,7 +205,7 @@ function RankTab() {
           + criterion
         </button>
         <button onClick={() => void rank()} disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ListChecks className="h-3.5 w-3.5" />}
           Rank shortlist
         </button>
@@ -307,7 +307,7 @@ function CompareTab() {
         </ul>
       )}
       <button onClick={() => void compare()} disabled={loading || selected.size < 2}
-        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitCompare className="h-3.5 w-3.5" />}
         Compare properties
       </button>
@@ -412,7 +412,7 @@ function SelectTab() {
         <input value={application} onChange={(e) => setApplication(e.target.value)} placeholder="e.g. aerospace bracket"
           className="mt-0.5 block w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200" /></label>
       <button onClick={() => void select()} disabled={loading}
-        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Target className="h-3.5 w-3.5" />}
         Find best match
       </button>
@@ -537,7 +537,7 @@ function CompositeTab() {
           <Plus className="h-3 w-3" />component
         </button>
         <button onClick={() => void analyze()} disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Beaker className="h-3.5 w-3.5" />}
           Analyze composite
         </button>
@@ -620,7 +620,7 @@ function DatasheetTab() {
           {shortlist.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <button onClick={() => void generate()} disabled={!selectedId || loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
           Generate
         </button>
@@ -737,7 +737,7 @@ function ImportTab() {
         placeholder="specimen,stress_MPa,strain_pct,modulus_GPa&#10;S1,420,12.3,201&#10;S2,431,11.8,205"
         className="w-full rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 font-mono text-[11px] text-zinc-200" />
       <button onClick={() => void importCsv()} disabled={!csv.trim() || loading}
-        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+        className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
         Import
       </button>
@@ -814,7 +814,7 @@ function StandardsTab() {
           placeholder="e.g. stainless 304, aluminum 6061"
           className="flex-1 rounded border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200" />
         <button type="submit" disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookMarked className="h-3.5 w-3.5" />}
           Cross-reference
         </button>
@@ -898,7 +898,7 @@ function CarbonTab() {
           placeholder="mass (kg)"
           className="w-28 rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200" />
         <button type="submit" disabled={loading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-cyan-500 disabled:opacity-40">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Leaf className="h-3.5 w-3.5" />}
           Assess
         </button>
@@ -968,7 +968,7 @@ export function MaterialsToolkit() {
           <button key={t.id} onClick={() => setTab(t.id)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors',
-              tab === t.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
+              tab === t.id ? 'bg-cyan-700 text-white' : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200',
             )}>
             <t.icon className="h-3.5 w-3.5" />{t.label}
           </button>

@@ -128,14 +128,14 @@ export function EnergyWorkspace() {
       <header>
         <h1 className="font-vault mt-1 text-4xl leading-tight text-zinc-100 sm:text-5xl">Energy</h1>
         {selectedMeter && (
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-lattice-muted">
             <span className="text-zinc-300">{selectedMeter.name}</span> is the active meter.
           </p>
         )}
       </header>
 
       {loading ? (
-        <div role="status" aria-live="polite" className="flex min-h-[58vh] items-center justify-center gap-2 text-sm text-zinc-500">
+        <div role="status" aria-live="polite" className="flex min-h-[58vh] items-center justify-center gap-2 text-sm text-lattice-muted">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading meters...
         </div>
       ) : loadError ? (
@@ -161,7 +161,7 @@ export function EnergyWorkspace() {
                   aria-current={active ? 'page' : undefined}
                   className={cn(
                     'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-200',
+                    active ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:bg-white/[0.04] hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -278,7 +278,7 @@ function MeterEmptyState({ onChoose }: { onChoose: () => void }) {
         <Bolt className="h-9 w-9 text-white/15" />
       </div>
       <h2 className="mt-8 font-vault text-3xl text-zinc-100">No meter selected</h2>
-      <p className="mt-2 max-w-sm text-sm leading-6 text-zinc-500">
+      <p className="mt-2 max-w-sm text-sm leading-6 text-lattice-muted">
         Select a real meter to see submitted wattage, history, devices, rates, solar and billing.
       </p>
       <button type="button" onClick={onChoose} className="mt-7 rounded-full bg-teal-400 px-6 py-3 text-sm font-medium text-black hover:bg-teal-300">
@@ -393,7 +393,7 @@ function MeterPicker({
             <p className="text-xs uppercase tracking-widest text-teal-300/70">Meter source</p>
             <h2 id="meter-picker-title" className="mt-1 font-vault text-3xl text-zinc-100">Choose a meter</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close meter picker" className="rounded-lg p-2 text-zinc-500 hover:bg-white/5 hover:text-white">
+          <button type="button" onClick={onClose} aria-label="Close meter picker" className="rounded-lg p-2 text-lattice-muted hover:bg-white/5 hover:text-white">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -401,15 +401,15 @@ function MeterPicker({
         {meters.length > 1 && (
           <input value={meterQuery} onChange={(event) => setMeterQuery(event.target.value)}
             placeholder="Search meters" aria-label="Search meters"
-            className="mt-5 w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:border-teal-400/60" />
+            className="mt-5 w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted outline-none focus:border-teal-400/60" />
         )}
         <div className="mt-5 space-y-2">
           {meters.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-lattice-muted">
               No meters are connected yet. Add the meter you submit readings from.
             </p>
           ) : visibleMeters.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-zinc-500">
+            <p className="rounded-xl border border-dashed border-white/10 px-4 py-6 text-center text-sm text-lattice-muted">
               No meters match &ldquo;{meterQuery}&rdquo;.
             </p>
           ) : visibleMeters.map((meter) => (
@@ -435,7 +435,7 @@ function MeterPicker({
                 <div className="space-y-2">
                   <p className="text-sm text-zinc-200">Delete {meter.name}? Readings logged on this meter are removed with it.</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => void confirmDelete(meter)} disabled={saving} className="rounded-lg bg-rose-500 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Delete meter</button>
+                    <button type="button" onClick={() => void confirmDelete(meter)} disabled={saving} className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50">Delete meter</button>
                     <button type="button" onClick={() => setPendingDeleteId(null)} className="rounded-lg px-2 text-xs text-zinc-400">Cancel</button>
                   </div>
                 </div>
@@ -498,7 +498,7 @@ function DashboardStrip({ dashboard }: { dashboard: Dashboard }) {
       {stats.map(([label, value]) => (
         <div key={label} className="bg-[#101010] px-4 py-3">
           <p className="font-mono text-base tabular-nums text-zinc-100">{value}</p>
-          <p className="mt-1 text-[10px] uppercase tracking-widest text-zinc-600">{label}</p>
+          <p className="mt-1 text-[10px] uppercase tracking-widest text-lattice-muted">{label}</p>
         </div>
       ))}
     </div>

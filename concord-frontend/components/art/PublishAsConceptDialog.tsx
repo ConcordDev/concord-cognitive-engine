@@ -93,64 +93,64 @@ export function PublishAsConceptDialog({ artworkId, artworkTitle, canvas, onClos
       aria-modal="true"
       aria-label="Publish as concept art"
       tabIndex={-1}
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      className="at-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-md p-5 text-zinc-200">
+      <div className="bg-[var(--at-sunk)] border border-[color:var(--at-rule)] rounded-lg w-full max-w-md p-5 text-[color:var(--at-ink)]">
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-[color:var(--at-ink-2)]">
             Publish as concept art
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-[color:var(--at-muted)] hover:text-[color:var(--at-ink)] text-xs">close</button>
         </div>
 
         <div className="space-y-3">
-          <div className="aspect-video bg-zinc-900 border border-zinc-800 rounded flex items-center justify-center overflow-hidden">
+          <div className="aspect-video bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded flex items-center justify-center overflow-hidden">
             {preview
               /* next/image doesn't fit data: URLs from canvas.toDataURL */
               /* eslint-disable-next-line @next/next/no-img-element */
               ? <img src={preview} alt="canvas preview" className="w-full h-full object-contain" />
-              : <span className="text-zinc-600 text-xs">no canvas</span>}
+              : <span className="text-[color:var(--at-faint)] text-xs">no canvas</span>}
           </div>
-          <p className="text-[10px] leading-tight text-zinc-500">
-            Mints a real <span className="font-mono text-zinc-400">dtus</span> row (kind
-            {' '}<span className="font-mono text-violet-300">concept_art</span>) that other
+          <p className="text-[10px] leading-tight text-[color:var(--at-muted)]">
+            Mints a real <span className="font-mono text-[color:var(--at-muted)]">dtus</span> row (kind
+            {' '}<span className="font-mono text-[color:var(--at-accent-text)]">concept_art</span>) that other
             asset macros — e.g. a building blueprint — can cite as their origin.
           </p>
 
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Title</span>
+            <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] mb-1">Title</span>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={artworkTitle || 'Untitled concept art'}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-sm"
             />
           </label>
 
           <label className="block">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Visibility</span>
+            <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] mb-1">Visibility</span>
             <select
               value={visibility}
               onChange={(e) => setVisibility(e.target.value as Visibility)}
-              className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm"
+              className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-sm"
             >
               {VISIBILITIES.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </label>
 
           {error && (
-            <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900 rounded px-2 py-1.5">
+            <div className="text-xs text-[color:var(--at-bad)] bg-[var(--at-bad-soft)] border border-[color:var(--at-bad)] rounded px-2 py-1.5">
               {error}
             </div>
           )}
 
           {result && (
-            <div className="text-xs text-emerald-300 bg-emerald-950/30 border border-emerald-900/60 rounded px-2 py-1.5 space-y-1">
+            <div className="text-xs text-[color:var(--at-good)] bg-[var(--at-good-soft)] border border-[color:var(--at-good)] rounded px-2 py-1.5 space-y-1">
               <div>Published as a real DTU</div>
-              <div className="text-zinc-400 font-mono text-[10px] break-all">{result.dtuId}</div>
+              <div className="text-[color:var(--at-muted)] font-mono text-[10px] break-all">{result.dtuId}</div>
             </div>
           )}
 
@@ -158,7 +158,7 @@ export function PublishAsConceptDialog({ artworkId, artworkTitle, canvas, onClos
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+              className="px-3 py-1.5 text-xs text-[color:var(--at-muted)] hover:text-[color:var(--at-ink)]"
             >
               Cancel
             </button>
@@ -166,7 +166,7 @@ export function PublishAsConceptDialog({ artworkId, artworkTitle, canvas, onClos
               type="button"
               onClick={submit}
               disabled={!artworkId || submitting}
-              className="px-4 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 text-xs bg-[var(--at-accent)] hover:bg-[var(--at-accent)] text-[color:var(--at-accent-ink)] rounded disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Publishing…' : 'Publish'}
             </button>

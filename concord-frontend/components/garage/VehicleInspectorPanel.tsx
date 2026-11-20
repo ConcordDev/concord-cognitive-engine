@@ -173,7 +173,7 @@ export function VehicleInspectorPanel({
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
             <dt className={ds.caption}>Name</dt>
             <dd className={cn(ds.monoXs, 'text-right truncate')}>
-              {data.vehicle.name || <span className="text-gray-500 italic">unnamed</span>}
+              {data.vehicle.name || <span className="text-lattice-muted italic">unnamed</span>}
             </dd>
 
             {data.vehicle.spec ? (

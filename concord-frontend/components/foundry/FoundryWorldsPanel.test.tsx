@@ -96,7 +96,9 @@ describe('FoundryWorldsPanel — UX states', () => {
     expect(screen.getByRole('link', { name: /open/i }).getAttribute('href')).toContain('world-xyz');
 
     // delete the draft → it disappears, foundry.delete called with its id
-    fireEvent.click(screen.getByRole('button', { name: /delete alpha world/i }));
+    // two-step delete: arm, then confirm
+    fireEvent.click(screen.getByRole('button', { name: /^delete alpha world/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm delete alpha world/i }));
     await waitFor(() => expect(screen.queryByText('Alpha World')).not.toBeInTheDocument());
     const delCall = lensRun.mock.calls.find((c) => c[1] === 'delete');
     expect(delCall?.[2]).toEqual({ id: 'fw_1' });

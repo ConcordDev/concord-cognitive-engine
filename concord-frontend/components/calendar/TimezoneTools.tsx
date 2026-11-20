@@ -128,7 +128,7 @@ function TzConverter() {
                 <div className="text-[10px] uppercase tracking-wider text-gray-400">{fromTz}</div>
                 <div className="text-cyan-300">{result.inFromTz}</div>
               </div>
-              <ArrowRight className="h-4 w-4 text-gray-600" />
+              <ArrowRight className="h-4 w-4 text-lattice-muted" />
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-gray-400">{toTz}</div>
                 <div className="text-emerald-300">{result.inToTz}</div>
@@ -193,7 +193,7 @@ function IcalImport() {
         onChange={(e) => setIcsText(e.target.value)}
         rows={8}
         placeholder="Paste raw .ics content (BEGIN:VCALENDAR\\nVERSION:2.0\\n...)"
-        className="w-full rounded-md border border-lattice-border bg-lattice-deep px-3 py-2 font-mono text-xs text-white placeholder-gray-500 focus:border-cyan-500/40 focus:outline-none"
+        className="w-full rounded-md border border-lattice-border bg-lattice-deep px-3 py-2 font-mono text-xs text-white placeholder:text-lattice-muted focus:border-cyan-500/40 focus:outline-none"
       />
       <button type="button" onClick={() => parse.mutate()} disabled={!icsText.trim() || parse.isPending} className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200 hover:bg-cyan-500/20 disabled:opacity-50">
         {parse.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}

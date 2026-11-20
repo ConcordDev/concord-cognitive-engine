@@ -26,22 +26,22 @@ export default function AnonNudge({ visible, onDismiss }: AnonNudgeProps) {
   if (!visible || hidden) return null;
   const close = () => { setHidden(true); onDismiss(); };
   return (
-    <div className="my-3 flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs">
-      <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-      <span className="text-amber-200/90 flex-1">
+    <div className="my-3 flex items-center gap-2 rounded-lg border border-[color:var(--nb-ochre,rgba(251,191,36,0.3))] bg-[var(--nb-hl,rgba(245,158,11,0.1))] px-3 py-2 text-xs">
+      <Sparkles className="w-3.5 h-3.5 text-[color:var(--nb-ochre,#fcd34d)] shrink-0" />
+      <span className="text-[color:var(--nb-ochre,rgba(253,230,138,0.9))] flex-1">
         Save this conversation across devices.{' '}
-        <Link href="/register" className="font-medium underline hover:text-amber-100">
+        <Link href="/register" className="font-medium underline hover:text-[color:var(--nb-ochre,#fef3c7)]">
           Create a free account
         </Link>
         {' '}or{' '}
-        <Link href="/login" className="font-medium underline hover:text-amber-100">
+        <Link href="/login" className="font-medium underline hover:text-[color:var(--nb-ochre,#fef3c7)]">
           sign in
         </Link>
         {' '}— takes 10 seconds.
       </span>
       <button
         onClick={close}
-        className="text-amber-300/70 hover:text-amber-200 shrink-0"
+        className="text-[color:var(--nb-ochre,rgba(252,211,77,0.7))] hover:text-[color:var(--nb-ochre,#fde68a)] shrink-0"
         aria-label="Dismiss"
       >
         <X className="w-3.5 h-3.5" />

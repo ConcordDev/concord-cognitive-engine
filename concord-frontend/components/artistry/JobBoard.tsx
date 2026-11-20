@@ -104,7 +104,7 @@ export function JobBoard() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex bg-white/5 rounded-lg p-0.5">
           {(['all', 'mine'] as const).map((v) => (
-            <button key={v} onClick={() => setView(v)} className={`px-3 py-1 rounded text-xs capitalize ${view === v ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400'}`}>
+            <button key={v} onClick={() => setView(v)} className={`px-3 py-1 rounded text-xs capitalize ${view === v ? 'bg-neon-pink/20 text-neon-pink-bright' : 'text-gray-400'}`}>
               {v === 'all' ? 'Open Jobs' : 'My Posts'}
             </button>
           ))}

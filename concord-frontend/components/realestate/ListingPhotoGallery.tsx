@@ -150,7 +150,7 @@ export function ListingPhotoGallery({ listingId }: { listingId?: string }) {
                     <button aria-label={`View photo ${i + 1}`} onClick={() => setActiveIdx(i)} className={cn('w-16 h-12 rounded overflow-hidden border', i === activeIdx ? 'border-cyan-400' : 'border-white/10')}>
                       <Image src={p.url} alt={p.room || 'thumb'} width={64} height={48} unoptimized className="object-cover w-full h-full" />
                     </button>
-                    <button onClick={() => deletePhoto(p.id)} className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-500 text-white opacity-0 group-hover:opacity-100" aria-label="Delete photo"><Trash2 className="w-2.5 h-2.5" /></button>
+                    <button onClick={() => deletePhoto(p.id)} className="absolute -top-1 -right-1 p-0.5 rounded-full bg-rose-600 text-white opacity-0 group-hover:opacity-100" aria-label="Delete photo"><Trash2 className="w-2.5 h-2.5" /></button>
                   </div>
                 ))}
               </div>

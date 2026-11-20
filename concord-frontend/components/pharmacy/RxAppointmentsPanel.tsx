@@ -162,7 +162,7 @@ export function RxAppointmentsPanel({ onChange }: { onChange: () => void }) {
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               className="col-span-2 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={schedule}
-              className="col-span-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+              className="col-span-2 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
               Schedule appointment
             </button>
           </div>
@@ -264,7 +264,7 @@ function AppointmentRow({
         <div className="flex items-center gap-1.5 mt-1.5">
           <input value={notesDraft} onChange={(e) => onNotesChange(e.target.value)} placeholder="Notes…"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
-          <button type="button" onClick={onSaveNotes} className="text-[10px] px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Save</button>
+          <button type="button" onClick={onSaveNotes} className="text-[10px] px-2 py-1 bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Save</button>
           <button type="button" onClick={onCancelNotes} className="text-[10px] px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg">Cancel</button>
         </div>
       )}

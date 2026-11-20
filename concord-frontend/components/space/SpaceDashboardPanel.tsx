@@ -120,13 +120,13 @@ export function SpaceDashboardPanel() {
             <Globe className="w-4 h-4 text-cyan-400" /> Orbital Status
           </h2>
           <div className="font-mono text-[11px] text-gray-400 leading-relaxed space-y-1 mb-4 select-none">
-            <p className="text-center text-gray-600">· · · · · GEO · · · · ·</p>
+            <p className="text-center text-lattice-muted">· · · · · GEO · · · · ·</p>
             <p className="text-center text-gray-400">· · MEO · · · MEO · ·</p>
             <p className="text-center text-cyan-500/70">·  LEO  ·  LEO  ·</p>
             <p className="text-center text-indigo-400 font-bold">[ EARTH ]</p>
             <p className="text-center text-cyan-500/70">·  LEO  ·  LEO  ·</p>
             <p className="text-center text-gray-400">· · MEO · · · MEO · ·</p>
-            <p className="text-center text-gray-600">· · · · · GEO · · · · ·</p>
+            <p className="text-center text-lattice-muted">· · · · · GEO · · · · ·</p>
           </div>
           <div className="space-y-2">
             {(['LEO', 'MEO', 'GEO'] as const).map(zone => {

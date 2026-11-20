@@ -5,11 +5,8 @@
  * its DTU's title — so the unbounded title inputs are the seller
  * form's, in the marketplace ListingsPanel.) Both now cap at the
  * platform's 120-char title convention with a counter.
- * 005: the market lens's 'New listing' CTA focused the search box
- * (the first input in the lens) instead of opening the form. It now
- * asks the listings panel to open its create form. (The panel's
- * empty state deliberately offers a single 'List a DTU' CTA instead
- * of the Create Listing button — a shipped, pinned choice.)
+ * (005 retired 2026-11-19: the Market lens became the Auction House; its
+ * consign flow is pinned by tests/market-auction-house.test.tsx.)
  */
 import { describe, it, expect } from 'vitest';
 import * as fs from 'node:fs';
@@ -19,22 +16,13 @@ const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 
 describe('FIX-market-004 — listing title bound', () => {
   const s = read('components/marketplace/ListingsPanel.tsx');
-  it('create and edit titles are capped at 120 with counters', () => {
-    expect(s.match(/maxLength=\{120\}/g)?.length).toBe(2);
-    expect(s).toContain('{draft.title.length} / 120');
-    expect(s).toContain('{editDraft.title.length} / 120');
-  });
-});
-
-describe('FIX-market-005 — New listing opens the form', () => {
-  it('the page CTA dispatches the open event instead of focusing search', () => {
-    const s = read('app/lenses/market/page.tsx');
-    expect(s).toContain("window.dispatchEvent(new CustomEvent('market:open-new-listing'))");
-    expect(s).toContain('[data-market-create-form]');
-  });
-  it('the panel listens for the open event', () => {
-    const s = read('components/market/MarketListingsPanel.tsx');
-    expect(s).toContain("window.addEventListener('market:open-new-listing', open)");
-    expect(s).toContain('data-market-create-form');
+  // The cap moved to the platform-wide BOUNDS.TITLE (lib/bounds.ts). The
+  // counter must read the same bound the input enforces: a counter saying
+  // "/ 120" over an input that takes 200 was the drift this now catches.
+  it('create and edit titles are capped by the platform title bound, with counters that say the same bound', () => {
+    expect(s.match(/value=\{(draft|editDraft)\.title\}[^>]*maxLength=\{BOUNDS\.TITLE\}/g)?.length).toBe(2);
+    expect(s).toContain('{draft.title.length} / {BOUNDS.TITLE}');
+    expect(s).toContain('{editDraft.title.length} / {BOUNDS.TITLE}');
+    expect(s).not.toMatch(/title\.length\} \/ \d+/);
   });
 });

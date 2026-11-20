@@ -293,7 +293,7 @@ function ConnectorsTab({
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-white">{c.name}</span>
                 {c.requiresOAuth && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple">OAuth</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">OAuth</span>
                 )}
               </div>
               <p className="text-xs text-gray-400 capitalize">{c.category} · {c.auth}</p>
@@ -321,7 +321,7 @@ function ConnectorsTab({
             </button>
           </div>
           {selected.requiresOAuth && selected.oauth && (
-            <p className="text-xs text-neon-purple bg-neon-purple/10 rounded p-2">
+            <p className="text-xs text-neon-purple-bright bg-neon-purple/10 rounded p-2">
               OAuth ({selected.oauth.provider}) — saving creates a pending connection with an authorize URL.
             </p>
           )}
@@ -593,7 +593,7 @@ function SchedulesTab({
                           ? `drain error: ${s.lastDrainReason}`
                           : `skipped: ${s.lastDrainReason}`}
                   </span>
-                  {s.lastDrainAt && <span className="text-gray-600"> · {fmtTime(s.lastDrainAt)}</span>}
+                  {s.lastDrainAt && <span className="text-gray-400"> · {fmtTime(s.lastDrainAt)}</span>}
                 </p>
               )}
             </div>
@@ -849,7 +849,7 @@ function TransformsTab({
         <button
           onClick={runPreview}
           disabled={busy}
-          className="px-4 py-2 bg-neon-purple/20 border border-neon-purple/40 rounded-lg text-xs font-medium text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40 flex items-center gap-1.5"
+          className="px-4 py-2 bg-neon-purple/20 border border-neon-purple/40 rounded-lg text-xs font-medium text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40 flex items-center gap-1.5"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
           Preview Transform
@@ -1092,7 +1092,7 @@ function RunsTab({
             <button
               onClick={() => replay(r.id)}
               disabled={busy}
-              className="text-[11px] px-2 py-1 rounded bg-neon-purple/15 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-40 flex items-center gap-1"
+              className="text-[11px] px-2 py-1 rounded bg-neon-purple/15 text-neon-purple-bright hover:bg-neon-purple/25 disabled:opacity-40 flex items-center gap-1"
             >
               <RefreshCw className="w-3 h-3" /> Replay
             </button>
@@ -1183,7 +1183,7 @@ function DedupTab({
         {/* FIX-ingest-009: the strategies and threshold were bare names
             with no explanation. These lines describe what the sync
             actually does with each choice. */}
-        <p className="text-[11px] text-gray-500 mt-1.5" data-testid="dedup-strategy-help">
+        <p className="text-[11px] text-gray-400 mt-1.5" data-testid="dedup-strategy-help">
           {cfg.strategy === 'exact'
             ? 'exact: only records identical in every field count as duplicates (field order does not matter).'
             : cfg.strategy === 'key-field'
@@ -1216,7 +1216,7 @@ function DedupTab({
           onChange={(e) => setCfg({ ...cfg, threshold: Number(e.target.value) })}
           className="w-full"
         />
-        <p className="text-[11px] text-gray-500 mt-1">
+        <p className="text-[11px] text-gray-400 mt-1">
           Applies to semantic-hash only: 1.00 means content must match word-for-word; lower values also catch lightly edited copies.
         </p>
       </div>
@@ -1337,8 +1337,8 @@ function OcrTab({
               <h4 className="text-xs font-semibold text-white">Detected Headings</h4>
               {result.headings.slice(0, 12).map((h, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-[11px] text-gray-300">
-                  <ChevronRight className="w-3 h-3 text-gray-600" />
-                  <span className="text-gray-600">p{h.page}</span>
+                  <ChevronRight className="w-3 h-3 text-gray-400" />
+                  <span className="text-gray-400">p{h.page}</span>
                   <span className="truncate">{h.text}</span>
                 </div>
               ))}
@@ -1354,13 +1354,13 @@ function OcrTab({
               <h4 className="text-xs font-semibold text-white">Pages</h4>
               {result.perPage.map((p) => (
                 <div key={p.page} className="flex flex-wrap items-center gap-x-2 text-[11px] text-gray-300">
-                  <span className="text-gray-600">p{p.page}</span>
+                  <span className="text-gray-400">p{p.page}</span>
                   <span>{p.wordCount} words</span>
-                  <span className="text-gray-600">·</span>
+                  <span className="text-gray-400">·</span>
                   <span>{p.lineCount} lines</span>
-                  <span className="text-gray-600">·</span>
+                  <span className="text-gray-400">·</span>
                   <span>{p.headingCount} headings</span>
-                  <span className="text-gray-600">·</span>
+                  <span className="text-gray-400">·</span>
                   <span>{p.confidence != null ? `${(p.confidence * 100).toFixed(0)}% confidence` : 'no confidence reported'}</span>
                   {p.empty && <span className="text-yellow-400">· empty page</span>}
                 </div>
@@ -1373,7 +1373,7 @@ function OcrTab({
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
                 {result.chunks.map((c, i) => (
                   <div key={i} className="rounded border border-lattice-border bg-lattice-surface px-2.5 py-2">
-                    <p className="text-[10px] uppercase tracking-wider text-gray-500">Chunk {i + 1} · {c.length} chars</p>
+                    <p className="text-[10px] uppercase tracking-wider text-gray-400">Chunk {i + 1} · {c.length} chars</p>
                     <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-300">{c}</p>
                   </div>
                 ))}
@@ -1476,7 +1476,7 @@ function WebhookTab({
                 <button
                   onClick={rotate}
                   disabled={busy}
-                  className="px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+                  className="px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
                 >
                   Confirm rotate
                 </button>

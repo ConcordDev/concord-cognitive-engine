@@ -63,7 +63,7 @@ export function SlackShell({ activeNav, onNavChange, badges = {}, channelList, m
             >
               <Icon className="w-5 h-5" />
               {badge !== undefined && badge !== 0 && (
-                <span className="absolute top-0 right-0 px-1.5 py-0.5 rounded-full bg-rose-500 text-white text-[8px] font-mono">{badge}</span>
+                <span className="absolute top-0 right-0 px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[8px] font-mono">{badge}</span>
               )}
             </button>
           );

@@ -93,13 +93,13 @@ export function HeartbeatPulse({ isLive, lastTickTime }: { isLive: boolean; last
         >
           <Heart
             className={`w-4 h-4 transition-all duration-200 ${pulse ? 'scale-125' : 'scale-100'}`}
-            style={{ color: isLive ? '#00ffc8' : '#6b7280' }}
+            style={{ color: isLive ? '#00ffc8' : '#a1a1aa' }}
             fill={pulse && isLive ? '#00ffc8' : 'none'}
           />
         </div>
       </div>
       <div>
-        <p className="text-sm font-medium" style={{ color: isLive ? '#00ffc8' : '#6b7280' }}>
+        <p className="text-sm font-medium" style={{ color: isLive ? '#00ffc8' : '#a1a1aa' }}>
           {isLive ? 'Live' : 'Paused'}
         </p>
         <p className="text-[10px] text-gray-400 font-mono">
@@ -193,14 +193,14 @@ export function HeartbeatLineCanvas({ ticks, isLive }: { ticks: TickEvent[]; isL
     // Gradient stroke
     const gradient = ctx.createLinearGradient(0, 0, w, 0);
     gradient.addColorStop(0, 'rgba(0,255,200,0.3)');
-    gradient.addColorStop(0.5, isLive ? '#00ffc8' : '#6b7280');
-    gradient.addColorStop(1, isLive ? '#00ffc8' : '#6b7280');
+    gradient.addColorStop(0.5, isLive ? '#00ffc8' : '#a1a1aa');
+    gradient.addColorStop(1, isLive ? '#00ffc8' : '#a1a1aa');
     ctx.strokeStyle = gradient;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // Glow effect
-    ctx.shadowColor = isLive ? '#00ffc8' : '#6b7280';
+    ctx.shadowColor = isLive ? '#00ffc8' : '#a1a1aa';
     ctx.shadowBlur = 6;
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -300,7 +300,7 @@ export function EventTimelineCanvas({ ticks }: { ticks: TickEvent[] }) {
       // Stress dot (smaller, below)
       ctx.beginPath();
       ctx.arc(x, stressY, 2, 0, Math.PI * 2);
-      ctx.fillStyle = tick.stress > 0.2 ? '#ef4444' : '#6b7280';
+      ctx.fillStyle = tick.stress > 0.2 ? '#ef4444' : '#a1a1aa';
       ctx.globalAlpha = 0.5;
       ctx.fill();
       ctx.globalAlpha = 1;

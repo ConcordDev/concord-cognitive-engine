@@ -223,7 +223,7 @@ export function ChainProofPanel() {
             >
               <p className="text-xs font-medium truncate text-white">{chain.question}</p>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="font-mono text-[10px] text-zinc-500">{chain.type || 'deductive'}</span>
+                <span className="font-mono text-[10px] text-lattice-muted">{chain.type || 'deductive'}</span>
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.5 rounded',
                   (chain.status ? chain.status === 'concluded' : !!chain.conclusion) ? 'bg-green-400/20 text-green-400' : 'bg-neon-blue/20 text-neon-blue',
@@ -258,7 +258,7 @@ export function ChainProofPanel() {
           <button
             onClick={handleAssessStrength}
             disabled={!selectedChain || chainPremises.length === 0 || actionRunning}
-            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20')}
+            className={cn(ds.btnSmall, 'bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20')}
           >
             <Zap className="w-3.5 h-3.5" /> Assess Strength
           </button>
@@ -279,7 +279,7 @@ export function ChainProofPanel() {
         {!selectedChain ? (
           <EmptyState
             compact
-            icon={<Search className="h-5 w-5 text-zinc-600" />}
+            icon={<Search className="h-5 w-5 text-lattice-muted" />}
             title="No chain selected"
             description="Pick a chain on the left. Steps are a proof: conclusion + required justification."
           />
@@ -305,7 +305,7 @@ export function ChainProofPanel() {
                     {Boolean(step.justification) && (
                       <p className="text-[10px] text-gray-400 mt-0.5">because {step.justification as string}</p>
                     )}
-                    {Boolean(step.type) && <span className="font-mono text-[10px] text-zinc-500">{step.type as string}</span>}
+                    {Boolean(step.type) && <span className="font-mono text-[10px] text-lattice-muted">{step.type as string}</span>}
                   </div>
                 </div>
               ))}

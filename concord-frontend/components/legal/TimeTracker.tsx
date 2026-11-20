@@ -132,7 +132,7 @@ export function TimeTracker() {
                   <div className="text-[10px] text-gray-400 truncate">{t.description || 'No description'}</div>
                 </div>
                 <div className="text-base font-mono tabular-nums text-emerald-300">{fmtElapsed(t.elapsedSec)}</div>
-                <button onClick={() => stopTimer(t.id)} className="px-2 py-1 text-[10px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1">
+                <button onClick={() => stopTimer(t.id)} className="px-2 py-1 text-[10px] rounded bg-rose-600 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1">
                   <Square className="w-3 h-3" />Stop
                 </button>
               </li>

@@ -363,6 +363,8 @@ export function IssueInbox() {
         {/* FIX-debug-004: the server has always sorted (last/first/count)
             but the panel hardcoded 'last' — surface the choice. */}
         <select
+          id="debug-sort-issues"
+          name="sort-issues"
           aria-label="Sort issues"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}

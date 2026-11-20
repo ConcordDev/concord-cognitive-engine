@@ -87,7 +87,7 @@ export function PlaybookPanel({
       )}
 
       {!crisisId && !loading && pb && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-lattice-muted">
           Read-only in the library — step tracking attaches to a crisis. Select or declare one and its playbook opens in the command deck, checkable step by step.
         </p>
       )}
@@ -117,7 +117,7 @@ export function PlaybookPanel({
               </button>
               ) : (
               <div className="flex w-full items-start gap-2 rounded-lg border border-white/10 bg-white/5 p-2.5 text-left text-sm text-zinc-200">
-                <Square className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
+                <Square className="mt-0.5 h-4 w-4 shrink-0 text-lattice-muted" />
                 <span>
                   <span className="mr-1.5 font-mono text-[10px] opacity-50">{s.order}.</span>
                   {s.label}

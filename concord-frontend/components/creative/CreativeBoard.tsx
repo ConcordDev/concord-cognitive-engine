@@ -171,7 +171,7 @@ export function CreativeBoard({ boardId, onExit }: { boardId: string; onExit: ()
         )}
         <button type="button" onClick={() => setConnectFrom(connectFrom ? null : (selected || cards[0]?.id || null))}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
-            connectFrom ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+            connectFrom ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
           <Spline className="w-3.5 h-3.5" /> {connectFrom ? 'Pick target…' : 'Connect'}
         </button>
       </div>

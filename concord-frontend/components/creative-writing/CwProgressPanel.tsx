@@ -91,7 +91,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
           onChange={(e) => setForm({ ...form, minutes: e.target.value })}
           className="w-24 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={logSession}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Log session
         </button>
       </section>
@@ -103,7 +103,7 @@ export function CwProgressPanel({ projectId }: { projectId: string }) {
           <ResponsiveContainer width="100%" height={Math.max(120, stats.byChapter.length * 32)}>
             <BarChart layout="vertical" data={stats.byChapter} margin={{ left: 8, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 9, fill: '#71717a' }} />
+              <XAxis type="number" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
               <YAxis type="category" dataKey="title" width={90} tick={{ fontSize: 9, fill: '#a1a1aa' }} />
               <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="words" fill="#f59e0b" radius={[0, 3, 3, 0]} />

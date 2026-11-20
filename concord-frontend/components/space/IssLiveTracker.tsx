@@ -139,7 +139,7 @@ export function IssLiveTracker() {
             <Gauge className="w-3.5 h-3.5" /> footprint {pos.footprintKm.toFixed(0)} km
           </span>
           <span>Catalog orbit inclination 51.6°. The live feed does not report inclination.</span>
-          <span className={cn('ml-auto', track.length > 0 ? 'text-cyan-400' : 'text-zinc-600')}>
+          <span className={cn('ml-auto', track.length > 0 ? 'text-cyan-400' : 'text-lattice-muted')}>
             {track.length > 0 ? `${track.length}-point ground track` : 'computing track…'}
           </span>
         </div>

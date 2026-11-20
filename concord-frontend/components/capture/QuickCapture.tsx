@@ -219,7 +219,7 @@ export function QuickCapture({ isOpen, onClose, onCapture }: QuickCaptureProps) 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       exit={{ scale: 0 }}
-                      className="flex items-center gap-1 px-2 py-1 bg-neon-purple/20 text-neon-purple border border-neon-purple/30 rounded-full text-sm"
+                      className="flex items-center gap-1 px-2 py-1 bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30 rounded-full text-sm"
                     >
                       <Hash className="w-3 h-3" />
                       {tag}

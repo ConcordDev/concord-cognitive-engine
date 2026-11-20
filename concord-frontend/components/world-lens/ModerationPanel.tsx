@@ -478,7 +478,7 @@ export default function ModerationPanel({
                     <div className="flex gap-2">
                       <button
                         onClick={() => setEditingRules(false)}
-                        className="px-3 py-1 text-xs rounded-md bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
+                        className="px-3 py-1 text-xs rounded-md bg-cyan-700 hover:bg-cyan-500 text-white transition-colors"
                       >
                         Save Rules
                       </button>

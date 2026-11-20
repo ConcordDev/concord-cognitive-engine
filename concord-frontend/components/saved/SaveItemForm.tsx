@@ -192,7 +192,7 @@ export function SaveItemForm({ folders, onSave, open: openProp, onOpenChange }: 
               type="button"
               onClick={() => { setShowClip(false); setClipStart(''); setClipEnd(''); }}
               aria-label="Remove clip timecode"
-              className="text-zinc-500 hover:text-zinc-300"
+              className="text-lattice-muted hover:text-zinc-300"
             >
               <X className="w-3 h-3" />
             </button>
@@ -213,7 +213,7 @@ export function SaveItemForm({ folders, onSave, open: openProp, onOpenChange }: 
               className="text-xs bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-zinc-100"
             />
           </div>
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-lattice-muted">
             For a clip from a video/podcast/audio source. Leave end blank for a &quot;starts at&quot; marker.
           </p>
         </div>

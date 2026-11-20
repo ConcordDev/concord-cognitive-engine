@@ -1,0 +1,97 @@
+/*
+ * The Notebook — the Chat lens identity. A lab notebook on a desk: faint
+ * graph-paper grid, pencil-grey type, a red margin rule, and red ink for the
+ * annotations that back a reply (citations, tool runs, computed numbers).
+ * Every reply is an entry, numbered in the margin. Colour means one thing
+ * each: red ink is evidence and annotation, blue ink is a link out, the
+ * highlighter marks what needs your attention. Every colour is a token
+ * (var(--nb-*)); components reach them through Tailwind arbitrary values
+ * with a fallback, so a component shared with another lens looks the same
+ * there as it always did.
+ */
+
+.nb {
+  --nb-paper: #fbfbf6;
+  --nb-sheet: #ffffff;
+  --nb-wash: #f0f1ea;
+  --nb-wash-2: #e5e7de;
+  --nb-grid: rgba(70, 110, 160, 0.075);
+  --nb-grid-strong: rgba(70, 110, 160, 0.14);
+  --nb-ink: #24262b;
+  --nb-ink-2: #45484f;
+  --nb-muted: #6c707a;
+  --nb-faint: #9a9ea6;
+  --nb-rule: #dadcd3;
+  --nb-rule-2: #c3c6bb;
+  --nb-margin: #e7a49b;
+  --nb-red: #c23a2e;
+  --nb-red-soft: rgba(194, 58, 46, 0.08);
+  --nb-blue: #2a5d9f;
+  --nb-blue-soft: rgba(42, 93, 159, 0.08);
+  --nb-green: #2f7a4a;
+  --nb-green-soft: rgba(47, 122, 74, 0.1);
+  --nb-hl: #fff1a8;
+  --nb-ochre: #9a6b12;
+  --nb-scrim: rgba(36, 38, 43, 0.32);
+  --nb-on-ink: #fbfbf6;
+  --nb-shadow: 0 1px 0 rgba(36, 38, 43, 0.04), 0 12px 30px -18px rgba(36, 38, 43, 0.35);
+
+  background:
+    linear-gradient(var(--nb-grid) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(90deg, var(--nb-grid) 1px, transparent 1px) 0 0 / 22px 22px,
+    var(--nb-paper);
+  color: var(--nb-ink);
+  font-family: var(--nb-font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.nb :focus-visible { outline: 2px solid var(--nb-blue); outline-offset: 2px; }
+.nb ::selection { background: var(--nb-hl); }
+
+.nb-serif { font-family: var(--nb-font-serif), Georgia, serif; }
+.nb-hand { font-family: var(--nb-font-hand), cursive; }
+.nb-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--nb-muted); }
+
+/* The page: a red margin rule down the left of the thread */
+.nb-row { position: relative; max-width: 1180px; margin: 0 auto; padding: 0 20px 0 76px; }
+.nb-row::before { content: ''; position: absolute; top: 0; bottom: 0; left: 60px; width: 1px; background: var(--nb-margin); opacity: 0.75; pointer-events: none; }
+@media (max-width: 640px) { .nb-row { padding: 0 12px 0 40px; } .nb-row::before { left: 30px; } }
+
+/* An entry: the number sits in the margin, in red ink */
+.nb-entry { position: relative; }
+.nb-entry-no { position: absolute; left: -44px; top: 2px; width: 36px; text-align: right; font-family: var(--nb-font-hand), cursive; font-size: 14px; color: var(--nb-red); line-height: 1.2; }
+@media (max-width: 640px) { .nb-entry-no { left: -26px; width: 20px; font-size: 12px; } }
+.nb-entry[data-role='assistant'] .nb-body { font-family: var(--nb-font-serif), Georgia, serif; font-size: 16.5px; line-height: 1.62; color: var(--nb-ink); }
+.nb-entry[data-role='user'] .nb-body { font-size: 14.5px; color: var(--nb-ink-2); }
+.nb-entry[data-role='user'] .nb-you { display: inline-block; font-family: var(--nb-font-hand), cursive; color: var(--nb-blue); font-size: 13px; margin-bottom: 2px; }
+
+/* Margin evidence: what backs the reply, pinned in red ink */
+.nb-evidence { border-left: 2px solid var(--nb-margin); padding-left: 10px; }
+.nb-evidence .nb-label { color: var(--nb-red); }
+
+/* The composer: a sheet clipped to the page */
+.nb-composer { background: var(--nb-sheet); border: 1px solid var(--nb-rule-2); border-radius: 10px; box-shadow: var(--nb-shadow); }
+.nb-answer-as { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border-radius: 999px; border: 1px dashed var(--nb-rule-2); font-size: 12px; color: var(--nb-ink-2); }
+.nb-answer-as:hover { border-style: solid; border-color: var(--nb-ink-2); }
+.nb-menu { background: var(--nb-sheet); border: 1px solid var(--nb-rule-2); border-radius: 10px; box-shadow: var(--nb-shadow); }
+.nb-menu-item[aria-checked='true'] { background: var(--nb-hl); }
+
+/* Starter cards: index cards on the empty page */
+.nb-card { background: var(--nb-sheet); border: 1px solid var(--nb-rule); border-top: 3px solid var(--nb-margin); border-radius: 4px; box-shadow: var(--nb-shadow); transition: transform 140ms ease; text-align: left; }
+.nb-card:hover { transform: translateY(-2px) rotate(-0.3deg); }
+
+@keyframes nb-ink { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.nb-rise { animation: nb-ink 220ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .nb-rise { animation: none; } .nb-card, .nb-card:hover { transition: none; transform: none; } }
+
+/* A reply is a grid: the entry on the page, its evidence in the right margin when the page is wide */
+.nb-reply { display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1280px) {
+  .nb-reply { grid-template-columns: minmax(0, 1fr) 240px; column-gap: 32px; align-items: start; }
+  .nb-reply > *:not(.nb-ev) { grid-column: 1; }
+  .nb-reply > .nb-ev { grid-column: 2; grid-row: 1 / span 30; margin-top: 0; position: sticky; top: 64px; }
+}
+
+/* The strip across the top of the page: clipped to the binding */
+.nb-strip { background: linear-gradient(to bottom, var(--nb-paper) 70%, transparent); }
+/* Touch targets: the Answer-as pill is 44px tall on touch screens */
+@media (pointer: coarse) { .nb-answer-as { min-height: 44px; } }

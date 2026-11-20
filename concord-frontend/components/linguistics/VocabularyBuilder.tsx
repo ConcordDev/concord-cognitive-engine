@@ -138,7 +138,7 @@ export function VocabularyBuilder({ refreshKey = 0, onChange }: { refreshKey?: n
         {revealed ? (
           <div className="flex gap-2 justify-center">
             <button onClick={() => grade(false)} className="px-4 py-1.5 text-xs font-semibold rounded bg-rose-600 hover:bg-rose-500 text-white inline-flex items-center gap-1"><X className="w-3 h-3" />Didn&apos;t know</button>
-            <button onClick={() => grade(true)} className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1"><Check className="w-3 h-3" />Knew it</button>
+            <button onClick={() => grade(true)} className="px-4 py-1.5 text-xs font-semibold rounded bg-emerald-700 hover:bg-emerald-600 text-white inline-flex items-center gap-1"><Check className="w-3 h-3" />Knew it</button>
           </div>
         ) : (
           <button onClick={() => setRevealed(true)} className="px-4 py-1.5 text-xs font-semibold rounded bg-indigo-600 hover:bg-indigo-500 text-white">Reveal definition</button>

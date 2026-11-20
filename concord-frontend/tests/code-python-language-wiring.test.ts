@@ -19,9 +19,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { languageForFilename, resolveTabLanguage, RUNNABLE_LANGUAGE_OPTIONS } from '@/components/code/localExec';
+import { languageOf as proofLanguageOf } from '@/components/code/proof/proofApi';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const panel = readFileSync(resolve(here, '../components/code/CodeEditorWorkspacePanel.tsx'), 'utf8');
+const workbench = readFileSync(resolve(here, '../components/code/proof/Workbench.tsx'), 'utf8');
+const runner = readFileSync(resolve(here, '../components/code/proof/proofRunner.ts'), 'utf8');
 
 describe('languageForFilename', () => {
   it('maps the runnable extensions', () => {
@@ -68,26 +70,19 @@ describe('the advertised set is exactly the runnable set', () => {
   });
 });
 
-describe('panel wiring (source assertions)', () => {
-  it('both tab-open sites resolve the language instead of defaulting it', () => {
-    const sites = panel.match(/language: resolveTabLanguage\(/g) ?? [];
-    expect(sites.length).toBeGreaterThanOrEqual(2);
-    expect(panel).not.toContain("language: data?.language || 'javascript'");
-    expect(panel).not.toContain("language: file.language || 'javascript'");
+describe('Proof wiring: a file runs in the language its name says', () => {
+  it('maps project paths to the language the editor and the runner use', () => {
+    expect(proofLanguageOf('src/helper.py')).toBe('python');
+    expect(proofLanguageOf('src/app.ts')).toBe('typescript');
+    expect(proofLanguageOf('src/app.mjs')).toBe('javascript');
+    expect(proofLanguageOf('README.md')).toBe('markdown');
+    // Every language the editor would hand the runner is one the runner accepts.
+    for (const p of ['a.py', 'a.ts', 'a.tsx', 'a.js', 'a.mjs']) {
+      expect(RUNNABLE_LANGUAGE_OPTIONS.map((o) => o.id)).toContain(proofLanguageOf(p));
+    }
   });
-  it('the save path persists the language and the chosen flag together', () => {
-    expect(panel).toContain('language: tab.language, languageChosen: tab.languageChosen === true');
-  });
-  it('the toolbar selector offers the runnable options and writes through the chosen setter', () => {
-    expect(panel).toContain('RUNNABLE_LANGUAGE_OPTIONS.map');
-    expect(panel).toContain('onChange={(e) => setActiveTabLanguage(e.target.value)}');
-    expect(panel).toContain('languageChosen: true');
-  });
-  it('the shared editor header carries a Run control on the real mutation', () => {
-    // A second runScriptMutation.mutate() call site in a button (the first
-    // is the Scratch title bar's Run) — the editor header's, visible in
-    // both workspaces.
-    const runButtons = panel.match(/onClick=\{\(\) => \{ if \(localRun \|\| \(!execOff && !execUnknown\)\) runScriptMutation\.mutate\(\); \}\}/g) ?? [];
-    expect(runButtons.length).toBe(2);
+  it('the workbench runs a file with its path language and reports what really ran', () => {
+    expect(workbench).toContain('isLocallyRunnable(languageOf(target))');
+    expect(runner).toContain('runLocalScript({ code: content, language: languageOf(path) })');
   });
 });

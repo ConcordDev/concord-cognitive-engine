@@ -91,7 +91,7 @@ export function TriagePanel({
         </button>
       </header>
 
-      <p className="text-[11px] text-zinc-500">
+      <p className="text-[11px] text-lattice-muted">
         Ranks active world crises and the incident reports filed in this console — one record set.
       </p>
 

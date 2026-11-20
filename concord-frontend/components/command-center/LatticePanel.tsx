@@ -24,7 +24,7 @@ export function LatticePanel() {
         <Stat label="Pending Predictions" value={pending?.predictions?.length ?? '—'} />
         <Stat label="Cycles Run" value={meta?.cyclesRun ?? '—'} />
       </div>
-      <button onClick={() => triggerMutation.mutate()} disabled={triggerMutation.isPending} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-neon-purple/20 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/30 disabled:opacity-50 transition-colors">
+      <button onClick={() => triggerMutation.mutate()} disabled={triggerMutation.isPending} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/30 disabled:opacity-50 transition-colors">
         <Zap className="w-4 h-4" /> {triggerMutation.isPending ? 'Running...' : 'Trigger Meta-Derivation'}
       </button>
     </div>

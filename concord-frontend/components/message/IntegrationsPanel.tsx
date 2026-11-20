@@ -111,7 +111,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
             placeholder="/poll Lunch this Friday?"
             className="flex-1 px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-white font-mono"
           />
-          <button onClick={runCommand} disabled={running || !runText.trim()} className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white inline-flex items-center gap-1 disabled:opacity-50">
+          <button onClick={runCommand} disabled={running || !runText.trim()} className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white inline-flex items-center gap-1 disabled:opacity-50">
             {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run
           </button>
         </div>
@@ -130,7 +130,7 @@ export function IntegrationsPanel({ channelId, channelName }: { channelId: strin
             <input aria-label="Command description" value={draftDesc} onChange={(e) => setDraftDesc(e.target.value)} placeholder="Description" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
             <input aria-label="Command app name" value={draftApp} onChange={(e) => setDraftApp(e.target.value)} placeholder="App name (optional)" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
             <input aria-label="Response template" value={draftTemplate} onChange={(e) => setDraftTemplate(e.target.value)} placeholder="Response template — use {args}" className="w-full px-2 py-1 text-[11px] bg-black/40 border border-white/10 rounded text-white" />
-            <button onClick={registerCommand} className="px-2 py-1 text-[10px] rounded bg-cyan-600 hover:bg-cyan-500 text-white font-bold">Register</button>
+            <button onClick={registerCommand} className="px-2 py-1 text-[10px] rounded bg-cyan-700 hover:bg-cyan-500 text-white font-bold">Register</button>
           </div>
         )}
         {loading ? (

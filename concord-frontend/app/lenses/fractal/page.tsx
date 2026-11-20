@@ -49,7 +49,7 @@ export default function FractalLensPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mb-2 mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Fractal</h1>
-            <p className="mb-5 max-w-3xl text-[14px] leading-relaxed text-zinc-500">
+            <p className="mb-5 max-w-3xl text-[14px] leading-relaxed text-lattice-muted">
               Mandelbrot, Julia, Burning Ship, Tricorn and Multibrot rendering, orbit inspection, deep-zoom animation, structural analysis and a 3D Mandelbulb.
             </p>
           </div>

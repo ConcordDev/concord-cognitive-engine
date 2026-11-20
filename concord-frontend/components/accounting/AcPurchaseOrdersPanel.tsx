@@ -97,7 +97,7 @@ export function AcPurchaseOrdersPanel() {
                 <span className="text-xs text-gray-300 font-mono tabular-nums">${po.total.toLocaleString()}</span>
                 {po.status === 'open' ? (
                   <button type="button" onClick={() => receive(po.id)}
-                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded">
+                    className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded">
                     <PackageCheck className="w-3 h-3" /> Receive
                   </button>
                 ) : <span className="text-[10px] text-emerald-400 uppercase">received</span>}
@@ -116,7 +116,7 @@ export function AcPurchaseOrdersPanel() {
 }
 
 const inp = 'flex-1 bg-black/40 border border-white/10 rounded px-2 py-1.5 text-xs text-gray-100';
-const btn = 'flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded px-3 py-1.5';
+const btn = 'flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded px-3 py-1.5';
 function Spin() { return <div className="flex items-center justify-center py-10 text-gray-400"><Loader2 className="w-5 h-5 animate-spin" /></div>; }
 function Empty({ text }: { text: string }) {
   return <EmptyState compact title={text} description="This book has no saved rows yet. Add one above and it will show up here." />;

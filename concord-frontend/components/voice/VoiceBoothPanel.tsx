@@ -707,7 +707,7 @@ export function VoiceBoothPanel() {
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="text-sm font-medium truncate">{take.name}</span>
                       {take.isBest && (
-                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-neon-pink/15 text-neon-pink text-[10px] rounded-full font-semibold whitespace-nowrap">
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-neon-pink/15 text-neon-pink-bright text-[10px] rounded-full font-semibold whitespace-nowrap">
                           <Award className="w-2.5 h-2.5" />
                           Best
                         </span>
@@ -980,7 +980,7 @@ export function VoiceBoothPanel() {
                   className={cn(
                     'px-2.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
                     activePreset === preset
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
+                      ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30'
                       : 'bg-white/5 text-gray-400 hover:text-white border border-transparent'
                   )}
                 >

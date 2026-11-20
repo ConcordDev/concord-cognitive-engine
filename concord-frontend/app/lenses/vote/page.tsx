@@ -107,7 +107,7 @@ export default function VoteLensPage() {
       {/* Quick Stats Row — real poll-list data, not fabricated */}
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 * 0.05 }} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-3">
-          <Scale className="w-5 h-5 text-neon-purple" />
+          <Scale className="w-5 h-5 text-neon-purple-bright" />
           <div>
             <p className="text-lg font-bold">{statVal(stats.active)}</p>
             <p className="text-xs text-gray-400">Active Polls</p>

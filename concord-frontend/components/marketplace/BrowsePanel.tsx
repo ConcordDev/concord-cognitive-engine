@@ -244,7 +244,7 @@ export function BrowsePanel() {
               onClick={() => m.setViewMode('grid')}
               className={cn(
                 'p-2 rounded-l-lg transition-colors',
-                m.viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
+                m.viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'
               )}
               aria-label="Grid3 x3"
             >
@@ -254,7 +254,7 @@ export function BrowsePanel() {
               onClick={() => m.setViewMode('list')}
               className={cn(
                 'p-2 rounded-r-lg transition-colors',
-                m.viewMode === 'list' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'
+                m.viewMode === 'list' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'
               )}
               aria-label="List view"
             >
@@ -317,7 +317,7 @@ export function BrowsePanel() {
           <div className="text-center py-16 text-gray-400">
             <Search className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="mb-1 font-medium text-gray-400">No items match your filters</p>
-            <p className="text-sm mb-5 text-gray-600">
+            <p className="text-sm mb-5 text-lattice-muted">
               Try broader filters or be the first to list something
             </p>
             <button

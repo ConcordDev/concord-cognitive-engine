@@ -1,4 +1,4 @@
-// ConKay workspace (/lenses/conkay): study edits re-solve through
+// ConKay — the Workshop (/lenses/conkay): study edits re-solve through
 // engineering.beamStudy and replies are composed from the solver's numbers;
 // nothing is shown as a result before a solve; the conversation is kept
 // server-side; cross-lens handoffs (?ask=, ?dtu=) land in the same workspace.
@@ -21,6 +21,7 @@ vi.mock('@/components/conkay/useConKayVoice', () => ({
   useConKayVoice: () => ({ supported: true, listening: false, speaking: false, interim: '', usingServerStt: false, voiceUnavailable: false, ttsAmplitudeRef: { current: 0 }, speak: vi.fn(), cancelSpeak: vi.fn() }),
 }));
 vi.mock('@/components/conkay/useMicAmplitude', () => ({ useMicAmplitude: () => ({ current: 0 }) }));
+vi.mock('next/font/google', () => ({ Chakra_Petch: () => ({ variable: 'ws-font', className: 'ws-font' }) }));
 const streamMock = vi.fn();
 vi.mock('@/lib/conkay/agent-stream', async (orig) => ({
   ...(await orig<typeof import('@/lib/conkay/agent-stream')>()),
@@ -47,7 +48,8 @@ vi.mock('@/lib/utils', async (orig) => ({
   downloadFile: (...a: unknown[]) => downloadMock(...a),
 }));
 
-import { ConKayWorkspace } from '@/components/conkay/workspace/ConKayWorkspace';
+import { Workshop } from '@/components/conkay/workshop/Workshop';
+const ConKayWorkspace = () => <Workshop />;
 import { ExportMenu, CONKAY_EMPTY_EXPORT_NOTICE } from '@/components/common/ExportMenu';
 import { setConkayCurrentModel } from '@/lib/conkay/model-export';
 
@@ -557,12 +559,17 @@ describe('ConKay workspace — new designs from the box', () => {
     expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
   });
 
-  it('designing a car runs the workbench and opens its page', async () => {
+  // The Workshop: a designed object comes down onto the table in place
+  // (?design=<id>), it does not navigate away to a separate workbench page.
+  it('designing a car runs the workbench and brings it onto the table', async () => {
     apiPost.mockResolvedValue({ data: { ok: true, stage: 'designed', id: 'wb_1', view: {} } });
+    fetchDesignMock.mockResolvedValue({ error: 'No such design.' });
     render(<ConKayWorkspace />);
     await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
     send('design a four-seat electric car that holds 140 mph');
-    await waitFor(() => expect(routerPush).toHaveBeenCalledWith('/conkay/workbench/wb_1'));
+    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/lenses/conkay?design=wb_1'));
+    expect(routerPush).not.toHaveBeenCalled();
+    expect(await screen.findByLabelText('Design on the table')).toBeTruthy();
   });
 
   it('"3 m aluminum beam SF 1.5" is still a beam edit', async () => {

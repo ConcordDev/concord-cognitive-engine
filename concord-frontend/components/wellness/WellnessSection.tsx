@@ -253,7 +253,7 @@ export function WellnessSection() {
         {loading && <Loader2 className="w-3 h-3 animate-spin text-gray-400" />}
         <nav className="ml-3 flex items-center gap-1">
           {([['today','Today',Activity],['habits','Habits',Flame],['mood','Mood',Smile],['workouts','Workouts',Dumbbell],['goals','Goals',Target]] as const).map(([id,label,Icon]) => (
-            <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded', tab === id ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
+            <button key={id} onClick={() => setTab(id)} className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded', tab === id ? 'bg-rose-600/15 text-rose-300 border border-rose-500/30' : 'text-gray-400 hover:text-white border border-transparent')}>
               <Icon className="w-3 h-3" />{label}
             </button>
           ))}
@@ -294,7 +294,7 @@ export function WellnessSection() {
                   <div className="text-xs text-gray-400">
                     <div className="font-semibold text-gray-400 mb-1">Recovery score</div>
                     Log today&apos;s sleep_hours, hrv_ms, or resting_hr to compute a Whoop-style recovery score.
-                    <button onClick={logMetric} className="mt-1.5 block px-2 py-1 text-[11px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Log a metric</button>
+                    <button onClick={logMetric} className="mt-1.5 block px-2 py-1 text-[11px] rounded bg-rose-600 text-white font-bold hover:bg-rose-400">Log a metric</button>
                   </div>
                 )}
               </div>
@@ -322,7 +322,7 @@ export function WellnessSection() {
                     {trend.trend === 'rising' ? <TrendingUp className="w-3 h-3 text-emerald-400" /> : trend.trend === 'falling' ? <TrendingDown className="w-3 h-3 text-rose-400" /> : <Minus className="w-3 h-3 text-gray-400" />}
                   </span>
                 )}
-                <button onClick={logMetric} className="ml-auto px-2 py-1 text-[11px] rounded bg-rose-500 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log metric</button>
+                <button onClick={logMetric} className="ml-auto px-2 py-1 text-[11px] rounded bg-rose-600 text-white font-bold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log metric</button>
               </div>
               {trend && trend.series.length > 0 ? (
                 <div className="h-44">
@@ -370,7 +370,7 @@ export function WellnessSection() {
                       </span>
                       <span className="text-[10px] text-gray-400 font-mono w-20 flex-shrink-0">{m.date}</span>
                       <span className="flex-1 text-white font-mono">{m.value}</span>
-                      {m.source && <span className="text-[9px] text-gray-500 font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
+                      {m.source && <span className="text-[9px] text-lattice-muted font-mono flex-shrink-0">{m.source.replace(/_/g, ' ')}</span>}
                       <button aria-label={`Edit ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => editMetric(m)} className="p-1 text-gray-400 hover:text-cyan-300 flex-shrink-0"><Pencil className="w-3 h-3" /></button>
                       <button aria-label={`Delete ${METRIC_TYPE_LABELS[m.type] || m.type} entry`} onClick={() => delMetric(m)} className="p-1 text-gray-400 hover:text-rose-300 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
                     </li>
@@ -386,7 +386,7 @@ export function WellnessSection() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{habits.length} habit(s)</span>
-              <button onClick={addHabit} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New habit</button>
+              <button onClick={addHabit} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-600 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New habit</button>
             </div>
             {habits.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><Flame className="w-6 h-6 mx-auto mb-2 opacity-30" />No habits yet.</div>
@@ -405,7 +405,7 @@ export function WellnessSection() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-xs font-mono inline-flex items-center gap-1" style={{ color: h.streak > 0 ? h.color : '#6b7280' }}>
+                        <div className="text-xs font-mono inline-flex items-center gap-1" style={{ color: h.streak > 0 ? h.color : '#a1a1aa' }}>
                           <Flame className="w-3 h-3" />{h.streak}
                         </div>
                         <div className="text-[9px] text-gray-400">best {h.longestStreak}</div>
@@ -482,7 +482,7 @@ export function WellnessSection() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{workouts.length} workout(s) · 30 days</span>
-              <button onClick={logWorkout} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log workout</button>
+              <button onClick={logWorkout} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-600 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />Log workout</button>
             </div>
             {workouts.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><Dumbbell className="w-6 h-6 mx-auto mb-2 opacity-30" />No workouts logged.</div>
@@ -510,7 +510,7 @@ export function WellnessSection() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{goals.length} goal(s)</span>
-              <button onClick={addGoal} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-500 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New goal</button>
+              <button onClick={addGoal} className="ml-auto px-2.5 py-1 text-xs rounded bg-rose-600 text-white font-semibold hover:bg-rose-400 inline-flex items-center gap-1"><Plus className="w-3 h-3" />New goal</button>
             </div>
             {goals.length === 0 ? (
               <div className="py-10 text-center text-xs text-gray-400"><Target className="w-6 h-6 mx-auto mb-2 opacity-30" />No goals set.</div>

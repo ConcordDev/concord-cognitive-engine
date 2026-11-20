@@ -131,7 +131,7 @@ export function MusicListingPage({ id }: { id: string }) {
         )}
         <a className="rounded bg-white/10 px-3 py-1.5 text-sm" href={`/api/economy/marketplace/listings/${encodeURIComponent(listing.id)}/master`}>Download master</a>
       </div>
-      {listing.price > 0 && <p className="text-[11px] text-zinc-500">The master stays locked until you buy it with your Concord balance, or you are the seller. A download before that returns 403.</p>}
+      {listing.price > 0 && <p className="text-[11px] text-lattice-muted">The master stays locked until you buy it with your Concord balance, or you are the seller. A download before that returns 403.</p>}
       {notice && <p className="text-sm text-emerald-300">{notice}</p>}
       {error && <p className="text-sm text-red-300">{error}</p>}
     </main>

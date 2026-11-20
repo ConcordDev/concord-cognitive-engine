@@ -192,7 +192,7 @@ export function TradeWindow({ tradeId, myUserId, initiatorId, recipientId, onClo
             className={
               myReady
                 ? 'px-4 py-2 rounded bg-green-700 text-white text-sm font-semibold cursor-not-allowed'
-                : 'px-4 py-2 rounded bg-cyan-600 text-white hover:bg-cyan-500 text-sm font-semibold'
+                : 'px-4 py-2 rounded bg-cyan-700 text-white hover:bg-cyan-500 text-sm font-semibold'
             }
           >
             {isComplete ? 'Complete ✓' : myReady ? 'Ready ✓ (waiting on them)' : 'Ready'}

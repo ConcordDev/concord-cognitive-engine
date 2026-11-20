@@ -34,7 +34,7 @@ function ago(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keepLabel = 'Keep as DTU' }: Props) {
+export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keepLabel = 'Keep as DTU', compact = false }: Props & { compact?: boolean }) {
   const solving = status === 'solving';
   if (!result || stale) {
     return (
@@ -57,9 +57,9 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
   const util = result.utilization * 100;
   const sc = result.safetyCheck;
   return (
-    <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">
+    <div className={compact ? 'grid grid-cols-2 gap-2 xl:grid-cols-4' : 'grid grid-cols-2 gap-2 2xl:grid-cols-4'}>
       {sc?.stated && sc.pass !== null && (
-        <div className={`${card} col-span-2 2xl:col-span-4`} data-testid="sf-verdict">
+        <div className={`${card} col-span-2 ${compact ? 'xl:col-span-4' : '2xl:col-span-4'}`} data-testid="sf-verdict">
           {sc.pass
             ? <ShieldCheck className="h-6 w-6 shrink-0 text-emerald-300" aria-hidden />
             : <ShieldAlert className="h-6 w-6 shrink-0 text-rose-300" aria-hidden />}
@@ -92,7 +92,7 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
         </div>
       </div>
       <div className={card}>
-        <FileCheck2 className={`h-6 w-6 shrink-0 ${result.dtuId ? 'text-teal-300' : 'text-slate-500'}`} aria-hidden />
+        <FileCheck2 className={`h-6 w-6 shrink-0 ${result.dtuId ? 'text-teal-300' : 'text-slate-400'}`} aria-hidden />
         <div className="min-w-0">
           {result.dtuId ? (
             <>
@@ -118,14 +118,15 @@ export function StudyCards({ result, stale, status, onRun, onKeep, keeping, keep
           </p>
         </div>
       </div>
-      {result.analysisReceipt && (
+      {/* Compact (the Workshop table): the full receipt lives under the hood. */}
+      {result.analysisReceipt && !compact && (
         <div className={`${card} col-span-2 2xl:col-span-4`} title={`assumptions: ${(result.analysisReceipt.assumptions || []).join('; ')}; out of scope: ${(result.analysisReceipt.outOfScope || []).join(', ')}`}>
           <Receipt className="h-5 w-5 shrink-0 text-slate-400" aria-hidden />
           <div className="min-w-0">
             <p className="truncate font-mono text-[11px] text-slate-300">
               {result.analysisReceipt.solver} · {result.analysisReceipt.units} · {result.analysisReceipt.inputHash.slice(0, 12)}…
             </p>
-            <p className="truncate text-[10px] text-slate-500">
+            <p className="truncate text-[10px] text-slate-400">
               {(result.analysisReceipt.assumptions || []).slice(0, 3).join(' · ')}
             </p>
           </div>

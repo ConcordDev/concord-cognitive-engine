@@ -27,7 +27,7 @@ export function PluginPanel() {
             <Puzzle className="w-4 h-4 text-neon-green" />
             <span className="text-white flex-1 truncate">{p.name}</span>
             <span className="text-xs text-gray-400">v{p.version}</span>
-            {p.isEmergentGen && <span className="text-[10px] bg-neon-purple/20 text-neon-purple px-1.5 py-0.5 rounded">emergent</span>}
+            {p.isEmergentGen && <span className="text-[10px] bg-neon-purple/20 text-neon-purple-bright px-1.5 py-0.5 rounded">emergent</span>}
           </div>
         ))}
         {plugins.length === 0 && <p className="text-xs text-gray-400 text-center py-3">No plugins loaded</p>}

@@ -308,7 +308,7 @@ export function QecDecoderPanel({ engine }: { engine: FrontierEngineDef }) {
               </div>
               <TextField id="qec-th-seed" label="Seed (blank = random)" value={thresholdSeed} onChange={setThresholdSeed} />
             </div>
-            <p className={cn(ds.monoXs, 'text-gray-500')}>
+            <p className={cn(ds.monoXs, 'text-lattice-muted')}>
               Est. {distances.length}×{pValues.length}×{trials} = {estimatedCells.toLocaleString()} sampled trials this
               call. This is a single synchronous request — larger sweeps genuinely take tens of seconds; the Run button
               above reflects the real in-flight request, never a synthetic progress percentage.
@@ -369,7 +369,7 @@ function ChipRow({ label, values, tone }: { label: string; values: number[]; ton
     <div>
       <p className={cn(ds.textMuted, 'mb-1')}>{label}</p>
       {values.length === 0 ? (
-        <p className={cn(ds.monoXs, 'text-gray-500')}>(none)</p>
+        <p className={cn(ds.monoXs, 'text-lattice-muted')}>(none)</p>
       ) : (
         <div className="flex flex-wrap gap-1">
           {values.map((v, i) => (
@@ -394,7 +394,7 @@ function TrialHistoryView({ history }: { history: RunTrialResult[] }) {
       <div className="overflow-x-auto">
         <table className={cn(ds.monoXs, 'w-full border-collapse')}>
           <thead>
-            <tr className="text-left text-gray-500 border-b border-lattice-border">
+            <tr className="text-left text-lattice-muted border-b border-lattice-border">
               <th className="py-1 pr-4">#</th>
               <th className="py-1 pr-4">d</th>
               <th className="py-1 pr-4">p</th>
@@ -458,7 +458,7 @@ function ThresholdView({ r }: { r: SimulateThresholdResult }) {
       <div className="overflow-x-auto">
         <table className={cn(ds.monoXs, 'w-full border-collapse')}>
           <thead>
-            <tr className="text-left text-gray-500 border-b border-lattice-border">
+            <tr className="text-left text-lattice-muted border-b border-lattice-border">
               <th className="py-1 pr-4">d</th>
               <th className="py-1 pr-4">p</th>
               <th className="py-1 pr-4">logical error rate</th>

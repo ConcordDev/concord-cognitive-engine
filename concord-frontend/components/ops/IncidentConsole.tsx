@@ -509,7 +509,7 @@ function IncidentsTab({
                 <button
                   disabled={!pageTarget.trim() || busy === 'notify'}
                   onClick={() => { onNotify(sel.id, pageTarget.trim(), pageChannel, `Page on incident #${sel.number}: ${sel.title}`); setPageTarget(''); }}
-                  className="flex items-center gap-1 rounded bg-amber-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-amber-500 disabled:opacity-40"
+                  className="flex items-center gap-1 rounded bg-amber-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-amber-500 disabled:opacity-40"
                 >
                   <Bell className="h-3 w-3" /> Page
                 </button>
@@ -568,7 +568,7 @@ function AlertsTab({
         <button
           disabled={!sig.trim() || busy === 'alert-ingest'}
           onClick={() => { onIngest(sig.trim(), msg.trim(), sev, auto); setSig(''); setMsg(''); }}
-          className="flex items-center gap-1 rounded bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
+          className="flex items-center gap-1 rounded bg-cyan-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
         >
           {busy === 'alert-ingest' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />} Ingest
         </button>
@@ -721,7 +721,7 @@ function OnCallTab({
           <button
             disabled={!resp.trim() || !from || !to || busy === 'shift-create'}
             onClick={() => { onShift(resp.trim(), toIso(from), toIso(to)); setResp(''); setFrom(''); setTo(''); }}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+            className="rounded bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
           >Add shift</button>
         </div>
         <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 p-3">
@@ -741,7 +741,7 @@ function OnCallTab({
           <button
             disabled={!ovrResp.trim() || !ovrFrom || !ovrTo || busy === 'ovr-create'}
             onClick={() => { onOverride(ovrResp.trim(), toIso(ovrFrom), toIso(ovrTo), ovrReason.trim() || 'swap'); setOvrResp(''); setOvrFrom(''); setOvrTo(''); setOvrReason(''); }}
-            className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-40"
+            className="rounded bg-amber-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-40"
           >Record override</button>
         </div>
       </div>

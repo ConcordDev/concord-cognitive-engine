@@ -918,7 +918,7 @@ function DeadlockPanel({
               {Object.entries(graph).map(([from, tos]) => (
                 <div key={from} className="font-mono mb-1">
                   <span className="text-neon-cyan">{from}</span>
-                  <span className="text-gray-600"> waits-for </span>
+                  <span className="text-lattice-muted"> waits-for </span>
                   <span className="text-amber-400">{tos.join(', ')}</span>
                 </div>
               ))}
@@ -966,7 +966,7 @@ function FairnessPanel({
       </div>
 
       {!fairness && (
-        <p className="text-xs text-gray-500">Run Score Fairness to analyze the trace.</p>
+        <p className="text-xs text-lattice-muted">Run Score Fairness to analyze the trace.</p>
       )}
       {fairness?.message && (
         <p className="text-xs text-gray-400">{fairness.message}</p>

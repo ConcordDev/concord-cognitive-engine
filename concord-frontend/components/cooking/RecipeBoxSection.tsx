@@ -366,7 +366,7 @@ export function RecipeBoxSection() {
                         {confirmDeleteId === r.id ? (
                           <span className="ml-auto inline-flex items-center gap-1">
                             <span className="text-[10px] text-rose-300">Delete “{r.title}”?</span>
-                            <button onClick={() => deleteRecipe(r.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-500 text-white font-semibold hover:bg-rose-400">Delete</button>
+                            <button onClick={() => deleteRecipe(r.id)} className="px-1.5 py-0.5 text-[10px] rounded bg-rose-600 text-white font-semibold hover:bg-rose-400">Delete</button>
                             <button onClick={() => setConfirmDeleteId(null)} className="px-1.5 py-0.5 text-[10px] rounded border border-white/10 text-gray-300 hover:bg-white/[0.05]">Cancel</button>
                           </span>
                         ) : (

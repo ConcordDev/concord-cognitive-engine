@@ -147,7 +147,7 @@ export function SavedViewsBar({
           ) : (
             <button
               onClick={() => remove(v)}
-              className="text-zinc-600 hover:text-red-400"
+              className="text-lattice-muted hover:text-red-400"
               aria-label={`Delete view ${v.name}`}
             >
               <X className="h-3 w-3" />
@@ -162,7 +162,7 @@ export function SavedViewsBar({
           <button
             onClick={save}
             disabled={busy}
-            className="rounded bg-amber-600 px-2 py-1 text-xs text-white disabled:opacity-40"
+            className="rounded bg-amber-700 px-2 py-1 text-xs text-white disabled:opacity-40"
           >
             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Overwrite'}
           </button>

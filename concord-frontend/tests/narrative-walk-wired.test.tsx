@@ -33,7 +33,10 @@ describe('Narrative walk lens — real catalog', () => {
     expect(await screen.findByText('No walk open.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Begin the walk' }));
     expect(await screen.findByRole('heading', { name: 'Lattice Quest Realised' })).toBeInTheDocument();
-    expect(screen.getByText(/lattice-born quest/)).toBeInTheDocument();
+    // The trail now reads one authored step at a time: kind label, title, the authored line, progress.
+    expect(screen.getByText('Event template')).toBeInTheDocument();
+    expect(screen.getByText(/A quest woven through the lattice is realised/)).toBeInTheDocument();
+    expect(screen.getByTestId('narrative-progress')).toHaveTextContent(/Step 1 of \d+/);
     await waitFor(() => expect(localStorage.getItem('concordia:narrative-walk:open')).toBe('quest_lattice_realised'));
   });
 });

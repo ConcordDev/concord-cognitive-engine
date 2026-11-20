@@ -228,12 +228,12 @@ export function ConstantTimePanel({ engine }: { engine: FrontierEngineDef }) {
                         {isDegraded ? (
                           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" />
                         ) : (
-                          <FileWarning className="w-4 h-4 mt-0.5 shrink-0 text-gray-500" aria-hidden="true" />
+                          <FileWarning className="w-4 h-4 mt-0.5 shrink-0 text-lattice-muted" aria-hidden="true" />
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={cn('px-1.5 py-0.5 rounded text-xs font-medium border', SEVERITY_STYLE[f.severity])}>{f.severity}</span>
-                            <span className={cn(ds.monoXs, 'text-gray-500')}>{f.id}</span>
+                            <span className={cn(ds.monoXs, 'text-lattice-muted')}>{f.id}</span>
                             {f.location && <span className={cn(ds.monoXs, 'text-gray-400')}>{f.location}</span>}
                           </div>
                           <p className={cn(ds.textBody, 'text-sm mt-1')}>{f.message}</p>

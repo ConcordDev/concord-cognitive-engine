@@ -101,7 +101,7 @@ export function GeologicMapPanel() {
           <Crosshair className="w-3 h-3" />GPS
         </button>
         <button onClick={lookup} disabled={loading}
-          className="px-3 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+          className="px-3 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mountain className="w-3 h-3" />}Map
         </button>
       </div>

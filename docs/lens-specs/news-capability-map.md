@@ -1,5 +1,39 @@
 # News / Intelligence — Capability Map
 
+> **The Situation Room redesign (2026-11-19, `docs/LENS_REDESIGN_PLAYBOOK.md`).**
+> Newest truth; everything below is history.
+>
+> - **The map is the front page.** `components/news/room/` replaces the
+>   IntelDesk and My Reader desks. `news.situation`
+>   (`server/domains/news-situation.js`) gathers the live feed (GDELT + vetted
+>   RSS through `news.headlines`, across categories) and the shared library
+>   over a 6/24/72h window, and returns stories with places, per-country
+>   roll-ups, co-mention arcs, an hourly timeline and same-event clusters.
+> - **Places only from the story's own words.** `server/lib/news-places.js`
+>   is a gazetteer keyed by world-atlas's Natural Earth names (the map the lens
+>   draws; a test pins that both lists match): country names, people and
+>   major cities, longest match first, case-sensitive, with ambiguous words
+>   (Jordan, Chad, Georgia, Turkey, Niger) needing a companion term. A story
+>   is placed `mentioned`; else by the outlet's country, labelled `outlet`;
+>   else left unplaced and counted. Undated stories are counted, never dated.
+> - **Every feature has a designed home:** the dossier (place numbers,
+>   stories with sort + outlet filter, each story's placement reason,
+>   coverage by outlet, keep / save / listen / offline / more-less, source
+>   profile, bias weighing) and the Desk drawer (Briefing: daily briefing +
+>   today's digest; Watch: alerts + follow topics/outlets; Library: add,
+>   search, saved, history, for-you, trending, offline, records export;
+>   Analyst: events, narrative, clusters, bias spectrum; Delivery: digest
+>   schedule). All 39 earlier macros plus `situation` are reached.
+> - **Fixed on the way:** the GDELT/RSS tests stubbed `globalThis.fetch` but
+>   news fetches through the SSRF-guarded public-fetch (own DNS + pinned
+>   request), so 5 tests failed wherever DNS is unavailable; they now route
+>   through the test transport. News composite views call the domain's own
+>   handlers (the global macro runner holds no lens actions).
+> - **Honest limits:** the live feed needs outbound access to GDELT and the
+>   RSS hosts; in a box without it the room says so and shows the library.
+>   Event extraction only knows past-tense action verbs. Places are
+>   country-level (cities resolve to their country).
+
 > Flagship rebuild (Phase 2, `docs/FRONTEND_REBUILD_PROGRAM.md`), **Wave 4
 > gap-closure pass (2026-07-12)** added the personalized-reader half —
 > read below for what changed.

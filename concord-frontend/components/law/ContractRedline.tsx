@@ -284,7 +284,7 @@ export function ContractRedline({ contractId, contractTitle }: { contractId: str
           placeholder="Redline draft syncs live to everyone editing this contract…"
           className="w-full bg-black/50 border border-white/15 rounded-lg p-2.5 text-xs text-gray-200 font-mono leading-relaxed resize-y focus:outline-none focus:border-neon-cyan/50"
         />
-        <p className="text-[10px] text-gray-500">
+        <p className="text-[10px] text-lattice-muted">
           A shared co-editing draft — not the authoritative clause list. Reconcile agreed
           language into the Clauses tab, then use Versions → Diff to produce a formal redline.
         </p>
@@ -402,8 +402,8 @@ export function ContractRedline({ contractId, contractTitle }: { contractId: str
                     const change = changes.find((c) => c.index === i);
                     return (
                       <div key={i} className={cn('flex items-center gap-2 px-1 rounded',
-                        o.op === 'add' && (change?.decision === 'rejected' ? 'bg-rose-500/5 text-gray-500 line-through' : 'bg-neon-green/10 text-neon-green'),
-                        o.op === 'remove' && (change?.decision === 'rejected' ? 'bg-neon-green/5 text-gray-500 line-through' : 'bg-rose-500/10 text-rose-300 line-through'),
+                        o.op === 'add' && (change?.decision === 'rejected' ? 'bg-rose-500/5 text-lattice-muted line-through' : 'bg-neon-green/10 text-neon-green'),
+                        o.op === 'remove' && (change?.decision === 'rejected' ? 'bg-neon-green/5 text-lattice-muted line-through' : 'bg-rose-500/10 text-rose-300 line-through'),
                         o.op === 'same' && 'text-gray-400')}>
                         <span className="select-none opacity-50 w-3 shrink-0">
                           {o.op === 'add' ? '+' : o.op === 'remove' ? '−' : ' '}
@@ -412,11 +412,11 @@ export function ContractRedline({ contractId, contractTitle }: { contractId: str
                         {change && (
                           <span className="flex items-center gap-1 shrink-0">
                             <button aria-label={`Accept change ${i}`} onClick={() => decide(i, 'accepted')}
-                              className={cn('p-0.5 rounded', change.decision === 'accepted' ? 'bg-neon-green/30 text-neon-green' : 'text-gray-500 hover:text-neon-green')}>
+                              className={cn('p-0.5 rounded', change.decision === 'accepted' ? 'bg-neon-green/30 text-neon-green' : 'text-lattice-muted hover:text-neon-green')}>
                               <Check className="w-3 h-3" />
                             </button>
                             <button aria-label={`Reject change ${i}`} onClick={() => decide(i, 'rejected')}
-                              className={cn('p-0.5 rounded', change.decision === 'rejected' ? 'bg-rose-500/30 text-rose-300' : 'text-gray-500 hover:text-rose-300')}>
+                              className={cn('p-0.5 rounded', change.decision === 'rejected' ? 'bg-rose-500/30 text-rose-300' : 'text-lattice-muted hover:text-rose-300')}>
                               <X className="w-3 h-3" />
                             </button>
                           </span>

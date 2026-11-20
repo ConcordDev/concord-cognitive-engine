@@ -189,7 +189,7 @@ export function CrtCommentsPanel() {
                     type="button"
                     onClick={() => update(c.id, { pinned: !c.pinned })}
                     title={c.pinned ? 'Unpin' : 'Pin'}
-                    className={cn('hover:text-amber-400', c.pinned ? 'text-amber-400' : 'text-zinc-600')}
+                    className={cn('hover:text-amber-400', c.pinned ? 'text-amber-400' : 'text-lattice-muted')}
                   >
                     <Pin className="w-3.5 h-3.5" />
                   </button>
@@ -197,7 +197,7 @@ export function CrtCommentsPanel() {
                     type="button"
                     onClick={() => update(c.id, { status: c.status === 'hidden' ? 'open' : 'hidden' })}
                     title={c.status === 'hidden' ? 'Unhide' : 'Hide'}
-                    className="text-zinc-600 hover:text-zinc-300"
+                    className="text-lattice-muted hover:text-zinc-300"
                   >
                     <EyeOff className="w-3.5 h-3.5" />
                   </button>
@@ -205,7 +205,7 @@ export function CrtCommentsPanel() {
                     type="button"
                     onClick={() => update(c.id, { status: 'resolved' })}
                     title="Mark resolved"
-                    className="text-zinc-600 hover:text-emerald-400"
+                    className="text-lattice-muted hover:text-emerald-400"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                   </button>
@@ -213,7 +213,7 @@ export function CrtCommentsPanel() {
                     type="button"
                     onClick={() => del(c.id)}
                     title="Delete"
-                    className="text-zinc-600 hover:text-rose-400"
+                    className="text-lattice-muted hover:text-rose-400"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

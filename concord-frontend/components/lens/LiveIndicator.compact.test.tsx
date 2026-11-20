@@ -7,20 +7,20 @@ import { LiveIndicator, BADGE_SETTLE_MS } from './LiveIndicator';
 // its right edge was the first thing cut at 390px. The badge itself now
 // refuses to shrink or wrap, and header clusters let it wrap whole.
 describe('LiveIndicator compact badge (FIX-social-010)', () => {
-  it('renders LIVE uncompressed and on one line', () => {
+  it('renders the Connected badge uncompressed and on one line', () => {
     render(<LiveIndicator isLive lastUpdated={new Date().toISOString()} compact />);
-    const badge = screen.getByText('LIVE');
+    const badge = screen.getByText('Connected');
     expect(badge.className).toContain('shrink-0');
     expect(badge.className).toContain('whitespace-nowrap');
   });
 
-  it('still settles to OFF when never live (after the settle window)', () => {
+  it('still settles to Offline when never live (after the settle window)', () => {
     vi.useFakeTimers();
     try {
       render(<LiveIndicator isLive={false} lastUpdated={null} compact />);
       expect(screen.getByText('CONNECTING')).toBeTruthy();
       act(() => { vi.advanceTimersByTime(BADGE_SETTLE_MS + 50); });
-      expect(screen.getByText('OFF')).toBeTruthy();
+      expect(screen.getByText('Offline')).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }

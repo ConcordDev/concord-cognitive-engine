@@ -87,7 +87,7 @@ export function LiveTimer({ engagements, onLogged }: { engagements: EngagementOp
           )}
           <div className="flex justify-center gap-2">
             <button onClick={stop}
-              className="px-4 py-2 text-sm rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold inline-flex items-center gap-1.5">
+              className="px-4 py-2 text-sm rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold inline-flex items-center gap-1.5">
               <Square className="w-4 h-4" />Stop &amp; Log
             </button>
             <button onClick={cancel}

@@ -126,7 +126,7 @@ export function DataModelDesigner({
               key={t.id}
               onClick={() => setSelected(t.id)}
               className={`rounded px-2 py-1 text-[11px] ${
-                selected === t.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/30 text-pink-500 hover:text-pink-300'
+                selected === t.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/30 text-pink-400 hover:text-pink-300'
               }`}
             >
               {t.name}

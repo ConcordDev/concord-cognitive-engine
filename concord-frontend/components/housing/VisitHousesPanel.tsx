@@ -58,7 +58,7 @@ export function VisitHousesPanel({
           </button>
         </div>
       ) : publicHouses.length === 0 ? (
-        <p className="py-8 text-center text-[12px] text-slate-500" data-testid="housing-public-empty">No public houses in this world yet.</p>
+        <p className="py-8 text-center text-[12px] text-slate-400" data-testid="housing-public-empty">No public houses in this world yet.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" data-testid="housing-public-list">
           {publicHouses.map(h => (

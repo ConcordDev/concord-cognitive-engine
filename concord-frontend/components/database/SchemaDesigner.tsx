@@ -195,22 +195,22 @@ export function SchemaDesigner() {
               <>
                 <button onClick={() => open(sc.id)}
                   className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === sc.id ? 'bg-emerald-600/15 border-emerald-700/50 text-emerald-200' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
-                  {sc.name} <span className="text-zinc-600">{sc.tableCount}t</span>
+                  {sc.name} <span className="text-lattice-muted">{sc.tableCount}t</span>
                 </button>
-                <button aria-label={`Rename schema ${sc.name}`} onClick={() => startRename('schema', sc.id, sc.name)} className="text-zinc-500 hover:text-zinc-300">
+                <button aria-label={`Rename schema ${sc.name}`} onClick={() => startRename('schema', sc.id, sc.name)} className="text-lattice-muted hover:text-zinc-300">
                   <Pencil className="w-3 h-3" />
                 </button>
               </>
             )}
             <button aria-label={armedDelete === `schema:${sc.id}` ? `Confirm delete schema ${sc.name}` : `Delete schema ${sc.name}`} onClick={() => deleteSchema(sc.id)} onBlur={() => setArmedDelete(a => (a === `schema:${sc.id}` ? null : a))}
-              className={armedDelete === `schema:${sc.id}` ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'text-rose-400 hover:text-rose-300'}>
+              className={armedDelete === `schema:${sc.id}` ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'text-rose-400 hover:text-rose-300'}>
               {armedDelete === `schema:${sc.id}` ? `Delete ${sc.name}?` : <Trash2 className="w-3 h-3" />}
             </button>
           </span>
         ))}
         <input value={newSchema} onChange={e => setNewSchema(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createSchema(); }}
           placeholder="New schema" className="w-28 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button aria-label="Add" onClick={createSchema} className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={createSchema} className="px-2 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white"><Plus className="w-3.5 h-3.5" /></button>
       </div>
 
       {sql != null ? (
@@ -223,7 +223,7 @@ export function SchemaDesigner() {
           <div className="flex gap-1.5 mb-3">
             <input value={newTable} onChange={e => setNewTable(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void addTable(); }}
               placeholder="New table name" className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
-            <button onClick={addTable} className="px-2.5 py-1 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold inline-flex items-center gap-1">
+            <button onClick={addTable} className="px-2.5 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold inline-flex items-center gap-1">
               <Plus className="w-3 h-3" />Table
             </button>
           </div>
@@ -235,13 +235,13 @@ export function SchemaDesigner() {
                   {renaming?.kind === 'table' && renaming.id === t.id ? renameInput(t.name) : (
                     <>
                       <span className="text-xs font-bold text-zinc-100 flex-1">{t.name}</span>
-                      <button aria-label={`Rename table ${t.name}`} onClick={() => startRename('table', t.id, t.name)} className="text-zinc-500 hover:text-zinc-300">
+                      <button aria-label={`Rename table ${t.name}`} onClick={() => startRename('table', t.id, t.name)} className="text-lattice-muted hover:text-zinc-300">
                         <Pencil className="w-3 h-3" />
                       </button>
                     </>
                   )}
                   <button aria-label={armedDelete === `table:${t.id}` ? `Confirm delete table ${t.name}` : `Delete table ${t.name}`} onClick={() => delTable(t.id)} onBlur={() => setArmedDelete(a => (a === `table:${t.id}` ? null : a))}
-                    className={armedDelete === `table:${t.id}` ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'text-rose-400 hover:text-rose-300'}>
+                    className={armedDelete === `table:${t.id}` ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'text-rose-400 hover:text-rose-300'}>
                     {armedDelete === `table:${t.id}` ? 'Delete?' : <Trash2 className="w-3 h-3" />}
                   </button>
                 </div>
@@ -251,7 +251,7 @@ export function SchemaDesigner() {
                     {renaming?.kind === 'column' && renaming.id === c.id ? renameInput(c.name) : (
                       <>
                         <span className="text-zinc-200 font-mono">{c.name}</span>
-                        <button aria-label={`Rename column ${c.name}`} onClick={() => startRename('column', c.id, c.name, t.id)} className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-zinc-300">
+                        <button aria-label={`Rename column ${c.name}`} onClick={() => startRename('column', c.id, c.name, t.id)} className="opacity-0 group-hover:opacity-100 text-lattice-muted hover:text-zinc-300">
                           <Pencil className="w-2.5 h-2.5" />
                         </button>
                       </>
@@ -259,7 +259,7 @@ export function SchemaDesigner() {
                     <span className="text-zinc-400">{c.type}</span>
                     {!c.nullable && <span className="text-[9px] text-zinc-400">NOT NULL</span>}
                     <button aria-label={armedDelete === `column:${c.id}` ? `Confirm delete column ${c.name}` : `Delete column ${c.name}`} onClick={() => delColumn(t.id, c.id)} onBlur={() => setArmedDelete(a => (a === `column:${c.id}` ? null : a))}
-                      className={armedDelete === `column:${c.id}` ? 'ml-auto px-1 py-0.5 rounded bg-rose-500 text-white text-[9px] font-semibold' : 'ml-auto opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300'}>
+                      className={armedDelete === `column:${c.id}` ? 'ml-auto px-1 py-0.5 rounded bg-rose-600 text-white text-[9px] font-semibold' : 'ml-auto opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300'}>
                       {armedDelete === `column:${c.id}` ? 'Delete?' : <Trash2 className="w-2.5 h-2.5" />}
                     </button>
                   </div>
@@ -290,7 +290,7 @@ export function SchemaDesigner() {
             </div>
           )}
           {active.tables.length === 1 && (
-            <p className="text-[11px] text-zinc-500">Add a second table to draw relations between tables.</p>
+            <p className="text-[11px] text-lattice-muted">Add a second table to draw relations between tables.</p>
           )}
           {active.tables.length >= 2 && (
             <div className="flex gap-1.5">

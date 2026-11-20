@@ -89,7 +89,7 @@ export function PilotEditor({ form, setField }: EditorProps) {
           const selected = ratings.includes(r);
           return (
             <button key={r} onClick={() => setField('ratings', selected ? ratings.filter(x => x !== r) : [...ratings, r])}
-              className={cn('px-2 py-1 rounded text-xs border transition-colors', selected ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 'border-lattice-border text-gray-400 hover:text-white')}>
+              className={cn('px-2 py-1 rounded text-xs border transition-colors', selected ? 'bg-blue-600/20 border-blue-500 text-blue-400' : 'border-lattice-border text-gray-400 hover:text-white')}>
               {r}
             </button>
           );

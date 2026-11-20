@@ -159,7 +159,7 @@ export function ActivityWeightDashboard({ petId, petName, species, ageYears, wei
           <div className="text-xs text-zinc-400">{species} {ageYears != null && `· ${ageYears}y`} {weightKg != null && `· ${weightKg} kg`}</div>
         </div>
         <button type="button" onClick={() => analyze.mutate()} disabled={analyze.isPending}
-          className="rounded-full bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
+          className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-400 disabled:opacity-50">
           {analyze.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Compute wellness'}
         </button>
         {(activity || weight) && (

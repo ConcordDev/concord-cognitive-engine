@@ -124,7 +124,7 @@ export function ReportDialog({
               onChange={(e) => setDetail(e.target.value)}
               rows={3}
               placeholder="Add detail for moderation (optional unless no reason above fits)"
-              className="w-full bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-[#3a3b3c] rounded-lg px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
             />
             <div className="flex justify-end gap-2">
               <button

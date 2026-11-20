@@ -129,7 +129,7 @@ export function SavedItemCard({ item, folders, onRemove, onUpdate }: SavedItemCa
           <div className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-2 flex-wrap">
             {item.author && <span>by {item.author}</span>}
             <span>saved {new Date(item.savedAt).toLocaleDateString()}</span>
-            {item.sourceLens && <span className="text-zinc-600">via {item.sourceLens}</span>}
+            {item.sourceLens && <span className="text-lattice-muted">via {item.sourceLens}</span>}
           </div>
         </div>
         <button

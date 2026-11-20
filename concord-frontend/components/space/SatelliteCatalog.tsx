@@ -230,7 +230,7 @@ export function SatelliteCatalog() {
             </div>
           )}
 
-          <p className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+          <p className="flex items-center gap-1.5 text-[10px] text-lattice-muted">
             <ExternalLink className="w-3 h-3" />
             {data.attribution} — live GP/TLE catalog, cached up to 6h
           </p>

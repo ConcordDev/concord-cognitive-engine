@@ -12,8 +12,8 @@ export function MessageContinuationMarker({
   if (!wasSynthesized && (!shadowsUsed || shadowsUsed === 0)) return null;
 
   return (
-    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-1 mb-0.5">
-      <span className="text-gray-700">↳</span>
+    <div className="flex items-center gap-1.5 text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1 mb-0.5">
+      <span className="text-[color:var(--nb-faint,#374151)]">↳</span>
       <span>
         {wasSynthesized && shadowsUsed && shadowsUsed > 0
           ? `synthesized from ${shadowsUsed} reasoning ${shadowsUsed === 1 ? 'shadow' : 'shadows'}`

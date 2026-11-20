@@ -66,7 +66,7 @@ export function GameDesignLab() {
             key={t.id}
             onClick={() => setSection(t.id)}
             className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-t text-xs transition-colors',
-              section === t.id ? 'bg-neon-purple/20 text-neon-purple border-b-2 border-neon-purple' : 'text-gray-400 hover:text-white')}
+              section === t.id ? 'bg-neon-purple/20 text-neon-purple-bright border-b-2 border-neon-purple' : 'text-gray-400 hover:text-white')}
           >
             <t.icon className="w-3.5 h-3.5" /> {t.label}
           </button>
@@ -137,7 +137,7 @@ function BalanceCalculators() {
             key={t.id}
             onClick={() => { setTab(t.id); setResult(null); setError(null); }}
             className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded text-xs',
-              tab === t.id ? 'bg-neon-purple/15 text-neon-purple border border-neon-purple/30' : 'text-gray-400 border border-transparent hover:text-white')}
+              tab === t.id ? 'bg-neon-purple/15 text-neon-purple-bright border border-neon-purple/30' : 'text-gray-400 border border-transparent hover:text-white')}
           >
             <t.icon className="w-3.5 h-3.5" /> {t.label}
           </button>
@@ -375,7 +375,7 @@ function PlaytestSessions() {
               <button
                 type="button"
                 onClick={() => { setSelectedId(s.id); setAnalysis(null); }}
-                className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple' : 'border-lattice-border text-gray-400 hover:text-white')}
+                className={cn('text-xs px-3 py-1.5 rounded border', selectedId === s.id ? 'border-neon-purple/50 bg-neon-purple/15 text-neon-purple-bright' : 'border-lattice-border text-gray-400 hover:text-white')}
               >
                 {s.title} · Lv {(s.data?.level as number) || 1}
               </button>
@@ -452,7 +452,7 @@ function PlaytestSessions() {
                 <button
                   onClick={() => act('simulate', { scenarios: simScenarios.split(',').map((s) => ({ difficulty: Number(s.trim()) || 1 })) })}
                   disabled={!!busy}
-                  className="text-xs px-3 py-1.5 rounded border border-neon-purple/40 text-neon-purple hover:bg-neon-purple/10"
+                  className="text-xs px-3 py-1.5 rounded border border-neon-purple/40 text-neon-purple-bright hover:bg-neon-purple/10"
                 >Forecast</button>
               </div>
               {analysis?.kind === 'simulate' && (

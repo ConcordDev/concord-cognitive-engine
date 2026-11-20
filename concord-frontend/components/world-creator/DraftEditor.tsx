@@ -301,7 +301,7 @@ export function DraftEditor({ draftId, onClose }: { draftId: string; onClose: ()
             Save as DTU
           </button>
           <button onClick={playtest} disabled={busy}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
+            className="rounded bg-emerald-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50">
             ▶ Playtest
           </button>
           <button onClick={onClose} className="rounded border border-stone-700 px-3 py-1.5 text-sm text-stone-300 hover:bg-stone-800">

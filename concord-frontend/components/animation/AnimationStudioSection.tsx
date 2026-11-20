@@ -130,7 +130,7 @@ export function AnimationStudioSection() {
                     className="w-full bg-transparent py-1.5 text-xs text-zinc-100" />
                 </label>
                 <button type="button" onClick={create}
-                  className="flex items-center justify-center gap-1 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium rounded-lg">
+                  className="flex items-center justify-center gap-1 bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-medium rounded-lg">
                   <Plus className="w-3.5 h-3.5" /> Create
                 </button>
               </div>

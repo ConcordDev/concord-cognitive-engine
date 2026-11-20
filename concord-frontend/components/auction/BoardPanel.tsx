@@ -182,7 +182,7 @@ export function BoardPanel({ onCheckMarket }: { onCheckMarket?: (itemId: string)
           <div key={i} data-testid="auction-loading" className="h-28 animate-pulse rounded-xl border border-white/5 bg-white/5" aria-hidden="true" />
         ))}
         {!loading && !loadError && auctions.length === 0 && (
-          <p data-testid="auction-empty" className="col-span-full px-4 py-8 text-center text-[12px] text-slate-500">No active auctions. Post one yourself.</p>
+          <p data-testid="auction-empty" className="col-span-full px-4 py-8 text-center text-[12px] text-slate-400">No active auctions. Post one yourself.</p>
         )}
         {auctions.map((a) => {
           const timeLeft = fmtTime(a.endsAt);

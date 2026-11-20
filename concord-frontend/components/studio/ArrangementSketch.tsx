@@ -175,7 +175,7 @@ export function ArrangementSketch({ projectId: fixedProjectId, lens = 'studio', 
         <p data-testid="arrangement-empty" className="text-xs text-gray-400">
           {hostPicksProject
             ? 'Pick a project above to sketch its arrangement.'
-            : 'Sketch an arrangement on a Studio project. Create one in the Studio (Parity workbench → Session workbench), then pick it here.'}
+            : 'Sketch an arrangement on a Studio project. Start a song in Studio first (it saves as a project), then pick it here.'}
         </p>
       ) : (
         <>

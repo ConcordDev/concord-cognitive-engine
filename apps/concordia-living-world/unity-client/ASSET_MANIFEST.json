@@ -1,0 +1,2018 @@
+{
+  "version": 1,
+  "generated": {
+    "by": "P0-04 regeneration (muse-b10)",
+    "date": "2026-11-18",
+    "from": "backup/aura-wt-20261103 @ 51908c256 (LFS objects fetched + verified)",
+    "note": "First rail set: the Mixamo clips (P0-05's secured set). Full-catalog regeneration is P0-07."
+  },
+  "rows": [
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo.meta",
+      "sha256": "945573be6339d3a8e5eda566a63e95c015e87b6222eafc8d4e5a6f8f0e316a53",
+      "bytes": 172,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Angry_Gesture.fbx",
+      "sha256": "109853da4b2f7dc362ff5021c9b09fea49ba854378ee9b1f739d384a6360797c",
+      "bytes": 511904,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Angry_Gesture.fbx.meta",
+      "sha256": "ecc88b010ff0eb739d280517c30a2b79a3c985f1b9326001c918efd3cdb463bb",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Bayonet_Stab.fbx",
+      "sha256": "53bf506428258038bb75218d07915c51aadb857e92b5a9864b97f3e32a55d8f7",
+      "bytes": 611824,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Bayonet_Stab.fbx.meta",
+      "sha256": "08cb4ba08a6b4ec443fbe1df352d8206f69816a8cc1865e2412e694ece226160",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Beckoning.fbx",
+      "sha256": "9084245668e93a5b396249415f59dadef1c345f01edc505bb5f1b1bb5751f567",
+      "bytes": 512320,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Beckoning.fbx.meta",
+      "sha256": "db285005a4ae0c195ccc0a56e911732aa4e1fbce18ea25798462665cbb0efded",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Belly_Dance.fbx",
+      "sha256": "621376540c665f07f4cffa1bf3a6c7c5eb9efeba5c92bf241c02d093f48b5cf0",
+      "bytes": 1807808,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Belly_Dance.fbx.meta",
+      "sha256": "9a9a4d93bb971b64af8b5d0741be52c7ed5bfee348cc3012e4d6cc1c8b17f39b",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Block.fbx",
+      "sha256": "1ccafcce6b371c7c30e13dbe6b6e2f3af6e9db098c29060155003717ffa29d6e",
+      "bytes": 572016,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Block.fbx.meta",
+      "sha256": "9edca193cc900a81a693a2b638daf4197bf22748e550249a630f794a40928286",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Box_Walk_Arc.fbx",
+      "sha256": "ca75e6c910a333dbb44a4131a087c6b7cb0e1663da4983103878af63430ed961",
+      "bytes": 395616,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Box_Walk_Arc.fbx.meta",
+      "sha256": "e08fcf5427ccda160af6d07d0222b56166bf84d0a62c0cd4533c8dd2ddf39049",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Breathing_Idle.fbx",
+      "sha256": "e6db293c96ff560fc2c3ecc3cd7afea6d7c83bae169dbea5ca92f007362f76c9",
+      "bytes": 1107456,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Breathing_Idle.fbx.meta",
+      "sha256": "e17255442ab1e6ac8adaddc16feca929f83491e3144f903ec1db4b963c095824",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Cheering.fbx",
+      "sha256": "957d70b08f9b5665cc5146155a7ccec739707aee757e4cc79fcbba7d36f4c617",
+      "bytes": 502080,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Cheering.fbx.meta",
+      "sha256": "29dec9bfceebb6b3f10a4f7339825f01ea75b7b9fc6d304b262a9e86aeec1327",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Chicken_Dance.fbx",
+      "sha256": "bdef26fc5c0cacc40c3659f62c61a44432bf8e95a049369fde52b0f6ae5f113d",
+      "bytes": 692080,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Chicken_Dance.fbx.meta",
+      "sha256": "fa649ea5b0cbc70595792617d1a6c65f29110b0438a619cef0267bfdccdeb93f",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Clapping.fbx",
+      "sha256": "cb23a5e9ca2f105fa0d73d492be546af65432a2c35446db6c7223d39eee84748",
+      "bytes": 354400,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Clapping.fbx.meta",
+      "sha256": "4da4d03f444256cee6ea94afa64398ed100e77fc731779f6cba0fe262636f739",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Climbing_Ladder.fbx",
+      "sha256": "fde0e4b923de8e4e9fc6107285bfb5e3d82ce7c747afc7fc67730a3b8897d29e",
+      "bytes": 341072,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Climbing_Ladder.fbx.meta",
+      "sha256": "38d696c9b5f1689367b721057549bfef1c3fb274fe4398f4f2362f63041cd262",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crawling.fbx",
+      "sha256": "cd5f4c11a8096dc9bc2e80b5c6ecc49c964cad8a167a21092609a99270cf148f",
+      "bytes": 468176,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crawling.fbx.meta",
+      "sha256": "0704861f7ef8c684da98d12b890fe5ae4e051ae645af49e2380b8e1f57e02685",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crouch_Idle.fbx",
+      "sha256": "3e127f89fee0986bbd4c06a85885199fe10376becb90e1593c3b688a0a66c51a",
+      "bytes": 414448,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crouch_Idle.fbx.meta",
+      "sha256": "87dc6448d18a7902de202371651ed3c3a624e6914d16ce49873da893b0512580",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crouch_Walk_Forward.fbx",
+      "sha256": "2e234fa6399f0569c20ec67bc023fe431213a42867a35ee29a63126c31752b09",
+      "bytes": 390944,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crouch_Walk_Forward.fbx.meta",
+      "sha256": "b6faa7974a24f792360676bce5345c66fa422ff8ed3fe01f1a9bb75219c8e911",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crying.fbx",
+      "sha256": "e620feb928ee3662828776584ea1d43ef44c228793747711241bb555fc84c2fe",
+      "bytes": 812736,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Crying.fbx.meta",
+      "sha256": "37c5465a7a7ef7fc2cd27cb9aa3a31f6a28dee040310fb13f10ea8932efef10f",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dancing_Ballet.fbx",
+      "sha256": "0257be23e8df97bae75e1852e36b9f54b1ad000cec8f20efed0f4f8e159c3719",
+      "bytes": 1237536,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dancing_Ballet.fbx.meta",
+      "sha256": "274eefbf8606c47ed646d4cf0dbf567b93c6349bb2accb0e322c0e4d3d6855cf",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Digging.fbx",
+      "sha256": "b47a334f76823146f3fce5a3cd98301d66c95b0f9d6295e7dce76297b3ab2f41",
+      "bytes": 576048,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Digging.fbx.meta",
+      "sha256": "17b18fa66bab3cfd91ce9163b4fb2a7d27484181fe35bfceb3808a09426a9f82",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dive_Roll.fbx",
+      "sha256": "bdc51161b8988395525f6568d89df1f6cc76c148c4aa9d671aa841268661019d",
+      "bytes": 710432,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dive_Roll.fbx.meta",
+      "sha256": "3c11fb8c541c37293ab12d93cc873bbef325ae194e460594240da36bc16fe7ee",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Double_Dagger_Stab.fbx",
+      "sha256": "fa7b2ec548937d2bb3dd068acb5b08c5c696ae1b23b88beb1000dadd53d29b3f",
+      "bytes": 512512,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Double_Dagger_Stab.fbx.meta",
+      "sha256": "fcfd4f1bb7c2db8fc4a822cc1073c034516d96925a7e5ff8ad39428624f4c05a",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Drinking.fbx",
+      "sha256": "f6808c2ed09082e8d7f0afb2ffa833c79019f3fff0348b03d7b2f18b8558cf93",
+      "bytes": 743824,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Drinking.fbx.meta",
+      "sha256": "6a5cd987c47adcdeeadfbbac6c1a61c75c76838aab8c1bdb18158efc83232795",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Driving.fbx",
+      "sha256": "89e179a02ccad69aaa2a3aea15f9dd1782ba3887d599805d894d28b6a3d8d95e",
+      "bytes": 581424,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Driving.fbx.meta",
+      "sha256": "48a1925c62ccd3959b95066c79809542d6cfb1561e578367fe84a634a7c4f724",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Drunk_Walk.fbx",
+      "sha256": "8934ae792c32b6bd0d989cb0164c120e4721d55f3a849cfd231f5d2f28e8b769",
+      "bytes": 602624,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Drunk_Walk.fbx.meta",
+      "sha256": "5c24c18c9af9ded543f9decc8d48936ee77012e0ef0996a112de12281951d110",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dual_Weapon_Combo.fbx",
+      "sha256": "746fe2f986951a68a44f6a5bbf13d503fb8897174ea0f823543277492b79311c",
+      "bytes": 557856,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Dual_Weapon_Combo.fbx.meta",
+      "sha256": "ee4793384a9f73bfde8bb9ff875def2419cd15b44c53836041fca552911ac885",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Entering_Car.fbx",
+      "sha256": "394e70d20363a39cda188df90b4d6cc613c8d2f5d1e3262c0e4f13918e397d39",
+      "bytes": 754752,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Entering_Car.fbx.meta",
+      "sha256": "282b769c818e5d2cd0d9dea8f5c106886a6b5bbdc74e68f3064fd7d6b083c1e4",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Back_Death.fbx",
+      "sha256": "3e7d26db81fb2000f61f568d94c63008d32cc41b5434f6dcf537693889001aa7",
+      "bytes": 515136,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Back_Death.fbx.meta",
+      "sha256": "8e88cf1a1cfdd900ba40ed9e7ccda2c71b14a7b6ed0fcfc33a9ebc3b5b41e624",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Idle.fbx",
+      "sha256": "a9f3ec801ffcdd2e619af7a219629c83cef85ba83eb3e0ed4e2501eda22d442a",
+      "bytes": 334240,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Idle.fbx.meta",
+      "sha256": "d7f64415a9dd011552886251ce0fee62e33efbe412100a1185d13d731580c6ff",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Idle_Variant.fbx",
+      "sha256": "1ae756a391ecaceb2641162a0bb4de051fb9acd8f98a46a07a74ebb2a628f53d",
+      "bytes": 334240,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_Idle_Variant.fbx.meta",
+      "sha256": "9f021d238474d2f4e356e3c08904409098044bb24360dcc43886c82893b47db1",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_To_Landing.fbx",
+      "sha256": "7055df2f54e14175c9a9dc97a1c789935bc0dcc6bbf71e76a652e473a76c3a51",
+      "bytes": 368400,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Falling_To_Landing.fbx.meta",
+      "sha256": "caea16b8d8da60cf961f865c94b5721922a030904073dce136217b0c52d092bb",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fast_Run.fbx",
+      "sha256": "fd1040a843abd8dc575b086698460fa4f38b43b32dbcc52fae9d2e4c559ab221",
+      "bytes": 305616,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fast_Run.fbx.meta",
+      "sha256": "1fa1a6fde8904155353a123579e16a0f2b486fd691a96d07b51b1ac23f7f162f",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Firing_Rifle.fbx",
+      "sha256": "a7dc07c038fc209910334fa8977bcde690c7c6c4c805951c473633da1facf953",
+      "bytes": 340176,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Firing_Rifle.fbx.meta",
+      "sha256": "529f03ec2eee6bb00edb4b0151a59b9d3875475bc2cff3f871a5975c155fa49e",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fishing_Cast.fbx",
+      "sha256": "d5732889d68afaabaea2b014c14202179c30df9636d9328ed0b8f7a9e6093bb4",
+      "bytes": 921440,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fishing_Cast.fbx.meta",
+      "sha256": "692840749bde50e6356340923cb9c384c8a8a05626532b408d93d0f27c09217b",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fishing_Idle.fbx",
+      "sha256": "99d8699a2427f01ccdd3230582c18b60eef6ef897fb6a393ef260889f7d90fcf",
+      "bytes": 552432,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Fishing_Idle.fbx.meta",
+      "sha256": "40570292cb1cb359e5be8187fc58c26e5da5f24dc548ab8930b14a61af9ad250",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Flying.fbx",
+      "sha256": "ac7b7840459c32afb4416ff0c505c1af7bc86289c6cf0c151f7e66e1ea3bb630",
+      "bytes": 475712,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Flying.fbx.meta",
+      "sha256": "54d44dc081234a72ff88f99cd4e73f36090b45cb7120cbd379072535670e8725",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Getting_Up.fbx",
+      "sha256": "b951fd92d6a3e8041688cd83f70205fa24940e3b8fcee1d5a92e257c3e0b52f0",
+      "bytes": 539440,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Getting_Up.fbx.meta",
+      "sha256": "7c314dd001050ce796be4ac6460560f171cd8dbadf22b8d2ed89b38017af1e52",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Getting_Up_From_Prone.fbx",
+      "sha256": "21c470229cc36c837ebf067c85be8a5df7f503ee53425b1546abcdda2cdc10f5",
+      "bytes": 935888,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Getting_Up_From_Prone.fbx.meta",
+      "sha256": "a437d1db2507679cf63448c6739e543b1ac7734eb979467ff43b60dd24d88c39",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Great_Sword_Slash.fbx",
+      "sha256": "7597488c459fb572c26b231cbc39345d69873947ecfe6d92308ea2d810ac8bca",
+      "bytes": 372960,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Great_Sword_Slash.fbx.meta",
+      "sha256": "572e5b2fff49e484d64d84d4e05c8c7a4a869cfd12c275259218c7df94352641",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Grenade_Throw.fbx",
+      "sha256": "cee3e23955bc942cc937179064e6c2ba7def8e5286feb89d14b30ac695c4912d",
+      "bytes": 553920,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Grenade_Throw.fbx.meta",
+      "sha256": "c7c84f00bdbc81aed9ce69cbd7084128c5c5809ab613aa67e8770488f08c385e",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Guitar_Playing.fbx",
+      "sha256": "f3e1fe5e975ff5e26742826f49d7361740eec0041a22ec267f1a974d0a3786a3",
+      "bytes": 663440,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Guitar_Playing.fbx.meta",
+      "sha256": "f29bd02673391c8a57dce2dae991d82a237415f50e9fd3227d8bbb6c1cbdfcac",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Hit_Reaction.fbx",
+      "sha256": "7c9262e0cdba1b51ef037b6854e36c2d668e294f578278217fbac9c961679526",
+      "bytes": 443856,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Hit_Reaction.fbx.meta",
+      "sha256": "1408f307d4314ace8d210364221e9a42486b3daf87866ea6cd0844a4d0e75d37",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Injured_Walking.fbx",
+      "sha256": "db07b3f7cefd3f2ecc0f6e0716d663722c7dab02dc0490d905740eb6e3d1341c",
+      "bytes": 352064,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Injured_Walking.fbx.meta",
+      "sha256": "e0ac4406fa386169dd236181590eb6191d61f47714936d53f0b204e791eb5f45",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Jumping_Up.fbx",
+      "sha256": "5e3cc59457162f0e30b5513835357f5c224e4a64c3570bb59717e6b91810455e",
+      "bytes": 347920,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Jumping_Up.fbx.meta",
+      "sha256": "91b771d0b4f9dd65a147d3c709819231fb00e216e3b3fdd7e1bb1be6aa7ba1b2",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Laughing.fbx",
+      "sha256": "b52a4a398c3ecdb50ea2140612b3030bc08b97032b33725a93e0060a3d38079b",
+      "bytes": 1072048,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Laughing.fbx.meta",
+      "sha256": "f793d78d478e181922afc5b98ebd8ed82fb9fb1d02d73ca0e7c6a54afe80c66a",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Left_Strafe_Walk.fbx",
+      "sha256": "5c8ba74f23403d51c02b107eb385aa708075dfbc1fd68977f2100595135c0f51",
+      "bytes": 368256,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Left_Strafe_Walk.fbx.meta",
+      "sha256": "3e44f5ddeb09610a180c9a4e148c1706019da51bdba67aaa3806059f3db51d2e",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Lifting_Object.fbx",
+      "sha256": "c22130d9453a8f2c90048b14095c35aa833519b7aad1cee8ce98ab363a691f0d",
+      "bytes": 1120832,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Lifting_Object.fbx.meta",
+      "sha256": "9ab5bbf00c956fb141d4612db739323c3078460337b21a9dc292bc428f1a72d7",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Livershot_Knockdown.fbx",
+      "sha256": "ace0929db7a7d47bbd9a328e124f1995fd92e9c4cd1a16e32aeb8c933db5831c",
+      "bytes": 489216,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Livershot_Knockdown.fbx.meta",
+      "sha256": "7eda032e8aa71d910515d39831045d9899e6457dfe7fd5dc100ac84e1d0555a2",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Looking_Around.fbx",
+      "sha256": "2daebd6dac5c7f60fbd50f3669f41af174969aa4ff1f56a7410a402066d42a5d",
+      "bytes": 828464,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Looking_Around.fbx.meta",
+      "sha256": "70341911e35b7b3d8972dec275535042ba39770f5263c1dac24dc8b0e37bd7d8",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/MANIFEST.md",
+      "sha256": "722d4c265ec0279efcaf0f1c8d600f74864133ca0eecd6fa4f0e24eec2f2400e",
+      "bytes": 7310,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/MANIFEST.md.meta",
+      "sha256": "cb6cb41239ddfbfc8c06b61bb86277d8cb2d6d80dbba09811c72e3d4c238bea7",
+      "bytes": 158,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Macarena_Dance.fbx",
+      "sha256": "e7c736da40b00e2c9a220852ccf484b8561bc6ac663365e605d521862ed2f9f8",
+      "bytes": 957232,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Macarena_Dance.fbx.meta",
+      "sha256": "659cfad50ef31599b06f71bfb5baa0acf2224fcce9d25470b87614dd9b59f38c",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Male_Sitting_Pose_Facepalm.fbx",
+      "sha256": "d6db274b752a906b25e1718ef741fd86acf4396de98bb7679e9629663838ba77",
+      "bytes": 268144,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Male_Sitting_Pose_Facepalm.fbx.meta",
+      "sha256": "ddfd3370de0af1e1771acea71b4fb9de101cb01880b347268a1642a5b184847a",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Mutant_Roaring.fbx",
+      "sha256": "83c5fe7769ec3834f16f6727fbb2d01ec98fc8c09a22f18b034f1086e1e8cb87",
+      "bytes": 744768,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Mutant_Roaring.fbx.meta",
+      "sha256": "e3968234968baea32cc3fa656492975d1aacef3cf33f2d66c3de80c209e22c4d",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Mutant_Run.fbx",
+      "sha256": "557d00ce86cc19a3d435234750ace4eff6ab333b6e2c8b06c638c2632557c716",
+      "bytes": 346656,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Mutant_Run.fbx.meta",
+      "sha256": "b35159aace9d60d3254fa69f3bf11c66686add49b1ba2b6f09a30a5c7fd27a8d",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Old_Man_Walk.fbx",
+      "sha256": "646e29ca0bb9295b62082bfb533cd2b65c61d1220f71a87a06ae6f5c4915272e",
+      "bytes": 365008,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Old_Man_Walk.fbx.meta",
+      "sha256": "6061b86fbe7ffcf9cd5f57cb68f2e73bc2d457c4982a998e9b26772be7e83d36",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/One_Hand_Sword_Combo.fbx",
+      "sha256": "4955a59d839d3adc12f5ea7ef468a0b4bac08dc41e391c6b906c0ec7881d23d1",
+      "bytes": 622448,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/One_Hand_Sword_Combo.fbx.meta",
+      "sha256": "9c0ae3305b3e527677dd078099dc22b0d17ba14843fe6064d8604b1cb8ae7608",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Opening_A_Lid.fbx",
+      "sha256": "2ca23e277272b2e035fed8f3da090baf677e8f929788c3940899b00be5f3af23",
+      "bytes": 1034880,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Opening_A_Lid.fbx.meta",
+      "sha256": "81d02f422e8ed6acda31fe5230b055898cb3b97b02213084b58777adff0de6a9",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Picking_Up.fbx",
+      "sha256": "0413c3c7a78cb99ac96257dd037e54667eaa705a9d19caf8d5169e9627b597a5",
+      "bytes": 1036352,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Picking_Up.fbx.meta",
+      "sha256": "4e5d28862fe6b26cae5d655ed3eb4abb07e1a7284609e16081f886a606bb1d8d",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pointing_Gesture.fbx",
+      "sha256": "21da14a987fb3a79c1f43737bab977f0b127f31140b4d19ab7f7460d4c25f9a2",
+      "bytes": 485440,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pointing_Gesture.fbx.meta",
+      "sha256": "45e49d986d7561844c4032b5ff4ff3ecbc32b239a3bc9fe219390f28bc2132ea",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Praying.fbx",
+      "sha256": "0ef89651ae213ba82b81e50157323885cbfed59400df9cac5cffae2186315c6f",
+      "bytes": 441984,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Praying.fbx.meta",
+      "sha256": "3fbc888e40b168079b0c246a03c0b74cd187dfbcd08e4be5b8e1a3317a54b913",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Prone_Idle.fbx",
+      "sha256": "4a07d9a9e0e05df505ca60fa666a68549cb409b7af955c2f43128eef40e224cc",
+      "bytes": 705488,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Prone_Idle.fbx.meta",
+      "sha256": "1b53872c0a9d953ac527534bdcea242e3cd8fad17b34ea5fe18fde0c01f59ada",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pull_Heavy_Object.fbx",
+      "sha256": "be873ca95524ea069cc56cf321071ea50cf25f8d3143acf9f7f945540da73908",
+      "bytes": 375280,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pull_Heavy_Object.fbx.meta",
+      "sha256": "4a3c2e11dedc9746224ddfdf8ac0485518bb9e738f2e07979b28a7ef61e6f4fe",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Punch_Combo.fbx",
+      "sha256": "180f8a30eb8aef17e2067fc02955bef7cc1be32cd0080969df37eb5e9e6f462a",
+      "bytes": 442992,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Punch_Combo.fbx.meta",
+      "sha256": "1adfe191b6598a64fb5246da25c99c70300c19a908c2492dae0d755dd73f49cc",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pushing.fbx",
+      "sha256": "4376946d2327151c1d0c98c2ed1d68ad767477a1671938281a15dc2102cd5c7a",
+      "bytes": 478416,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Pushing.fbx.meta",
+      "sha256": "b71c34e81ec31cecb5fe6fcac36598d987e6939d9ca970bfe4338c20e7809ab2",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Quick_Formal_Bow.fbx",
+      "sha256": "7457314ecec67609df19f06218a419be14c60d85a167de182cdb35391f22a1a2",
+      "bytes": 569424,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Quick_Formal_Bow.fbx.meta",
+      "sha256": "a0ece1a7926e5a129e2ee269426c3d5b8ee13fc5c15445bd4da45e8245b04dd9",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Reloading.fbx",
+      "sha256": "4d38b99aaa532871690acc0db1a8d94480649ae9fe14d04870c2154907dafbe9",
+      "bytes": 639312,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Reloading.fbx.meta",
+      "sha256": "b228daf40701c5724f37e58c06fd9f58fe33b4544777492d00629a2bffc64dd1",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Rifle_Aiming_Idle.fbx",
+      "sha256": "7fdfcde4095327ef733303390f55cfafa26ceee3d417d6068cb60eaa1c38675e",
+      "bytes": 597216,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Rifle_Aiming_Idle.fbx.meta",
+      "sha256": "c086dfe666652202917a4a7cb74ecc34c1e1821e4d6606ec810b030557ce91ed",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Right_Strafe_Walk.fbx",
+      "sha256": "ca8fef1373e28bedab9452ab3598556714be593a78c57bc986d5ebe98e2e0aaa",
+      "bytes": 368288,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Right_Strafe_Walk.fbx.meta",
+      "sha256": "5899fa06cbcf77aa5f049d8bcc7be09a8a50685a8fe1e21d5301e07c7bab6144",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Roundhouse_Kick.fbx",
+      "sha256": "1d8f52cc229068742ab99c789ff8b4da431eaf98a9a1b039b201f61e6130297a",
+      "bytes": 545920,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Roundhouse_Kick.fbx.meta",
+      "sha256": "ff9ab0704e8322b40850b2801f01e24becc4cdff147869462cafab3a42028e82",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Running_Slide.fbx",
+      "sha256": "9b1b09a965fd98cb900552ab5aa0a4b747816f82e6e86fed64a5cb097c21354c",
+      "bytes": 419744,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Running_Slide.fbx.meta",
+      "sha256": "b4e87399a3eb271866d163896333609754efdcb65b7d0cfdb7a2e1b8d5ce615a",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Salute.fbx",
+      "sha256": "5ea846dda82ffefcd3b4940ead5a47af4b9c70f0d73513abafd03940d2a2918a",
+      "bytes": 580656,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Salute.fbx.meta",
+      "sha256": "a58370f5f829b2af0877c2a659d4ce9cee7f7b31a334f2e9aff65d6f44f3ac50",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Scared.fbx",
+      "sha256": "50266a712bab015120a9a9195a2672768efbf6d8aeb505755ded6f31616736e3",
+      "bytes": 1122336,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Scared.fbx.meta",
+      "sha256": "aa8f74ddc1f93348c2c7c10ac9d20f62cc7d65911994cf67d0ff20a99436d068",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shaking_Hands.fbx",
+      "sha256": "bbf99281a8c3cadfb8ddab87ab596df0827218e61c46594f84e0eb979937afa9",
+      "bytes": 653664,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shaking_Hands.fbx.meta",
+      "sha256": "a76381f034162456d89ee49178eaf708b38cbe1ba75168af392decb846bd92a8",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shooting_Arrow.fbx",
+      "sha256": "0bdba6128e7c304eba51040096be1253e4a90cdb2c6535fc5606611912d5b8ee",
+      "bytes": 650624,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shooting_Arrow.fbx.meta",
+      "sha256": "9fdb09a770dea8d999e97b935b0cb71bbeb439cb532d4c80f2ec4709d5720832",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shooting_Pistol.fbx",
+      "sha256": "81b529334a3cdca94c3ad2b10528f7e849d594c675b77ecad704170f3d7c77b7",
+      "bytes": 478416,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shooting_Pistol.fbx.meta",
+      "sha256": "49590bef9709c5a28043ac48066c89a057ef4b05bce76f39cc00f6fa1e458075",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shrugging.fbx",
+      "sha256": "f4d450cd40058138433c8a32da3c2dff0070081fa9360314cae49d8d299d23b3",
+      "bytes": 420096,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Shrugging.fbx.meta",
+      "sha256": "5280eb6a89cc2d97730654617fb52bd4c3456a97909ebf86a878525e4b19bd47",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Singing.fbx",
+      "sha256": "7d0b3d156cccb5d355438d84c2f89a456986ff1694d98acbd6a8c04363fb376b",
+      "bytes": 1232384,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Singing.fbx.meta",
+      "sha256": "9aad4484d3301cd63a79f8561dc6c9837c2d166bf08f7495537a0ee155e87201",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sitting_Idle_Chair.fbx",
+      "sha256": "33504f029711f9f9eff1123218c605cc216c5bd2790408771b4c5d6bcf29bbea",
+      "bytes": 533536,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sitting_Idle_Chair.fbx.meta",
+      "sha256": "5160b24f259508d8490064953f037d37d6a40054d63ba0d819758535ce926843",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sitting_Idle_Floor.fbx",
+      "sha256": "5dc8c6e15f47abfb8f58ac0c6a57ca7e5d1434aa0a0dbbb456804c5a1a17a656",
+      "bytes": 846112,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sitting_Idle_Floor.fbx.meta",
+      "sha256": "ef7f5d335c9b078265e127e8098274a46cb3e4195f85780d32e8abef99b322e7",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sleeping_Idle.fbx",
+      "sha256": "f58e7552076dddcaeea13d18cdb0b839579e39200bbce2c879384f2049e2ddc3",
+      "bytes": 850544,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sleeping_Idle.fbx.meta",
+      "sha256": "a2d79179cdfe39d369c5ab63c1373e35865a6aeaf196217d403d0a80c53f7bf8",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sneak_Walk.fbx",
+      "sha256": "c965ae8ebe2d5219bcf381982a6ec3241b234bb0219d419e284daca193506874",
+      "bytes": 335312,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sneak_Walk.fbx.meta",
+      "sha256": "ce4feaa6cebc3664b63f0dbb33b3421b0790b4ace51fe2b28e3d96649e131517",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_1H_Cast_Spell_01.fbx",
+      "sha256": "7c9f3333efa6d462ca5a59d43f835f157a783650c76468e41601e3b1df1edb81",
+      "bytes": 519456,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_1H_Cast_Spell_01.fbx.meta",
+      "sha256": "bf6ebaf3e30eaa624a1cb11bde3d277baa1731292b4fa6a6fdfe5933d5b3aaf9",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_2H_Cast_Spell_01.fbx",
+      "sha256": "0afa58582a8363e1c4b7a9b1151586dab8f28c6648b772c33a7142538b9a43cd",
+      "bytes": 513248,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_2H_Cast_Spell_01.fbx.meta",
+      "sha256": "1e2c34eb4c201ff956d48d816661057b94bb615dae530ae3183af852cd643374",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_2H_Magic_Attack_01.fbx",
+      "sha256": "222b099bf24e0d6f3d17e2c0042097122ecdffaf13ed6803fe42e589ec4f3b60",
+      "bytes": 568592,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_2H_Magic_Attack_01.fbx.meta",
+      "sha256": "8082b3b19c699305990e35749974022e19249994963e7a1fe9b6fbef700c469f",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Dodge_Backward.fbx",
+      "sha256": "1e308a5a4813eee45cd5cc941b4e396ef41a11f41964e878e2682340e74ebd90",
+      "bytes": 421184,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Dodge_Backward.fbx.meta",
+      "sha256": "72be18df45835777b72ab8331b379d7c22055eda788d9d77c5d3148885617919",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Draw_Arrow.fbx",
+      "sha256": "6285ce4b55f1e8f80442c3be7db424e90218ecab31a02eed7d19ddb7fe18f121",
+      "bytes": 360624,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Draw_Arrow.fbx.meta",
+      "sha256": "22b2b83cf64ad9c82865968a89baf22b55ab1add8ca434fb5c91fde9047063d3",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Melee_Attack_Downward.fbx",
+      "sha256": "c76ce1ee067f0d000fadf89cec007cce6030fe2bda2e2b092556344dd6f5435e",
+      "bytes": 484112,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Melee_Attack_Downward.fbx.meta",
+      "sha256": "fee72ad6f049f468409e56c8a85134cc8ad21c67d0c7a8c2ac66fe5350ca392b",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_React_Large_From_Front.fbx",
+      "sha256": "fdc3ad62a2d7c1c218edfe047c7c9b7e9506a287033112764edbce3ed8d2e696",
+      "bytes": 417392,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_React_Large_From_Front.fbx.meta",
+      "sha256": "11d24cf73e13b468e748d4e58e588ae4abf61072894c1d982dddf8e688fe43b0",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_React_Small_From_Right.fbx",
+      "sha256": "69ddb68353ea1b2848669b278f9aad411bee899d9c19de7124b670ca36109bfb",
+      "bytes": 373648,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_React_Small_From_Right.fbx.meta",
+      "sha256": "686d57a606411ab5e63e63211b65cf2000459ca99647608a6fd7e106439397ff",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Thumbs_Up.fbx",
+      "sha256": "06b1acdba630cfbcab6be743dac6ef6509eff4ae26b04666d03725bb5d1c99ba",
+      "bytes": 734912,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Standing_Thumbs_Up.fbx.meta",
+      "sha256": "a584c5a5a975918e38461af0eda617044761a2cf1ab4047679bed767ae74d908",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Stomp.fbx",
+      "sha256": "424b38252ac936047e8aa0aeba5f0f3e25bbd35baa1f069ae77115a42afc57a6",
+      "bytes": 453936,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Stomp.fbx.meta",
+      "sha256": "552970c84fc030780b00abf1fcaf317fc19bbc3833fb0f9bbc6251ab67ab33fe",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swimming_To_Edge.fbx",
+      "sha256": "d32c074134f3f32d3a899e849c9c8b1bcae237690e3a280440a1d659fd5e55ff",
+      "bytes": 654720,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swimming_To_Edge.fbx.meta",
+      "sha256": "c0684134d1c22f577978191f3cb89cf05f2e809082911c1407d1c16e62cb76f0",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swing_Dancing.fbx",
+      "sha256": "bcf5b733dbdf476cbf672c9130c7bd651203b499a779b79b1b3ffa3c98bfc490",
+      "bytes": 1721184,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swing_Dancing.fbx.meta",
+      "sha256": "7dd14f80d8281ff3681f505842bf5774d65022deb772e4bcc8ed4f5bd146eb01",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swing_To_Land.fbx",
+      "sha256": "07749b5f13e5689a47f4eac8579cfe92b553059273c70a084aad7c9afdc5692f",
+      "bytes": 474096,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Swing_To_Land.fbx.meta",
+      "sha256": "5fc89980cd6b53b1a3cc85bfba5c70847e17e4da6d58fb0cf1f182fa42aecd32",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sword_And_Shield_Block_Idle.fbx",
+      "sha256": "e473b9323072c566e7c9b898609c8a14cc2f9a9854589e1e3202fbc1297fe49d",
+      "bytes": 412112,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sword_And_Shield_Block_Idle.fbx.meta",
+      "sha256": "d91cb4df163265bcacd5a50ba3d24a90587946ac9548b7093437d6194d1ab85b",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sword_And_Shield_Impact.fbx",
+      "sha256": "0b7b68cdd4879c32b590e2d0abc5a1815cdc0901f1ed0857d2fcabdc7c3bc961",
+      "bytes": 346048,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Sword_And_Shield_Impact.fbx.meta",
+      "sha256": "fede59c26bb91864c5548118fee64513e8543c7999c0ead82536ea4b7027e9aa",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Taking_Cover.fbx",
+      "sha256": "30ca54b843c86fb0456f0e85079b7b789ea5e9618a8abc6efc9165bc31c96feb",
+      "bytes": 447200,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Taking_Cover.fbx.meta",
+      "sha256": "aac62470dab162db34a072d37432adae62d1775a9053788b298c3e9e7a718cc2",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Talking.fbx",
+      "sha256": "c35009e1d33a8f94f333088a83a50e7a7b95c451f2861bde18cfe9113bd3703d",
+      "bytes": 1137456,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Talking.fbx.meta",
+      "sha256": "b73c09afb123ac43b8cb80e764e4aaeebb7e23558bb6021bd15e4b3520cb2f68",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Terrified.fbx",
+      "sha256": "d6a777babf1a5bd476d7c5c8bef7fc955e10c08fa0b86773f13e6cbec5dac7fb",
+      "bytes": 1791808,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Terrified.fbx.meta",
+      "sha256": "065530683179a80134428ee12332debbfbe9f5985108e800ab73bce6486d6ed9",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Thinking.fbx",
+      "sha256": "922401d20cda59a15c1b800c380289a318f29f29bc5a4eb1a1403ca913a2e404",
+      "bytes": 635424,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Thinking.fbx.meta",
+      "sha256": "755a61c3bc19c62e89267147bb2439b7ee8c450f46788f1f09be011e20f1c118",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Treading_Water.fbx",
+      "sha256": "9007c5a20d2c46146cf4090837e80250cbbb91850393b7b4e97a269c73108464",
+      "bytes": 560496,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Treading_Water.fbx.meta",
+      "sha256": "4a55c1dbc07aebe98126445968a54b6d888d60f9168c130b65714e20f53305ef",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Turning.fbx",
+      "sha256": "0e1f190a2b4646e2a2eea2203b24efb8949781406690abd8b6455b6efd16a385",
+      "bytes": 559424,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Turning.fbx.meta",
+      "sha256": "2f919b2abeb52208636d7c73fc4ba39ab182c9ee980e026f25768974b99f65eb",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Typing.fbx",
+      "sha256": "3411d21b2ffcc42b6186f98f7a958d970c859b658c42818fabcf3fc73eef15c0",
+      "bytes": 1607216,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Typing.fbx.meta",
+      "sha256": "9c34da43c2b92ffae96b36030a87b96070263b439fa3bd2d25e423ee46337e5b",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Unarmed_Run_Forward.fbx",
+      "sha256": "b71bd4a6a2950512c1f3bd93ab273e1bf808d21865414dc1bfd5d808eadc5e19",
+      "bytes": 327216,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Unarmed_Run_Forward.fbx.meta",
+      "sha256": "38c22ad87420ec935440d9f0431e59a1644252b789ba9a130019fcb53295a724",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Vault_Over_Box.fbx",
+      "sha256": "4cb863aedfbc35da66a3045a4fc77cdbe1dd37d455f27184ef97ebf61d16c7d4",
+      "bytes": 627568,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Vault_Over_Box.fbx.meta",
+      "sha256": "3e374791d085ceffb3a99f0fb30262d2bb0ae256c10f3c3090011fc1bbc33012",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking.fbx",
+      "sha256": "88e9cbd0a72f2d202e7d94427fd1e441601fb43d78ec6208aaf66728b8ec2a65",
+      "bytes": 366208,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking.fbx.meta",
+      "sha256": "1f0d22f496e657b1e147eb3f9f0f7a5662f763e3d615aeaeb88bf0eac56a6b3f",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking_Backwards.fbx",
+      "sha256": "c896888bdb686ea01520a1e3064e31bc07cde11547b3c0ba3ffc078bb239333d",
+      "bytes": 398496,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking_Backwards.fbx.meta",
+      "sha256": "2c0fea01ad5cf3cf9129861964a4e3879efa5c434fe765c35e0b74ae906d9235",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking_With_Shopping_Bag.fbx",
+      "sha256": "ebcbf4901b37780c93f4867b2141fb47144fa2161bd1fed46206e009575d5532",
+      "bytes": 381440,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Walking_With_Shopping_Bag.fbx.meta",
+      "sha256": "86c7473b8079f2ea457db4c5aa53854a662b06739e64a1494e30dd3560e35cda",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Watering.fbx",
+      "sha256": "7eeb7f46e6fac5ec3e2c4d97f4313e44de32a6e5fcc1da0afdafb84d7c4acba8",
+      "bytes": 766096,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Watering.fbx.meta",
+      "sha256": "aa02a563db371e2f9a604b767806740d7b42ae28d731b583791646c7da3fb34e",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Waving_Gesture.fbx",
+      "sha256": "49b70a10d87253a05b5de6a4164259ed770d427e908421210776806cebad8fdd",
+      "bytes": 411312,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Waving_Gesture.fbx.meta",
+      "sha256": "ed6606b2a945250fd0914384e04d01f8b0cdfcf3a7b06654f07e5a39e987ea61",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Writing.fbx",
+      "sha256": "9b11a62f8d8402fdb7d70b4d07f6e5ee30f2c4e0811d282f98b38decbdb7fb59",
+      "bytes": 577120,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Writing.fbx.meta",
+      "sha256": "5ce2e55d766bc420a9f8afee1cbb85bcd3f9454a59a1cbd11e942f3880e981fc",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Ymca_Dance.fbx",
+      "sha256": "35494312a130771e714c63a094dc0f34a279cbfdb6778c815d0aed63302b8783",
+      "bytes": 669712,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Ymca_Dance.fbx.meta",
+      "sha256": "a0cc168c8c1abc4ef88efb2f66a9c4883595fe0d863195bc27d7d46641cc5480",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Zombie_Attack.fbx",
+      "sha256": "ff48674643efd971a4b670c5ab7f58d649d8f60de1e9bdb14225294b0e9f64db",
+      "bytes": 683504,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Zombie_Attack.fbx.meta",
+      "sha256": "c1a4a154775417a40c43aa88b586d2603c7b7d593c1ff84a2c565933780cb603",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Zombie_Walk.fbx",
+      "sha256": "9919ae8f6031e1fb255d3b9301a78db215d30e04e997babb580b9da49b005d1c",
+      "bytes": 589120,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    },
+    {
+      "path": "apps/concordia-living-world/unity-client/Assets/Concordia/Animations/Mixamo/Zombie_Walk.fbx.meta",
+      "sha256": "328af10fe3241f07430a2f81c86627d2071c2958e1e0656193d9914f0dd7f624",
+      "bytes": 2993,
+      "family": "animations/mixamo",
+      "source": "backup/aura-wt-20261103",
+      "license_class": "in_game_only",
+      "lod_tier": null
+    }
+  ]
+}

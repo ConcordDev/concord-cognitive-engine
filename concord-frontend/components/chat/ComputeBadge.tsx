@@ -33,7 +33,7 @@ export default function ComputeBadge({ computed }: ComputeBadgeProps) {
     <div className="mt-1.5 inline-flex flex-col gap-1 text-xs">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-400/20 text-emerald-300 hover:bg-emerald-500/15 transition-colors max-w-fit"
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--nb-green-soft,rgba(16,185,129,0.1))] border border-[color:var(--nb-green,rgba(52,211,153,0.2))] text-[color:var(--nb-green,#6ee7b7)] hover:bg-[var(--nb-green-soft,rgba(16,185,129,0.15))] transition-colors max-w-fit"
         aria-label="Compute provenance"
       >
         <Calculator className="w-3 h-3" />
@@ -41,11 +41,11 @@ export default function ComputeBadge({ computed }: ComputeBadgeProps) {
         {caps.length > 1 && (open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />)}
       </button>
       {open && caps.length > 1 && (
-        <ul className="ml-2 space-y-0.5 text-emerald-300/80">
+        <ul className="ml-2 space-y-0.5 text-[color:var(--nb-green,rgba(110,231,183,0.8))]">
           {caps.map((c) => (
             <li key={c.key} className="flex items-baseline gap-2">
               <span className="font-mono text-[11px]">{c.key}</span>
-              {c.description && <span className="text-gray-400 text-[10px]">{c.description}</span>}
+              {c.description && <span className="text-[color:var(--nb-muted,#9ca3af)] text-[10px]">{c.description}</span>}
             </li>
           ))}
         </ul>

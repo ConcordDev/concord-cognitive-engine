@@ -166,7 +166,7 @@ export function HrActionPanel() {
     { id: 'interview' as ActionId, label: 'Interview', desc: 'interviewScorecard + recommendation', icon: ClipboardList, accent: '#8b5cf6', handler: actInterview },
     { id: 'pto' as ActionId, label: 'PTO', desc: 'ptoBalance accrued/used/remaining', icon: Calendar, accent: '#06b6d4', handler: actPto },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private HR DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to hiring manager', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to hiring manager', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized comp data + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Retain', desc: 'Agent: most-leveraged retention move', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

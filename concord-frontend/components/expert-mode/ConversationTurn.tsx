@@ -51,7 +51,7 @@ function providerBadge(
   if (!provider || provider === 'concord_default') return null;
   const colors: Record<string, string> = {
     anthropic: 'bg-orange-600/80 text-orange-50',
-    openai: 'bg-emerald-600/80 text-emerald-50',
+    openai: 'bg-emerald-700/80 text-emerald-50',
     xai: 'bg-zinc-700 text-zinc-100',
     google: 'bg-blue-600/80 text-blue-50',
   };

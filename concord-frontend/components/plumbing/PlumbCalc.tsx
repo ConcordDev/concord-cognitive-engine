@@ -111,7 +111,7 @@ function PipeSizer() {
               <option value="galvanized">Galvanized steel</option>
             </select>
           </label>
-          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || flowGPM <= 0} className="w-full rounded bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
+          <button type="button" onClick={() => compute.mutate()} disabled={compute.isPending || flowGPM <= 0} className="w-full rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-400 disabled:opacity-50">
             {compute.isPending ? <Loader2 className="mx-auto h-3.5 w-3.5 animate-spin" /> : 'Size pipe'}
           </button>
         </div>

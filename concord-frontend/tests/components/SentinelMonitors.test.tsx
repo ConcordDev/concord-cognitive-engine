@@ -308,6 +308,8 @@ describe('SentinelMonitors', () => {
     });
 
     fireEvent.click(screen.getByLabelText('Delete monitor'));
+    // Delete is two-step: the trash arms an in-row Confirm.
+    fireEvent.click(screen.getByRole('button', { name: /^Confirm/ }));
 
     await waitFor(() => {
       expect(lensRun).toHaveBeenCalledWith('sentinel', 'monitor.delete', {

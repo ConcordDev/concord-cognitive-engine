@@ -41,12 +41,12 @@ export function RoomEditor({ room, onLockChange, onPlace, onRemove, busyKey }: R
   return (
     <div className="rounded border border-emerald-500/20 bg-zinc-900/50 p-2">
       <header className="mb-2 flex items-center justify-between text-[12px]">
-        <span className="font-medium text-emerald-200">{room.name} <span className="text-[10px] text-slate-500">{room.room_type} · {room.width}×{room.depth}</span></span>
+        <span className="font-medium text-emerald-200">{room.name} <span className="text-[10px] text-slate-400">{room.room_type} · {room.width}×{room.depth}</span></span>
         <div className="flex items-center gap-1">
           <Lock className="h-3 w-3 text-amber-400" />
           {[0, 1, 2, 3, 4, 5].map(t => (
             <button key={t} onClick={() => onLockChange(t)}
-              className={`rounded px-1.5 py-0.5 text-[10px] ${room.lock_tier === t ? 'bg-amber-500/30 text-amber-100' : 'text-slate-500 hover:text-slate-300'}`}>
+              className={`rounded px-1.5 py-0.5 text-[10px] ${room.lock_tier === t ? 'bg-amber-500/30 text-amber-100' : 'text-slate-400 hover:text-slate-300'}`}>
               {t}
             </button>
           ))}
@@ -56,13 +56,13 @@ export function RoomEditor({ room, onLockChange, onPlace, onRemove, busyKey }: R
       <div className="space-y-1 text-[11px]">
         {room.furniture_layout && room.furniture_layout.length > 0 ? room.furniture_layout.map(f => (
           <div key={f.itemId} className="flex items-center justify-between rounded bg-zinc-900 px-2 py-1">
-            <span className="text-slate-200">{f.itemId} <span className="text-[10px] text-slate-500">@({f.x.toFixed(1)}, {f.y.toFixed(1)}, {f.z.toFixed(1)}) rot {f.rot.toFixed(0)}°</span></span>
+            <span className="text-slate-200">{f.itemId} <span className="text-[10px] text-slate-400">@({f.x.toFixed(1)}, {f.y.toFixed(1)}, {f.z.toFixed(1)}) rot {f.rot.toFixed(0)}°</span></span>
             <button onClick={() => onRemove(f.itemId)} disabled={busyKey === `rm-${f.itemId}`} aria-label="Remove" className="rounded p-1 text-rose-400 hover:bg-rose-500/20 disabled:opacity-40">
               <Trash2 className="h-3 w-3" />
             </button>
           </div>
         )) : (
-          <p className="text-[10px] text-slate-500">Empty.</p>
+          <p className="text-[10px] text-slate-400">Empty.</p>
         )}
       </div>
 

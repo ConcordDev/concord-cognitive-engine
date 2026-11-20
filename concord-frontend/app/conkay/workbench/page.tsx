@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { WorkbenchStart } from '@/components/conkay/workbench/WorkbenchPages';
+import { WorkshopPage } from '@/components/conkay/workshop/WorkshopPage';
 
-export const metadata: Metadata = { title: 'ConKay Workbench — Concord', description: 'Design variables, locks, the design graph and every check’s receipt.' };
+export const metadata: Metadata = { title: 'ConKay Workbench — Concord', description: 'Design variables, locks, the design graph and every check’s receipt — in the ConKay workshop.' };
 
 export default function WorkbenchStartPage() {
-  return <WorkbenchStart />;
+  return <WorkshopPage initialView="table" />;
 }

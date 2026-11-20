@@ -90,7 +90,7 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
         <h2 className="text-sm font-bold text-zinc-100">Word Decks</h2>
         <button
           onClick={() => setCreating(!creating)}
-          className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white inline-flex items-center gap-1"
+          className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-700 hover:bg-cyan-500 text-white inline-flex items-center gap-1"
         >
           <Plus className="w-3 h-3" />New deck
         </button>
@@ -120,7 +120,7 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
             <button
               onClick={createDeck}
               disabled={!form.name.trim()}
-              className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
+              className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
             >
               Create
             </button>
@@ -185,7 +185,7 @@ export function WordDecks({ onImported }: { onImported?: () => void }) {
                       onClick={runImport}
                       disabled={importBusy || !importText.trim()}
                       className={cn(
-                        'px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1',
+                        'px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1',
                       )}
                     >
                       {importBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}

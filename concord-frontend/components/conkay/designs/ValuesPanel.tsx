@@ -33,8 +33,8 @@ export function ValuesPanel({ values, meaning }: { values: DesignValue[]; meanin
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Values and sources</h2>
         <label className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-300">
-          <Search className="h-3 w-3 text-slate-500" aria-hidden />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter values" aria-label="Filter values" className="w-36 bg-transparent placeholder:text-slate-600 focus:outline-none" />
+          <Search className="h-3 w-3 text-slate-400" aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter values" aria-label="Filter values" className="w-36 bg-transparent placeholder:text-slate-400 focus:outline-none" />
         </label>
       </div>
       <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label="Filter values by status">
@@ -45,11 +45,11 @@ export function ValuesPanel({ values, meaning }: { values: DesignValue[]; meanin
           </FilterChip>
         ))}
       </div>
-      {filter !== 'all' && <p className="mt-1.5 text-[11px] text-slate-500">{filter}: {meaning[filter]}</p>}
-      {groups.length === 0 && <p className="mt-3 text-xs text-slate-500">No values match.</p>}
+      {filter !== 'all' && <p className="mt-1.5 text-[11px] text-slate-400">{filter}: {meaning[filter]}</p>}
+      {groups.length === 0 && <p className="mt-3 text-xs text-slate-400">No values match.</p>}
       {groups.map(([group, rows]) => (
         <div key={group} className="mt-4">
-          <h3 className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{group} <span className="text-slate-600">· {rows.length}</span></h3>
+          <h3 className="text-[11px] font-medium uppercase tracking-wider text-slate-400">{group} <span className="text-slate-400">· {rows.length}</span></h3>
           <ul className="mt-1 divide-y divide-white/5">
             {rows.map((v) => <ValueRow key={v.id} v={v} />)}
           </ul>
@@ -65,11 +65,11 @@ function ValueRow({ v }: { v: DesignValue }) {
     <li className="grid gap-x-3 gap-y-1 py-2 text-xs sm:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_auto_minmax(0,1.3fr)] sm:items-start">
       <div className="min-w-0">
         <p className="truncate text-slate-200" title={v.name}>{v.name}</p>
-        {v.statement && <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">{v.statement}</p>}
+        {v.statement && <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-400">{v.statement}</p>}
       </div>
       <div className="tabular-nums text-slate-100">
-        {amount ?? <span className="text-slate-500">—</span>}
-        {v.range && <p className="text-[10px] text-slate-500">{formatValue(v.range.low)} – {formatValue(v.range.high)}</p>}
+        {amount ?? <span className="text-slate-400">—</span>}
+        {v.range && <p className="text-[10px] text-slate-400">{formatValue(v.range.low)} – {formatValue(v.range.high)}</p>}
       </div>
       <span className={`h-fit w-fit rounded-md border px-1.5 py-0.5 text-[10px] ${VALUE_STYLE[v.status].chip}`} title={v.statusLabel}>{v.status}</span>
       <div className="min-w-0 text-[11px] leading-snug text-slate-400">
@@ -82,8 +82,8 @@ function ValueRow({ v }: { v: DesignValue }) {
         ) : (
           <span className="text-rose-300/80">no source</span>
         )}
-        {v.sourceRole && v.sourceRole !== 'evidence' && <p className="text-[10px] text-slate-500">{v.sourceRole}</p>}
-        {v.note && <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-500" title={v.note}>{v.note}</p>}
+        {v.sourceRole && v.sourceRole !== 'evidence' && <p className="text-[10px] text-slate-400">{v.sourceRole}</p>}
+        {v.note && <p className="mt-0.5 line-clamp-2 text-[10px] text-slate-400" title={v.note}>{v.note}</p>}
       </div>
     </li>
   );

@@ -246,14 +246,14 @@ export function ReleaseTracker() {
               </div>
               {editingId === rel.id && (
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <input aria-label="Edit release version" value={editForm.version} onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
+                  <input id="debug-edit-release-version" name="release-version" aria-label="Edit release version" value={editForm.version} onChange={(e) => setEditForm({ ...editForm, version: e.target.value })}
                     className="w-28 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
-                  <input aria-label="Edit release environment" value={editForm.environment} onChange={(e) => setEditForm({ ...editForm, environment: e.target.value })}
+                  <input id="debug-edit-release-environment" name="release-environment" aria-label="Edit release environment" value={editForm.environment} onChange={(e) => setEditForm({ ...editForm, environment: e.target.value })}
                     className="w-28 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
-                  <input aria-label="Edit release notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes"
+                  <input id="debug-edit-release-notes" name="release-notes" aria-label="Edit release notes" value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Notes"
                     className="min-w-[140px] flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100" />
                   <button onClick={() => void saveEdit()} disabled={busy}
-                    className="rounded bg-emerald-600/80 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50">Save</button>
+                    className="rounded bg-emerald-700/80 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-600 disabled:opacity-50">Save</button>
                   <button onClick={() => setEditingId(null)}
                     className="rounded border border-zinc-700 px-2 py-1 text-[11px] text-zinc-300 hover:border-zinc-500">Cancel</button>
                 </div>

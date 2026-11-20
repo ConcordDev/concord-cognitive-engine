@@ -225,7 +225,7 @@ export function WellnessActionPanel() {
     { id: 'recovery', label: 'Recovery',  desc: 'recoveryReport HRV + RHR + sleep',           icon: Battery,    accent: '#22c55e', handler: actRecovery },
     { id: 'hrv',      label: 'HRV trend', desc: 'hrvTrend across last N days',                icon: TrendingUp, accent: '#06b6d4', handler: actHrv },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private wellness DTU',                          icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM coach',  desc: 'Send wellness brief to coach',               icon: Send,       accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM coach',  desc: 'Send wellness brief to coach',               icon: Send,       accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish trend', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Anonymized public trend DTU',                   icon: Globe,    accent: '#15803d', handler: actPublish },
     { id: 'agent',    label: '24h plan',  desc: 'Agent recommends next 24h plan',             icon: Wand2,      accent: '#eab308', handler: actAgent },
   ];

@@ -191,7 +191,7 @@ export function BlsWageForecast() {
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]">
             <div className="text-zinc-300">
               <span className="font-semibold text-white">{result.seriesLabel}</span>
-              <span className="ml-2 text-zinc-500">series {result.seriesId}</span>
+              <span className="ml-2 text-lattice-muted">series {result.seriesId}</span>
             </div>
             <div className="flex items-center gap-3 text-zinc-400">
               <span>{result.seasonal ? 'seasonal Holt-Winters' : 'Holt double-exp'}</span>
@@ -215,7 +215,7 @@ export function BlsWageForecast() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[30rem] text-[11px]">
               <thead>
-                <tr className="text-left text-zinc-500">
+                <tr className="text-left text-lattice-muted">
                   <th className="py-1 pr-3 font-medium">Period</th>
                   <th className="py-1 pr-3 font-medium">Projected</th>
                   <th className="py-1 pr-3 font-medium">80% interval</th>
@@ -229,7 +229,7 @@ export function BlsWageForecast() {
                     <td className="py-1 pr-3 font-mono text-zinc-400">+{p.step}</td>
                     <td className="py-1 pr-3 font-mono text-amber-200">{p.forecast.toLocaleString()}</td>
                     <td className="py-1 pr-3 font-mono text-zinc-400">{p.lower80.toLocaleString()} – {p.upper80.toLocaleString()}</td>
-                    <td className="py-1 pr-3 font-mono text-zinc-500">{p.lower95.toLocaleString()} – {p.upper95.toLocaleString()}</td>
+                    <td className="py-1 pr-3 font-mono text-lattice-muted">{p.lower95.toLocaleString()} – {p.upper95.toLocaleString()}</td>
                     <td className="py-1">
                       <div className="relative h-2 w-full min-w-[6rem] rounded bg-zinc-800">
                         <div className="absolute top-0 h-2 rounded bg-amber-500/20" style={{ left: `${pct(p.lower95)}%`, width: `${Math.max(2, pct(p.upper95) - pct(p.lower95))}%` }} />
@@ -243,7 +243,7 @@ export function BlsWageForecast() {
             </table>
           </div>
 
-          <p className="text-[10px] text-zinc-500">
+          <p className="text-[10px] text-lattice-muted">
             Intervals are the real residual-std bands from temporal.forecast (α {result.parameters.alpha}, β {result.parameters.beta}
             {result.parameters.gamma != null ? `, γ ${result.parameters.gamma}` : ''}); they widen with horizon by construction.
             {result.intervalsBoundedAtZero ? ' Lower bounds are clamped at zero — this series cannot go negative.' : ''}

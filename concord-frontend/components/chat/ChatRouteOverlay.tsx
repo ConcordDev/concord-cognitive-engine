@@ -50,14 +50,14 @@ interface ChatRouteOverlayProps {
 // ── Action Type Config ───────────────────────────────────────────
 
 const ACTION_CONFIG: Record<string, { icon: typeof Search; label: string; color: string }> = {
-  QUERY:    { icon: Search,        label: 'Query',    color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  ANALYZE:  { icon: BarChart3,     label: 'Analyze',  color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-  CREATE:   { icon: Pencil,        label: 'Create',   color: 'text-green-400 bg-green-500/10 border-green-500/20' },
-  SIMULATE: { icon: Beaker,        label: 'Simulate', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-  TRADE:    { icon: ShoppingCart,   label: 'Trade',    color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  CONNECT:  { icon: Link2,         label: 'Connect',  color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
-  TEACH:    { icon: GraduationCap, label: 'Teach',    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-  MANAGE:   { icon: Settings,      label: 'Manage',   color: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20' },
+  QUERY:    { icon: Search,        label: 'Query',    color: 'text-[color:var(--nb-blue,#60a5fa)] bg-[var(--nb-blue-soft,rgba(59,130,246,0.1))] border-[color:var(--nb-blue,rgba(59,130,246,0.2))]' },
+  ANALYZE:  { icon: BarChart3,     label: 'Analyze',  color: 'text-[color:var(--nb-blue,#22d3ee)] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] border-[color:var(--nb-blue,rgba(6,182,212,0.2))]' },
+  CREATE:   { icon: Pencil,        label: 'Create',   color: 'text-[color:var(--nb-green,#4ade80)] bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] border-[color:var(--nb-green,rgba(34,197,94,0.2))]' },
+  SIMULATE: { icon: Beaker,        label: 'Simulate', color: 'text-[color:var(--nb-red,#c084fc)] bg-[var(--nb-red-soft,rgba(168,85,247,0.1))] border-[color:var(--nb-red,rgba(168,85,247,0.2))]' },
+  TRADE:    { icon: ShoppingCart,   label: 'Trade',    color: 'text-[color:var(--nb-ochre,#fbbf24)] bg-[var(--nb-hl,rgba(245,158,11,0.1))] border-[color:var(--nb-ochre,rgba(245,158,11,0.2))]' },
+  CONNECT:  { icon: Link2,         label: 'Connect',  color: 'text-[color:var(--nb-red,#f472b6)] bg-[var(--nb-red-soft,rgba(236,72,153,0.1))] border-[color:var(--nb-red,rgba(236,72,153,0.2))]' },
+  TEACH:    { icon: GraduationCap, label: 'Teach',    color: 'text-[color:var(--nb-green,#34d399)] bg-[var(--nb-green-soft,rgba(16,185,129,0.1))] border-[color:var(--nb-green,rgba(16,185,129,0.2))]' },
+  MANAGE:   { icon: Settings,      label: 'Manage',   color: 'text-[color:var(--nb-muted,#a1a1aa)] bg-[var(--nb-wash-2,rgba(113,113,122,0.1))] border-[color:var(--nb-rule-2,rgba(113,113,122,0.2))]' },
 };
 
 // ── Component ────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ export default function ChatRouteOverlay({
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md bg-zinc-900/40 border border-zinc-800/30 mb-1">
+    <div className="flex items-center gap-2 px-3 py-1.5 text-xs rounded-md bg-[var(--nb-sheet,rgba(24,24,27,0.4))] border border-[color:var(--nb-rule,rgba(39,39,42,0.3))] mb-1">
       {/* Action type badge */}
       <span className={cn('flex items-center gap-1 px-1.5 py-0.5 rounded border', config.color)}>
         <Icon className="w-3 h-3" />
@@ -89,13 +89,13 @@ export default function ChatRouteOverlay({
       {/* Lens attribution */}
       {route.attribution && route.attribution.length > 0 && (
         <>
-          <ChevronRight className="w-3 h-3 text-zinc-600" />
-          <span className="text-zinc-400">
+          <ChevronRight className="w-3 h-3 text-[color:var(--nb-faint,#52525b)]" />
+          <span className="text-[color:var(--nb-muted,#a1a1aa)]">
             {route.isMultiLens ? 'Drawing from: ' : ''}
             {route.attribution.slice(0, 5).map((lens, i) => (
               <span key={lens}>
-                {i > 0 && <span className="text-zinc-600">{' + '}</span>}
-                <span className="text-zinc-300 capitalize">{lens}</span>
+                {i > 0 && <span className="text-[color:var(--nb-faint,#52525b)]">{' + '}</span>}
+                <span className="text-[color:var(--nb-ink-2,#d4d4d8)] capitalize">{lens}</span>
               </span>
             ))}
           </span>
@@ -104,7 +104,7 @@ export default function ChatRouteOverlay({
 
       {/* Confidence */}
       {route.confidence >= 0.5 && (
-        <span className="ml-auto text-zinc-600 tabular-nums">
+        <span className="ml-auto text-[color:var(--nb-faint,#52525b)] tabular-nums">
           {Math.round(route.confidence * 100)}%
         </span>
       )}
@@ -114,13 +114,13 @@ export default function ChatRouteOverlay({
         <div className="flex items-center gap-1 ml-2">
           <button
             onClick={onConfirm}
-            className="px-2 py-0.5 rounded text-green-400 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20"
+            className="px-2 py-0.5 rounded text-[color:var(--nb-green,#4ade80)] bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] hover:bg-[var(--nb-green-soft,rgba(34,197,94,0.2))] border border-[color:var(--nb-green,rgba(34,197,94,0.2))]"
           >
             Proceed
           </button>
           <button
             onClick={onCancel}
-            className="px-2 py-0.5 rounded text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
+            className="px-2 py-0.5 rounded text-[color:var(--nb-muted,#a1a1aa)] hover:text-[color:var(--nb-ink-2,#d4d4d8)] hover:bg-[var(--nb-wash,#27272a)]"
           >
             Cancel
           </button>

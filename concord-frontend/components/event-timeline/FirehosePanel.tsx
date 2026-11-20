@@ -58,9 +58,9 @@ function badgeColor(category: string): string {
   return (
     {
       Combat: 'bg-red-500/80 text-red-50',
-      Quest: 'bg-emerald-500/80 text-emerald-50',
-      NPC: 'bg-blue-500/80 text-blue-50',
-      World: 'bg-amber-500/80 text-amber-50',
+      Quest: 'bg-emerald-700/80 text-emerald-50',
+      NPC: 'bg-blue-600/80 text-blue-50',
+      World: 'bg-amber-700/80 text-amber-50',
       Cross: 'bg-fuchsia-500/80 text-fuchsia-50',
       Cognition: 'bg-purple-500/80 text-purple-50',
       Other: 'bg-zinc-600/80 text-zinc-50',
@@ -350,7 +350,7 @@ export function FirehosePanel() {
             onChange={(e) => setFromTs(e.target.value)}
             className="bg-transparent text-zinc-300 focus:outline-none [color-scheme:dark]"
           />
-          <span className="text-zinc-600">→</span>
+          <span className="text-lattice-muted">→</span>
           <input
             type="datetime-local"
             value={toTs}
@@ -424,7 +424,7 @@ export function FirehosePanel() {
 
       {knownChannels.length > 0 && (
         <div className="mb-4 flex flex-wrap gap-1.5">
-          <span className="mr-1 text-[10px] text-zinc-500">Channels · counts, last 7 days:</span>
+          <span className="mr-1 text-[10px] text-lattice-muted">Channels · counts, last 7 days:</span>
           <span className="mr-1 text-[10px] uppercase tracking-wider text-zinc-400">
             channels
           </span>

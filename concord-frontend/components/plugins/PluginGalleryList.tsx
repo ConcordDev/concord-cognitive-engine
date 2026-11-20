@@ -256,7 +256,7 @@ export function PluginGalleryList() {
                 <div className="flex shrink-0 flex-col items-end gap-2">
                   <button
                     onClick={() => setInstallTarget(plugin)}
-                    className="inline-flex min-h-11 items-center rounded-md bg-cyan-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500"
+                    className="inline-flex min-h-11 items-center rounded-md bg-cyan-700 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500"
                   >
                     Install
                   </button>
@@ -317,7 +317,7 @@ export function PluginGalleryList() {
               className="w-full rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[12px] text-slate-100" />
             {pubError && <p role="alert" className="text-[11px] text-red-300">{pubError}</p>}
             <button type="submit" disabled={pubBusy}
-              className="inline-flex min-h-11 items-center rounded-md bg-cyan-600 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500 disabled:opacity-40">
+              className="inline-flex min-h-11 items-center rounded-md bg-cyan-700 px-3 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500 disabled:opacity-40">
               {pubBusy ? 'Publishing…' : 'Publish to gallery'}
             </button>
           </form>

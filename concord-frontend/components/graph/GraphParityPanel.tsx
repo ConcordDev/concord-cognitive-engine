@@ -484,7 +484,7 @@ export function GraphParityPanel() {
                       <div key={n.id} className="flex items-center gap-2 text-xs">
                         <span className={cn(
                           'inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-mono',
-                          n.hops === 0 ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400',
+                          n.hops === 0 ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-400',
                         )}>
                           {n.hops}
                         </span>
@@ -518,7 +518,7 @@ export function GraphParityPanel() {
                 Central nodes only
               </label>
               <button onClick={saveFilter} disabled={!filterName.trim()}
-                className="ml-auto flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="ml-auto flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
                 <Plus className="w-3 h-3" /> Save filter
               </button>
             </div>
@@ -565,7 +565,7 @@ export function GraphParityPanel() {
               <input value={rTag} onChange={(e) => setRTag(e.target.value)} placeholder="Tag match"
                 className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               <button onClick={addRule} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
                 <Plus className="w-3 h-3" /> Add
               </button>
             </div>
@@ -643,7 +643,7 @@ export function GraphParityPanel() {
                 <option value="circular">Circular</option>
               </select>
               <button onClick={runLayout} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
                 <LayoutGrid className="w-3 h-3" /> Compute layout
               </button>
             </div>
@@ -692,7 +692,7 @@ export function GraphParityPanel() {
               </button>
             </div>
             <button onClick={syncToDtu} disabled={!syncNode || !nodes.find((n) => n.id === syncNode)?.dtuId}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+              className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
               <RefreshCw className="w-3 h-3" /> Push node edits to DTU
             </button>
             <p className="text-[11px] text-zinc-400">
@@ -742,7 +742,7 @@ export function GraphParityPanel() {
               <button
                 onClick={requestMerge}
                 disabled={!mapId || !mergeSource || !mergeTarget || mergeSource === mergeTarget}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]"
+                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]"
               >
                 <GitMerge className="w-3 h-3" /> Merge
               </button>
@@ -754,7 +754,7 @@ export function GraphParityPanel() {
                 </p>
                 <div className="flex items-center gap-2">
                   <button onClick={() => void confirmMerge()}
-                    className="flex items-center gap-1 px-2 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white text-[11px]">
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-amber-700 hover:bg-amber-500 text-white text-[11px]">
                     <GitMerge className="w-3 h-3" /> Confirm merge
                   </button>
                   <button onClick={cancelMerge}
@@ -797,7 +797,7 @@ export function GraphParityPanel() {
               <input value={exPanY} onChange={(e) => setExPanY(e.target.value)} type="number"
                 className="w-14 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
               <button onClick={runExport} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
                 <Download className="w-3 h-3" /> Export
               </button>
             </div>

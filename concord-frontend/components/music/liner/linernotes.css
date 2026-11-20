@@ -1,0 +1,146 @@
+/*
+ * Liner Notes — the Music lens identity. A bright, quiet gallery for music:
+ * paper-white walls, big artwork, serif headlines, and every release and
+ * artist page tinted by its own cover. The indie soul is in the liner notes:
+ * the artist's own note, real credits, and the remix family tree. Every colour
+ * is a token here (var(--ln-*)); --ln-tint is set per page from the cover's
+ * measured average colour (tint.ts), never invented.
+ */
+
+.liner {
+  --ln-paper: #faf8f4;
+  --ln-paper-2: #f2efe8;
+  --ln-card: #ffffff;
+  --ln-ink: #16140f;
+  --ln-ink-2: #3d3a33;
+  --ln-muted: #77726a;
+  --ln-faint: #aaa49a;
+  --ln-rule: rgba(22, 20, 15, 0.09);
+  --ln-rule-strong: rgba(22, 20, 15, 0.18);
+  --ln-accent: #e0302e;
+  --ln-accent-soft: rgba(224, 48, 46, 0.1);
+  --ln-go: #1f8a4c;
+  --ln-go-soft: rgba(31, 138, 76, 0.1);
+  --ln-warn: #b26a00;
+  --ln-tint: 190, 180, 165;
+  --ln-shadow: 0 1px 2px rgba(22, 20, 15, 0.06), 0 10px 30px -12px rgba(22, 20, 15, 0.25);
+
+  background: var(--ln-paper);
+  color: var(--ln-ink);
+  font-family: var(--ln-font-ui), system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .liner:not([data-theme='light']) {
+    --ln-paper: #121110;
+    --ln-paper-2: #1b1a18;
+    --ln-card: #201f1c;
+    --ln-ink: #f3f0ea;
+    --ln-ink-2: #d6d1c7;
+    --ln-muted: #9a948a;
+    --ln-faint: #6a655d;
+    --ln-rule: rgba(243, 240, 234, 0.08);
+    --ln-rule-strong: rgba(243, 240, 234, 0.16);
+    --ln-accent: #ff5a52;
+    --ln-accent-soft: rgba(255, 90, 82, 0.14);
+    --ln-go: #4cc27e;
+    --ln-go-soft: rgba(76, 194, 126, 0.14);
+    --ln-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -14px rgba(0, 0, 0, 0.7);
+  }
+}
+.liner[data-theme='dark'] {
+  --ln-paper: #121110;
+  --ln-paper-2: #1b1a18;
+  --ln-card: #201f1c;
+  --ln-ink: #f3f0ea;
+  --ln-ink-2: #d6d1c7;
+  --ln-muted: #9a948a;
+  --ln-faint: #6a655d;
+  --ln-rule: rgba(243, 240, 234, 0.08);
+  --ln-rule-strong: rgba(243, 240, 234, 0.16);
+}
+
+.ln-serif { font-family: var(--ln-font-serif), Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.015em; }
+.ln-mono { font-family: var(--ln-font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.ln-eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ln-muted); font-weight: 600; }
+
+/* Page wash: the cover's own colour, soft at the top of the page. */
+.ln-wash {
+  background:
+    linear-gradient(180deg, rgba(var(--ln-tint), 0.42) 0%, rgba(var(--ln-tint), 0.12) 46%, transparent 78%),
+    var(--ln-paper);
+  transition: background 600ms ease;
+}
+
+.ln-cover {
+  background: linear-gradient(135deg, rgba(var(--ln-tint), 0.9), rgba(var(--ln-tint), 0.45));
+  box-shadow: var(--ln-shadow);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ln-card { background: var(--ln-card); border: 1px solid var(--ln-rule); border-radius: 12px; }
+.ln-rule { border-color: var(--ln-rule); }
+.ln-divide > * + * { border-color: var(--ln-rule); }
+.ln-chip {
+  border: 1px solid var(--ln-rule-strong);
+  color: var(--ln-ink-2);
+  border-radius: 999px;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.ln-chip[aria-pressed='true'] { background: var(--ln-ink); color: var(--ln-paper); border-color: var(--ln-ink); }
+
+.ln-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border-radius: 999px; font-weight: 600;
+  transition: transform 90ms ease, background 150ms ease, opacity 150ms ease;
+}
+.ln-btn:active { transform: scale(0.97); }
+.ln-btn:focus-visible, .ln-link:focus-visible, .ln-row:focus-visible { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.ln-btn-primary { background: var(--ln-accent); color: #fff; }
+.ln-btn-primary:hover { opacity: 0.92; }
+.ln-btn-quiet { background: var(--ln-paper-2); color: var(--ln-ink); }
+.ln-btn-quiet:hover { background: var(--ln-rule-strong); }
+.ln-btn-owned { background: var(--ln-go-soft); color: var(--ln-go); }
+.ln-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.ln-link { color: inherit; text-decoration: none; }
+.ln-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.ln-row { border-radius: 8px; transition: background 120ms ease; }
+.ln-row:hover { background: var(--ln-paper-2); }
+.ln-row[data-current='true'] { color: var(--ln-accent); }
+
+.ln-nav-item { border-radius: 8px; color: var(--ln-ink-2); transition: background 120ms ease, color 120ms ease; }
+.ln-nav-item:hover { background: var(--ln-paper-2); }
+.ln-nav-item[aria-current='page'] { background: var(--ln-paper-2); color: var(--ln-accent); font-weight: 600; }
+
+.ln-input {
+  background: var(--ln-paper-2); color: var(--ln-ink); border: 1px solid transparent; border-radius: 10px;
+}
+.ln-input:focus { outline: none; border-color: var(--ln-rule-strong); background: var(--ln-card); }
+.ln-input::placeholder { color: var(--ln-faint); }
+
+/* The artist's note: set like a printed liner sheet. */
+.ln-note { font-family: var(--ln-font-serif), Georgia, serif; font-size: 17px; line-height: 1.65; white-space: pre-line; color: var(--ln-ink-2); }
+.ln-note::first-letter { font-size: 2.6em; float: left; line-height: 0.9; padding: 4px 8px 0 0; color: var(--ln-ink); }
+
+/* Equaliser bars on the playing row: animate only while audio is actually playing. */
+@keyframes ln-eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+.ln-eq span { display: inline-block; width: 3px; height: 12px; margin-right: 2px; background: var(--ln-accent); transform-origin: bottom; transform: scaleY(0.3); }
+.ln-eq[data-playing='true'] span { animation: ln-eq 900ms ease-in-out infinite; }
+.ln-eq[data-playing='true'] span:nth-child(2) { animation-delay: 150ms; }
+.ln-eq[data-playing='true'] span:nth-child(3) { animation-delay: 300ms; }
+
+@keyframes ln-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ln-rise { animation: ln-rise 260ms ease-out both; }
+@keyframes ln-owned { 0% { transform: scale(0.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+/* Plays once when the server confirms a purchase. */
+.ln-owned-pop { animation: ln-owned 420ms ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ln-rise, .ln-owned-pop, .ln-eq[data-playing='true'] span { animation: none; }
+  .ln-wash { transition: none; }
+}
+[data-reduced-motion='true'] .ln-rise,
+[data-reduced-motion='true'] .ln-owned-pop,
+[data-reduced-motion='true'] .ln-eq span { animation: none; }

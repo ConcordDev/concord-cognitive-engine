@@ -153,9 +153,9 @@ export function AstronomyActionPanel() {
     { id: 'apod' as ActionId, label: 'APOD', desc: 'NASA picture of day', icon: Image, accent: '#8b5cf6', handler: actApod },
     { id: 'iss' as ActionId, label: 'ISS', desc: 'real-time location', icon: Satellite, accent: '#06b6d4', handler: actIss },
     { id: 'neo' as ActionId, label: 'NEOs', desc: 'near-Earth objects', icon: AlertTriangle, accent: '#f59e0b', handler: actNeo },
-    { id: 'pos' as ActionId, label: 'Position', desc: 'celestialPosition', icon: Star, accent: '#a855f7', handler: actPos },
+    { id: 'pos' as ActionId, label: 'Position', desc: 'celestialPosition', icon: Star, accent: '#c084fc', handler: actPos },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private sky DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send sky log', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send sky log', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public sky card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Tonight', desc: 'Agent: viewing tip', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

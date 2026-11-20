@@ -99,7 +99,7 @@ export default function AuditLensPage() {
   const statusColors = {
     success: 'text-neon-green bg-neon-green/20',
     warning: 'text-yellow-500 bg-yellow-500/20',
-    error: 'text-neon-pink bg-neon-pink/20',
+    error: 'text-neon-pink-bright bg-neon-pink/20',
   };
 
   const typeColors = {
@@ -199,7 +199,7 @@ export default function AuditLensPage() {
                       onClick={() => setFilter(f)}
                       className={`rounded-full px-3 py-2 capitalize ${
                         filter === f
-                          ? 'border border-neon-purple/30 bg-neon-purple/20 text-neon-purple'
+                          ? 'border border-neon-purple/30 bg-neon-purple/20 text-neon-purple-bright'
                           : 'bg-white/[0.04] text-gray-400 hover:text-gray-200'
                       }`}
                     >

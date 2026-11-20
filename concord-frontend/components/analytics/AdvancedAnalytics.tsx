@@ -45,7 +45,7 @@ const INPUT =
   'bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 ' +
   'placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/60';
 const BTN =
-  'px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white ' +
+  'px-2.5 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white ' +
   'font-semibold disabled:opacity-40 inline-flex items-center gap-1';
 const BTN_GHOST =
   'px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 ' +
@@ -693,7 +693,7 @@ function LiveStream({ eventNames }: { eventNames: string[] }) {
             <RefreshCw className="w-3 h-3" />Refresh
           </button>
           <button onClick={() => setLive((l) => !l)}
-            className={cn(live ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : BTN_GHOST,
+            className={cn(live ? 'bg-emerald-700 hover:bg-emerald-600 text-white' : BTN_GHOST,
               'px-2.5 py-1 text-xs rounded font-semibold inline-flex items-center gap-1')}>
             {live ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {live ? 'Live' : 'Go live'}

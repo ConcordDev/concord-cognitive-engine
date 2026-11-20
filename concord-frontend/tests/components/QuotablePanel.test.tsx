@@ -49,10 +49,19 @@ describe('QuotablePanel provenance', () => {
     ).toBeInTheDocument();
   });
 
-  it('says the author/tag filter was not applied when filtersIgnored is non-empty', async () => {
+  it('says the filter was NOT applied, and why, when the source ignored it and no returned quote carries the tag', async () => {
+    reply({ source: 'ZenQuotes', degraded: true, filtersIgnored: ['tag'] });
+    render(<QuotablePanel domain="daily" tag="poetry" />);
+    expect(await screen.findByText(/^Author\/tag filter not applied — the live source is unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/Tag filter applied to the fallback quotes/)).not.toBeInTheDocument();
+  });
+
+  it('applies the tag filter to the fallback batch itself when a returned quote carries it (FIX-daily-009)', async () => {
     reply({ source: 'ZenQuotes', degraded: true, filtersIgnored: ['tag'] });
     render(<QuotablePanel domain="daily" tag="wisdom" />);
-    expect(await screen.findByText('author/tag filter not applied')).toBeInTheDocument();
+    expect(await screen.findByText(/^Tag filter applied to the fallback quotes/)).toBeInTheDocument();
+    expect(screen.queryByText(/filter not applied/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Stay hungry\./)).toBeInTheDocument();
   });
 });
 

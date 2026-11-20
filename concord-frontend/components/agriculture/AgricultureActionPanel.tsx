@@ -186,8 +186,8 @@ export function AgricultureActionPanel() {
     { id: 'rot' as ActionId, label: 'Rotation', desc: 'rotationPlan', icon: Sprout, accent: '#22c55e', handler: actRot },
     { id: 'water' as ActionId, label: 'Irrigation', desc: 'waterSchedule', icon: Droplet, accent: '#06b6d4', handler: actWater },
     { id: 'yield' as ActionId, label: 'Yield', desc: 'predict-yield', icon: TrendingUp, accent: '#f59e0b', handler: actYield },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private farm DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send field brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private farm DTU', icon: Sparkles, accent: '#c084fc', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send field brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon yield bench', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Action', desc: 'Agent: 7-day op', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

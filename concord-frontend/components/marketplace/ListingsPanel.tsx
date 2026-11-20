@@ -172,7 +172,7 @@ export function ListingsPanel() {
           <div className="px-4 py-3 border-b border-white/10 grid grid-cols-12 gap-2">
             <div className="col-span-6">
               <input value={draft.title} maxLength={BOUNDS.TITLE} onChange={e => setDraft({ ...draft, title: e.target.value })} placeholder="Title *" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-              <p className="mt-0.5 text-right text-[10px] text-gray-500">{draft.title.length} / 120</p>
+              <p className="mt-0.5 text-right text-[10px] text-lattice-muted">{draft.title.length} / {BOUNDS.TITLE}</p>
             </div>
             <select value={draft.kind} onChange={e => setDraft({ ...draft, kind: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white">
               {KINDS.map(k => <option key={k} value={k}>{k.replace(/_/g, ' ')}</option>)}
@@ -239,7 +239,7 @@ export function ListingsPanel() {
                           <div className="grid grid-cols-12 gap-2 pt-2">
                             <div className="col-span-6">
                               <input value={editDraft.title} maxLength={BOUNDS.TITLE} onChange={e => setEditDraft({ ...editDraft, title: e.target.value })} placeholder="Title" aria-label="Listing title" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
-                              <p className="mt-0.5 text-right text-[10px] text-gray-500">{editDraft.title.length} / 120</p>
+                              <p className="mt-0.5 text-right text-[10px] text-lattice-muted">{editDraft.title.length} / {BOUNDS.TITLE}</p>
                             </div>
                             <input type="number" step="0.01" min={0} max={BOUNDS.MONEY_MAX} value={editDraft.priceUsd} onChange={e => setEditDraft({ ...editDraft, priceUsd: e.target.value })} placeholder="Price (CC)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
                             <input type="number" value={editDraft.stockQty} onChange={e => setEditDraft({ ...editDraft, stockQty: e.target.value })} placeholder="Stock (blank = ∞)" className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />

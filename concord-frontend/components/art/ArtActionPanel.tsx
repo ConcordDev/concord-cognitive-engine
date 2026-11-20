@@ -192,53 +192,53 @@ export function ArtActionPanel() {
     { id: 'palette' as ActionId, label: 'Palette', desc: 'generatePalette from seed', icon: Brush, accent: '#22c55e', handler: actPalette },
     { id: 'style' as ActionId, label: 'Style', desc: 'styleClassify + confidence', icon: Eye, accent: '#f97316', handler: actStyle },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private piece DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send critique brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send critique brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public piece DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Critique', desc: 'Agent: 3 next-iteration moves', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];
 
   return (
-    <div className="rounded-lg border border-pink-500/20 bg-zinc-950/60 p-3 space-y-3">
-      <header className="flex items-center gap-2 border-b border-pink-500/10 pb-2">
-        <ImageIcon className="h-4 w-4 text-pink-400" />
-        <h3 className="text-sm font-semibold text-white">Art workbench</h3>
-        <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">met · art institute · adobe color</span>
+    <div className="rounded-lg border border-[color:var(--at-accent)] bg-[var(--at-sunk)] p-3 space-y-3">
+      <header className="flex items-center gap-2 border-b border-[color:var(--at-accent)] pb-2">
+        <ImageIcon className="h-4 w-4 text-[color:var(--at-accent-text)]" />
+        <h3 className="text-sm font-semibold text-[color:var(--at-ink)]">Art workbench</h3>
+        <span className="rounded bg-[var(--at-raised)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[color:var(--at-muted)]">met · art institute · adobe color</span>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <input type="text" value={pieceTitle} onChange={(e) => setPieceTitle(e.target.value)} className="md:col-span-2 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="Piece title" />
-        <input type="text" value={seedColor} onChange={(e) => setSeedColor(e.target.value)} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="#seed hex" />
-        <input type="text" value={paletteCount} onChange={(e) => setPaletteCount(e.target.value.replace(/\D/g, ''))} className="bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white font-mono" placeholder="palette N" />
+      <div className="grid grid-cols-1 gap-2">
+        <input type="text" value={pieceTitle} onChange={(e) => setPieceTitle(e.target.value)} className="md:col-span-2 bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-3 py-1.5 text-[12px] text-[color:var(--at-ink)]" placeholder="Piece title" />
+        <input type="text" value={seedColor} onChange={(e) => setSeedColor(e.target.value)} className="bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-3 py-1.5 text-[12px] text-[color:var(--at-ink)] font-mono" placeholder="#seed hex" />
+        <input type="text" value={paletteCount} onChange={(e) => setPaletteCount(e.target.value.replace(/\D/g, ''))} className="bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-3 py-1.5 text-[12px] text-[color:var(--at-ink)] font-mono" placeholder="palette N" />
       </div>
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Palette harmony</label>
-        <select aria-label="Palette harmony" value={paletteHarmony} onChange={(e) => setPaletteHarmony(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[12px] text-white">
+        <label className="text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] font-semibold mb-1 block">Palette harmony</label>
+        <select aria-label="Palette harmony" value={paletteHarmony} onChange={(e) => setPaletteHarmony(e.target.value)} className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-[12px] text-[color:var(--at-ink)]">
           {['analogous', 'complementary', 'triadic', 'split-complementary', 'monochromatic'].map(h => <option key={h} value={h}>{h}</option>)}
         </select>
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Color list (one hex per line)</label>
-        <textarea value={colors} onChange={(e) => setColors(e.target.value)} rows={4} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-pink-200 font-mono focus:outline-none focus:ring-2 focus:ring-pink-400/40 resize-none" />
+        <label className="text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] font-semibold mb-1 block">Color list (one hex per line)</label>
+        <textarea value={colors} onChange={(e) => setColors(e.target.value)} rows={4} className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1 text-[11px] text-[color:var(--at-accent-text)] font-mono focus:outline-none focus:ring-2 focus:ring-[color:var(--at-accent)] resize-none" />
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Composition elements — one per line: x,y,width,height[,weight]</label>
-        <textarea value={compElements} onChange={(e) => setCompElements(e.target.value)} rows={3} placeholder={'640,360,200,200\n1280,720,150,150'} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-purple-200 font-mono focus:outline-none focus:ring-2 focus:ring-purple-400/40 resize-none" />
+        <label className="text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] font-semibold mb-1 block">Composition elements — one per line: x,y,width,height[,weight]</label>
+        <textarea value={compElements} onChange={(e) => setCompElements(e.target.value)} rows={3} placeholder={'640,360,200,200\n1280,720,150,150'} className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1 text-[11px] text-[color:var(--at-accent-text)] font-mono focus:outline-none focus:ring-2 focus:ring-[color:var(--at-accent)] resize-none" />
       </div>
 
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1 block">Style axes 0-100 (brushwork,colorSaturation,contrast,perspective,detail,abstraction,lineWeight,texture)</label>
-        <input type="text" value={styleAttrs} onChange={(e) => setStyleAttrs(e.target.value)} placeholder="80,70,40,40,30,40,20,70" className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-orange-200 font-mono focus:outline-none focus:ring-2 focus:ring-orange-400/40" />
+        <label className="text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] font-semibold mb-1 block">Style axes 0-100 (brushwork,colorSaturation,contrast,perspective,detail,abstraction,lineWeight,texture)</label>
+        <input type="text" value={styleAttrs} onChange={(e) => setStyleAttrs(e.target.value)} placeholder="80,70,40,40,30,40,20,70" className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-[11px] text-[color:var(--at-accent-text)] font-mono focus:outline-none focus:ring-2 focus:ring-[color:var(--at-accent)]" />
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
-        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-[12px] text-white" placeholder="DM recipient" />
+        <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} className="flex-1 bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-3 py-1.5 text-[12px] text-[color:var(--at-ink)]" placeholder="DM recipient" />
         <RecallSlot ctl={dmRecall} />
         <RecallSlot ctl={publishRecall} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {actions.map(a => {
           const Icon = a.icon; const isBusy = busy === a.id;
           return (
@@ -247,62 +247,62 @@ export function ArtActionPanel() {
               <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: a.accent + '20', color: a.accent }}>
                 {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <div className="text-[11px] font-semibold text-zinc-100 leading-tight">{a.label}</div>
-              <div className="text-[10px] text-zinc-400 leading-tight line-clamp-2">{a.desc}</div>
+              <div className="text-[11px] font-semibold text-[color:var(--at-ink)] leading-tight">{a.label}</div>
+              <div className="text-[10px] text-[color:var(--at-muted)] leading-tight line-clamp-2">{a.desc}</div>
             </button>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {harmonyResult && (
-          <div className="rounded-md border border-cyan-500/30 bg-cyan-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-cyan-300 font-semibold">Harmony</div>
-            <div className="text-sm font-semibold text-zinc-100 capitalize">score {harmonyResult.harmonyScore ?? 0} · {harmonyResult.temperature ?? '—'}</div>
-            {harmonyResult.paletteSize != null && <div className="text-[10px] text-zinc-400">{harmonyResult.paletteSize} colors · dominant hue {harmonyResult.dominantHue}°</div>}
+          <div className="rounded-md border border-[color:var(--at-blue)] bg-[var(--at-blue)] p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-[color:var(--at-blue)] font-semibold">Harmony</div>
+            <div className="text-sm font-semibold text-[color:var(--at-ink)] capitalize">score {harmonyResult.harmonyScore ?? 0} · {harmonyResult.temperature ?? '—'}</div>
+            {harmonyResult.paletteSize != null && <div className="text-[10px] text-[color:var(--at-muted)]">{harmonyResult.paletteSize} colors · dominant hue {harmonyResult.dominantHue}°</div>}
             {harmonyResult.harmonies && harmonyResult.harmonies.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {harmonyResult.harmonies.slice(0, 4).map((h, i) => (
-                  <span key={i} className="rounded bg-cyan-500/20 px-1.5 py-0.5 font-mono text-[10px] text-cyan-200">{h.type}</span>
+                  <span key={i} className="rounded bg-[var(--at-blue)] px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--at-blue)]">{h.type}</span>
                 ))}
               </div>
             )}
           </div>
         )}
         {compositionResult && (
-          <div className="rounded-md border border-purple-500/30 bg-purple-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-purple-300 font-semibold">Composition {compositionResult.rating && `· ${compositionResult.rating}`}</div>
-            <div className="text-2xl font-bold text-zinc-100">{compositionResult.overall}<span className="text-xs text-zinc-400">/100</span></div>
+          <div className="rounded-md border border-[color:var(--at-accent)] bg-[var(--at-accent)] p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-[color:var(--at-accent-text)] font-semibold">Composition {compositionResult.rating && `· ${compositionResult.rating}`}</div>
+            <div className="text-2xl font-bold text-[color:var(--at-ink)]">{compositionResult.overall}<span className="text-xs text-[color:var(--at-muted)]">/100</span></div>
             {compositionResult.scores && (
               <div className="grid grid-cols-2 gap-1 mt-1">
                 {Object.entries(compositionResult.scores).map(([k, v]) => (
-                  <div key={k} className="text-[10px] text-zinc-300"><span className="text-zinc-500 capitalize">{k.replace(/([A-Z])/g, ' $1')}</span> {v}</div>
+                  <div key={k} className="text-[10px] text-[color:var(--at-ink-2)]"><span className="text-[color:var(--at-muted)] capitalize">{k.replace(/([A-Z])/g, ' $1')}</span> {v}</div>
                 ))}
               </div>
             )}
           </div>
         )}
         {paletteResult?.palette && (
-          <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-semibold">Palette {paletteResult.harmony && `· ${paletteResult.harmony}`}</div>
+          <div className="rounded-md border border-[color:var(--at-good)] bg-[var(--at-good)] p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-[color:var(--at-good)] font-semibold">Palette {paletteResult.harmony && `· ${paletteResult.harmony}`}</div>
             <div className="flex gap-1 mt-2">
               {paletteResult.palette.map((c, i) => (
-                <div key={i} className="flex-1 h-12 rounded border border-zinc-700" style={{ backgroundColor: c.hex }} title={`${c.hex}${c.role ? ` (${c.role})` : ''}`}>
-                  <div className="text-[9px] text-white/80 text-center pt-9 font-mono drop-shadow">{c.hex}</div>
+                <div key={i} className="flex-1 h-12 rounded border border-[color:var(--at-rule-2)]" style={{ backgroundColor: c.hex }} title={`${c.hex}${c.role ? ` (${c.role})` : ''}`}>
+                  <div className="text-[9px] text-[color:var(--at-accent-ink)] text-center pt-9 font-mono drop-shadow">{c.hex}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
         {styleResult?.topMatch && (
-          <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2.5">
-            <div className="text-[10px] uppercase tracking-wider text-orange-300 font-semibold">Style</div>
-            <div className="text-sm font-semibold text-zinc-100 capitalize">{styleResult.topMatch.style} · {styleResult.topMatch.similarity}%</div>
-            {styleResult.confidence != null && <div className="text-[10px] text-zinc-400">confidence {styleResult.confidence}</div>}
+          <div className="rounded-md border border-[color:var(--at-accent)] bg-[var(--at-accent)] p-2.5">
+            <div className="text-[10px] uppercase tracking-wider text-[color:var(--at-accent-text)] font-semibold">Style</div>
+            <div className="text-sm font-semibold text-[color:var(--at-ink)] capitalize">{styleResult.topMatch.style} · {styleResult.topMatch.similarity}%</div>
+            {styleResult.confidence != null && <div className="text-[10px] text-[color:var(--at-muted)]">confidence {styleResult.confidence}</div>}
             {styleResult.allMatches && styleResult.allMatches.length > 1 && (
               <div className="mt-1 space-y-0.5">
                 {styleResult.allMatches.slice(1, 4).map((m, i) => (
-                  <div key={i} className="flex items-center justify-between text-[10px] text-zinc-400"><span className="capitalize">{m.style}</span><span>{m.similarity}%</span></div>
+                  <div key={i} className="flex items-center justify-between text-[10px] text-[color:var(--at-muted)]"><span className="capitalize">{m.style}</span><span>{m.similarity}%</span></div>
                 ))}
               </div>
             )}
@@ -311,9 +311,9 @@ export function ArtActionPanel() {
       </div>
 
       {agentReply && (
-        <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 p-3 max-h-60 overflow-y-auto">
-          <div className="flex items-center gap-1.5 text-yellow-400 font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Critique</div>
-          <pre className="whitespace-pre-wrap font-sans text-[11px] text-zinc-200 leading-relaxed">{agentReply}</pre>
+        <div className="rounded-md border border-[color:var(--at-ochre)] bg-[var(--at-ochre)] p-3 max-h-60 overflow-y-auto">
+          <div className="flex items-center gap-1.5 text-[color:var(--at-ochre)] font-semibold mb-1.5 uppercase tracking-wider text-[10px]"><Wand2 className="w-3 h-3" /> Critique</div>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] text-[color:var(--at-ink)] leading-relaxed">{agentReply}</pre>
         </div>
       )}
 

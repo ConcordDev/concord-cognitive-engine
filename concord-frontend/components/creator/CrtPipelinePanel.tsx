@@ -125,7 +125,7 @@ export function CrtPipelinePanel({ onChange }: { onChange: () => void }) {
           return (
             <div key={stage.id} className={cn('bg-zinc-900/50 border-t-2 rounded-lg p-2', stage.color)}>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase mb-1.5">
-                {stage.label} <span className="text-zinc-600">{stageItems.length}</span>
+                {stage.label} <span className="text-lattice-muted">{stageItems.length}</span>
               </p>
               <ul className="space-y-1.5">
                 {stageItems.map((c) => (
@@ -193,7 +193,7 @@ function PipelineDelete({ title, onConfirm }: { title: string; onConfirm: () => 
       armLabel={<Trash2 className="w-3 h-3" />}
       confirmLabel={`Delete “${title}”?`}
       armAriaLabel="Delete"
-      className="text-zinc-600 hover:text-rose-400"
+      className="text-lattice-muted hover:text-rose-400"
     />
   );
 }

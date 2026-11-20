@@ -1,10 +1,10 @@
 /**
  * Retail catalog change signal.
  *
- * The Retail Workbench catalog (ProductCatalogPanel) and the Storefront POS
- * card (LivePosTerminal) both read the same real `retail.product-list`
- * macro, but they live in separate trees, so the storefront kept showing a
- * stale "Catalog (0)" after a product was added in the workbench drawer.
+ * The catalog (ProductCatalogPanel) and the Register's product grid
+ * (components/retail/app/Register) both read the same real
+ * `retail.product-list` macro but live in separate views, so the register
+ * must re-read after a catalog write.
  * After a successful write the catalog announces it; listeners re-read the
  * real list. The event carries no product data — nothing is faked locally.
  */

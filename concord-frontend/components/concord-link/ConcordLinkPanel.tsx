@@ -513,7 +513,7 @@ export function ConcordLinkPanel({ myUserId: _myUserId }: { myUserId: string }) 
               type="button"
               onClick={handleSend}
               disabled={sending}
-              className="w-full rounded bg-cyan-600 px-3 py-2 text-sm font-medium text-slate-50 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-700"
+              className="w-full rounded bg-cyan-700 px-3 py-2 text-sm font-medium text-slate-50 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-700"
             >
               {sending ? 'Sending…' : `Send${costPreview?.cost ? ` (−${costPreview.cost} sparks)` : ''}`}
             </button>

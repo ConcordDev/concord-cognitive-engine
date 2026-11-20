@@ -119,22 +119,88 @@ export interface GeneratedTestRun {
   summary: import('./testHarness').TestSummary | null;
 }
 
-async function toPlainJs(code: string, language: string): Promise<string> {
+const MODULE_SYNTAX = /^\s*(import\s|export\s)/m;
+
+/**
+ * The single-file module scope a run gets. A file that exports things (most
+ * real modules do) is compiled to CommonJS, so it needs `exports`/`module`;
+ * an import of another file cannot be satisfied in a one-file run, and says so.
+ */
+export const SINGLE_FILE_PRELUDE = 'var exports = {}; var module = { exports: exports }; function require(name) { throw new Error("Cannot import \\"" + name + "\\" here: a run executes this one file in your browser, without the rest of the project."); }\n';
+
+/** Strip types and module syntax so the worker can evaluate the file as a plain script. */
+export async function toPlainJs(code: string, language: string): Promise<string> {
   const lang = language.trim().toLowerCase();
-  if (lang !== 'typescript' && lang !== 'ts') return code;
+  const isTs = lang === 'typescript' || lang === 'ts';
+  if (!isTs && !MODULE_SYNTAX.test(code)) return code;
   const ts = await import('typescript');
   const out = ts.transpileModule(code, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2020,
-      module: ts.ModuleKind.None,
+      module: ts.ModuleKind.CommonJS,
       isolatedModules: true,
+      allowJs: true,
+      esModuleInterop: true,
     },
+    fileName: isTs ? 'run.ts' : 'run.js',
     reportDiagnostics: false,
   });
-  return out.outputText;
+  return SINGLE_FILE_PRELUDE + out.outputText;
 }
 
 let workerSeq = 0;
+
+/**
+ * How long a worker may take to load before the run is abandoned. This is
+ * separate from the run's own timeout, which only starts once the program is
+ * sent: loading the runner (cold bundles, a slow device) is not the user's
+ * code running long, and must never be reported as their code timing out.
+ */
+export const LOCAL_RUNNER_START_LIMIT_MS = 60_000;
+const RUNNER_DID_NOT_START = 'The local runner did not start in time, so nothing ran. Try again.';
+
+/** How long one runner gets to say it is listening before it is replaced. */
+export const LOCAL_RUNNER_READY_WAIT_MS = 4_000;
+
+/**
+ * Start the JS runner and resolve once it says it is listening
+ * ({ type: 'worker-ready' }, the worker's last top-level statement), or null if
+ * no runner came up within LOCAL_RUNNER_START_LIMIT_MS.
+ *
+ * Why it waits instead of posting straight away: a runner whose script load
+ * stalls never runs the program, and the old code then reported the user's
+ * code as having timed out. Two real stalls were found (both fixed at their
+ * source): a module-type worker cannot load Turbopack's importScripts
+ * bootstrap, and the PWA service worker answered worker scripts from cache in
+ * a way Chromium never completed (public/sw-policy.js now passes them
+ * through). So the program is only ever sent to a runner that has announced
+ * itself, a silent runner is replaced, and the run's own timeout starts after
+ * this, so loading is never counted as the user's code running long.
+ */
+async function startRunnerWorker(): Promise<Worker | null> {
+  const deadline = performance.now() + LOCAL_RUNNER_START_LIMIT_MS;
+  for (let attempt = 1; performance.now() < deadline; attempt++) {
+    let worker: Worker;
+    try {
+      // Classic, not module: the bundler's worker bootstrap uses importScripts.
+      worker = new Worker(new URL('./local-exec.worker.ts', import.meta.url));
+    } catch {
+      return null;
+    }
+    const wait = Math.min(LOCAL_RUNNER_READY_WAIT_MS * attempt, Math.max(0, deadline - performance.now()));
+    const ready = await new Promise<boolean>((resolve) => {
+      const cleanup = () => { clearTimeout(timer); worker.removeEventListener('message', onMessage); worker.removeEventListener('error', onError); };
+      const onMessage = (ev: MessageEvent) => { if ((ev.data as { type?: string } | null)?.type === 'worker-ready') { cleanup(); resolve(true); } };
+      const onError = () => { cleanup(); resolve(false); };
+      const timer = setTimeout(() => { cleanup(); resolve(false); }, wait);
+      worker.addEventListener('message', onMessage);
+      worker.addEventListener('error', onError);
+    });
+    if (ready) return worker;
+    try { worker.terminate(); } catch { /* already gone */ }
+  }
+  return null;
+}
 
 /**
  * Run one script locally. Never throws: every failure lands in the
@@ -148,7 +214,7 @@ export async function runLocalScript(input: {
   onStatus?: (phase: LocalRunPhase) => void;
 }): Promise<LocalRunOutcome> {
   if (isPythonLanguage(input.language)) return runPythonScript(input);
-  const started = performance.now();
+  let started = performance.now(); // reset when the program is sent: elapsed is run time, not load time
   const done = (result: CodeExecResult, extra: Partial<LocalRunOutcome> = {}): LocalRunOutcome => ({
     result,
     elapsedMs: Math.round(performance.now() - started),
@@ -183,17 +249,11 @@ export async function runLocalScript(input: {
     LOCAL_RUN_MAX_TIMEOUT_MS,
   );
 
+  const worker = await startRunnerWorker();
+  if (!worker) return done({ supported: false, stderr: RUNNER_DID_NOT_START });
+  started = performance.now(); // run time, not load time
+
   return new Promise<LocalRunOutcome>((resolve) => {
-    let worker: Worker;
-    try {
-      worker = new Worker(new URL('./local-exec.worker.ts', import.meta.url), { type: 'module' });
-    } catch {
-      resolve(done({
-        supported: false,
-        stderr: 'The local runner could not start in this browser.',
-      }));
-      return;
-    }
     const id = ++workerSeq;
     let stdout = '';
     let stderr = '';
@@ -413,22 +473,17 @@ export async function runGeneratedTests(input: {
   if (isPythonLanguage(input.language)) {
     return runPythonGeneratedTests(input);
   }
-  const started = performance.now();
+  let started = performance.now(); // reset when the tests are sent: elapsed is run time, not load time
   const timeoutMs = Math.min(
     Math.max(1_000, Math.floor(input.timeoutMs ?? LOCAL_RUN_DEFAULT_TIMEOUT_MS)),
     LOCAL_RUN_MAX_TIMEOUT_MS,
   );
+  const worker = await startRunnerWorker();
+  if (!worker) {
+    return { outcome: { result: { supported: false, stderr: RUNNER_DID_NOT_START }, elapsedMs: 0, timedOut: false, ranLocally: false }, summary: null };
+  }
+  started = performance.now(); // run time, not load time
   return new Promise<GeneratedTestRun>((resolve) => {
-    let worker: Worker;
-    try {
-      worker = new Worker(new URL('./local-exec.worker.ts', import.meta.url), { type: 'module' });
-    } catch {
-      resolve({
-        outcome: { result: { supported: false, stderr: 'The local test runner could not start in this browser.' }, elapsedMs: 0, timedOut: false, ranLocally: false },
-        summary: null,
-      });
-      return;
-    }
     const id = ++workerSeq;
     let stdout = '';
     let stderr = '';

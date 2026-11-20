@@ -91,7 +91,7 @@ export function BlockEditorRow({ block, cursors, onChange, onDelete, onUp, onDow
   const renderedText = (placeholder: string, extraCls?: string) => (
     <div role="button" tabIndex={0} aria-label="Edit block text" onClick={enterEdit} onFocus={enterEdit}
       className={cn('flex-1 cursor-text whitespace-pre-wrap break-words rounded px-1 min-h-[1.75rem]', extraCls)}>
-      {text.trim() ? renderInlineMarks(text) : <span className="text-zinc-500">{placeholder}</span>}
+      {text.trim() ? renderInlineMarks(text) : <span className="text-zinc-400">{placeholder}</span>}
     </div>
   );
   const markToolbar = (
@@ -348,11 +348,11 @@ function RowControls({ onDelete, onUp, onDown, deleteItemLabel, inline }: {
   const [confirming, setConfirming] = useState(false);
   return (
     <div className={cn('flex items-center', !inline && !confirming && 'opacity-0 group-hover:opacity-100')}>
-      <button onClick={onUp} title="Move up" className="text-zinc-600 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
-      <button onClick={onDown} title="Move down" className="text-zinc-600 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
+      <button onClick={onUp} title="Move up" className="text-zinc-400 hover:text-zinc-300"><ChevronUp className="w-3 h-3" /></button>
+      <button onClick={onDown} title="Move down" className="text-zinc-400 hover:text-zinc-300"><ChevronDown className="w-3 h-3" /></button>
       <ConfirmDeleteButton itemLabel={deleteItemLabel} deleteTitle="Delete block"
         onConfirm={onDelete} onConfirmingChange={setConfirming}
-        className="text-zinc-600 hover:text-rose-400" iconClassName="w-3 h-3" />
+        className="text-zinc-400 hover:text-rose-400" iconClassName="w-3 h-3" />
     </div>
   );
 }

@@ -219,7 +219,7 @@ export function RateLimitPanel() {
                   <button
                     onClick={() => save(slot)}
                     disabled={busy}
-                    className="px-3 py-1 rounded-md bg-amber-600 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
+                    className="px-3 py-1 rounded-md bg-amber-700 hover:bg-amber-500 text-amber-50 text-xs font-medium disabled:opacity-50"
                     data-testid={`ratelimit-${slot}-save-btn`}
                   >
                     save

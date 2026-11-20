@@ -429,7 +429,7 @@ export default function CollaborationTools({
       <div className={`${panel} p-4 space-y-3`}>
         <div className="flex items-center gap-3">
           <div className="flex -space-x-2">
-            <div className="w-8 h-8 rounded-full bg-cyan-600/50 border-2 border-black flex items-center justify-center text-xs font-bold text-white/70">Y</div>
+            <div className="w-8 h-8 rounded-full bg-cyan-700/50 border-2 border-black flex items-center justify-center text-xs font-bold text-white/70">Y</div>
             <div className="w-8 h-8 rounded-full bg-orange-600/50 border-2 border-black flex items-center justify-center text-xs font-bold text-white/70">
               {workbench.partnerName.charAt(0)}
             </div>
@@ -470,7 +470,7 @@ export default function CollaborationTools({
 
         <button
           onClick={() => { window.dispatchEvent(new CustomEvent('collaboration:craft-together')); }}
-          className="w-full px-4 py-2 rounded-lg bg-green-600/80 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          className="w-full px-4 py-2 rounded-lg bg-green-700/80 hover:bg-green-500 text-white text-sm font-medium transition-colors flex items-center justify-center gap-2"
         >
           <Hammer size={14} /> Craft Together
         </button>

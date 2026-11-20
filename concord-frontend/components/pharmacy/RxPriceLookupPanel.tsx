@@ -70,7 +70,7 @@ export function RxPriceLookupPanel() {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         <button type="button" onClick={lookupPrice} disabled={priceLoading}
-          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
           {priceLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
           Look up price
         </button>
@@ -127,7 +127,7 @@ export function RxPriceLookupPanel() {
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         </div>
         <button type="button" onClick={identifyPill} disabled={pillLoading}
-          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+          className="mt-2 flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
           {pillLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pill className="w-3.5 h-3.5" />}
           Identify pill
         </button>

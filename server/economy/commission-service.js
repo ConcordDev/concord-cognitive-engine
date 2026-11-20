@@ -23,6 +23,28 @@ import { calculateFee } from "./fees.js";
 
 const ESCROW_ACCOUNT = "__ESCROW__";
 
+/**
+ * What the hold actually put in escrow. holdEscrow moves agreed_price as a
+ * TRANSFER, which takes the universal fee, so __ESCROW__ receives the net.
+ * Every release or refund pays out exactly that: paying out agreed_price
+ * drew the shortfall from other people's escrowed coin (__ESCROW__ is one
+ * shared account).
+ */
+function heldInEscrow(req) {
+  return calculateFee("TRANSFER", req.agreed_price).net;
+}
+
+/**
+ * What a payout moves for this request: the amount the hold actually
+ * stored (escrow_held, recorded by holdEscrow at hold time), so a later
+ * fee-schedule or price change can never make a release or refund pay
+ * out more — or less — than was held. Rows held before escrow_held
+ * existed fall back to the recomputed figure above.
+ */
+function escrowHeld(req) {
+  return typeof req.escrow_held === "number" ? req.escrow_held : heldInEscrow(req);
+}
+
 function uid(prefix = "com") {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
 }
@@ -94,6 +116,7 @@ export function ensureCommissionTables(db) {
       agreed_price        REAL NOT NULL,
       status              TEXT NOT NULL DEFAULT 'REQUESTED',
       escrow_tx_id        TEXT,
+      escrow_held         REAL,
       delivered_dtu_id    TEXT,
       license_tier        TEXT,
       created_at          TEXT NOT NULL,
@@ -108,6 +131,13 @@ export function ensureCommissionTables(db) {
       created_at  TEXT NOT NULL
     );
   `);
+
+  // escrow_held arrived after the table did; add it to databases that
+  // already carry commission_requests without the column.
+  const cols = db.prepare("PRAGMA table_info(commission_requests)").all();
+  if (!cols.some((c) => c.name === "escrow_held")) {
+    db.exec("ALTER TABLE commission_requests ADD COLUMN escrow_held REAL");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -322,8 +352,11 @@ export function clientRespondToCounter(db, { requestId, clientId, action }) {
 /**
  * Hold the agreed amount in escrow.
  * Transfers CC from the client to the __ESCROW__ account using the standard
- * transfer system. The escrow hold uses type "ESCROW_HOLD" which carries no
- * fee — fees are collected on release.
+ * transfer system (type TRANSFER; the universal fee is taken on the hold,
+ * so escrow holds the net — see heldInEscrow). The amount must equal the
+ * request's agreed price exactly: a smaller hold would park the request
+ * IN_PROGRESS with a fraction of its value in escrow and leave release /
+ * refund to draw the rest from the shared __ESCROW__ account.
  *
  * Should be called after ACCEPTED or CLIENT_ACCEPTED, and transitions the
  * request to IN_PROGRESS.
@@ -337,6 +370,9 @@ export function holdEscrow(db, { requestId, clientId, amount }) {
   if (req.client_id !== clientId) return { ok: false, error: "not_authorized" };
   if (req.status !== "ACCEPTED" && req.status !== "CLIENT_ACCEPTED") {
     return { ok: false, error: "invalid_status", detail: `Cannot hold escrow in status ${req.status}` };
+  }
+  if (amount !== req.agreed_price) {
+    return { ok: false, error: "amount_mismatch", detail: `Escrow hold amount ${amount} does not equal the agreed price ${req.agreed_price}` };
   }
 
   const refId = `escrow_hold:${requestId}`;
@@ -360,12 +396,13 @@ export function holdEscrow(db, { requestId, clientId, amount }) {
   if (!result.ok) return result;
 
   // Transition to IN_PROGRESS and record the escrow transaction reference
+  // plus the amount actually held, which every payout reads back.
   const now = nowISO();
   db.prepare(
-    "UPDATE commission_requests SET status = 'IN_PROGRESS', escrow_tx_id = ?, updated_at = ? WHERE id = ?"
-  ).run(result.batchId || refId, now, requestId);
+    "UPDATE commission_requests SET status = 'IN_PROGRESS', escrow_tx_id = ?, escrow_held = ?, updated_at = ? WHERE id = ?"
+  ).run(result.batchId || refId, heldInEscrow(req), now, requestId);
 
-  return { ok: true, status: "IN_PROGRESS", escrowTxId: result.batchId || refId };
+  return { ok: true, status: "IN_PROGRESS", escrowTxId: result.batchId || refId, escrowHeld: heldInEscrow(req) };
 }
 
 // ---------------------------------------------------------------------------
@@ -417,7 +454,7 @@ export function approveDelivery(db, { requestId, clientId }) {
   const result = executeTransfer(db, {
     from: ESCROW_ACCOUNT,
     to: req.creator_id,
-    amount: req.agreed_price,
+    amount: escrowHeld(req),
     type: "MARKETPLACE_PURCHASE",
     metadata: { commissionRequestId: requestId, escrowRelease: true },
     refId,
@@ -430,9 +467,9 @@ export function approveDelivery(db, { requestId, clientId }) {
     "UPDATE commission_requests SET status = 'APPROVED', updated_at = ? WHERE id = ?"
   ).run(now, requestId);
 
-  const { fee, net } = calculateFee("MARKETPLACE_PURCHASE", req.agreed_price);
+  const { fee, net } = calculateFee("MARKETPLACE_PURCHASE", escrowHeld(req));
 
-  return { ok: true, status: "APPROVED", released: net, fee, gross: req.agreed_price };
+  return { ok: true, status: "APPROVED", released: net, fee, gross: escrowHeld(req) };
 }
 
 // ---------------------------------------------------------------------------
@@ -496,7 +533,7 @@ export function resolveDispute(db, { requestId, resolution, resolvedBy }) {
     const result = executeTransfer(db, {
       from: ESCROW_ACCOUNT,
       to: req.client_id,
-      amount: req.agreed_price,
+      amount: escrowHeld(req),
       type: "TRANSFER",
       metadata: { commissionRequestId: requestId, resolvedBy, resolution: "BUYER", role: "escrow_refund" },
       refId,
@@ -508,7 +545,7 @@ export function resolveDispute(db, { requestId, resolution, resolvedBy }) {
       "UPDATE commission_requests SET status = 'RESOLVED_BUYER', updated_at = ? WHERE id = ?"
     ).run(now, requestId);
 
-    return { ok: true, status: "RESOLVED_BUYER", refunded: req.agreed_price };
+    return { ok: true, status: "RESOLVED_BUYER", refunded: calculateFee("TRANSFER", escrowHeld(req)).net };
   }
 
   if (upperRes === "SELLER") {
@@ -519,7 +556,7 @@ export function resolveDispute(db, { requestId, resolution, resolvedBy }) {
     const result = executeTransfer(db, {
       from: ESCROW_ACCOUNT,
       to: req.creator_id,
-      amount: req.agreed_price,
+      amount: escrowHeld(req),
       type: "MARKETPLACE_PURCHASE",
       metadata: { commissionRequestId: requestId, resolvedBy, resolution: "SELLER", escrowRelease: true },
       refId,
@@ -531,7 +568,7 @@ export function resolveDispute(db, { requestId, resolution, resolvedBy }) {
       "UPDATE commission_requests SET status = 'RESOLVED_SELLER', updated_at = ? WHERE id = ?"
     ).run(now, requestId);
 
-    const { fee, net } = calculateFee("MARKETPLACE_PURCHASE", req.agreed_price);
+    const { fee, net } = calculateFee("MARKETPLACE_PURCHASE", escrowHeld(req));
     return { ok: true, status: "RESOLVED_SELLER", released: net, fee };
   }
 

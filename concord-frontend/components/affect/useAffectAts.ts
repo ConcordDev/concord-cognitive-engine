@@ -18,7 +18,11 @@ export function useAffectAts() {
   // other session except from an operator; mirror that here so the
   // controls only render when a write would actually be honoured.
   const isOperator = user?.role === 'admin' || user?.role === 'sovereign';
-  const canControlSession = isOperator || (user != null && sessionId === `user_${user.id}`);
+  // FIX-affect-001: an empty session id means "the caller's own session" (the server
+  // falls back to user_<id> whenever none is named), so a signed-in member viewing the
+  // default (empty) session controls their own state — only a NAMED foreign session is
+  // read-only for them.
+  const canControlSession = isOperator || (user != null && (sessionId === '' || sessionId === `user_${user.id}`));
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 

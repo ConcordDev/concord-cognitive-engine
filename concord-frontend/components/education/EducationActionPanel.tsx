@@ -205,10 +205,10 @@ export function EducationActionPanel() {
   const actions = [
     { id: 'grade' as ActionId, label: 'Grade', desc: 'gradeCalculation', icon: GraduationCap, accent: '#3b82f6', handler: actGrade },
     { id: 'prog' as ActionId, label: 'Progress', desc: 'progressTrack', icon: TrendingUp, accent: '#22c55e', handler: actProg },
-    { id: 'lesson' as ActionId, label: 'Lesson', desc: 'lesson-plan (LLM)', icon: BookOpen, accent: '#a855f7', handler: actLesson },
+    { id: 'lesson' as ActionId, label: 'Lesson', desc: 'lesson-plan (LLM)', icon: BookOpen, accent: '#c084fc', handler: actLesson },
     { id: 'quiz' as ActionId, label: 'Quiz', desc: 'quiz-from-text (LLM)', icon: ListChecks, accent: '#f59e0b', handler: actQuiz },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private class DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send class update', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send class update', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public lesson', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Feedback', desc: 'Agent: praise + focus', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

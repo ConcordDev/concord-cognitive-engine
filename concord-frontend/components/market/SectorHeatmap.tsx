@@ -24,10 +24,10 @@ async function callMacro<T>(action: string, input: Record<string, unknown>): Pro
 function heatColor(pct: number | null): string {
   if (pct == null) return 'bg-zinc-800 text-zinc-400';
   if (pct >= 2) return 'bg-emerald-700 text-emerald-50';
-  if (pct >= 1) return 'bg-emerald-600 text-emerald-50';
+  if (pct >= 1) return 'bg-emerald-700 text-emerald-50';
   if (pct >= 0.5) return 'bg-emerald-500/70 text-emerald-50';
   if (pct >= -0.5) return 'bg-zinc-700 text-zinc-200';
-  if (pct >= -1) return 'bg-rose-500/70 text-rose-50';
+  if (pct >= -1) return 'bg-rose-600/70 text-rose-50';
   if (pct >= -2) return 'bg-rose-600 text-rose-50';
   return 'bg-rose-700 text-rose-50';
 }

@@ -304,7 +304,7 @@ export function KnowledgeWorkbench({
             {selected.length === 2 && (
               <button
                 onClick={() => setTab('compare')}
-                className="mt-2 w-full rounded bg-neon-pink/15 py-1 text-[11px] text-neon-pink hover:bg-neon-pink/25"
+                className="mt-2 w-full rounded bg-neon-pink/15 py-1 text-[11px] text-neon-pink-bright hover:bg-neon-pink/25"
               >
                 Compare the 2 selected →
               </button>

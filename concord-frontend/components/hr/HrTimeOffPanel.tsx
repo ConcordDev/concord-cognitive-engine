@@ -104,7 +104,7 @@ export function HrTimeOffPanel({ onChange }: { onChange: () => void }) {
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
       </div>
       <button type="button" onClick={submit}
-        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">
+        className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
         <Plus className="w-3.5 h-3.5" /> Request time off
       </button>
 

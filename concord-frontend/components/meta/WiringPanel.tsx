@@ -44,7 +44,7 @@ export function WiringPanel() {
             className="p-3 bg-lattice-deep rounded-lg"
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs px-2 py-0.5 rounded border font-semibold text-neon-purple bg-neon-purple/10 border-neon-purple/30">
+              <span className="text-xs px-2 py-0.5 rounded border font-semibold text-neon-purple-bright bg-neon-purple/10 border-neon-purple/30">
                 {lensName}
               </span>
               <ArrowRight className="w-3 h-3 text-gray-600" />

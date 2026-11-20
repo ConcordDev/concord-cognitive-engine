@@ -304,7 +304,7 @@ export function MaterialsDegradationPanel({ engine }: { engine: FrontierEngineDe
           </div>
         )}
 
-        <p className={cn(ds.monoXs, 'text-gray-500')}>
+        <p className={cn(ds.monoXs, 'text-lattice-muted')}>
           Sampled at years: {SAMPLE_YEARS.join(', ')} (server default — every sampled year re-solves the full beam-frame FEA)
         </p>
       </ComputeCell>
@@ -333,7 +333,7 @@ export function MaterialsDegradationPanel({ engine }: { engine: FrontierEngineDe
             <div className="overflow-x-auto">
               <table className={cn(ds.monoXs, 'w-full border-collapse')}>
                 <thead>
-                  <tr className="text-left text-gray-500 border-b border-lattice-border">
+                  <tr className="text-left text-lattice-muted border-b border-lattice-border">
                     <th className="py-1 pr-4">Year</th>
                     <th className="py-1 pr-4">Utilization</th>
                     <th className="py-1 pr-4">Pass</th>

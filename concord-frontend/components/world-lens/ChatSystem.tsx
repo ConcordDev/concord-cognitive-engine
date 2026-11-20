@@ -376,7 +376,7 @@ export default function ChatSystem({
                 <p className="text-xs text-white/50 truncate">{convo.lastMessage}</p>
               </div>
               {convo.unreadCount > 0 && (
-                <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold shrink-0">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] flex items-center justify-center font-bold shrink-0">
                   {convo.unreadCount}
                 </span>
               )}
@@ -494,7 +494,7 @@ export default function ChatSystem({
             key={mode}
             onClick={() => setVoiceMode(mode)}
             className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-              voiceMode === mode ? 'bg-cyan-600/80 text-white' : 'bg-white/10 text-white/50 hover:text-white/70'
+              voiceMode === mode ? 'bg-cyan-700/80 text-white' : 'bg-white/10 text-white/50 hover:text-white/70'
             }`}
           >
             {mode === 'push-to-talk' ? 'Push-to-Talk' : mode.charAt(0).toUpperCase() + mode.slice(1)}
@@ -503,7 +503,7 @@ export default function ChatSystem({
       </div>
 
       <div className="flex gap-3">
-        <button onClick={toggleVoice} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${voiceActive ? 'bg-red-600/80 hover:bg-red-500 text-white' : 'bg-cyan-600/80 hover:bg-cyan-500 text-white'}`}>
+        <button onClick={toggleVoice} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${voiceActive ? 'bg-red-600/80 hover:bg-red-500 text-white' : 'bg-cyan-700/80 hover:bg-cyan-500 text-white'}`}>
           {voiceActive ? 'Disconnect' : 'Connect'}
         </button>
         <button onClick={() => setMuted(!muted)} className="px-4 py-2 rounded-lg text-sm font-medium bg-white/10 hover:bg-white/20 text-white/70 transition-colors">

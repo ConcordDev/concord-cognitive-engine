@@ -83,7 +83,7 @@ export function JobList({
           onChange={(e) => setJobQuery(e.target.value)}
           placeholder="Search jobs by name, queue, or status…"
           aria-label="Search jobs"
-          className="w-full rounded-lg border border-zinc-800 bg-black/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+          className="w-full rounded-lg border border-zinc-800 bg-black/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted"
         />
       )}
       {visibleJobs.length === 0 && (
@@ -179,7 +179,7 @@ export function JobList({
                 confirmLabel={`Remove "${j.name}"?`}
                 confirmAriaLabel={`Confirm remove job ${j.name}`}
               />
-              <ChevronRight className="h-4 w-4 text-zinc-600" />
+              <ChevronRight className="h-4 w-4 text-lattice-muted" />
             </div>
           </div>
         );

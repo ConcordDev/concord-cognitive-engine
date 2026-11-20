@@ -1,0 +1,134 @@
+/*
+ * The Atelier — the Art lens identity. A north-lit painter's studio: raw
+ * linen walls, gesso-white surfaces, charcoal ink, and ONE cadmium-orange
+ * accent that means "this is the thing in your hand" (the active tool, the
+ * active layer, the primary action). Ultramarine is reserved for reference
+ * material from outside (museum works, data). The canvas sits on an easel:
+ * a deeper linen bay with a soft north-light falloff. Every colour is a
+ * token (var(--at-*)); the panels reach these through Tailwind arbitrary
+ * values, e.g. bg-[var(--at-gesso)].
+ */
+
+.at {
+  --at-linen: #ebe3d4;
+  --at-linen-2: #e2d8c6;
+  --at-gesso: #faf7f1;
+  --at-sunk: #f1ebe0;
+  --at-raised: #f4eee4;
+  --at-press: #e3d8c5;
+  --at-ink: #24201c;
+  --at-ink-2: #4a433b;
+  --at-muted: #776d61;
+  --at-faint: #a49987;
+  --at-rule: #d8ccb7;
+  --at-rule-2: #c3b49b;
+  --at-accent: #e2611c;
+  --at-accent-ink: #fffaf3;
+  --at-accent-soft: rgba(226, 97, 28, 0.12);
+  --at-accent-text: #b2470f;
+  --at-blue: #2c5687;
+  --at-blue-soft: rgba(44, 86, 135, 0.1);
+  --at-good: #3c7449;
+  --at-good-soft: rgba(60, 116, 73, 0.12);
+  --at-bad: #b0372a;
+  --at-bad-soft: rgba(176, 55, 42, 0.1);
+  --at-ochre: #a87a24;
+  --at-shadow: 0 1px 0 rgba(36, 32, 28, 0.05), 0 10px 30px -18px rgba(36, 32, 28, 0.55);
+
+  background:
+    radial-gradient(ellipse 120% 70% at 30% -10%, rgba(255, 252, 245, 0.75) 0%, transparent 60%),
+    repeating-linear-gradient(0deg, rgba(120, 100, 70, 0.025) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 100, 70, 0.02) 0 1px, transparent 1px 4px),
+    var(--at-linen);
+  color: var(--at-ink);
+  font-family: var(--at-font-body), system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+.at :focus-visible { outline: 2px solid var(--at-accent); outline-offset: 2px; }
+.at ::selection { background: rgba(226, 97, 28, 0.25); }
+
+.at-display { font-family: var(--at-font-display), Georgia, serif; font-weight: 400; letter-spacing: 0.005em; }
+.at-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--at-muted); }
+.at-num { font-variant-numeric: tabular-nums; }
+
+/* Surfaces */
+.at-card { background: var(--at-gesso); border: 1px solid var(--at-rule); border-radius: 6px; box-shadow: var(--at-shadow); }
+.at-tray { background: var(--at-gesso); border: 1px solid var(--at-rule); border-radius: 8px; }
+
+/* The easel: a deeper bay with north light, the canvas on a ledge. */
+.at-easel {
+  position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 10px;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 0%, rgba(255, 250, 240, 0.65) 0%, transparent 70%),
+    var(--at-linen-2);
+  box-shadow: inset 0 0 0 1px var(--at-rule), inset 0 -40px 60px -40px rgba(60, 45, 25, 0.25);
+}
+.at-easel canvas { box-shadow: 0 2px 0 rgba(36, 32, 28, 0.08), 0 22px 40px -18px rgba(36, 32, 28, 0.55); border-radius: 2px; }
+.at-ledge { position: absolute; left: 12%; right: 12%; bottom: 10px; height: 6px; border-radius: 3px; background: var(--at-rule-2); opacity: 0.55; pointer-events: none; }
+
+/* Buttons */
+:where(.at-btn) { display: inline-flex; }
+.at-btn {
+  align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 11px; border-radius: 6px;
+  border: 1px solid var(--at-rule-2); background: var(--at-gesso); color: var(--at-ink); font-size: 12.5px; font-weight: 500;
+  transition: background-color 110ms, border-color 110ms, transform 110ms, color 110ms;
+}
+.at-btn:hover:not(:disabled) { border-color: var(--at-ink-2); }
+.at-btn:active:not(:disabled) { transform: translateY(1px); }
+.at-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.at-btn-paint { background: var(--at-accent); border-color: var(--at-accent); color: var(--at-accent-ink); }
+.at-btn-paint:hover:not(:disabled) { background: var(--at-accent-text); border-color: var(--at-accent-text); }
+.at-btn-quiet { background: transparent; border-color: transparent; color: var(--at-ink-2); }
+.at-btn-quiet:hover:not(:disabled) { background: var(--at-raised); border-color: var(--at-rule); }
+
+/* Brush tray: each tool is a slot; the one in hand is lifted and stained cadmium */
+:where(.at-tool) { display: flex; width: 100%; }
+.at-tool { align-items: center; gap: 8px; min-height: 34px; padding: 0 9px; border-radius: 6px; font-size: 12.5px; color: var(--at-ink-2); border: 1px solid transparent; text-align: left; }
+.at-tool:hover { background: var(--at-raised); }
+@media (max-width: 1023px) { .at-tool { width: auto; flex-shrink: 0; white-space: nowrap; } }
+.at-tool[aria-pressed='true'] { background: var(--at-gesso); border-color: var(--at-accent); color: var(--at-ink); box-shadow: inset 3px 0 0 var(--at-accent), 0 4px 10px -8px rgba(36, 32, 28, 0.6); }
+
+/* The mixing slab */
+.at-slab { position: relative; border-radius: 10px; padding: 10px; background: var(--at-gesso); border: 1px solid var(--at-rule); }
+.at-dab { width: 26px; height: 26px; border-radius: 50% 46% 52% 44%; box-shadow: inset 0 -2px 3px rgba(0, 0, 0, 0.15), 0 1px 0 rgba(255, 255, 255, 0.6); border: 1px solid rgba(36, 32, 28, 0.12); transition: transform 120ms; }
+.at-dab:hover { transform: scale(1.12); }
+.at-dab[aria-pressed='true'] { outline: 2px solid var(--at-ink); outline-offset: 2px; }
+.at-loaded { width: 44px; height: 44px; border-radius: 50%; border: 3px solid var(--at-gesso); box-shadow: 0 0 0 1px var(--at-rule-2), 0 6px 14px -8px rgba(36, 32, 28, 0.7); }
+
+/* Side tabs */
+:where(.at-tab) { display: inline-flex; }
+.at-tab { align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 6px 6px 0 0; font-size: 12px; color: var(--at-muted); border: 1px solid transparent; border-bottom: none; white-space: nowrap; }
+.at-tab:hover { color: var(--at-ink); }
+.at-tab[aria-selected='true'], .at-tab[aria-pressed='true'] { background: var(--at-gesso); border-color: var(--at-rule); color: var(--at-ink); }
+
+.at-layer { border: 1px solid var(--at-rule); background: var(--at-sunk); border-radius: 6px; }
+.at-layer[data-active='true'] { border-color: var(--at-accent); background: var(--at-gesso); box-shadow: inset 3px 0 0 var(--at-accent); }
+
+.at-range { accent-color: var(--at-accent); width: 100%; }
+.at-input { height: 32px; width: 100%; padding: 0 9px; border-radius: 6px; border: 1px solid var(--at-rule-2); background: var(--at-gesso); color: var(--at-ink); font-size: 13px; }
+.at-input:focus { outline: none; border-color: var(--at-accent); }
+
+.at-note { border-left: 3px solid var(--at-accent); background: var(--at-accent-soft); padding: 8px 12px; border-radius: 0 6px 6px 0; font-size: 13px; }
+.at-error { border-left: 3px solid var(--at-bad); background: var(--at-bad-soft); padding: 8px 12px; font-size: 13px; color: var(--at-bad); }
+.at-okay { border-left: 3px solid var(--at-good); background: var(--at-good-soft); padding: 8px 12px; font-size: 13px; color: var(--at-good); }
+
+.at-scrim { background: rgba(36, 32, 28, 0.38); }
+.at-drawer { background: var(--at-linen); border-left: 1px solid var(--at-rule-2); box-shadow: -24px 0 40px -24px rgba(36, 32, 28, 0.5); }
+.at-scroll { scrollbar-width: thin; scrollbar-color: var(--at-rule-2) transparent; }
+
+/* A piece in the drawer: a small stretched canvas */
+.at-piece { border-radius: 4px; background: var(--at-gesso); border: 1px solid var(--at-rule); box-shadow: var(--at-shadow); transition: transform 150ms; }
+.at-piece:hover { transform: translateY(-2px) rotate(-0.4deg); }
+.at-piece[data-current='true'] { outline: 2px solid var(--at-accent); outline-offset: 2px; }
+
+@keyframes at-rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.at-rise { animation: at-rise 220ms ease-out both; }
+@keyframes at-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.at-skeleton { background: var(--at-press); animation: at-breathe 1.4s ease-in-out infinite; border-radius: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .at-rise, .at-skeleton { animation: none; }
+  .at-piece, .at-piece:hover, .at-dab, .at-dab:hover { transition: none; transform: none; }
+}

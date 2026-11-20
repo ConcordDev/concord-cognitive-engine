@@ -191,7 +191,7 @@ export function JournalActionPanel() {
 
   const actions: Array<{ id: ActionId; label: string; desc: string; icon: React.ComponentType<{ className?: string }>; accent: string; handler: () => void; disabled?: boolean }> = [
     { id: 'save',     label: savedDtuId      ? 'Saved'     : 'Save as DTU',      desc: savedDtuId      ? `DTU ${savedDtuId.slice(0, 8)}…`      : 'Mints a private DTU of this text — it does not create a journal entry',           icon: Sparkles, accent: '#3b82f6', handler: actSave,    disabled: !ready || !!savedDtuId },
-    { id: 'dm',       label: 'DM friend', desc: 'Share entry with a trusted user',                  icon: Send,     accent: '#ec4899', handler: actDm, disabled: !ready },
+    { id: 'dm',       label: 'DM friend', desc: 'Share entry with a trusted user',                  icon: Send,     accent: '#f472b6', handler: actDm, disabled: !ready },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish gratitude', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Sanitized public gratitude DTU',     icon: Globe,    accent: '#22c55e', handler: actPublish, disabled: !ready || !!publishedDtuId },
     { id: 'agent',    label: 'Prompt me', desc: 'Agent surfaces a specific journaling prompt',      icon: Wand2,    accent: '#f97316', handler: actAgent },
   ];

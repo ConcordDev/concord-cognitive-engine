@@ -177,11 +177,11 @@ export function AnalyticsActionPanel() {
 
   const actions = [
     { id: 'funnel' as ActionId, label: 'Funnel', desc: 'funnelAnalysis', icon: Filter, accent: '#3b82f6', handler: actFunnel },
-    { id: 'cohort' as ActionId, label: 'Cohorts', desc: 'cohortAnalysis', icon: Users, accent: '#a855f7', handler: actCohort },
+    { id: 'cohort' as ActionId, label: 'Cohorts', desc: 'cohortAnalysis', icon: Users, accent: '#c084fc', handler: actCohort },
     { id: 'anom' as ActionId, label: 'Anomalies', desc: 'detectAnomalies', icon: AlertTriangle, accent: '#ef4444', handler: actAnom },
     { id: 'trend' as ActionId, label: 'Forecast', desc: 'trendForecast', icon: TrendingUp, accent: '#22c55e', handler: actTrend },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private report DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send report', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send report', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Lever', desc: 'Agent: growth lever', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

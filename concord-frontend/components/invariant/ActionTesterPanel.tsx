@@ -117,7 +117,7 @@ export function ActionTesterPanel() {
 
       <div>
         <p className="text-sm text-gray-300 mb-1">Evaluate an action&rsquo;s resulting state against your monitors</p>
-        <p className="text-xs text-gray-500 mb-2">
+        <p className="text-xs text-lattice-muted mb-2">
           Describe the state the action would leave behind, as JSON. Your active monitors evaluate it for
           real — a dry run: verdicts are shown, nothing is recorded in your violation history.
         </p>
@@ -161,7 +161,7 @@ export function ActionTesterPanel() {
 
       <div className="border-t border-white/5 pt-4">
         <p className="text-sm text-gray-300 mb-1">Keyword aid — text overlap only</p>
-        <p className="text-xs text-gray-500 mb-2">
+        <p className="text-xs text-lattice-muted mb-2">
           Checks an action&rsquo;s wording against your authored ethos sets&rsquo; names and descriptions.
           This is a text check, not an evaluation — it cannot pass or block an action.
         </p>

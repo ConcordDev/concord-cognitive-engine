@@ -137,7 +137,7 @@ const NEXT_STATUSES: Record<ProjectStatus, ProjectStatus[]> = {
 };
 
 const inputCls = 'px-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-200 text-xs w-full placeholder-zinc-600';
-const btnPrimary = 'inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-500 disabled:opacity-50';
+const btnPrimary = 'inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-50';
 
 const EMPTY_FORM = {
   name: '', description: '', parcelId: '', projectType: 'residential_development' as ProjectType,

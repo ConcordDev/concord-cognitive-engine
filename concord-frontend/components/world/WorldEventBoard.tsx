@@ -484,7 +484,7 @@ export function WorldEventBoard({ worldId, onClose }: Props) {
               type="button"
               onClick={handleCreate}
               disabled={!form.name.trim() || creating}
-              className="w-full rounded-lg bg-cyan-600/80 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:opacity-40"
+              className="w-full rounded-lg bg-cyan-700/80 py-2 text-sm font-semibold text-white transition-colors hover:bg-cyan-500 disabled:opacity-40"
             >
               {creating ? 'Creating…' : 'Create event'}
             </button>

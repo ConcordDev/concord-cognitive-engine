@@ -132,7 +132,7 @@ export function SkyMap() {
                   key={c.l}
                   x={c.x}
                   y={c.y}
-                  fill="#71717a"
+                  fill="#a1a1aa"
                   fontSize={10}
                   textAnchor="middle"
                 >
@@ -179,7 +179,7 @@ export function SkyMap() {
                 <span
                   className={cn(
                     'flex items-center gap-1',
-                    o.aboveHorizon ? 'text-emerald-400' : 'text-zinc-600',
+                    o.aboveHorizon ? 'text-emerald-400' : 'text-lattice-muted',
                   )}
                 >
                   <Star className="w-3 h-3" />

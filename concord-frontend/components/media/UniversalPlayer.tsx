@@ -814,7 +814,7 @@ function StreamViewer({
 
           <button
             onClick={() => setShowTipping(prev => !prev)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neon-pink/10 text-neon-pink text-sm hover:bg-neon-pink/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neon-pink/10 text-neon-pink-bright text-sm hover:bg-neon-pink/20 transition-colors"
           >
             <Coins className="w-4 h-4" />
             Tip
@@ -848,7 +848,7 @@ function StreamViewer({
                       setPendingTip(null);
                       setShowTipping(false);
                     }}
-                    className="mt-3 w-full rounded-lg bg-neon-pink/20 px-3 py-1.5 text-sm text-neon-pink hover:bg-neon-pink/30"
+                    className="mt-3 w-full rounded-lg bg-neon-pink/20 px-3 py-1.5 text-sm text-neon-pink-bright hover:bg-neon-pink/30"
                   >
                     Send {pendingTip} CC{mediaDTU.authorName ? ` to ${mediaDTU.authorName}` : ''}
                   </button>

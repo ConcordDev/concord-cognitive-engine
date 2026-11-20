@@ -304,7 +304,7 @@ export default function QuestsLensPage() {
                         aria-label="Reward XP"
                         className="w-24 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-zinc-100 outline-none focus:border-amber-500/50" />
                     </div>
-                    <p className="text-[11px] text-slate-500">Objective count is how many the target needs; reward XP is paid on completion (0–500).</p>
+                    <p className="text-[11px] text-slate-400">Objective count is how many the target needs; reward XP is paid on completion (0–500).</p>
                     <div className="flex gap-2">
                       <button onClick={handleCreate} disabled={creating || !cTitle.trim() || !cTarget.trim()} className="flex min-h-11 items-center rounded-md bg-amber-500/20 px-3 py-1.5 text-[12px] font-medium text-amber-200 hover:bg-amber-500/30 disabled:opacity-40">
                         {creating ? 'Posting…' : 'Post quest'}

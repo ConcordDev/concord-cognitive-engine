@@ -282,6 +282,9 @@ const QUIET_LENS_ERRORS = new Set([
   // Voice TTS is gated behind an explicit session opt-in. A 422 here just means
   // the user has not turned voice on; it is not an action failure to toast.
   'session voice opt-in required',
+  // The GitHub trending feed is a read-only discovery card; when GitHub is in
+  // backoff the card itself says so, so a global toast only repeats it.
+  'github unavailable',
 ]);
 
 /** True when the server is shedding/warming (not a permission gate). */
@@ -2133,7 +2136,9 @@ export const apiHelpers = {
         get: (id: string) => api.get(`/api/artistry/marketplace/splits/${id}`),
       },
       licenses: () => api.get('/api/artistry/marketplace/licenses'),
-      purchase: (data: { buyerId: string; listingId: string; listingType?: string; licenseType?: string }) =>
+      // The buyer is the signed-in account; the server ignores and the actor
+      // guard refuses a body buyerId naming anyone else.
+      purchase: (data: { listingId: string; listingType?: string; licenseType?: string }) =>
         api.post('/api/artistry/marketplace/purchase', data),
       // Buyer's own purchase history — real read of the purchase state
       // machine (server/economy/purchases.js), auth-scoped to the caller.
@@ -2148,9 +2153,9 @@ export const apiHelpers = {
           api.get('/api/artistry/collab/sessions', { params }),
         create: (data: { projectId: string; hostId?: string; maxParticipants?: number; mode?: string }) =>
           api.post('/api/artistry/collab/sessions', data),
-        join: (sessionId: string, data: { userId: string }) =>
+        join: (sessionId: string, data: { userId?: string } = {}) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/join`, data),
-        leave: (sessionId: string, data: { userId: string }) =>
+        leave: (sessionId: string, data: { userId?: string } = {}) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/leave`, data),
         action: (sessionId: string, data: { userId: string; action: string; data?: unknown }) =>
           api.post(`/api/artistry/collab/sessions/${sessionId}/action`, data),

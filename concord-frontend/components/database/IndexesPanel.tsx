@@ -34,7 +34,7 @@ export function IndexesPanel() {
           Total index size: {formatBytes(indexes.reduce((s, idx) => s + idx.sizeBytes, 0))}
         </span>
       </div>
-      <p className="text-[11px] text-gray-500">
+      <p className="text-[11px] text-lattice-muted">
         Across {tables.length} table{tables.length === 1 ? '' : 's'} in the workspace store — the same datasets the Live Client shows.
       </p>
 
@@ -88,13 +88,13 @@ export function IndexesPanel() {
             {indexes.map((idx) => (
               <tr key={idx.id} className="border-b border-lattice-border/40 hover:bg-lattice-surface/60 transition-colors">
                 <td className="px-3 py-2 font-mono text-xs text-gray-200">{idx.name}</td>
-                <td className="px-3 py-2 text-xs text-neon-cyan">{idx.dataset} <span className="text-gray-500">({idx.connectionName})</span></td>
+                <td className="px-3 py-2 text-xs text-neon-cyan">{idx.dataset} <span className="text-lattice-muted">({idx.connectionName})</span></td>
                 <td className="px-3 py-2 font-mono text-xs text-gray-300">{idx.columns.join(', ')}</td>
                 <td className="px-3 py-2 text-xs">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-neon-green/10 text-neon-green">{idx.type.toUpperCase()}</span>
                 </td>
                 <td className="px-3 py-2 text-xs">
-                  {idx.unique ? <CheckCircle className="w-3.5 h-3.5 text-neon-yellow" /> : <span className="text-gray-600">-</span>}
+                  {idx.unique ? <CheckCircle className="w-3.5 h-3.5 text-neon-yellow" /> : <span className="text-lattice-muted">-</span>}
                 </td>
                 <td className="px-3 py-2 text-xs text-gray-400 text-right font-mono">{formatBytes(idx.sizeBytes)}</td>
                 <td className="px-3 py-2 text-right">
@@ -105,7 +105,7 @@ export function IndexesPanel() {
                       await deleteIndex(idx.connectionId, idx.id);
                     }}
                     onBlur={() => setArmedDelete((a) => (a === idx.id ? null : a))}
-                    className={armedDelete === idx.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'text-gray-400 hover:text-red-400'}
+                    className={armedDelete === idx.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'text-gray-400 hover:text-red-400'}
                     aria-label={armedDelete === idx.id ? `Confirm delete index ${idx.name}` : `Delete index ${idx.name}`}
                   >
                     {armedDelete === idx.id ? 'Delete?' : <Trash2 className="w-3 h-3" />}
@@ -116,7 +116,7 @@ export function IndexesPanel() {
           </tbody>
         </table>
         {indexes.length === 0 && (
-          <p className="text-xs text-gray-500 text-center py-4">No indexes yet — create one above, or apply an Index Recommendation.</p>
+          <p className="text-xs text-lattice-muted text-center py-4">No indexes yet — create one above, or apply an Index Recommendation.</p>
         )}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

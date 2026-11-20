@@ -46,7 +46,7 @@ export function AssistantMoodChip({ pollMs = 20000 }: { pollMs?: number }) {
       title={lit
         ? `Concord's felt state — valence ${v >= 0 ? '+' : ''}${v.toFixed(2)}, arousal ${arousal.toFixed(2)}. A correlate of its affect substrate, not a consciousness claim.`
         : `Concord's felt state is neutral right now. It shifts as the conversation goes. A correlate of its affect substrate, not a consciousness claim.`}
-      className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-fuchsia-500/[0.08] px-2 py-0.5 text-[10px] text-fuchsia-200"
+      className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--nb-red,rgba(217,70,239,0.3))] bg-[var(--nb-red-soft,rgba(217,70,239,0.08))] px-2 py-0.5 text-[10px] text-[color:var(--nb-red,#f5d0fe)]"
     >
       <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       feeling: <span className="font-medium capitalize">{label}</span>

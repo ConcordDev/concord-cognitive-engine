@@ -65,7 +65,7 @@ export function HybridReveal() {
             {hybrid.domainAffinity && hybrid.domainAffinity.length > 0 && (
               <div className="flex gap-1 justify-center flex-wrap mt-2 mb-3">
                 {hybrid.domainAffinity.map(d => (
-                  <span key={d} className="text-[10px] bg-neon-purple/10 border border-neon-purple/30 rounded px-1.5 py-0.5 text-neon-purple font-mono">
+                  <span key={d} className="text-[10px] bg-neon-purple/10 border border-neon-purple/30 rounded px-1.5 py-0.5 text-neon-purple-bright font-mono">
                     {d}
                   </span>
                 ))}
@@ -78,7 +78,7 @@ export function HybridReveal() {
             )}
             <button
               onClick={dismiss}
-              className="mt-2 px-6 py-2 rounded-lg bg-neon-purple/20 border border-neon-purple/40 text-neon-purple text-sm hover:bg-neon-purple/30 transition"
+              className="mt-2 px-6 py-2 rounded-lg bg-neon-purple/20 border border-neon-purple/40 text-neon-purple-bright text-sm hover:bg-neon-purple/30 transition"
             >
               Claim Skill
             </button>

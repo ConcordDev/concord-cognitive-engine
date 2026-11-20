@@ -145,14 +145,14 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
           <button
             type="button" role="radio" aria-checked={mode === 'tree'}
             onClick={() => { setMode('tree'); setFaultResult(null); }}
-            className={`px-2.5 py-1 rounded-md ${mode === 'tree' ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-md ${mode === 'tree' ? 'bg-neon-pink/20 text-neon-pink-bright' : 'text-gray-400 hover:text-white'}`}
           >
             Simple tree
           </button>
           <button
             type="button" role="radio" aria-checked={mode === 'faulttree'}
             onClick={() => { setMode('faulttree'); setResult(null); }}
-            className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 ${mode === 'faulttree' ? 'bg-neon-pink/20 text-neon-pink' : 'text-gray-400 hover:text-white'}`}
+            className={`px-2.5 py-1 rounded-md inline-flex items-center gap-1 ${mode === 'faulttree' ? 'bg-neon-pink/20 text-neon-pink-bright' : 'text-gray-400 hover:text-white'}`}
             title="Fault-tree: propagates probability up the tree (OR-gate) and ranks Ishikawa category dominance"
           >
             <Sigma className="w-3 h-3" /> Fault-tree
@@ -173,7 +173,7 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
         </select>
         <button
           onClick={addCause}
-          className="flex items-center gap-1 px-3 py-1.5 bg-neon-pink/20 text-neon-pink rounded text-sm hover:bg-neon-pink/30"
+          className="flex items-center gap-1 px-3 py-1.5 bg-neon-pink/20 text-neon-pink-bright rounded text-sm hover:bg-neon-pink/30"
         >
           <Plus className="w-4 h-4" /> Cause
         </button>
@@ -221,7 +221,7 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
           <button
             onClick={analyze}
             disabled={busy}
-            className="px-3 py-1.5 bg-neon-pink/20 text-neon-pink rounded text-sm hover:bg-neon-pink/30 disabled:opacity-50"
+            className="px-3 py-1.5 bg-neon-pink/20 text-neon-pink-bright rounded text-sm hover:bg-neon-pink/30 disabled:opacity-50"
           >
             {mode === 'tree' ? 'Build Tree' : 'Run Fault-Tree Analysis'}
           </button>
@@ -235,7 +235,7 @@ export function RootCausePanel({ pains }: { pains: Pain[] }) {
               {faultResult.totalCauses} causes · depth {faultResult.treeDepth}
             </span>
             {faultResult.dominantCategory && (
-              <span className="px-2.5 py-1 rounded bg-neon-pink/15 text-neon-pink border border-neon-pink/30 capitalize">
+              <span className="px-2.5 py-1 rounded bg-neon-pink/15 text-neon-pink-bright border border-neon-pink/30 capitalize">
                 Dominant: {faultResult.dominantCategory.category} (p={faultResult.dominantCategory.probability})
               </span>
             )}

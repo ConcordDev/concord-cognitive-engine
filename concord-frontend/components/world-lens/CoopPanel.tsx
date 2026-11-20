@@ -317,7 +317,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
               {activeRaid.state === 'active' && (
                 <button
                   onClick={contribute}
-                  className="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-white text-xs"
+                  className="px-3 py-1 bg-amber-700 hover:bg-amber-500 rounded text-white text-xs"
                 >
                   Contribute (+5)
                 </button>
@@ -331,7 +331,7 @@ export default function CoopPanel({ partyId: partyIdProp, userId, isLeader = fal
                 placeholder="Raid target"
                 className="w-full mb-2 bg-black/60 border border-white/10 rounded px-2 py-1 text-sm"
               />
-              <button onClick={startRaid} className="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-white text-xs">
+              <button onClick={startRaid} className="px-3 py-1 bg-amber-700 hover:bg-amber-500 rounded text-white text-xs">
                 Start raid
               </button>
             </div>

@@ -119,7 +119,7 @@ export function Orbit3DGlobe() {
                 cx={Math.cos(a) * r}
                 cy={Math.sin(a) * r}
                 r={0.6}
-                fill="#52525b"
+                fill="#a1a1aa"
               />
             );
           })}

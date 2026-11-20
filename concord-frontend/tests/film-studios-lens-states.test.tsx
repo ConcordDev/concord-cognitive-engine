@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 const { lensRun, authUser } = vi.hoisted(() => ({
@@ -38,11 +38,32 @@ vi.mock('@/components/lens/DTUExportButton', () => ({
 
 import FilmStudiosPage from '@/app/lenses/film-studios/page';
 
+
+// The screen carries two 'Add scene' buttons once a production is open: the page's own
+// scene form and the Production desk's Script panel (efc4a85bc). These tests drive the
+// page's own form, so pick the one outside the desk region.
+const pageAddScene = (view: ReturnType<typeof render>) =>
+  view.getAllByRole('button', { name: 'Add scene' }).find((b) => !b.closest('[aria-label="Production desk"]')) as HTMLElement;
+const findPageAddScene = (view: ReturnType<typeof render>) =>
+  waitFor(() => {
+    const b = view.queryAllByRole('button', { name: 'Add scene' }).find((x) => !x.closest('[aria-label="Production desk"]'));
+    if (!b) throw new Error('page Add scene not found');
+    return b as HTMLElement;
+  });
+
 function listed(projects: { id: string; title: string }[]) {
   return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
 }
 function scenesOf(scenes: { id: string; location: string; slugline: string }[]) {
-  return { data: { ok: true, result: { scenes, count: scenes.length }, error: null } };
+  // Real scene-list rows carry the script-breakdown list the Script panel maps over.
+  const rows = scenes.map((sc, i) => ({ number: String(i + 1), breakdownElements: [], ...sc }));
+  return { data: { ok: true, result: { scenes: rows, count: rows.length, totalPages: 0 }, error: null } };
+}
+
+// The script panel loads its revisions beside the scenes; an unmocked action throws
+// into an unhandled rejection that fails the whole vitest run.
+function revisionsOf(revisions: unknown[]) {
+  return { data: { ok: true, result: { revisions, count: revisions.length }, error: null } };
 }
 
 beforeEach(() => {
@@ -90,6 +111,7 @@ describe('film studios production', () => {
         projects.push({ id: 'prj_1', title: input?.title || '' });
         return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -98,7 +120,7 @@ describe('film studios production', () => {
     fireEvent.click(view.getByRole('button', { name: '+ New production' }));
     expect(await view.findByRole('button', { name: 'Door production' })).toHaveAttribute('aria-pressed', 'true');
     expect(view.getByText('Nothing selected.')).toBeInTheDocument();
-    expect(view.getByRole('button', { name: 'Add scene' })).toBeEnabled();
+    expect(await findPageAddScene(view)).toBeEnabled();
     const save = lensRun.mock.calls.find((call) => call[1] === 'project-create');
     expect(save?.[0]).toBe('film-studios');
     expect(save?.[2]).toEqual({ title: 'Door production' });
@@ -110,6 +132,7 @@ describe('film studios production', () => {
       if (action === 'project-create') {
         return { data: { ok: true, result: { project: { id: 'prj_missing', title: 'Lost production' } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -125,13 +148,14 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
     fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
-    expect(await view.findByRole('button', { name: 'Add scene' })).toBeEnabled();
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    expect(await findPageAddScene(view)).toBeEnabled();
+    fireEvent.click(pageAddScene(view));
+    fireEvent.click(pageAddScene(view));
     expect(await view.findByRole('alert')).toHaveTextContent(/A location is required/);
     expect(lensRun.mock.calls.map((call) => call[1])).not.toContain('scene-add');
   });
@@ -152,15 +176,16 @@ describe('film studios production', () => {
         });
         return { data: { ok: true, result: { scene: { id: 'scn_1', location: input?.location } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
     fireEvent.click(await view.findByRole('button', { name: 'Door production' }));
-    fireEvent.click(await view.findByRole('button', { name: 'Add scene' }));
+    fireEvent.click(await findPageAddScene(view));
     fireEvent.change(view.getByTestId('film-location'), { target: { value: '  Kitchen  ' } });
     fireEvent.change(view.getByTestId('film-intext'), { target: { value: 'EXT' } });
     fireEvent.change(view.getByTestId('film-timeofday'), { target: { value: 'NIGHT' } });
-    fireEvent.click(view.getByRole('button', { name: 'Add scene' }));
+    fireEvent.click(pageAddScene(view));
     expect(await view.findByRole('heading', { name: 'EXT. Kitchen - NIGHT' })).toBeInTheDocument();
     expect(view.queryByText('Nothing selected.')).toBeNull();
     expect(view.getByTestId('film-scene-location')).toHaveTextContent('Kitchen');
@@ -179,6 +204,7 @@ describe('film studios production', () => {
         projects[0] = { ...projects[0], title: input?.title || '' };
         return { data: { ok: true, result: { project: { id: 'prj_1', title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -196,6 +222,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -217,6 +244,7 @@ describe('film studios production', () => {
         deleted = true;
         return { data: { ok: true, result: { deleted: 'prj_1' }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -245,6 +273,7 @@ describe('film studios production', () => {
         removed = true;
         return { data: { ok: true, result: { deleted: 'scn_1' }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -267,6 +296,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf([]);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -282,6 +312,7 @@ describe('film studios production', () => {
     lensRun.mockImplementation(async (_d: string, action: string) => {
       if (action === 'project-list') return listed(projects);
       if (action === 'scene-list') return scenesOf(scenes);
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);
@@ -320,6 +351,7 @@ describe('film studios production', () => {
         projects.push({ id, title: input?.title || '' });
         return { data: { ok: true, result: { project: { id, title: input?.title } }, error: null } };
       }
+      if (action === 'revision-list') return revisionsOf([]);
       throw new Error(action);
     });
     const view = render(<FilmStudiosPage />);

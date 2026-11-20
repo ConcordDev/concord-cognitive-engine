@@ -64,22 +64,22 @@ export function ChatSystemsDrawer({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 420, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="fixed top-20 right-4 bottom-4 w-[28rem] z-50 flex flex-col bg-lattice-surface border border-lattice-border rounded-lg shadow-2xl overflow-hidden"
+          className="fixed top-20 right-4 bottom-4 w-[28rem] z-50 flex flex-col bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg shadow-2xl overflow-hidden"
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]">
             <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-neon-purple" />
-              <span className="text-sm font-semibold text-white">Systems</span>
+              <Activity className="w-4 h-4 text-[color:var(--nb-red,#a855f7)]" />
+              <span className="text-sm font-semibold text-[color:var(--nb-ink,#ffffff)]">Systems</span>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
               title="Close"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex gap-1 px-3 py-2 border-b border-lattice-border overflow-x-auto">
+          <div className="flex gap-1 px-3 py-2 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] overflow-x-auto">
             {(
               [
                 { key: 'shield', label: 'Shield' },
@@ -95,8 +95,8 @@ export function ChatSystemsDrawer({
                 className={cn(
                   'px-3 py-1 rounded-md text-xs font-medium transition-colors whitespace-nowrap',
                   systemsTab === t.key
-                    ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
-                    : 'text-gray-400 hover:text-white hover:bg-lattice-bg'
+                    ? 'bg-[var(--nb-red-soft,rgba(168,85,247,0.2))] text-[color:var(--nb-red,#a855f7)] border border-[color:var(--nb-red,rgba(168,85,247,0.3))]'
+                    : 'text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))]'
                 )}
               >
                 {t.label}
@@ -151,7 +151,7 @@ export function ChatSystemsDrawer({
                     />
                   ))
                 ) : (
-                  <p className="text-xs text-gray-400 text-center py-8">
+                  <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] text-center py-8">
                     No proactive initiatives right now. Claude will surface them here when
                     opportunities arise.
                   </p>

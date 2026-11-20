@@ -186,7 +186,7 @@ describe('projects-006 — board search', () => {
       'project-get': { members: [], sprints: [], milestones: [], labels: [], customFields: [] },
       'task-list': { tasks: [] },
     });
-    wrap(<PjBoardPanel projectId="proj-1" />);
+    wrap(<PjBoardPanel projectId="proj-1" onChange={() => {}} />);
     await screen.findByText('Wire the export');
     fireEvent.change(screen.getByLabelText('Search board'), { target: { value: 'memo' } });
     expect(screen.queryByText('Wire the export')).toBeNull();

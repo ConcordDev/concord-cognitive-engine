@@ -303,7 +303,7 @@ function ResultView({ result }: { result: CheckModelResult }) {
             )}
             {result.trace.map((action, i) => (
               <li key={i}>
-                <span className="text-gray-500">Step {i + 1}:</span> {action}
+                <span className="text-lattice-muted">Step {i + 1}:</span> {action}
               </li>
             ))}
             <li className="text-red-400">→ invariant broke in the state shown below</li>

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ConKayDemo } from '@/components/conkay/demo/ConKayDemo';
+import { WorkshopPage } from '@/components/conkay/workshop/WorkshopPage';
 
 export const metadata: Metadata = {
   title: 'ConKay demo — Concord',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ConKayDemoPage() {
-  return <ConKayDemo />;
+  return <WorkshopPage forceGuest />;
 }

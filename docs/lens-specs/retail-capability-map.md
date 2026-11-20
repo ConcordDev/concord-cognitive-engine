@@ -1,5 +1,38 @@
 # Retail Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **2026-11-18 — "The Stall" identity.** The lens has its own theme
+> (`components/retail/app/stall.css` tokens: chalkboard, wood, brass, receipt
+> paper; Permanent Marker / Caveat / Courier Prime via `stallFonts.ts`) and
+> register-floor features, each backed by a real macro and pinned by
+> `server/tests/depth/retail-stall-behavior.test.js` (behavioral +
+> adversarial): shop sign (`storefront-get/configure`), day board
+> (`analytics-hourly` + `goal-set`, bell on a server `goal_hit` stamp),
+> crates with photos (`/api/artifact/upload` → `product-set-image`, owned
+> PNG/JPEG/WebP ≤5MB) and stock fill, hand-written price tags
+> (`cart-add-custom-line`), regulars (`customer-insights`), till sessions
+> (`till-open/status/close/history`; close mints the day's ledger DTU), and
+> milestone stamps on receipts (computed in `cart-tender`). Sounds are
+> synthesized, opt-in, and fire only on confirmed results.
+
+> **2026-11-18 — per-lens redesign (pilot).** The lens body was rebuilt as one
+> app: `components/retail/app/RetailApp.tsx` (section rail — Register, Orders,
+> Products, Customers, Fulfillment, Marketing, Analytics, Service, Store — with
+> number-key jumps) and a thin 25-line `page.tsx`. The shared lens chrome on
+> this page (`NorthStarFrame`, `ShellPreview`, `RealtimeDataPanel`, stacked
+> tab strips) is gone; only the platform left bar + top bar remain.
+> `LivePosTerminal`, `RetailWorkbench` (a second, duplicate register in a
+> drawer) and `CommerceSuite` were deleted; their panels are now sections.
+> New: `Register.tsx` (product grid + scan-to-add + editable sale + parked
+> sales + customer attach + receipt), `TenderSheet.tsx` (split tender: cash
+> quick amounts, gift card, Stripe card), `OrdersView.tsx` (order list +
+> detail with refund / start-return), `TodayStrip.tsx`, `LowStockView.tsx`.
+> Backed by 5 new macros — `cart-set-line-qty`, `cart-list`, `cart-get`,
+> `cart-void`, `cart-set-customer` — plus gift-card tenders redeemed atomically
+> inside `cart-tender`; pinned by
+> `server/tests/depth/retail-register-behavior.test.js` and
+> `concord-frontend/tests/retail-lens-states.test.tsx`. The file inventory in
+> the sections below predates this pass and is kept as history.
+
 > Derived, not asserted. Every number below has a reproduction command; every
 > classification is backed by a grep or a full read of the file it's about.
 

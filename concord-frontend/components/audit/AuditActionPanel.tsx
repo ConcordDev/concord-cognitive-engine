@@ -155,9 +155,9 @@ export function AuditActionPanel() {
     { id: 'comp' as ActionId, label: 'Compliance', desc: 'complianceCheck', icon: ShieldCheck, accent: '#22c55e', handler: actComp },
     { id: 'trail' as ActionId, label: 'Audit trail', desc: 'trailAnalysis', icon: FileSearch, accent: '#3b82f6', handler: actTrail },
     { id: 'risk' as ActionId, label: 'Risk score', desc: 'riskScore (CR×DR×IR)', icon: Activity, accent: '#ef4444', handler: actRisk },
-    { id: 'sample' as ActionId, label: 'Sample plan', desc: 'samplingPlan', icon: ListChecks, accent: '#a855f7', handler: actSample },
+    { id: 'sample' as ActionId, label: 'Sample plan', desc: 'samplingPlan', icon: ListChecks, accent: '#c084fc', handler: actSample },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private findings DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send findings', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send findings', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public compliance card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Memo', desc: 'Agent: management memo', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

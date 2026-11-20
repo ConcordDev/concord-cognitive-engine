@@ -36,7 +36,7 @@ export interface InspectorProps {
 export function Inspector({ project, track, clip, recorder, onTrack, onClip, onDeleteTrack, onDuplicateTrack, onTransport, onProject }: InspectorProps) {
   const sec = 'space-y-2 border-b border-white/5 p-3';
   return (
-    <div className="w-full flex-shrink-0 overflow-y-auto border-t border-white/5 bg-[#111117] sm:h-full sm:w-64 sm:border-l sm:border-t-0" data-testid="studio-inspector">
+    <div className="w-full flex-shrink-0 overflow-y-auto border-t border-white/5 bg-[var(--bo-console)] sm:h-full sm:w-64 sm:border-l sm:border-t-0" data-testid="studio-inspector">
       {track && trackKind(track) === 'audio' && <div className={sec}><RecordPanel api={recorder} transport={project.transport} onTransport={onTransport} /></div>}
       {track ? (
         <div className={sec}>
@@ -116,7 +116,7 @@ export function MasterPanel({ project, onMastering, onInserts }: {
   const slots: Array<keyof Pick<MasteringChain, 'eq' | 'multibandCompressor' | 'stereoWidener' | 'limiter'>> = ['eq', 'multibandCompressor', 'stereoWidener', 'limiter'];
   return (
     <div className="flex h-full gap-2 overflow-x-auto p-2" data-testid="studio-master-devices">
-      <div className="flex w-36 flex-shrink-0 flex-col gap-2 rounded-lg border border-white/10 bg-[#15151c] p-2 text-xs">
+      <div className="flex w-36 flex-shrink-0 flex-col gap-2 rounded-lg border border-white/10 bg-[var(--bo-panel)] p-2 text-xs">
         <div className="font-medium">Master</div>
         <label className="flex items-center gap-2"><input type="checkbox" checked={m.enabled} onChange={(e) => onMastering({ ...m, enabled: e.target.checked })} /> Mastering chain</label>
         <p className="text-[10px] leading-relaxed text-zinc-500">Export applies an exact true-peak limiter and loudness target on top. Live playback uses a close approximation.</p>

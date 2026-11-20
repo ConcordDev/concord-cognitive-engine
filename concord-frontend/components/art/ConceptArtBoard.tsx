@@ -41,10 +41,10 @@ interface ConceptArtEntry {
 }
 
 const VIS_STYLE: Record<string, string> = {
-  public: 'text-emerald-300 border-emerald-900/60 bg-emerald-950/30',
-  marketplace: 'text-violet-300 border-violet-900/60 bg-violet-950/30',
-  internal: 'text-sky-300 border-sky-900/60 bg-sky-950/30',
-  private: 'text-zinc-400 border-zinc-800 bg-zinc-900/60',
+  public: 'text-[color:var(--at-good)] border-[color:var(--at-good)] bg-[var(--at-good-soft)]',
+  marketplace: 'text-[color:var(--at-accent-text)] border-[color:var(--at-accent)] bg-[var(--at-accent-soft)]',
+  internal: 'text-[color:var(--at-blue)] border-[color:var(--at-blue)] bg-[var(--at-blue-soft)]',
+  private: 'text-[color:var(--at-muted)] border-[color:var(--at-rule)] bg-[var(--at-gesso)]',
 };
 
 function fmtDate(iso: string): string {
@@ -95,45 +95,45 @@ export function ConceptArtBoard() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Library className="w-4 h-4 text-violet-400" />
-          <h3 className="text-xs font-semibold text-zinc-200">My concept art</h3>
-          <span className="text-[11px] text-zinc-500">persisted DTUs · citable as asset lineage</span>
+          <Library className="w-4 h-4 text-[color:var(--at-accent-text)]" />
+          <h3 className="text-xs font-semibold text-[color:var(--at-ink)]">My concept art</h3>
+          <span className="text-[11px] text-[color:var(--at-muted)]">persisted DTUs · citable as asset lineage</span>
         </div>
         <button
           type="button"
           onClick={() => void refresh()}
           disabled={refreshing}
-          className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 disabled:opacity-50"
+          className="flex items-center gap-1 text-[11px] text-[color:var(--at-muted)] hover:text-[color:var(--at-ink)] disabled:opacity-50"
         >
           <RefreshCw className={cn('w-3.5 h-3.5', refreshing && 'animate-spin')} /> Refresh
         </button>
       </div>
 
-      <p className="text-[11px] text-zinc-500 leading-tight">
-        Artworks you published with <span className="text-zinc-300">Publish as concept art</span> become
-        real <span className="font-mono text-zinc-400">dtus</span> rows — they survive a reload and can be
+      <p className="text-[11px] text-[color:var(--at-muted)] leading-tight">
+        Artworks you published with <span className="text-[color:var(--at-ink-2)]">Publish as concept art</span> become
+        real <span className="font-mono text-[color:var(--at-muted)]">dtus</span> rows — they survive a reload and can be
         cited as the origin of a building or other asset.
       </p>
 
       {error && (
-        <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">
+        <div className="text-xs text-[color:var(--at-bad)] bg-[var(--at-bad-soft)] border border-[color:var(--at-bad)] rounded-lg px-3 py-2">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-400">
+        <div className="flex items-center justify-center py-8 text-[color:var(--at-muted)]">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : entries.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic py-8 text-center">
+        <p className="text-[11px] text-[color:var(--at-muted)] italic py-8 text-center">
           Your concept board is empty. Open an artwork in the Studio and choose{' '}
-          <span className="text-zinc-300">Publish as concept art</span> to save it here permanently.
+          <span className="text-[color:var(--at-ink-2)]">Publish as concept art</span> to save it here permanently.
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {entries.map((c) => (
-            <div key={c.dtuId} className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
+            <div key={c.dtuId} className="bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded-xl overflow-hidden">
               <div
                 className="aspect-[4/3] overflow-hidden"
                 style={{ background: c.background || '#18181b' }}
@@ -142,22 +142,22 @@ export function ConceptArtBoard() {
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={c.thumbnail} alt={c.title} className="w-full h-full object-contain" />
                 ) : (
-                  <span className="flex items-center justify-center h-full text-[10px] text-zinc-500">No preview</span>
+                  <span className="flex items-center justify-center h-full text-[10px] text-[color:var(--at-muted)]">No preview</span>
                 )}
               </div>
               <div className="px-2.5 py-1.5 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs text-zinc-100 truncate">{c.title}</p>
+                  <p className="text-xs text-[color:var(--at-ink)] truncate">{c.title}</p>
                   <span className={cn('shrink-0 text-[9px] uppercase tracking-wide border rounded px-1 py-0.5', VIS_STYLE[c.visibility] || VIS_STYLE.private)}>
                     {c.visibility}
                   </span>
                 </div>
-                <p className="text-[10px] text-zinc-500">
+                <p className="text-[10px] text-[color:var(--at-muted)]">
                   {c.width != null && c.height != null ? `${c.width}×${c.height} · ` : ''}
                   {c.layerCount} layer{c.layerCount === 1 ? '' : 's'} · {c.strokeCount} stroke{c.strokeCount === 1 ? '' : 's'}
                 </p>
-                <p className="text-[9px] text-zinc-600">{fmtDate(c.createdAt)}</p>
-                <p className="text-[9px] font-mono text-zinc-600 truncate" title={c.dtuId}>{c.dtuId}</p>
+                <p className="text-[9px] text-[color:var(--at-faint)]">{fmtDate(c.createdAt)}</p>
+                <p className="text-[9px] font-mono text-[color:var(--at-faint)] truncate" title={c.dtuId}>{c.dtuId}</p>
               </div>
             </div>
           ))}

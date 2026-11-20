@@ -256,7 +256,7 @@ export function BookingActionDock({ appointment, onClose }: DockProps) {
     { id: 'complete', label: 'Mark complete',   icon: Receipt,      accent: '#22c55e', desc: 'Close + mint receipt DTU + DM',                          handler: actComplete, disabled: status === 'completed' },
     { id: 'no_show',  label: 'Mark no-show',    icon: XCircle,      accent: '#ef4444', desc: 'Status + bump no-show count + soft-touch DM',            handler: actNoShow,   disabled: status === 'no_show' || status === 'completed' },
     { id: 'invoice',  label: 'Generate invoice', icon: FileText,    accent: '#8b5cf6', desc: 'Mint invoice DTU + DM client',                           handler: actInvoice,  disabled: false },
-    { id: 'rebook',   label: 'Schedule rebook', icon: RotateCw,     accent: '#ec4899', desc: 'Create next-cycle appointment + DM client',              handler: actRebook,   disabled: false },
+    { id: 'rebook',   label: 'Schedule rebook', icon: RotateCw,     accent: '#f472b6', desc: 'Create next-cycle appointment + DM client',              handler: actRebook,   disabled: false },
   ];
 
   return (

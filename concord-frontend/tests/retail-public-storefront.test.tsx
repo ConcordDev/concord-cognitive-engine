@@ -14,6 +14,11 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, cleanup } from '@testing-library/react';
 
+// server/domains/retail.js imports server/lib/stripe.js, which lazily imports the server-only
+// `stripe` package — not resolvable from the frontend's vite graph. The storefront read under
+// test never touches Stripe; the real stripeSecretKey() returns "" when unset, so mirror that.
+vi.mock('../../server/lib/stripe.js', () => ({ stripeSecretKey: () => '' }));
+
 // The real server lens actions, captured through their registrar.
 import registerRetailActions from '../../server/domains/retail.js';
 

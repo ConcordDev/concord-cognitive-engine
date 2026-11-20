@@ -126,31 +126,31 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
       aria-modal="true"
       aria-label="Publish as Concordia material texture"
       tabIndex={-1}
-      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      className="at-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-lg w-full max-w-2xl p-5 text-zinc-200">
+      <div className="bg-[var(--at-sunk)] border border-[color:var(--at-rule)] rounded-lg w-full max-w-2xl p-5 text-[color:var(--at-ink)]">
         <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-zinc-300">
+          <h2 className="text-sm font-semibold tracking-wide uppercase text-[color:var(--at-ink-2)]">
             Publish as Concordia material
           </h2>
-          <button type="button" onClick={onClose} className="text-zinc-500 hover:text-zinc-200 text-xs">close</button>
+          <button type="button" onClick={onClose} className="text-[color:var(--at-muted)] hover:text-[color:var(--at-ink)] text-xs">close</button>
         </div>
 
         <div className="grid grid-cols-[180px_1fr] gap-4">
           {/* Preview thumbnail */}
           <div className="space-y-2">
-            <div className="aspect-square bg-zinc-900 border border-zinc-800 rounded flex items-center justify-center overflow-hidden">
+            <div className="aspect-square bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded flex items-center justify-center overflow-hidden">
               {preview
                 /* next/image doesn't fit data: URLs from canvas.toDataURL */
                 /* eslint-disable-next-line @next/next/no-img-element */
                 ? <img src={preview} alt="canvas preview" className="w-full h-full object-contain" />
-                : <span className="text-zinc-600 text-xs">no canvas</span>}
+                : <span className="text-[color:var(--at-faint)] text-xs">no canvas</span>}
             </div>
-            <p className="text-[10px] leading-tight text-zinc-500">
-              Goes to <span className="font-mono text-zinc-400">evo_assets</span> with
-              {' '}<span className="font-mono text-violet-300">source=authored</span>.
+            <p className="text-[10px] leading-tight text-[color:var(--at-muted)]">
+              Goes to <span className="font-mono text-[color:var(--at-muted)]">evo_assets</span> with
+              {' '}<span className="font-mono text-[color:var(--at-accent-text)]">source=authored</span>.
               Royalty cascade + LLaVA validation kick in automatically.
             </p>
           </div>
@@ -158,30 +158,30 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
           {/* Form */}
           <div className="space-y-3">
             <label className="block">
-              <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Material kind</span>
+              <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] mb-1">Material kind</span>
               <select
                 value={kind}
                 onChange={(e) => setKind(e.target.value as Kind)}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm"
+                className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-sm"
               >
                 {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
             </label>
 
             <label className="block">
-              <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">Seed (variant)</span>
+              <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] mb-1">Seed (variant)</span>
               <input
                 type="number"
                 value={seed}
                 min={1}
                 max={0xffffffff}
                 onChange={(e) => setSeed(Math.max(1, parseInt(e.target.value || '1', 10) || 1))}
-                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-sm font-mono"
+                className="w-full bg-[var(--at-gesso)] border border-[color:var(--at-rule)] rounded px-2 py-1.5 text-sm font-mono"
               />
             </label>
 
             <label className="block">
-              <span className="block text-[10px] uppercase tracking-wider text-zinc-400 mb-1">PBR channel</span>
+              <span className="block text-[10px] uppercase tracking-wider text-[color:var(--at-muted)] mb-1">PBR channel</span>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
                 {CHANNELS.map((ch) => {
                   const slot = coverage?.channels[ch];
@@ -194,12 +194,12 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
                       className={
                         'rounded px-2 py-1.5 text-xs border ' +
                         (isActive
-                          ? 'bg-violet-600/30 border-violet-400 text-violet-100'
-                          : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700')
+                          ? 'bg-[var(--at-accent)] border-[color:var(--at-accent)] text-[color:var(--at-accent-text)]'
+                          : 'bg-[var(--at-gesso)] border-[color:var(--at-rule)] text-[color:var(--at-ink-2)] hover:border-[color:var(--at-rule-2)]')
                       }
                     >
                       <div>{ch}</div>
-                      <div className="text-[9px] mt-0.5 text-zinc-500">
+                      <div className="text-[9px] mt-0.5 text-[color:var(--at-muted)]">
                         {slot ? `q${slot.qualityLevel}` : '—'}
                       </div>
                     </button>
@@ -209,28 +209,28 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
             </label>
 
             {coverage && (
-              <div className="text-[11px] text-zinc-400">
+              <div className="text-[11px] text-[color:var(--at-muted)]">
                 Coverage for <span className="font-mono">{kind}:{seed}</span>:{' '}
                 {(['color', 'normal', 'roughness', 'ao'] as const)
                   .filter((ch) => coverage.channels[ch])
                   .map((ch) => ch)
-                  .join(', ') || <span className="text-zinc-600">no channels yet — be first</span>}
+                  .join(', ') || <span className="text-[color:var(--at-faint)]">no channels yet — be first</span>}
               </div>
             )}
 
             {error && (
-              <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900 rounded px-2 py-1.5">
+              <div className="text-xs text-[color:var(--at-bad)] bg-[var(--at-bad-soft)] border border-[color:var(--at-bad)] rounded px-2 py-1.5">
                 {error}
               </div>
             )}
 
             {result && (
-              <div className="text-xs text-emerald-300 bg-emerald-950/30 border border-emerald-900/60 rounded px-2 py-1.5 space-y-1">
+              <div className="text-xs text-[color:var(--at-good)] bg-[var(--at-good-soft)] border border-[color:var(--at-good)] rounded px-2 py-1.5 space-y-1">
                 <div>
                   {result.created ? 'Registered' : 'Updated'} as
                   {' '}<span className="font-mono">{result.sourceId}</span>
                 </div>
-                <div className="text-zinc-400 font-mono text-[10px] break-all">{result.resolveUrl}</div>
+                <div className="text-[color:var(--at-muted)] font-mono text-[10px] break-all">{result.resolveUrl}</div>
               </div>
             )}
 
@@ -238,7 +238,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200"
+                className="px-3 py-1.5 text-xs text-[color:var(--at-muted)] hover:text-[color:var(--at-ink)]"
               >
                 Cancel
               </button>
@@ -246,7 +246,7 @@ export function PublishAsTextureDialog({ canvas, artworkId, onClose }: PublishAs
                 type="button"
                 onClick={submit}
                 disabled={!canvas || submitting}
-                className="px-4 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-1.5 text-xs bg-[var(--at-accent)] hover:bg-[var(--at-accent)] text-[color:var(--at-accent-ink)] rounded disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Publishing…' : 'Publish'}
               </button>

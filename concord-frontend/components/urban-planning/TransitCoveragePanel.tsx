@@ -167,7 +167,7 @@ export function TransitCoveragePanel() {
         <div className="mt-3 flex items-center gap-2">
           <button
             onClick={addStop}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs text-white hover:bg-emerald-500"
+            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs text-white hover:bg-emerald-600"
           >
             <Plus className="h-3.5 w-3.5" /> Add Stop
           </button>

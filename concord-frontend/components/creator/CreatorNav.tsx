@@ -60,7 +60,7 @@ export function CreatorNav({
       <div className="flex lg:flex-col gap-4 min-w-max lg:min-w-0">
         {GROUPS.map((g) => (
           <div key={g.label}>
-            <div className="hidden lg:block text-[11px] uppercase tracking-wider text-zinc-600 px-2 mb-1">
+            <div className="hidden lg:block text-[11px] uppercase tracking-wider text-lattice-muted px-2 mb-1">
               {g.label}
             </div>
             <ul className="flex lg:flex-col gap-0.5">
@@ -75,7 +75,7 @@ export function CreatorNav({
                       aria-current={active ? 'page' : undefined}
                       className={cn(
                         'w-full flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] whitespace-nowrap transition-colors',
-                        active ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                        active ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                       )}
                     >
                       <Icon className="w-3.5 h-3.5 shrink-0" />

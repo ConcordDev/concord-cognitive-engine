@@ -1203,3 +1203,44 @@ export function detectMediaType(mimeType) {
   if (mimeType.startsWith("image/")) return "image";
   return "document";
 }
+
+/**
+ * Music releases (server/domains/music.js release-publish): set a track's sale
+ * terms on its media DTU. `streaming: "preview"` with a price puts the track
+ * behind the existing stream paywall (lib/media-preview-window.js): everyone
+ * but the artist and buyers hears `previewSec` seconds. `streaming: "full"`
+ * streams free to everyone; buying still grants ownership and the download.
+ * Persists through the media index like any other media update.
+ */
+export function setMediaSaleTerms(STATE, mediaId, authorId, { streaming = "full", price = 0, previewSec = 30 } = {}) {
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  if (dtu.author !== authorId) return { ok: false, error: "Not authorized to update this media" };
+  const priced = Number(price) > 0;
+  const gated = streaming === "preview" && priced;
+  dtu.tiers = [
+    { tier: "listen", enabled: true, price: 0, currency: "CC" },
+    { tier: "commercial", enabled: gated, price: gated ? Number(price) : 0, currency: "CC" },
+  ];
+  dtu.previewStart = 0;
+  dtu.previewDuration = gated ? Math.max(15, Math.min(90, Math.round(Number(previewSec) || 30))) : 0;
+  dtu.privacy = "public";
+  dtu.scope = "global";
+  dtu.updatedAt = new Date().toISOString();
+  if (STATE.dtus) STATE.dtus.set(mediaId, dtu);
+  rememberMedia(STATE, dtu);
+  return { ok: true, mediaDTU: dtu };
+}
+
+/** A purchase entitles the buyer to the full stream of a track (read by viewerMayStreamFull). Idempotent; persisted. */
+export function grantMediaEntitlement(STATE, mediaId, userId) {
+  if (!mediaId || !userId) return { ok: false, error: "mediaId and userId are required" };
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  if (!Array.isArray(dtu.licensedUserIds)) dtu.licensedUserIds = [];
+  if (!dtu.licensedUserIds.includes(userId)) dtu.licensedUserIds.push(userId);
+  rememberMedia(STATE, dtu);
+  return { ok: true };
+}

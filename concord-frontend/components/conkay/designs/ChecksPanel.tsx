@@ -35,7 +35,7 @@ export function ChecksPanel({ checks, counts, perPartRuns }: { checks: DesignChe
         </div>
       </div>
       {perPartTotal > 0 && (
-        <p className="mt-1.5 text-[11px] text-slate-500">
+        <p className="mt-1.5 text-[11px] text-slate-400">
           Plus {perPartTotal} per-part mass/cost runs ({CHECK_STATUSES.filter((s) => perPartRuns![s]).map((s) => `${perPartRuns![s]} ${CHECK_LABEL[s].toLowerCase()}`).join(', ')}), rolled into the mass breakdown.
         </p>
       )}
@@ -50,7 +50,7 @@ export function ChecksPanel({ checks, counts, perPartRuns }: { checks: DesignChe
                 aria-expanded={isOpen}
                 className="flex w-full items-center gap-2 py-2 text-left hover:bg-white/[0.02] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-400/50"
               >
-                <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform ${isOpen ? 'rotate-90' : ''}`} aria-hidden />
+                <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`} aria-hidden />
                 <span className={`w-24 shrink-0 rounded-md border px-1.5 py-0.5 text-center text-[10px] ${CHECK_STYLE[c.status]}`}>{CHECK_LABEL[c.status]}</span>
                 <span className="min-w-0 flex-1 truncate font-mono text-xs text-slate-200">{c.runId}</span>
                 <span className="shrink-0 text-right text-[11px] tabular-nums text-slate-400">
@@ -61,7 +61,7 @@ export function ChecksPanel({ checks, counts, perPartRuns }: { checks: DesignChe
                 <div className="mb-3 ml-6 space-y-2 text-xs text-slate-300">
                   {c.margins.length > 0 && (
                     <table className="w-full text-left text-[11px]">
-                      <thead className="text-slate-500"><tr><th className="font-normal">Check</th><th className="font-normal">Demand</th><th className="font-normal">Capacity</th><th className="font-normal">Margin</th></tr></thead>
+                      <thead className="text-slate-400"><tr><th className="font-normal">Check</th><th className="font-normal">Demand</th><th className="font-normal">Capacity</th><th className="font-normal">Margin</th></tr></thead>
                       <tbody className="tabular-nums">
                         {c.margins.map((m, i) => (
                           <tr key={i} className="border-t border-white/5">
@@ -76,7 +76,7 @@ export function ChecksPanel({ checks, counts, perPartRuns }: { checks: DesignChe
                   )}
                   {c.reason && <p className="leading-relaxed text-slate-400">{c.reason}</p>}
                   {[...c.failures, ...c.warnings].map((w, i) => <p key={i} className="leading-relaxed text-amber-200/90">{w}</p>)}
-                  {c.method && <p className="leading-relaxed text-slate-500"><span className="text-slate-400">Method:</span> {c.method}</p>}
+                  {c.method && <p className="leading-relaxed text-slate-400"><span className="text-slate-400">Method:</span> {c.method}</p>}
                 </div>
               )}
             </li>

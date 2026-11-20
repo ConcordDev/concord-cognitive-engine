@@ -1020,7 +1020,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
               key={action}
               onClick={() => handleThreadAction(action)}
               disabled={!selectedThreadId || nodes.length === 0 || threadActiveAction !== null}
-              className="px-3 py-1.5 text-sm rounded-lg bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-3 py-1.5 text-sm rounded-lg bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {threadActiveAction === action ? (
                 <div className="w-3 h-3 border border-neon-purple border-t-transparent rounded-full animate-spin" />
@@ -1099,7 +1099,7 @@ export function ThreadMapPanel({ onOpenComposer }: { onOpenComposer?: () => void
                   <div className="text-xs text-gray-400">Dominant Topic: <span className="text-neon-purple font-medium">{String(r.dominantTopic ?? '-')}</span> · Diversity: <span className="text-white">{String(r.topicDiversity ?? 0)}</span></div>
                   <div className="flex flex-wrap gap-1">
                     {topics.slice(0, 6).map((t, i) => (
-                      <span key={i} className="text-xs bg-neon-purple/20 text-neon-purple px-2 py-0.5 rounded-full">
+                      <span key={i} className="text-xs bg-neon-purple/20 text-neon-purple-bright px-2 py-0.5 rounded-full">
                         {String(t.topic ?? '')} ({String(t.mentions ?? 0)})
                       </span>
                     ))}

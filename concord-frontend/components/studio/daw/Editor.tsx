@@ -6,7 +6,7 @@
  * useStudioProject (undo + autosave); the audio clock never re-renders React.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutList, Grid3x3 } from 'lucide-react';
+import { LayoutList, Grid3x3, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { DAWProject, DAWTrack, DAWClip, SynthPreset } from '@/lib/daw/types';
 import { getStudioEngine } from '@/lib/daw/playback-engine';
@@ -40,11 +40,25 @@ import { ExportDialog, AutoMixDialog, VersionsDialog, AskProducerDialog } from '
 import { AudioClipPane } from './AudioClipPane';
 import { PublishDialog } from './PublishDialog';
 import * as ops from './ops';
+import { CollabPanel } from '../CollabPanel';
+import { StudioKeepMenu } from '../StudioKeepMenu';
+import { boothFontVars } from '../booth/boothFonts';
+import { ROOM_KEY, parseRoom, roomFromKey, type Room } from '../booth/rooms';
+import { SongSections } from '../booth/SongSections';
+import { Tuner } from '../booth/Tuner';
+import { TuneVocal } from '../booth/TuneVocal';
+import { VuMeter } from '../booth/VuMeter';
+import { MidiLearn } from '../booth/MidiLearn';
+import { ChainShelf } from '../booth/ChainShelf';
+import { GroovePicker } from '../booth/GroovePicker';
+import { MasterLoudness } from '../booth/MasterLoudness';
+import { ScoreWorld } from '../booth/ScoreWorld';
+import '../booth/booth.css';
 import { useTakeLane } from './useTakeLane';
 
 export const LAST_PROJECT_KEY = 'concord-studio-last-project';
 
-type BottomTab = 'editor' | 'devices' | 'mixer';
+type BottomTab = 'editor' | 'devices';
 type DialogKind = null | 'export' | 'automix' | 'versions' | 'producer' | 'publish';
 
 interface RecordingState { trackIds: string[]; beat0Time: number; startBeat: number }
@@ -68,6 +82,22 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const rec = useInputRecorder(armedAudioId);
   const { state: transport, launched } = useTransportState();
   const [view, setView] = useState<'arrange' | 'session'>('arrange');
+  const [room, setRoomState] = useState<Room>(() => {
+    try {
+      return parseRoom(new URLSearchParams(window.location.search).get('room')) ?? parseRoom(localStorage.getItem(ROOM_KEY)) ?? 'write';
+    } catch { return 'write'; }
+  });
+  const setRoom = useCallback((r: Room) => {
+    setRoomState(r);
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('room', r);
+      window.history.replaceState(window.history.state, '', u.toString());
+      localStorage.setItem(ROOM_KEY, r);
+    } catch { /* noop */ }
+  }, []);
+  // The Write room always shows the arrangement (takes and comping live there).
+  const shownView = room === 'write' ? 'arrange' : view;
   const [bottom, setBottom] = useState<BottomTab>('editor');
   const [selTrack, setSelTrack] = useState<string | null>(() => initial.tracks.find((t) => t.armed)?.id || initial.tracks.find((t) => t.type !== 'master')?.id || null);
   const [selClip, setSelClip] = useState<string | null>(null);
@@ -76,6 +106,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const [recording, setRecording] = useState<RecordingState | null>(null);
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [importing, setImporting] = useState(false);
+  const takeFileRef = useRef<HTMLInputElement>(null);
   const projectRef = useRef(project);
   // Handlers read the latest project without subscribing the audio clock to React.
   // eslint-disable-next-line react-hooks/refs
@@ -87,7 +118,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const bpb = beatsPerBar(project.timeSignature);
 
   useEffect(() => { engine.setMetronome(metronome); }, [engine, metronome]);
-  useEffect(() => { engine.setMode(view); }, [engine, view]);
+  useEffect(() => { engine.setMode(shownView); }, [engine, shownView]);
   useEffect(() => () => engine.stop(), [engine]);
   // A brand-new project is created on the server right away (not on first edit).
   useEffect(() => {
@@ -324,7 +355,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   }, [edit, engine, rec, storeAudio]);
 
   // ── transport ──
-  const onPlay = useCallback(() => { void engine.play(view === 'session' ? 0 : engine.getBeat()); }, [engine, view]);
+  const onPlay = useCallback(() => { void engine.play(shownView === 'session' ? 0 : engine.getBeat()); }, [engine, shownView]);
   const onStop = useCallback(() => {
     if (recordingRef.current) { void finishRecording(); return; }
     if (engine.isPlaying) engine.stop(); else engine.seek(0);
@@ -358,6 +389,9 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         if (next && next !== projectRef.current) { e.preventDefault(); edit(() => next); return; }
       }
       const k = e.key.toLowerCase();
+      const toRoom = roomFromKey(e.key);
+      if (toRoom) { e.preventDefault(); setRoom(toRoom); return; }
+      if (e.key === 'Escape' && selClip) { e.preventDefault(); setSelClip(null); return; }
       if (k === 'r') { e.preventDefault(); onRecord(); }
       else if (k === 'l') { e.preventDefault(); toggleLoop(); }
       else if (k === 'k') { e.preventDefault(); setMetronome((m) => !m); }
@@ -366,7 +400,7 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [api, dialog, edit, engine, onPlay, onRecord, onStop, selClip, toggleLoop]);
+  }, [api, dialog, edit, engine, onPlay, onRecord, onStop, selClip, setRoom, toggleLoop]);
 
   // Unsaved-work guard while a save is pending.
   useEffect(() => {
@@ -380,16 +414,141 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
   const back = useCallback(() => { engine.stop(); void api.saveNow().finally(onBack); }, [api, engine, onBack]);
   const playhead = () => Math.max(0, engine.getBeat());
 
-  const tabs: Array<[BottomTab, string]> = [['editor', clip?.type === 'audio' ? 'Clip' : 'Piano roll'], ['devices', 'Devices'], ['mixer', 'Mixer']];
+  const tabs: Array<[BottomTab, string]> = [['editor', clip?.type === 'audio' ? 'Clip' : 'Piano roll'], ['devices', 'Devices']];
+  const armedTrack = project.tracks.find((t) => t.id === armedAudioId) || null;
+  const vocalFx = (track?.type === 'audio' ? track : armedTrack)?.effectChain.find((e) => e.type === 'pitchCorrect' && e.enabled !== false)?.id ?? null;
+  const loopRange = (s: number, e: number) => edit((p) => ({ ...p, transport: { ...p.transport, loopEnabled: true, loopStart: s, loopEnd: Math.max(e, s + 1) } }));
+  const selectClip = (id: string | null) => { setSelClip(id); if (id) { const f = ops.findClip(projectRef.current, id); if (f) setSelTrack(f.track.id); setBottom('editor'); } };
+
+  const arrange = (
+    <ArrangeView
+      project={project}
+      beatWidth={bw}
+      selectedTrackId={selTrack}
+      selectedClipId={selClip}
+      recordingTrackIds={recording?.trackIds || []}
+      onSelectTrack={(id) => { setSelTrack(id); }}
+      onSelectClip={selectClip}
+      onAddTrack={(k) => addTrackOf(k)}
+      onCreateClip={(tid, beat) => { const r = ops.addMidiClip(projectRef.current, tid, beat, bpb); if (r.clip) { edit(() => r.project); setSelClip(r.clip.id); setSelTrack(tid); setBottom('editor'); } }}
+      onMoveClip={(cid, tid, beat) => edit((p) => ops.moveClip(p, cid, tid, beat))}
+      onResizeClip={(cid, len) => edit((p) => ops.resizeClip(p, cid, len))}
+      onPatchClip={(cid, patch) => edit((p) => ops.mapClip(p, cid, (c) => ({ ...c, ...patch })))}
+      onSeek={(b) => engine.seek(b)}
+      onSetLoop={(s, e) => edit((p) => ({ ...p, transport: { ...p.transport, loopEnabled: true, loopStart: s, loopEnd: e } }))}
+      onTrackChange={onTrack}
+      onDropFiles={(tid, beat, files) => void importFiles(files, tid, beat)}
+      onDropItem={onDropItem}
+      onZoom={setBw}
+      onTempo={(points) => edit((p) => writeTempoPoints(p, points), 'tempo')}
+      audition={takes.audition}
+      onAuditionTake={takes.onAudition}
+      onSwipeTake={takes.onSwipe}
+      onRenameTake={takes.onRename}
+      onDeleteTake={takes.onDelete}
+      onStarTake={takes.onStar}
+      onCycleTake={takes.onCycle}
+      onFlattenComp={(id) => void takes.onFlatten(id)}
+    />
+  );
+
+  const session = (
+    <SessionGrid
+      project={project}
+      launched={launched}
+      selectedClipId={selClip}
+      selectedTrackId={selTrack}
+      onSelectTrack={setSelTrack}
+      onSelectClip={(id) => selectClip(id)}
+      onCreateClip={(tid, slot) => { const r = ops.addMidiClip(projectRef.current, tid, 0, bpb, slot); if (r.clip) { edit(() => r.project); setSelClip(r.clip.id); setSelTrack(tid); setBottom('editor'); } }}
+      onLaunchClip={(tid, cid) => void engine.launchClip(tid, cid)}
+      onStopTrack={(tid) => engine.stopTrackClip(tid)}
+      onLaunchScene={(slot) => {
+        const map: Record<string, string> = {};
+        for (const t of projectRef.current.tracks) { const c = t.clips.find((x) => x.slot === slot); if (c) map[t.id] = c.id; }
+        void engine.launchScene(map);
+      }}
+      onAddTrack={(k) => addTrackOf(k)}
+      onDropFiles={(tid, slot, files) => void importFiles(files, tid, 0).then(() => {
+        // Imported clip lands at beat 0 of the arrangement; move the newest clip of that track into the slot.
+        edit((p) => ops.mapTrack(p, tid, (t) => { const last = t.clips[t.clips.length - 1]; return last && last.slot === undefined ? { ...t, clips: t.clips.map((c) => (c.id === last.id ? { ...c, slot } : c)) } : t; }));
+      })}
+    />
+  );
+
+  const clipEditor = clip && found && clip.type !== 'audio' ? (
+    <MidiClipPane
+      project={project}
+      track={found.track}
+      clip={clip}
+      playing={transport !== 'stopped'}
+      getBeat={() => engine.getBeat()}
+      onEdit={(fn, key) => edit(fn, key)}
+      onAudition={(pitch, vel) => engine.previewNote(found.track.id, pitch, vel)}
+    />
+  ) : clip && clip.type === 'audio' ? (
+    <AudioClipPane
+      clip={clip}
+      project={project}
+      pcm={clip.audioBufferId ? engine.audioMap().get(clip.audioBufferId) || null : null}
+      onEdits={(doc, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, pitchEdits: doc || undefined })), key)}
+      onClip={(patch, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, ...patch })), key)}
+      onProject={(next) => edit(() => next)}
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center px-4 text-center text-xs text-zinc-600">
+      {track && trackKind(track) !== 'audio' ? 'Double-click in the track lane (or an empty Session slot) to make a MIDI clip, then draw notes here.' : track ? 'Press R (or the record key) to record onto the armed track.' : 'Add a track to start.'}
+    </div>
+  );
+
+  const devices = selTrack === MASTER_ID ? (
+    <MasterPanel
+      project={project}
+      onMastering={(m, key) => edit((p) => ({ ...p, masteringChain: m }), key)}
+      onInserts={(fx, key) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, inserts: fx } }), key)}
+    />
+  ) : (
+    <div className="flex h-full min-h-0 flex-col">
+      <ChainShelf track={track} onEffects={(fx, key) => track && edit((p) => ops.setEffects(p, track.id, fx), key)} />
+      <div className="min-h-0 flex-1">
+        <DevicePanel
+          project={project}
+          track={track}
+          sample={trackSampleChannel(track, engine.audioMap())}
+          onTrack={(patch, key) => track && onTrack(track.id, patch, key)}
+          onEffects={(fx, key) => track && edit((p) => ops.setEffects(p, track.id, fx), key)}
+          onPreset={(pr, key) => edit((p) => ({ ...p, synthPresets: { ...p.synthPresets, [pr.id]: pr } }), key)}
+        />
+      </div>
+    </div>
+  );
+
+  const inspector = (
+    <Inspector
+      project={project}
+      track={track}
+      clip={clip}
+      recorder={rec}
+      onTrack={(patch, key) => track && onTrack(track.id, patch, key)}
+      onClip={onClip}
+      onDeleteTrack={() => { if (!track) return; edit((p) => ops.removeTrack(p, track.id)); setSelTrack(null); setSelClip(null); }}
+      onDuplicateTrack={() => track && edit((p) => ops.duplicateTrack(p, track.id))}
+      onTransport={(patch) => edit((p) => ({ ...p, transport: { ...p.transport, ...patch } }))}
+      onProject={(next) => edit(() => next)}
+    />
+  );
+
+  const rail = 'flex w-full flex-shrink-0 flex-col gap-2 border-white/5 bg-[var(--bo-console)] p-2 sm:w-80 sm:overflow-y-auto sm:border-l';
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#0c0c11] text-zinc-200" data-testid="studio-editor">
+    <div className={cn('booth flex h-full min-h-0 flex-col', boothFontVars)} data-room={room} data-testid="studio-editor">
       <TransportBar
         project={project}
+        room={room}
+        onRoom={setRoom}
         transport={transport}
         recording={!!recording}
         metronome={metronome}
-        countInBars={countIn}
         save={api.save}
         canUndo={api.canUndo}
         canRedo={api.canRedo}
@@ -399,10 +558,8 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onRecord={onRecord}
         onToggleLoop={toggleLoop}
         onToggleMetronome={() => setMetronome((m) => !m)}
-        onCountIn={(bars) => void rec.setPrefs({ countInBars: bars })}
         onBpm={(bpm) => edit((p) => setTransportBpm(p, bpm), 'bpm')}
         onTimeSignature={(beats, unit) => edit((p) => ({ ...p, timeSignature: [Math.max(1, Math.min(16, Math.round(beats) || 4)), [2, 4, 8, 16].includes(unit) ? unit : 4] }))}
-        onSwing={(swing) => edit((p) => ({ ...p, transport: { ...p.transport, swing } }))}
         onKeyScale={(key, scale, scaleMask) => edit((p) => ({ ...p, key, scale, scaleMask }), 'key')}
         onDetectKey={() => detectClipKey(project, selClip, engine.audioMap())}
         onRename={(title) => edit((p) => ({ ...p, title }), 'title')}
@@ -413,174 +570,172 @@ export function StudioEditor({ initial, initialRev, onBack }: StudioEditorProps)
         onAutoMix={() => setDialog('automix')}
         onExport={() => setDialog('export')}
         onPublish={() => setDialog('publish')}
-        onAskProducer={() => setDialog('producer')}
       />
-      {/* FIX-music-002: below sm the three panes stack in a vertical
-          scroller — as one row they totalled ~1,056px (browser 224 +
-          centre 576 + inspector 256) inside a sideways scroller, so the
-          panes clipped and the Mixer tab sat off-screen untappable. */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-x-auto sm:overflow-y-hidden" data-testid="studio-workspace">
-        <BrowserPanel
-          project={project}
-          importing={importing}
-          onAddInstrument={(id) => addTrackOf(isDrumInstrument(id) ? 'drums' : 'instrument', id)}
-          onPlaceItem={(item) => void placeLibraryItem(item, selTrack, playhead())}
-          onImportFiles={(files) => void importFiles(files, track && trackKind(track) === 'audio' ? track.id : null, playhead())}
-        />
-        <div className="flex min-h-[480px] w-full shrink-0 flex-col sm:min-h-0 sm:w-auto sm:min-w-0 sm:flex-1">
-          <div className="flex h-8 flex-shrink-0 items-center gap-1 border-b border-white/5 px-2">
-            {([['arrange', 'Arrange', LayoutList], ['session', 'Session', Grid3x3]] as const).map(([v, label, Icon]) => (
-              <button key={v} onClick={() => setView(v)} className={cn('flex items-center gap-1 rounded px-2 py-0.5 text-[11px]', view === v ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300')} data-testid={`studio-view-${v}`}>
-                <Icon className="h-3 w-3" /> {label}
-              </button>
-            ))}
-            <span className="ml-auto hidden text-[10px] text-zinc-600 sm:inline">Space play · R record · L loop · K click · ⌘Z undo</span>
+
+      {room === 'write' && (
+        // Write: the take on the timeline, song sections above it, and the booth rail (record, tuner, tune, session).
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-hidden" data-testid="booth-write">
+          <div className="flex min-h-[460px] min-w-0 flex-1 flex-col sm:min-h-0">
+            <SongSections key={project.id} projectId={project.id} beatsPerBar={bpb} onLoop={loopRange} />
+            <div className="min-h-0 flex-1">{arrange}</div>
+            {clip && <div className="h-[34%] min-h-[200px] flex-shrink-0 border-t border-white/5 bg-[var(--bo-console)]">{clipEditor}</div>}
           </div>
-          <div className="min-h-0 flex-1">
-            {view === 'arrange' ? (
-              <ArrangeView
+          <aside className={rail} aria-label="Booth">
+            <section className="bo-metal flex items-center gap-3 rounded-lg border p-2.5" data-testid="booth-record">
+              <button
+                type="button"
+                onClick={onRecord}
+                aria-pressed={!!recording}
+                aria-label={recording ? 'Stop recording' : 'Record'}
+                className="bo-key flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center gap-1 rounded-full"
+                data-testid="booth-record-key"
+              >
+                <span className="bo-rec-light h-5 w-5 rounded-full" data-on={recording ? 'true' : 'false'} aria-hidden />
+                <span className="text-[10px]">{recording ? 'Stop' : 'Rec'}</span>
+              </button>
+              <div className="min-w-0 flex-1">
+                <div className="bo-on-air bo-engrave text-sm" data-on={recording ? 'true' : 'false'}>{recording ? 'On air' : 'Standby'}</div>
+                <div className="truncate text-[11px] text-zinc-400">
+                  {armedTrack ? <>Recording onto <span className="bo-scribble px-1 text-xs">{armedTrack.name}</span></> : 'Arm a track (the red dot on its header) to record.'}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                  <select value={countIn} onChange={(e) => void rec.setPrefs({ countInBars: Number(e.target.value) })} className="h-6 rounded bg-black/40 px-1 text-[11px] text-zinc-200 outline-none" aria-label="Count-in before recording" data-testid="booth-count-in">
+                    <option value={0}>No count-in</option>
+                    <option value={1}>1-bar count-in</option>
+                    <option value={2}>2-bar count-in</option>
+                  </select>
+                  <button type="button" onClick={() => takeFileRef.current?.click()} disabled={importing} className="h-6 rounded px-1.5 text-[11px] text-zinc-300 underline-offset-2 hover:underline disabled:opacity-50" data-testid="booth-import-take">
+                    {importing ? 'Importing…' : 'Import a take'}
+                  </button>
+                  <input ref={takeFileRef} type="file" accept="audio/*" multiple className="hidden" aria-label="Import a recorded take" onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    e.target.value = '';
+                    const target = track && trackKind(track) === 'audio' ? track.id : armedAudioId;
+                    if (files.length) void importFiles(files, target, playhead());
+                  }} />
+                </div>
+              </div>
+            </section>
+            <div className="flex justify-center"><VuMeter read={() => rec.getLevel().rmsDb} label="Mic in" testId="booth-mic-vu" /></div>
+            <Tuner fxId={vocalFx} />
+            <TuneVocal key={track?.id ?? "none"} project={project} track={track} getAudio={() => engine.audioMap()} onProject={(next) => edit(() => next)} />
+            <section className="bo-metal rounded-lg border p-2.5">
+              <span className="bo-engrave text-sm">Session</span>
+              <p className="mb-1.5 mt-0.5 text-[11px] text-zinc-500">Bring a producer in on this song, or ask for a starting idea.</p>
+              <button type="button" onClick={() => setDialog('producer')} className="bo-key mb-2 h-8 w-full rounded text-xs" data-testid="booth-ask-producer">Ask producer for an idea</button>
+              {project.id.startsWith('local_') ? <p className="text-[11px] text-zinc-500">Inviting collaborators opens once the song is saved.</p> : <CollabPanel projectId={project.id} />}
+              <StudioKeepMenu project={project.id.startsWith('local_') ? null : { id: project.id, name: project.title, bpm: project.bpm, timeSignature: `${project.timeSignature?.[0] ?? 4}/${project.timeSignature?.[1] ?? 4}`, tracks: project.tracks.filter((t) => t.type !== 'master').map((t) => ({ id: t.id, name: t.name, kind: t.type })) }} />
+            </section>
+          </aside>
+        </div>
+      )}
+
+      {room === 'produce' && (
+        // Produce: browser, arrangement or session clips, the piano roll and devices, and the inspector.
+        // FIX-music-002: below sm the panes stack in a vertical scroller so nothing clips off a phone.
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-x-auto sm:overflow-y-hidden" data-testid="studio-workspace">
+          <BrowserPanel
+            project={project}
+            importing={importing}
+            onAddInstrument={(id) => addTrackOf(isDrumInstrument(id) ? 'drums' : 'instrument', id)}
+            onPlaceItem={(item) => void placeLibraryItem(item, selTrack, playhead())}
+            onImportFiles={(files) => void importFiles(files, track && trackKind(track) === 'audio' ? track.id : null, playhead())}
+          />
+          <div className="flex min-h-[480px] w-full shrink-0 flex-col sm:min-h-0 sm:w-auto sm:min-w-0 sm:flex-1">
+            <div className="flex min-h-9 flex-shrink-0 flex-wrap items-center gap-1 border-b border-white/5 px-2">
+              {([['arrange', 'Arrange', LayoutList], ['session', 'Session', Grid3x3]] as const).map(([v, label, Icon]) => (
+                <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v} className="bo-key flex h-6 items-center gap-1 rounded px-2 text-[11px]" data-testid={`studio-view-${v}`}>
+                  <Icon className="h-3 w-3" /> {label}
+                </button>
+              ))}
+              <span className="mx-1 h-4 w-px bg-white/10" />
+              <GroovePicker swing={project.transport.swing || 0} onSwing={(swing) => edit((p) => ({ ...p, transport: { ...p.transport, swing } }), 'swing')} />
+              <label className="flex items-center gap-1 text-[11px] text-zinc-500">
+                <input
+                  aria-label="Swing"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={Math.max(0, Math.min(100, Math.round(project.transport.swing || 0)))}
+                  onChange={(e) => edit((p) => ({ ...p, transport: { ...p.transport, swing: Math.max(0, Math.min(100, Number(e.target.value) || 0)) } }), 'swing')}
+                  className="h-6 w-11 rounded bg-black/40 px-1 text-right text-[11px] text-zinc-100 outline-none"
+                  title="0 is straight. 100 delays off-eighths by a triplet eighth."
+                />
+                Swing
+              </label>
+              <button type="button" onClick={() => setDialog('producer')} className="bo-key flex h-6 items-center gap-1 rounded px-2 text-[11px]" data-testid="studio-ask-producer">
+                <Sparkles className="h-3 w-3" aria-hidden /> Ask producer
+              </button>
+              <span className="ml-auto hidden text-[10px] text-zinc-600 md:inline">Space play · R record · L loop · K click · 1 2 3 rooms · ⌘Z undo</span>
+            </div>
+            <div className="min-h-0 flex-1">{view === 'arrange' ? arrange : session}</div>
+            <div className="flex h-[40%] min-h-[200px] flex-shrink-0 flex-col border-t border-white/5 bg-[var(--bo-console)]">
+              <div className="flex h-7 flex-shrink-0 items-center gap-1 border-b border-white/5 px-2">
+                {tabs.map(([t, label]) => (
+                  <button key={t} type="button" onClick={() => setBottom(t)} aria-pressed={bottom === t} className={cn('rounded px-2 py-0.5 text-[11px] transition-colors', bottom === t ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300')} data-testid={`studio-tab-${t}`}>{label}</button>
+                ))}
+                {selTrack === MASTER_ID && <span className="ml-2 text-[10px] text-zinc-500">Master</span>}
+              </div>
+              <div className="min-h-0 flex-1">{bottom === 'editor' ? clipEditor : devices}</div>
+            </div>
+          </div>
+          {inspector}
+        </div>
+      )}
+
+      {room === 'mix' && (
+        // Mix: the console across the room, the selected channel's inserts below, master meters and controllers on the right.
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-hidden" data-testid="booth-mix">
+          <div className="flex min-h-[560px] min-w-0 flex-1 flex-col sm:min-h-0">
+            <div className="min-h-[340px] flex-1">
+              <MixerPanel
+                size="console"
                 project={project}
-                beatWidth={bw}
                 selectedTrackId={selTrack}
-                selectedClipId={selClip}
-                recordingTrackIds={recording?.trackIds || []}
-                onSelectTrack={(id) => { setSelTrack(id); }}
-                onSelectClip={(id) => { setSelClip(id); if (id) { const f = ops.findClip(projectRef.current, id); if (f) setSelTrack(f.track.id); setBottom('editor'); } }}
-                onAddTrack={(k) => addTrackOf(k)}
-                onCreateClip={(tid, beat) => { const r = ops.addMidiClip(projectRef.current, tid, beat, bpb); if (r.clip) { edit(() => r.project); setSelClip(r.clip.id); setSelTrack(tid); setBottom('editor'); } }}
-                onMoveClip={(cid, tid, beat) => edit((p) => ops.moveClip(p, cid, tid, beat))}
-                onResizeClip={(cid, len) => edit((p) => ops.resizeClip(p, cid, len))}
-                onPatchClip={(cid, patch) => edit((p) => ops.mapClip(p, cid, (c) => ({ ...c, ...patch })))}
-                onSeek={(b) => engine.seek(b)}
-                onSetLoop={(s, e) => edit((p) => ({ ...p, transport: { ...p.transport, loopEnabled: true, loopStart: s, loopEnd: e } }))}
-                onTrackChange={onTrack}
-                onDropFiles={(tid, beat, files) => void importFiles(files, tid, beat)}
-                onDropItem={onDropItem}
-                onZoom={setBw}
-                onTempo={(points) => edit((p) => writeTempoPoints(p, points), 'tempo')}
-                audition={takes.audition}
-                onAuditionTake={takes.onAudition}
-                onSwipeTake={takes.onSwipe}
-                onRenameTake={takes.onRename}
-                onDeleteTake={takes.onDelete}
-                onStarTake={takes.onStar}
-                onCycleTake={takes.onCycle}
-                onFlattenComp={(id) => void takes.onFlatten(id)}
-              />
-            ) : (
-              <SessionGrid
-                project={project}
-                launched={launched}
-                selectedClipId={selClip}
-                selectedTrackId={selTrack}
-                onSelectTrack={setSelTrack}
-                onSelectClip={(id) => { setSelClip(id); const f = ops.findClip(projectRef.current, id); if (f) setSelTrack(f.track.id); setBottom('editor'); }}
-                onCreateClip={(tid, slot) => { const r = ops.addMidiClip(projectRef.current, tid, 0, bpb, slot); if (r.clip) { edit(() => r.project); setSelClip(r.clip.id); setSelTrack(tid); setBottom('editor'); } }}
-                onLaunchClip={(tid, cid) => void engine.launchClip(tid, cid)}
-                onStopTrack={(tid) => engine.stopTrackClip(tid)}
-                onLaunchScene={(slot) => {
-                  const map: Record<string, string> = {};
-                  for (const t of projectRef.current.tracks) { const c = t.clips.find((x) => x.slot === slot); if (c) map[t.id] = c.id; }
-                  void engine.launchScene(map);
-                }}
-                onAddTrack={(k) => addTrackOf(k)}
-                onDropFiles={(tid, slot, files) => void importFiles(files, tid, 0).then(() => {
-                  // Imported clip lands at beat 0 of the arrangement; move the newest clip of that track into the slot.
-                  edit((p) => ops.mapTrack(p, tid, (t) => { const last = t.clips[t.clips.length - 1]; return last && last.slot === undefined ? { ...t, clips: t.clips.map((c) => (c.id === last.id ? { ...c, slot } : c)) } : t; }));
+                onSelectTrack={(id) => setSelTrack(id)}
+                onTrack={onTrack}
+                onMasterVolume={(db) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, volume: db } }), 'master-vol')}
+                onToggleMastering={() => edit((p) => ({ ...p, masteringChain: { ...p.masteringChain, enabled: !p.masteringChain.enabled } }))}
+                onAutomation={(mode) => edit((p) => ({ ...p, transport: { ...p.transport, automation: mode } }))}
+                onAddReturn={(kind) => edit((p) => {
+                  const i = p.tracks.length;
+                  const t = kind === 'vca'
+                    ? createVca(i)
+                    : createBus(i, kind === 'reverb' ? 'Reverb' : 'Delay', [
+                      kind === 'reverb'
+                        ? effect('reverb', 'Reverb', { decay: 2.2, preDelay: 0.02 }, 1)
+                        : effect('delay', 'Delay', { time: 0.375, feedback: 0.35, tone: 5000 }, 0.35),
+                    ]);
+                  return { ...p, tracks: [...p.tracks, t] };
                 })}
               />
-            )}
-          </div>
-          <div className="flex h-[38%] min-h-[180px] flex-shrink-0 flex-col border-t border-white/5 bg-[#0f0f15]">
-            <div className="flex h-7 flex-shrink-0 items-center gap-1 border-b border-white/5 px-2">
-              {tabs.map(([t, label]) => (
-                <button key={t} onClick={() => setBottom(t)} className={cn('rounded px-2 py-0.5 text-[11px]', bottom === t ? 'bg-white/10 text-white' : 'text-zinc-500 hover:text-zinc-300')} data-testid={`studio-tab-${t}`}>{label}</button>
-              ))}
-              {selTrack === MASTER_ID && <span className="ml-2 text-[10px] text-zinc-500">Master</span>}
             </div>
-            <div className="min-h-0 flex-1">
-              {bottom === 'editor' && (
-                clip && found && clip.type !== 'audio' ? (
-                  <MidiClipPane
-                    project={project}
-                    track={found.track}
-                    clip={clip}
-                    playing={transport !== 'stopped'}
-                    getBeat={() => engine.getBeat()}
-                    onEdit={(fn, key) => edit(fn, key)}
-                    onAudition={(pitch, vel) => engine.previewNote(found.track.id, pitch, vel)}
-                  />
-                ) : clip && clip.type === 'audio' ? (
-                  <AudioClipPane
-                    clip={clip}
-                    project={project}
-                    pcm={clip.audioBufferId ? engine.audioMap().get(clip.audioBufferId) || null : null}
-                    onEdits={(doc, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, pitchEdits: doc || undefined })), key)}
-                    onClip={(patch, key) => edit((p) => ops.mapClip(p, clip.id, (c) => ({ ...c, ...patch })), key)}
-                    onProject={(next) => edit(() => next)}
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-zinc-600">
-                    {track && trackKind(track) !== 'audio' ? 'Double-click in the track lane (or an empty Session slot) to make a MIDI clip, then draw notes here.' : track ? 'Press R (or the record button) to record onto the armed track.' : 'Add a track to start.'}
-                  </div>
-                )
-              )}
-              {bottom === 'devices' && (
-                selTrack === MASTER_ID ? (
-                  <MasterPanel
-                    project={project}
-                    onMastering={(m, key) => edit((p) => ({ ...p, masteringChain: m }), key)}
-                    onInserts={(fx, key) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, inserts: fx } }), key)}
-                  />
-                ) : (
-                  <DevicePanel
-                    project={project}
-                    track={track}
-                    sample={trackSampleChannel(track, engine.audioMap())}
-                    onTrack={(patch, key) => track && onTrack(track.id, patch, key)}
-                    onEffects={(fx, key) => track && edit((p) => ops.setEffects(p, track.id, fx), key)}
-                    onPreset={(pr, key) => edit((p) => ({ ...p, synthPresets: { ...p.synthPresets, [pr.id]: pr } }), key)}
-                  />
-                )
-              )}
-              {bottom === 'mixer' && (
-                <MixerPanel
-                  project={project}
-                  selectedTrackId={selTrack}
-                  onSelectTrack={(id) => setSelTrack(id)}
-                  onTrack={onTrack}
-                  onMasterVolume={(db) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, volume: db } }), 'master-vol')}
-                  onToggleMastering={() => edit((p) => ({ ...p, masteringChain: { ...p.masteringChain, enabled: !p.masteringChain.enabled } }))}
-                  onAutomation={(mode) => edit((p) => ({ ...p, transport: { ...p.transport, automation: mode } }))}
-                  onAddReturn={(kind) => edit((p) => {
-                    const i = p.tracks.length;
-                    const track = kind === 'vca'
-                      ? createVca(i)
-                      : createBus(i, kind === 'reverb' ? 'Reverb' : 'Delay', [
-                        kind === 'reverb'
-                          ? effect('reverb', 'Reverb', { decay: 2.2, preDelay: 0.02 }, 1)
-                          : effect('delay', 'Delay', { time: 0.375, feedback: 0.35, tone: 5000 }, 0.35),
-                      ]);
-                    return { ...p, tracks: [...p.tracks, track] };
-                  })}
-                />
-              )}
+            <div className="flex h-[36%] min-h-[200px] flex-shrink-0 flex-col border-t border-white/5 bg-[var(--bo-console)]">
+              <div className="flex h-7 flex-shrink-0 items-center gap-2 border-b border-white/5 px-2">
+                <span className="bo-engrave text-xs">Inserts</span>
+                <span className="truncate text-[11px] text-zinc-400">{selTrack === MASTER_ID ? 'Master bus' : track ? track.name : 'Pick a channel'}</span>
+              </div>
+              <div className="min-h-0 flex-1">{devices}</div>
             </div>
           </div>
+          <aside className={rail} aria-label="Master">
+            <section className="bo-metal rounded-lg border p-2.5" data-testid="booth-master">
+              <span className="bo-engrave text-sm">Master</span>
+              <div className="mt-1.5 flex justify-center"><VuMeter read={() => engine.masterRmsDb()} label="Mix bus" testId="booth-master-vu" /></div>
+              <MasterLoudness />
+              <button type="button" onClick={() => setSelTrack(MASTER_ID)} aria-pressed={selTrack === MASTER_ID} className="bo-key mt-2 h-8 w-full rounded text-[11px]" data-testid="booth-edit-mastering">Edit the mastering chain</button>
+            </section>
+            <ScoreWorld project={project} getAudio={() => engine.audioMap()} />
+            <MidiLearn
+              project={project}
+              selectedTrackId={selTrack}
+              onTrack={(id, patch, key) => onTrack(id, patch, key)}
+              onMasterVolume={(db) => edit((p) => ({ ...p, masterBus: { ...p.masterBus, volume: db } }), 'master-vol')}
+            />
+          </aside>
         </div>
-        <Inspector
-          project={project}
-          track={track}
-          clip={clip}
-          recorder={rec}
-          onTrack={(patch, key) => track && onTrack(track.id, patch, key)}
-          onClip={onClip}
-          onDeleteTrack={() => { if (!track) return; edit((p) => ops.removeTrack(p, track.id)); setSelTrack(null); setSelClip(null); }}
-          onDuplicateTrack={() => track && edit((p) => ops.duplicateTrack(p, track.id))}
-          onTransport={(patch) => edit((p) => ({ ...p, transport: { ...p.transport, ...patch } }))}
-          onProject={(next) => edit(() => next)}
-        />
-      </div>
+      )}
+
       {dialog === 'export' && <ExportDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}
       {dialog === 'publish' && <PublishDialog project={project} getAudio={() => engine.audioMap()} onClose={() => setDialog(null)} />}
       {dialog === 'automix' && (

@@ -143,7 +143,7 @@ export function WalletShell({
                     </div>
                   )}
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
+                <ChevronRight className="w-3.5 h-3.5 text-lattice-muted" />
               </button>
             </li>
           ))}

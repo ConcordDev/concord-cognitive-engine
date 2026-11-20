@@ -394,7 +394,7 @@ export default function CraftingPage() {
           className="flex min-h-[22rem] flex-col items-center justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
         >
           {phase === 'loading' && (
-            <p role="status" className="text-[14px] text-zinc-500">Opening the bench.</p>
+            <p role="status" className="text-[14px] text-lattice-muted">Opening the bench.</p>
           )}
           {phase === 'error' && (
             <div role="alert" className="text-center">
@@ -408,15 +408,15 @@ export default function CraftingPage() {
             <p role="status" className="mb-4 max-w-xl text-center text-[13px] text-zinc-400">{notice}</p>
           )}
           {phase === 'ready' && recipes.length === 0 && !open && (
-            <p className="text-[14px] text-zinc-500">The bench is clear.</p>
+            <p className="text-[14px] text-lattice-muted">The bench is clear.</p>
           )}
           {phase === 'ready' && recipes.length > 1 && (
             <input value={pieceQuery} onChange={(e) => setPieceQuery(e.target.value)}
               placeholder="Search your pieces" aria-label="Search your pieces"
-              className="mb-3 w-full max-w-xl self-stretch rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+              className="mb-3 w-full max-w-xl self-stretch rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted" />
           )}
           {phase === 'ready' && recipes.length > 0 && visiblePieces.length === 0 && (
-            <p className="text-[14px] text-zinc-500">No pieces match &ldquo;{pieceQuery}&rdquo;.</p>
+            <p className="text-[14px] text-lattice-muted">No pieces match &ldquo;{pieceQuery}&rdquo;.</p>
           )}
           {phase === 'ready' && recipes.length > 0 && (
             <ul className="w-full max-w-xl self-stretch">
@@ -432,7 +432,7 @@ export default function CraftingPage() {
                       {row.title}
                     </button>
                     {row.project && (row.project.materials.length > 0 || row.project.steps.length > 0) ? (
-                      <span className="text-[12px] text-zinc-500">
+                      <span className="text-[12px] text-lattice-muted">
                         {(() => {
                           const est = projectEstimates(row.project);
                           const parts: string[] = [];
@@ -455,7 +455,7 @@ export default function CraftingPage() {
                       </button>
                     ) : row.artifactId && confirmPublishId === row.id ? (
                       <span className="flex items-baseline gap-2">
-                        <span className="text-[12px] text-zinc-500">Anyone who can list published pieces will see this. It is not posted to a feed or a market.</span>
+                        <span className="text-[12px] text-lattice-muted">Anyone who can list published pieces will see this. It is not posted to a feed or a market.</span>
                         <button
                           type="button"
                           onClick={() => void publishPiece(row)}
@@ -537,7 +537,7 @@ export default function CraftingPage() {
                 <p className="mt-2 text-[13px] text-zinc-400">A piece with this name is already on the bench.</p>
               ) : null}
               {!editingId && !(editingId ? editName : name).trim() ? (
-                <p className="mt-2 text-[13px] text-zinc-500">Give the piece a name to put it on the bench.</p>
+                <p className="mt-2 text-[13px] text-lattice-muted">Give the piece a name to put it on the bench.</p>
               ) : null}
               {editingId ? (
                 <div className="mt-6 space-y-5 text-left">
@@ -561,7 +561,7 @@ export default function CraftingPage() {
                       value={projectDraft.photoUrl}
                       onChange={(e) => setProjectDraft((p) => ({ ...p, photoUrl: e.target.value }))}
                       placeholder="https://…"
-                      className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                      className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted"
                     />
                     {projectDraft.photoUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -577,7 +577,7 @@ export default function CraftingPage() {
                           value={m.name}
                           onChange={(e) => setProjectDraft((p) => ({ ...p, materials: p.materials.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)) }))}
                           placeholder="Material"
-                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted"
                         />
                         <input
                           aria-label={`Material ${i + 1} quantity`}
@@ -627,7 +627,7 @@ export default function CraftingPage() {
                           value={s.label}
                           onChange={(e) => setProjectDraft((p) => ({ ...p, steps: p.steps.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) }))}
                           placeholder="Step"
-                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted"
                         />
                         <button
                           type="button"
@@ -671,7 +671,7 @@ export default function CraftingPage() {
                 </div>
               ) : null}
               {saveError ? <p role="alert" id="crafting-name-error" className="mt-3 text-[14px] text-zinc-300">{saveError}</p> : null}
-              {saving ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the piece.</p> : null}
+              {saving ? <p role="status" className="mt-3 text-[14px] text-lattice-muted">Saving the piece.</p> : null}
             </form>
           )}
         </section>

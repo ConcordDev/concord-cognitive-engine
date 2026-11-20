@@ -107,7 +107,7 @@ export function ComponentsPanel() {
                             {comp.usedByLenses.map((l) => (
                               <span
                                 key={l}
-                                className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple rounded"
+                                className="text-xs px-1.5 py-0.5 bg-neon-purple/10 text-neon-purple-bright rounded"
                               >
                                 {l}
                               </span>

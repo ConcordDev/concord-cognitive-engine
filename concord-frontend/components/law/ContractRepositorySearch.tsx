@@ -52,7 +52,7 @@ export function ContractRepositorySearch({ onOpen }: { onOpen?: (id: string) => 
           className="flex-1 bg-black/50 border border-white/15 rounded px-2.5 py-1.5 text-sm text-white"
         />
         <button onClick={run} disabled={busy}
-          className="px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-50 inline-flex items-center gap-1">
+          className="px-3 py-1.5 text-xs rounded bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-50 inline-flex items-center gap-1">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
           Search
         </button>

@@ -252,14 +252,18 @@ export async function approveProposal(id, userId, runMacro, ctx) {
     } catch (e) {
       freshRes = { ok: false, error: `file-get threw: ${e?.message || e}` };
     }
-    if (!freshRes?.ok) {
+    // A brand-new file (empty `before`) is expected to be missing on the
+    // branch: GitHub answers 404, and the commit then creates it (no sha).
+    // A 404 for a file the proposal expected to exist is still a failure.
+    const missing = !freshRes?.ok && (freshRes?.detail?.status === 404 || freshRes?.status === 404);
+    if (!freshRes?.ok && !(missing && edit.before === "")) {
       failed.push({ filename: edit.filename, stage: "file-get", error: freshRes?.error || freshRes?.reason || "file_get_failed" });
       stopped = true;
       continue;
     }
 
-    const freshContent = typeof freshRes.result?.content === "string" ? freshRes.result.content : "";
-    const freshSha = freshRes.result?.sha;
+    const freshContent = freshRes?.ok && typeof freshRes.result?.content === "string" ? freshRes.result.content : "";
+    const freshSha = freshRes?.ok ? freshRes.result?.sha : undefined;
     if (freshContent !== edit.before) {
       conflicts.push({
         filename: edit.filename,

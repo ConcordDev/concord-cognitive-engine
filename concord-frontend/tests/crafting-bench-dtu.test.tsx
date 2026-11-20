@@ -153,8 +153,13 @@ describe('bench D1 load and save', () => {
     });
     const { getByText, getByRole, queryByRole } = render(<CraftingPage />);
     const button = await waitFor(() => getByRole('button', { name: 'Publish' }));
+    // Publishing is two-step: the first click states what publishing does and posts nothing.
     await act(async () => { fireEvent.click(button); });
-    await waitFor(() => expect(getByText('Published')).toBeInTheDocument());
+    expect(getByText(/Anyone who can list published pieces will see this/)).toBeInTheDocument();
+    expect(calls).toEqual([]);
+    await act(async () => { fireEvent.click(getByRole('button', { name: 'Confirm publish' })); });
+    // The published state is shown by the Unpublish control replacing Publish.
+    await waitFor(() => expect(getByRole('button', { name: 'Unpublish' })).toBeInTheDocument());
     expect(calls).toEqual(['/api/lens/crafting/a1/publish']);
     expect(queryByRole('button', { name: 'Publish' })).toBeNull();
   });
@@ -165,8 +170,8 @@ describe('bench D1 load and save', () => {
       [{ id: 'a1', domain: 'crafting', type: 'recipe', title: 'Bench hook', data: { recipeId: 'r1' }, meta: { visibility: 'published' } }],
     );
     apiPost.mockResolvedValue(ok({ ok: true }));
-    const { getByText, queryByRole } = render(<CraftingPage />);
-    await waitFor(() => expect(getByText('Published')).toBeInTheDocument());
+    const { getByRole, queryByRole } = render(<CraftingPage />);
+    await waitFor(() => expect(getByRole('button', { name: 'Unpublish' })).toBeInTheDocument());
     expect(queryByRole('button', { name: 'Publish' })).toBeNull();
     expect(apiPost).not.toHaveBeenCalled();
   });

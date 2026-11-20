@@ -165,14 +165,14 @@ export function TimelineRoadmap() {
           {[0, 1, 2, 3, 4].map((w) => (
             <span
               key={w}
-              className="absolute -translate-x-1/2 whitespace-nowrap text-[12px] tabular-nums text-zinc-500 first:translate-x-0 last:-translate-x-full"
+              className="absolute -translate-x-1/2 whitespace-nowrap text-[12px] tabular-nums text-lattice-muted first:translate-x-0 last:-translate-x-full"
               style={{ left: `${(w / 4) * 100}%` }}
             >
               {fmtDay(windowStart + w * 7 * DAY)}
             </span>
           ))}
         </div>
-        <div className="flex items-center text-zinc-500">
+        <div className="flex items-center text-lattice-muted">
           <button type="button" onClick={() => setOffsetWeeks((o) => o - 2)} className="rounded-md p-1 hover:bg-white/[0.06] hover:text-zinc-200" aria-label="Earlier">
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -202,7 +202,7 @@ export function TimelineRoadmap() {
         ) : lanes.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.015] p-6">
             <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <p className="mt-5 text-[14px] text-zinc-500">
+            <p className="mt-5 text-[14px] text-lattice-muted">
               Nothing has a due date yet. Add a milestone, or give a Board task or a Goal a due date.
             </p>
           </div>
@@ -211,7 +211,7 @@ export function TimelineRoadmap() {
             <section key={lane.name} aria-label={`${lane.name} lane`} className="rounded-2xl border border-white/[0.08] bg-white/[0.015] px-4 pb-4 pt-3">
               <header className="flex items-center justify-between">
                 <h2 className="text-[15px] text-zinc-200">{lane.name}</h2>
-                <span className={cn('text-[13px]', lane.h === 'overdue' ? 'text-rose-300' : 'text-zinc-500')}>{lane.h}</span>
+                <span className={cn('text-[13px]', lane.h === 'overdue' ? 'text-rose-300' : 'text-lattice-muted')}>{lane.h}</span>
               </header>
               <div className="mt-3 flex flex-col gap-2">
                 {lane.items.map((b) => {
@@ -242,7 +242,7 @@ export function TimelineRoadmap() {
                       >
                         {before && !b.done && <span className="mr-1 text-rose-300">←</span>}
                         <span className="truncate">{b.title}</span>
-                        {after && <span className="ml-auto pl-1 text-zinc-500">→</span>}
+                        {after && <span className="ml-auto pl-1 text-lattice-muted">→</span>}
                       </button>
                     </div>
                   );
@@ -304,7 +304,7 @@ function BarDetail({ bar, onClose, onPatch }: { bar: Bar; onClose: () => void; o
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.08] bg-black/40 px-4 py-3 text-[13px]">
       <span className="min-w-0 flex-1 truncate text-zinc-100">{bar.title}</span>
-      <label className="flex items-center gap-2 text-zinc-500">
+      <label className="flex items-center gap-2 text-lattice-muted">
         Due
         <input
           type="date"
@@ -323,10 +323,10 @@ function BarDetail({ bar, onClose, onPatch }: { bar: Bar; onClose: () => void; o
       >
         {bar.done ? 'Reopen' : 'Mark done'}
       </button>
-      <Link href={bar.source === 'board' ? '/lenses/board' : '/lenses/goals'} className="text-zinc-500 hover:text-zinc-200">
+      <Link href={bar.source === 'board' ? '/lenses/board' : '/lenses/goals'} className="text-lattice-muted hover:text-zinc-200">
         Open in {bar.source === 'board' ? 'Board' : 'Goals'}
       </Link>
-      <button type="button" onClick={onClose} className="rounded-md p-1 text-zinc-500 hover:text-zinc-200" aria-label="Close details">
+      <button type="button" onClick={onClose} className="rounded-md p-1 text-lattice-muted hover:text-zinc-200" aria-label="Close details">
         <X className="h-4 w-4" />
       </button>
     </div>
@@ -356,7 +356,7 @@ function AddMilestone({
         onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') onCancel(); }}
         placeholder="Milestone"
         aria-label="Milestone title"
-        className="w-full bg-transparent text-[15px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+        className="w-full bg-transparent text-[15px] text-zinc-100 placeholder:text-lattice-muted focus:outline-none"
       />
       <div className="mt-3 flex items-center gap-2">
         <input
@@ -372,7 +372,7 @@ function AddMilestone({
           list="timeline-lanes"
           placeholder="Lane"
           aria-label="Lane"
-          className="min-w-0 flex-1 rounded-md border border-white/10 bg-transparent px-2 py-1 text-[13px] text-zinc-200 placeholder:text-zinc-600"
+          className="min-w-0 flex-1 rounded-md border border-white/10 bg-transparent px-2 py-1 text-[13px] text-zinc-200 placeholder:text-lattice-muted"
         />
         <datalist id="timeline-lanes">
           {lanes.map((l) => <option key={l} value={l} />)}

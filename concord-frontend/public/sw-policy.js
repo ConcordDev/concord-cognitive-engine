@@ -65,6 +65,11 @@
     var url = parseUrl(request.url || '');
     if (!url) return 'passthrough';
     if (isApiPath(url.pathname)) return 'passthrough';
+    // A web worker's own script is never answered from this worker. Served
+    // through respondWith, a dedicated worker's script load never completed
+    // in Chromium, so every in-browser code run (Code lens) hung until its
+    // start limit once this worker controlled the page.
+    if (request.destination === 'worker' || request.destination === 'sharedworker') return 'passthrough';
     if (request.mode === 'navigate') return 'navigation';
     if (isStaticShell(url, request)) return 'static';
     return 'passthrough';

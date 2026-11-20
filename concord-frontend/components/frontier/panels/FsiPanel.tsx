@@ -218,7 +218,7 @@ export function FsiPanel({ engine }: { engine: FrontierEngineDef }) {
               <Stat label="Combined utilization" value={result.combinedUtilization.toFixed(3)} />
               <Stat label="Gap range (mm)" value={`${(Math.min(...result.gapProfile) * 1000).toFixed(2)} – ${(Math.max(...result.gapProfile) * 1000).toFixed(2)}`} />
             </div>
-            <p className={cn(ds.monoXs, 'text-gray-500')}>Residual history: {result.residualHistory.map((r) => r.toExponential(1)).join(' → ')}</p>
+            <p className={cn(ds.monoXs, 'text-lattice-muted')}>Residual history: {result.residualHistory.map((r) => r.toExponential(1)).join(' → ')}</p>
             <p className={cn(ds.textMuted, 'italic')}>{result.approximationCaveat}</p>
           </div>
         )}

@@ -112,7 +112,7 @@ export function LensInfraPanel() {
                   <p className="text-xs text-gray-400 font-mono">{m.domain} &middot; {m.category}</p>
                 </div>
                 <div className="flex gap-2 items-center">
-                  <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{m.artifacts.length} artifacts</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">{m.artifacts.length} artifacts</span>
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-blue/20 text-neon-blue">{m.actions.length} actions</span>
                   <span className="text-xs px-2 py-0.5 rounded bg-neon-green/20 text-neon-green">{m.exports.length} exports</span>
                 </div>

@@ -208,7 +208,7 @@ function LabelPrintModal({ recordType, recordId, onClose }: {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={qrDataUrl} alt={`Barcode for ${label.name}`} className="w-24 h-24 shrink-0" />
             ) : (
-              <div className="w-24 h-24 shrink-0 flex items-center justify-center text-[10px] text-gray-500 border border-gray-300">
+              <div className="w-24 h-24 shrink-0 flex items-center justify-center text-[10px] text-lattice-muted border border-gray-300">
                 no barcode
               </div>
             )}
@@ -230,7 +230,7 @@ function LabelPrintModal({ recordType, recordId, onClose }: {
                   {label.lengthBp != null && <p>{label.lengthBp} bp{label.gcContent != null ? ` · GC ${label.gcContent}%` : ''}</p>}
                 </>
               )}
-              <p className="font-mono text-[9px] text-gray-500 break-all mt-1">{label.payload}</p>
+              <p className="font-mono text-[9px] text-lattice-muted break-all mt-1">{label.payload}</p>
             </div>
           </div>
         )}

@@ -41,7 +41,7 @@ function CreatorChrome() {
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Creator Studio · {activeLabel}</h1>
-            <p className="mt-2 text-[13px] text-zinc-500">Pipeline, listings, audience, and the royalty cascade, in one desk.</p>
+            <p className="mt-2 text-[13px] text-lattice-muted">Pipeline, listings, audience, and the royalty cascade, in one desk.</p>
             {me?.userId && <KnowledgeEntrepreneurBadge userId={me.userId} />}
           </div>
           <div className="flex shrink-0 items-center gap-3 pt-2">

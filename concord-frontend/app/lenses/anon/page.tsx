@@ -166,7 +166,7 @@ export default function AnonLensPage() {
                 title={`${v.hint} (${v.keys})`}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -179,7 +179,7 @@ export default function AnonLensPage() {
 
         {view === 'messenger' && (
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4">
-            <p className="mb-3 text-[13px] text-zinc-500">Pseudonymous messaging. The thread notice states who can read a conversation.</p>
+            <p className="mb-3 text-[13px] text-lattice-muted">Pseudonymous messaging. The thread notice states who can read a conversation.</p>
             <AnonMessenger />
           </section>
         )}
@@ -244,12 +244,12 @@ export default function AnonLensPage() {
             <label className="flex items-center gap-2 text-[11px] text-gray-400">
               <span>Differential-privacy epsilon (ε)</span>
               <input type="number" min={0.01} max={10} step={0.1} value={epsilon} onChange={(e) => setEpsilon(Math.max(0.01, Math.min(10, Number(e.target.value) || 1)))} className="input-lattice w-20 text-xs" />
-              <span className="text-gray-500">lower = stronger privacy, more noise</span>
+              <span className="text-lattice-muted">lower = stronger privacy, more noise</span>
             </label>
             <label className="flex items-center gap-2 text-[11px] text-gray-400">
               <span>K-anonymity target (k)</span>
               <input type="number" min={2} max={50} step={1} value={kTarget} onChange={(e) => setKTarget(Math.max(2, Math.min(50, Math.floor(Number(e.target.value) || 3))))} className="input-lattice w-20 text-xs" aria-label="K-anonymity target (k)" />
-              <span className="text-gray-500">every equivalence class needs at least k records — higher = stronger privacy, more generalization</span>
+              <span className="text-lattice-muted">every equivalence class needs at least k records — higher = stronger privacy, more generalization</span>
             </label>
           </div>
 
@@ -369,7 +369,7 @@ export default function AnonLensPage() {
                   {/* FIX-anon-002: these stats describe the GENERALIZED
                       output, not the records as entered — say so, and
                       show the output so the cost of k is visible. */}
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-lattice-muted">
                     Classes, loss and level describe the generalized output below — not your
                     records as entered. (Privacy Risk, by contrast, measures the records as entered.)
                   </p>
@@ -392,7 +392,7 @@ export default function AnonLensPage() {
                     {/* FIX-anon-002: risk is measured on the records AS
                         ENTERED — name that scope so it stops reading as
                         a contradiction of the anonymize result. */}
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-lattice-muted">
                       Measured on your records as entered, before any anonymization — this is the
                       exposure the Anonymize step is meant to reduce.
                     </p>

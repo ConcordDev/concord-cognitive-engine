@@ -123,7 +123,7 @@ export function PortfolioPanel() {
             <Wallet className="w-4 h-4 text-blue-400" />
             <span className="text-sm font-semibold text-gray-200">Holdings</span>
             <span className="text-[10px] text-gray-400">{holdings.length} asset(s)</span>
-            <button onClick={() => setShowAddBuy(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1">
+            <button onClick={() => setShowAddBuy(v => !v)} className="ml-auto px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-1">
               <Plus className="w-3 h-3" />Record buy
             </button>
           </header>
@@ -138,7 +138,7 @@ export function PortfolioPanel() {
                 {['ethereum','solana','bitcoin','polygon','base','arbitrum','optimism','sui','avalanche'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <input type="date" value={buyDraft.acquiredAt} onChange={e => setBuyDraft({ ...buyDraft, acquiredAt: e.target.value })} className="col-span-3 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-              <button onClick={recordBuy} className="col-span-6 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Save lot</button>
+              <button onClick={recordBuy} className="col-span-6 px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Save lot</button>
             </div>
           )}
 
@@ -147,7 +147,7 @@ export function PortfolioPanel() {
               <div className="col-span-12 text-[11px] text-rose-200">Sell {showSell.ticker} (FIFO cost basis applied)</div>
               <input type="number" step="0.00000001" value={sellDraft.qty} onChange={e => setSellDraft({ ...sellDraft, qty: e.target.value })} placeholder="Qty to sell *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
               <input type="number" step="0.01" value={sellDraft.proceedsUsd} onChange={e => setSellDraft({ ...sellDraft, proceedsUsd: e.target.value })} placeholder="Proceeds USD *" className="col-span-4 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white font-mono" />
-              <button onClick={recordSell} className="col-span-2 px-3 py-1.5 text-xs rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Sell</button>
+              <button onClick={recordSell} className="col-span-2 px-3 py-1.5 text-xs rounded bg-rose-600 text-white font-bold hover:bg-rose-400">Sell</button>
               <button onClick={() => setShowSell(null)} className="col-span-2 px-3 py-1.5 text-xs rounded text-gray-300 hover:bg-white/[0.05]">Cancel</button>
             </div>
           )}

@@ -37,12 +37,10 @@ const ROWS = [
   ["components/markets/MarketsQuoteDetail.tsx", "function formatCurrency(n"],
   ["components/markets/MarketsQuoteDetail.tsx", "function formatCompact(n"],
   ["components/media/UniversalPlayer.tsx", "function formatViewCount(count"],
-  ["components/music/TrackCard.tsx", "function formatPrice(price"],
   ["components/sim/SimConsole.tsx", "function formatNumber(n"],
   ["components/lens/IndicatorChart.tsx", "function formatValue(v"],
   ["components/lens/IndicatorChart.tsx", "function formatValueShort(v"],
   ["components/tick/TickStreamContext.tsx", "const formatMs = useCallback"],
-  ["components/studio/EffectsPanel.tsx", "function formatParamValue(key"],
 ];
 
 test("P1: every THROWS formatter carries the absence guard idiom", () => {
@@ -66,9 +64,6 @@ test("P1: the guard precedes the dereference in the largest surface (ProjectDesk
 });
 
 test("P1: present values keep their shipped renders (the guard is absence-only)", () => {
-  // TrackCard: a present 0 is 'Free', not an absence.
-  const track = read("components/music/TrackCard.tsx");
-  assert.ok(track.includes("price === 0 ? 'Free'"), "TrackCard present-zero render changed");
   // OverviewPanel: the signed-percent shape stands behind the guard.
   const overview = read("components/finance/OverviewPanel.tsx");
   assert.ok(overview.includes("${v.toFixed(2)}%"), "OverviewPanel fmtPct present render changed");

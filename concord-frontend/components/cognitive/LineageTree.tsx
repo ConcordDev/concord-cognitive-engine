@@ -254,7 +254,7 @@ function TreeNode({
             <span className={cn(
               'text-[10px] px-1.5 py-0.5 rounded uppercase font-medium',
               node.tier === 'mega' ? 'bg-neon-cyan/20 text-neon-cyan' :
-              node.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple' :
+              node.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple-bright' :
               'bg-gray-500/20 text-gray-400'
             )}>
               {node.tier}
@@ -383,7 +383,7 @@ export function LineageTimeline({
                 <span className={cn(
                   'text-[10px] px-1.5 py-0.5 rounded uppercase',
                   node.tier === 'mega' ? 'bg-neon-cyan/20 text-neon-cyan' :
-                  node.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple' :
+                  node.tier === 'hyper' ? 'bg-neon-purple/20 text-neon-purple-bright' :
                   'bg-gray-500/20 text-gray-400'
                 )}>
                   {node.tier}

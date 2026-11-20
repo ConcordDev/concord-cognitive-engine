@@ -22,7 +22,7 @@ export interface ComposeInit {
   forwardFrom?: { messageId: string; attachments: MailAttachment[] };
 }
 
-const field = 'w-full bg-transparent px-0 py-1.5 text-[13px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none';
+const field = 'w-full bg-transparent px-0 py-1.5 text-[13px] text-zinc-100 placeholder:text-lattice-muted focus:outline-none';
 
 function readFile(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -146,23 +146,23 @@ export function ComposeSheet({ init, offset = 0, onClose, onSend, onDraftSaved }
         <button type="button" onClick={() => setMinimized((v) => !v)} className="flex-1 truncate text-left text-[13px] font-medium text-zinc-200">
           {m.subject.trim() || title}
         </button>
-        <button type="button" aria-label={minimized ? 'Expand' : 'Minimize'} onClick={() => setMinimized((v) => !v)} className="rounded p-1 text-zinc-500 transition-colors hover:text-zinc-200">
+        <button type="button" aria-label={minimized ? 'Expand' : 'Minimize'} onClick={() => setMinimized((v) => !v)} className="rounded p-1 text-lattice-muted transition-colors hover:text-zinc-200">
           {minimized ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
         </button>
-        <button type="button" data-overlay-close="" aria-label="Close and save draft" onClick={() => void close()} className="rounded p-1 text-zinc-500 transition-colors hover:text-zinc-200"><X className="h-4 w-4" /></button>
+        <button type="button" data-overlay-close="" aria-label="Close and save draft" onClick={() => void close()} className="rounded p-1 text-lattice-muted transition-colors hover:text-zinc-200"><X className="h-4 w-4" /></button>
       </header>
       {!minimized && (
         <>
           <div className="flex flex-col divide-y divide-white/5 px-4">
             <div className="flex items-center gap-2">
-              <span className="w-8 text-[12px] text-zinc-500">To</span>
+              <span className="w-8 text-[12px] text-lattice-muted">To</span>
               <input aria-label="To" value={m.to} onChange={(e) => set({ to: e.target.value })} className={field} placeholder="name@example.com, …" autoFocus={init.mode === 'new' || init.mode === 'forward'} />
-              {!showCc && <button type="button" onClick={() => setShowCc(true)} className="text-[12px] text-zinc-500 hover:text-zinc-200">Cc Bcc</button>}
+              {!showCc && <button type="button" onClick={() => setShowCc(true)} className="text-[12px] text-lattice-muted hover:text-zinc-200">Cc Bcc</button>}
             </div>
             {showCc && (
               <>
-                <div className="flex items-center gap-2"><span className="w-8 text-[12px] text-zinc-500">Cc</span><input aria-label="Cc" value={m.cc} onChange={(e) => set({ cc: e.target.value })} className={field} /></div>
-                <div className="flex items-center gap-2"><span className="w-8 text-[12px] text-zinc-500">Bcc</span><input aria-label="Bcc" value={m.bcc} onChange={(e) => set({ bcc: e.target.value })} className={field} /></div>
+                <div className="flex items-center gap-2"><span className="w-8 text-[12px] text-lattice-muted">Cc</span><input aria-label="Cc" value={m.cc} onChange={(e) => set({ cc: e.target.value })} className={field} /></div>
+                <div className="flex items-center gap-2"><span className="w-8 text-[12px] text-lattice-muted">Bcc</span><input aria-label="Bcc" value={m.bcc} onChange={(e) => set({ bcc: e.target.value })} className={field} /></div>
               </>
             )}
             <input aria-label="Subject" placeholder="Subject" value={m.subject} onChange={(e) => set({ subject: e.target.value })} className={field} />
@@ -173,8 +173,8 @@ export function ComposeSheet({ init, offset = 0, onClose, onSend, onDraftSaved }
             <ul className="flex flex-wrap gap-1.5 px-4 pb-2">
               {m.attachments.map((a, i) => (
                 <li key={`${a.filename}-${i}`} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-zinc-300">
-                  <Paperclip className="h-3 w-3" /> <span className="max-w-[12rem] truncate">{a.filename}</span> <span className="text-zinc-500">{fmtSize(a.size)}</span>
-                  <button type="button" aria-label={`Remove ${a.filename}`} onClick={() => set({ attachments: m.attachments.filter((_, j) => j !== i) })} className="text-zinc-500 hover:text-rose-300"><X className="h-3 w-3" /></button>
+                  <Paperclip className="h-3 w-3" /> <span className="max-w-[12rem] truncate">{a.filename}</span> <span className="text-lattice-muted">{fmtSize(a.size)}</span>
+                  <button type="button" aria-label={`Remove ${a.filename}`} onClick={() => set({ attachments: m.attachments.filter((_, j) => j !== i) })} className="text-lattice-muted hover:text-rose-300"><X className="h-3 w-3" /></button>
                 </li>
               ))}
             </ul>
@@ -188,11 +188,11 @@ export function ComposeSheet({ init, offset = 0, onClose, onSend, onDraftSaved }
             <button type="button" aria-label="Attach files" onClick={() => fileRef.current?.click()} className="rounded-full p-2 text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100">
               {busy === 'attach' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
             </button>
-            <span className="text-[11px] text-zinc-500">{m.attachments.length ? `${fmtSize(totalBytes)} of ${fmtSize(MAX_ATTACH_BYTES)}` : '⌘↵ to send'}</span>
+            <span className="text-[11px] text-lattice-muted">{m.attachments.length ? `${fmtSize(totalBytes)} of ${fmtSize(MAX_ATTACH_BYTES)}` : '⌘↵ to send'}</span>
             <button type="button" onClick={() => void saveDraft(false)} disabled={busy === 'draft'} className="ml-auto rounded-full px-3 py-1.5 text-[12px] text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-100 disabled:opacity-50">
               {busy === 'draft' ? 'Saving…' : 'Save draft'}
             </button>
-            <button type="button" aria-label="Discard draft" onClick={() => void discard()} className="rounded-full p-2 text-zinc-500 transition-colors hover:bg-white/5 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button>
+            <button type="button" aria-label="Discard draft" onClick={() => void discard()} className="rounded-full p-2 text-lattice-muted transition-colors hover:bg-white/5 hover:text-rose-300"><Trash2 className="h-4 w-4" /></button>
           </footer>
         </>
       )}

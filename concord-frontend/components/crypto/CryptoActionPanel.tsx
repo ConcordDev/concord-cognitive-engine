@@ -163,7 +163,7 @@ export function CryptoActionPanel() {
     { id: 'swap' as ActionId, label: 'Swap', desc: 'swap-quote from→to', icon: ArrowLeftRight, accent: '#8b5cf6', handler: actSwap },
     { id: 'gas' as ActionId, label: 'Gas', desc: 'estimateGas by network', icon: Fuel, accent: '#f97316', handler: actGas },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private crypto DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send snapshot', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send snapshot', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized allocation + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Rebal', desc: 'Agent: rebalance/hedge move', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

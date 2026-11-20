@@ -182,7 +182,7 @@ export function ProposalBuilder() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setSignFor(null)} className="px-3 py-1.5 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
               <button onClick={sign} disabled={!signerName.trim()}
-                className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40">Accept &amp; Sign</button>
+                className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-40">Accept &amp; Sign</button>
             </div>
           </div>
         </div>

@@ -67,7 +67,7 @@ export function ReportExport() {
           <button
             onClick={() => doExport('json')}
             disabled={busy}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-purple/20 text-neon-purple rounded-lg text-sm hover:bg-neon-purple/30 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-neon-purple/20 text-neon-purple-bright rounded-lg text-sm hover:bg-neon-purple/30 disabled:opacity-50"
           >
             <FileJson className="w-4 h-4" /> JSON
           </button>

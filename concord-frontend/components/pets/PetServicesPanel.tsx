@@ -108,7 +108,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-zinc-300">Caregivers</h3>
           <button type="button" onClick={() => setShowRegister((v) => !v)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-teal-700 hover:bg-teal-500 text-white rounded-lg">
             <UserPlus className="w-3.5 h-3.5" /> Offer care
           </button>
         </div>
@@ -134,7 +134,7 @@ export function PetServicesPanel({ petId, onChange }: { petId: string; onChange:
               ))}
             </div>
             <button type="button" onClick={register}
-              className="col-span-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+              className="col-span-2 bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
               Register as caregiver
             </button>
           </div>

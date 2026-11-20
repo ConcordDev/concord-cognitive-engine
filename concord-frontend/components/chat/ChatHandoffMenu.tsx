@@ -110,14 +110,14 @@ export function ChatHandoffMenu({
   }
 
   return (
-    <div className="border-t border-lattice-border" role="group" aria-label="Send this conversation">
+    <div className="border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]" role="group" aria-label="Send this conversation">
       {ACTIONS.map(({ kind, label, pending, Icon }) => (
         <button
           key={kind}
           type="button"
           onClick={() => { void run(kind); }}
           disabled={!ready || busy !== null}
-          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50 text-left"
+          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[color:var(--nb-ink,#e5e7eb)] hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] transition-colors disabled:opacity-50 text-left"
         >
           <Icon className="w-4 h-4 shrink-0" aria-hidden />
           {busy === kind ? pending : label}
@@ -128,21 +128,21 @@ export function ChatHandoffMenu({
           type="button"
           onClick={() => { void sendDtu(); }}
           disabled={busy !== null}
-          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-lattice-bg transition-colors disabled:opacity-50 text-left border-t border-lattice-border"
+          className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-[color:var(--nb-ink,#e5e7eb)] hover:bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] transition-colors disabled:opacity-50 text-left border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]"
         >
           <Lock className="w-4 h-4 shrink-0" aria-hidden />
           {busy === 'send-dtu' ? 'Sending DTU…' : 'Send this DTU to Timeline'}
         </button>
       )}
       {note && (
-        <p className="px-4 py-2 text-xs text-gray-300 border-t border-lattice-border" role="status">
+        <p className="px-4 py-2 text-xs text-[color:var(--nb-ink-2,#d1d5db)] border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]" role="status">
           {note}
         </p>
       )}
       {timelinePostId && (
         <a
           href={`/lenses/timeline?tab=feed`}
-          className="block px-4 py-2 text-xs text-gray-200 underline border-t border-lattice-border"
+          className="block px-4 py-2 text-xs text-[color:var(--nb-ink,#e5e7eb)] underline border-t border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))]"
         >
           Open Timeline post {timelinePostId}
         </a>

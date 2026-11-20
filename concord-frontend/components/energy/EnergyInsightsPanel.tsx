@@ -99,7 +99,7 @@ export function EnergyInsightsPanel({ onChange }: { onChange: () => void }) {
               <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 mt-2">
                 <ChartKit kind="line" data={chartData} xKey="day" height={160}
                   series={[
-                    { key: 'previous', label: cmp.previous.month, color: '#71717a' },
+                    { key: 'previous', label: cmp.previous.month, color: '#a1a1aa' },
                     { key: 'current', label: cmp.current.month, color: '#a3e635' },
                   ]} />
               </div>

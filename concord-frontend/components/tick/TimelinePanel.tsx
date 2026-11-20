@@ -72,7 +72,7 @@ export function TimelinePanel() {
                         </div>
                         <div className="flex items-center gap-3 text-xs font-mono">
                           <span className="text-neon-cyan">{(tick.signal * 100).toFixed(0)}%</span>
-                          <span className={tick.stress > 0.2 ? 'text-red-400' : 'text-gray-600'}>
+                          <span className={tick.stress > 0.2 ? 'text-red-400' : 'text-lattice-muted'}>
                             S:{(tick.stress * 100).toFixed(0)}%
                           </span>
                           {isGap && (

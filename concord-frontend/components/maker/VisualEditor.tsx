@@ -210,7 +210,7 @@ export function VisualEditor({
             <div
               key={p.id}
               className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] ${
-                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/30 text-pink-500 hover:text-pink-300'
+                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/30 text-pink-400 hover:text-pink-300'
               }`}
             >
               <button onClick={() => setActivePage(p.id)}>{p.name}</button>

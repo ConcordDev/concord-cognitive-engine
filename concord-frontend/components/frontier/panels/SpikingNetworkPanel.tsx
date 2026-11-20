@@ -315,7 +315,7 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
             <NumberField id="spk-ipre" label="I_pre — drive current (model units)" value={I_pre} onChange={setIPre} min={0} max={10} step={0.1} />
             <NumberField id="spk-ipost" label="I_post — drive current" value={I_post} onChange={setIPost} min={0} max={10} step={0.1} />
           </div>
-          <p className={cn(ds.monoXs, 'text-gray-500 mt-1')}>
+          <p className={cn(ds.monoXs, 'text-lattice-muted mt-1')}>
             Subthreshold current cutoff at these params: R·I &lt; {(V_th - V_rest).toFixed(1)} mV (I &lt; {maxSubthresholdI.toFixed(3)}) — pre/post are set above this so they actually fire.
           </p>
         </div>
@@ -354,7 +354,7 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
             <NumberField id="spk-iprobe" label={`I_probe (subthreshold if < ${maxSubthresholdI.toFixed(3)})`} value={I_probe} onChange={setIProbe} min={0} max={10} step={0.05} />
             <NumberField id="spk-probeduration" label="Probe window (ms)" value={probeDuration} onChange={setProbeDuration} min={5} max={500} step={5} />
           </div>
-          <p className={cn(ds.monoXs, 'text-gray-500 mt-1')}>
+          <p className={cn(ds.monoXs, 'text-lattice-muted mt-1')}>
             Sampled at {PROBE_SAMPLE_FRACTIONS.map((f) => `${Math.round(f * probeDuration)}ms`).join(', ')} — each a real, independent {'{'} duration: t {'}'} call.
           </p>
         </div>
@@ -369,7 +369,7 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
                 Spike raster — every mark below is a real entry from the returned <span className={ds.monoXs}>spikeTrain</span>.
               </p>
               <SpikeRaster spikes={raster || []} duration={rasterDuration} />
-              <p className={cn(ds.monoXs, 'text-gray-500 mt-1')}>
+              <p className={cn(ds.monoXs, 'text-lattice-muted mt-1')}>
                 pre fired {result.simulate.spikeCounts.pre ?? 0}x, post fired {result.simulate.spikeCounts.post ?? 0}x over {rasterDuration}ms
               </p>
             </div>
@@ -434,7 +434,7 @@ export function SpikingNetworkPanel({ engine }: { engine: FrontierEngineDef }) {
               <div className="overflow-x-auto">
                 <table className={cn(ds.monoXs, 'w-full border-collapse')}>
                   <thead>
-                    <tr className="text-left text-gray-500 border-b border-lattice-border">
+                    <tr className="text-left text-lattice-muted border-b border-lattice-border">
                       <th className="py-1 pr-4">Synapse</th>
                       <th className="py-1 pr-4">from → to</th>
                       <th className="py-1 pr-4">weight before</th>
@@ -479,10 +479,10 @@ function SpikeRaster({ spikes, duration }: { spikes: Spike[]; duration: number }
   return (
     <div className="rounded-lg border border-lattice-border bg-lattice-surface p-3">
       <div className="flex items-center gap-2 mb-2">
-        <Network className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" />
-        <span className={cn(ds.monoXs, 'text-gray-500')}>0ms</span>
+        <Network className="w-3.5 h-3.5 text-lattice-muted" aria-hidden="true" />
+        <span className={cn(ds.monoXs, 'text-lattice-muted')}>0ms</span>
         <div className="flex-1" />
-        <span className={cn(ds.monoXs, 'text-gray-500')}>{safeDuration}ms</span>
+        <span className={cn(ds.monoXs, 'text-lattice-muted')}>{safeDuration}ms</span>
       </div>
       <div className="space-y-2">
         {lanes.map((lane) => (
@@ -504,7 +504,7 @@ function SpikeRaster({ spikes, duration }: { spikes: Spike[]; duration: number }
           </div>
         ))}
       </div>
-      <p className={cn(ds.monoXs, 'text-gray-500 mt-2 flex items-center gap-1')}>
+      <p className={cn(ds.monoXs, 'text-lattice-muted mt-2 flex items-center gap-1')}>
         <Activity className="w-3 h-3" aria-hidden="true" /> {spikes.length} total spikes across {lanes.length} neurons
       </p>
     </div>

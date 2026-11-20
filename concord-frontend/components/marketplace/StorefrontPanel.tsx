@@ -391,7 +391,7 @@ export function StorefrontPanel() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={l.images[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
-                      <Store className="w-8 h-8 text-gray-600" />
+                      <Store className="w-8 h-8 text-lattice-muted" />
                     )}
                   </button>
                   <div className="p-2.5 space-y-1.5 flex flex-col flex-1">
@@ -403,7 +403,7 @@ export function StorefrontPanel() {
                           ★ {l.avgRating} ({l.reviewCount})
                         </span>
                       ) : (
-                        <span className="text-gray-600">No reviews</span>
+                        <span className="text-lattice-muted">No reviews</span>
                       )}
                       {l.salesCount > 0 && <span>· {l.salesCount} sold</span>}
                     </div>
@@ -603,7 +603,7 @@ export function StorefrontPanel() {
                 {viewing.avgRating !== null ? (
                   <span className="text-xs text-amber-300 inline-flex items-center gap-1 tabular-nums"><Star className="w-3 h-3 fill-amber-300" /> {viewing.avgRating} ({viewing.reviewCount})</span>
                 ) : (
-                  <span className="text-xs text-gray-600">No reviews yet</span>
+                  <span className="text-xs text-lattice-muted">No reviews yet</span>
                 )}
               </div>
               {viewing.description && <p className="text-xs text-gray-300 whitespace-pre-wrap">{viewing.description}</p>}

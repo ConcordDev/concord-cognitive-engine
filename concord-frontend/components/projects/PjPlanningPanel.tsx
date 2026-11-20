@@ -116,7 +116,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                     <CheckCircle2 className="w-3 h-3" />{m.status === 'completed' ? 'Done' : 'Mark'}
                   </button>
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'milestone-delete', { id: m.id }).then(refresh)}
-                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 rounded-full bg-lattice-elevated overflow-hidden">
@@ -154,7 +154,7 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                 <span className="text-xs text-gray-200 flex-1 truncate">{r.name}</span>
                 <span className="text-[10px] text-gray-400 tabular-nums">L{r.likelihood}×I{r.impact} = {r.score}</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'risk-delete', { id: r.id }).then(refresh)}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -203,13 +203,13 @@ export function PjPlanningPanel({ projectId, onChange }: { projectId: string; on
                     ? <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300 border border-emerald-800/60">counted live</span>
                     : <span className="text-[9px] px-1.5 py-0.5 rounded bg-lattice-elevated text-gray-400 border border-lattice-border">manual</span>}
                   <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'goal-delete', { id: g.id }).then(refresh)}
-                    className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
                 <div className="h-1.5 rounded-full bg-lattice-elevated overflow-hidden">
                   <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${Math.min(100, g.progressPct)}%` }} />
                 </div>
                 {g.systemMetric && (
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-lattice-muted mt-1">
                     {g.countedRefs.length
                       ? <>Counted from: {g.countedRefs.join(', ')}</>
                       : 'No completed issues counted yet.'}

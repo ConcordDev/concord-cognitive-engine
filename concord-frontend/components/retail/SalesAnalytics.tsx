@@ -74,8 +74,8 @@ export function SalesAnalytics() {
                 <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.55} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.05} />
+                      <stop offset="0%" stopColor="var(--stall-leaf, #10b981)" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="var(--stall-leaf, #10b981)" stopOpacity={0.05} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#ffffff10" strokeDasharray="2 4" vertical={false} />
@@ -85,7 +85,7 @@ export function SalesAnalytics() {
                     contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }}
                     formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Orders']}
                   />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={1.5} fill="url(#revGrad)" />
+                  <Area type="monotone" dataKey="revenue" stroke="var(--stall-leaf, #10b981)" strokeWidth={1.5} fill="url(#revGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -106,7 +106,7 @@ export function SalesAnalytics() {
                       contentStyle={{ background: '#0d0d14', border: '1px solid #ffffff20', fontSize: 11 }}
                       formatter={(v, k) => k === 'revenue' ? [`$${Number(v).toFixed(0)}`, 'Revenue'] : [String(v), 'Qty']}
                     />
-                    <Bar dataKey="revenue" fill="#10b981" radius={[0, 3, 3, 0]} />
+                    <Bar dataKey="revenue" fill="var(--stall-leaf, #10b981)" radius={[0, 3, 3, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

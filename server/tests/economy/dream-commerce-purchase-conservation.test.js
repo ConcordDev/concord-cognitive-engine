@@ -45,6 +45,7 @@
  *   DB_PATH=/tmp/dream-commerce-test.db node --test \
  *     tests/economy/dream-commerce-purchase-conservation.test.js
  */
+import { setLedgerBalance } from "../lib/ledger-fund.js";
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 
@@ -92,12 +93,10 @@ describe("Dream Commerce — purchase conservation + cascade (P-D)", () => {
   }
 
   function fundBuyer(buyerId, amount) {
-    // purchaseWithRoyalties reads STATE.economic wallets directly for its
-    // balance-sufficiency gate — this seeds spendable in-memory balance
-    // WITHOUT writing an economy_ledger row, so getBalance() baselines at
-    // 0 and every subsequent ledger row this test observes is one this
-    // purchase itself produced (a clean before/after delta).
-    getWallet(buyerId).balance = amount;
+    // Real money arrives on the ledger (the balance purchaseWithRoyalties now
+    // checks). Every assertion below is a before/after delta taken after this
+    // funding, so the credit row itself never counts as a purchase effect.
+    setLedgerBalance(STATE.db, buyerId, amount);
   }
 
   it("conservation: a priced dream purchased end-to-end — buyer -price, sellers/royalties/platform sum to +price, nothing minted", async () => {

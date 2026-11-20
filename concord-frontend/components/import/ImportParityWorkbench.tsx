@@ -147,7 +147,7 @@ function SubmitBtn({ busy, label, onClick, disabled }: { busy: boolean; label: s
     <button
       onClick={onClick}
       disabled={busy || disabled}
-      className="flex items-center gap-1.5 rounded-md bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
+      className="flex items-center gap-1.5 rounded-md bg-cyan-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-cyan-500 disabled:opacity-40"
     >
       {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
       {label}
@@ -441,7 +441,7 @@ function ErrorCorrectionPanel() {
               <button
                 onClick={() => commit(false)}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+                className="flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
               >
                 <Check className="h-3.5 w-3.5" /> Commit
               </button>
@@ -705,7 +705,7 @@ function TemplatesPanel() {
                 {t.description && <p className="text-[10px] text-zinc-400">{t.description}</p>}
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => apply(t.id)} className="rounded bg-cyan-600/80 px-2 py-0.5 text-[10px] text-white hover:bg-cyan-500">Apply</button>
+                <button onClick={() => apply(t.id)} className="rounded bg-cyan-700/80 px-2 py-0.5 text-[10px] text-white hover:bg-cyan-500">Apply</button>
                 <button aria-label="Delete" onClick={() => del(t.id)} className="text-zinc-400 hover:text-red-400"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
@@ -837,7 +837,7 @@ function ConnectorsPanel() {
               <button
                 onClick={() => runFetch(c.id)}
                 disabled={fetchBusy === c.id}
-                className="flex items-center gap-1 rounded bg-cyan-600/80 px-2 py-1 text-[10px] text-white hover:bg-cyan-500 disabled:opacity-40"
+                className="flex items-center gap-1 rounded bg-cyan-700/80 px-2 py-1 text-[10px] text-white hover:bg-cyan-500 disabled:opacity-40"
               >
                 {fetchBusy === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />} Fetch
               </button>

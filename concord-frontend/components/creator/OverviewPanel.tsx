@@ -193,7 +193,7 @@ function WithdrawalSection({
             <div key={w.id} className="flex items-center justify-between text-sm border-l-2 border-emerald-500/40 pl-3">
               <span className="text-gray-200 font-mono">{w.amount.toFixed(2)} CC</span>
               <span className="text-gray-400 capitalize">{w.status}</span>
-              <span className="text-gray-600 text-xs">{new Date(w.createdAt).toLocaleDateString()}</span>
+              <span className="text-lattice-muted text-xs">{new Date(w.createdAt).toLocaleDateString()}</span>
             </div>
           ))}
         </div>

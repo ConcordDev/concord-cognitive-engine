@@ -92,7 +92,7 @@ export function DisciplineSearch() {
             </span>
           )}
           {tag && (
-            <span className="px-2 py-1 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink flex items-center gap-1">
+            <span className="px-2 py-1 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink-bright flex items-center gap-1">
               <Hash className="w-3 h-3" /> {tag}
               <button onClick={() => { setTag(''); runSearch({ tag: '' }); }} aria-label="Clear tag">×</button>
             </span>

@@ -105,7 +105,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                   <p className="text-xs text-zinc-200 truncate">{e.title}</p>
                   <p className="text-[10px] text-zinc-400">{e.showTitle} · {fmt(e.durationSec)}</p>
                 </div>
-                <button aria-label="Delete" type="button" onClick={() => removeDownload(e.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button aria-label="Delete" type="button" onClick={() => removeDownload(e.id)} className="text-lattice-muted hover:text-rose-400 shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </li>
@@ -135,7 +135,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
               <li key={pl.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
                 <button type="button" onClick={() => openPlaylist(pl.id)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left hover:bg-zinc-900">
-                  <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform', openPl === pl.id && 'rotate-90')} />
+                  <ChevronRight className={cn('w-4 h-4 text-lattice-muted transition-transform', openPl === pl.id && 'rotate-90')} />
                   <span className="text-sm font-semibold text-zinc-100">{pl.name}</span>
                   <span className="text-[11px] text-zinc-400">{pl.episodeCount} episodes</span>
                 </button>
@@ -147,7 +147,7 @@ export function PodcastLibraryPanel({ onChange }: { onChange: () => void }) {
                     {plEpisodes.length > 0 ? (
                       <ul className="space-y-1">
                         {plEpisodes.map((e) => (
-                          <li key={e.id} className="text-[11px] text-zinc-300">{e.title} <span className="text-zinc-600">· {e.showTitle}</span></li>
+                          <li key={e.id} className="text-[11px] text-zinc-300">{e.title} <span className="text-lattice-muted">· {e.showTitle}</span></li>
                         ))}
                       </ul>
                     ) : (

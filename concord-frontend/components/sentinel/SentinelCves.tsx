@@ -74,7 +74,7 @@ export function SentinelCves() {
           const score = v.cve.metrics?.cvssMetricV31?.[0]?.cvssData.baseScore ?? v.cve.metrics?.cvssMetricV30?.[0]?.cvssData.baseScore;
           return (
             <a key={v.cve.id} href={`https://nvd.nist.gov/vuln/detail/${v.cve.id}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-rose-500/15 bg-zinc-950/60 p-2.5 hover:border-rose-500/40">
-              <div className="flex items-center gap-2"><span className="font-mono text-sm text-white">{v.cve.id}</span>{score != null && <span className="rounded bg-rose-500/30 px-1 font-mono text-[9px] text-rose-200"><AlertOctagon className="inline h-2.5 w-2.5 mr-0.5" />{score}</span>}</div>
+              <div className="flex items-center gap-2"><span className="font-mono text-sm text-white">{v.cve.id}</span>{score != null && <span className="rounded bg-rose-600/30 px-1 font-mono text-[9px] text-rose-200"><AlertOctagon className="inline h-2.5 w-2.5 mr-0.5" />{score}</span>}</div>
               <p className="mt-1 line-clamp-2 text-[12px] text-zinc-200">{desc}</p>
               <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400"><span>{v.cve.published?.slice(0, 10)}</span><ExternalLink className="h-3 w-3" /></div>
             </a>

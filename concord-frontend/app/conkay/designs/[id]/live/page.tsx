@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LiveBuild } from '@/components/conkay/designs/LiveBuild';
+import { WorkshopPage } from '@/components/conkay/workshop/WorkshopPage';
 
 export const metadata: Metadata = {
   title: 'ConKay live build — Concord',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 
 export default async function ConKayLiveBuildPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <LiveBuild id={id} />;
+  return <WorkshopPage initialView="hood" designId={id} />;
 }

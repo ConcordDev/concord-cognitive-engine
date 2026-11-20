@@ -200,9 +200,9 @@ export function EngineeringActionPanel() {
   const actions = [
     { id: 'tol' as ActionId, label: 'Tolerance', desc: 'WC + RSS + class', icon: Ruler, accent: '#3b82f6', handler: actTol },
     { id: 'stress' as ActionId, label: 'Stress', desc: 'yield × SF', icon: Activity, accent: '#ef4444', handler: actStress },
-    { id: 'unit' as ActionId, label: 'Convert', desc: 'unitConvert', icon: Cog, accent: '#a855f7', handler: actUnit },
+    { id: 'unit' as ActionId, label: 'Convert', desc: 'unitConvert', icon: Cog, accent: '#c084fc', handler: actUnit },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private design DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send eng review', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send eng review', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public analysis', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Review', desc: 'AI review (needs the chat agent)', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

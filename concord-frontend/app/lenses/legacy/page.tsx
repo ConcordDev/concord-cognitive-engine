@@ -78,7 +78,7 @@ export default function LegacyLensPage() {
         <section key={view} className="rounded-2xl border border-white/10 bg-[#111] p-5">
           {view === 'scan' ? (
             <>
-              <p className="mb-4 text-sm text-zinc-500">
+              <p className="mb-4 text-sm text-lattice-muted">
                 Scan a real codebase to derive technical debt, dependency cycles, churn hotspots, a sequenced
                 migration roadmap, rewrite-vs-refactor ROI, and cloud-readiness. Every figure is computed from the
                 source you ingest.

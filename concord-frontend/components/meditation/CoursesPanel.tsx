@@ -153,7 +153,7 @@ export function CoursesPanel({ onPractice, onPractise }: {
                     <>
                       {!detail.enrolled ? (
                         <button type="button" onClick={() => enroll(c.id)} disabled={busy}
-                          className="w-full px-3 py-2 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50">
+                          className="w-full px-3 py-2 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white disabled:opacity-50">
                           Enroll in {detail.title}
                         </button>
                       ) : (
@@ -175,7 +175,7 @@ export function CoursesPanel({ onPractice, onPractise }: {
                                 </div>
                                 {!d.completed ? (
                                   <button type="button" onClick={() => practiseDay(c.id, d)} disabled={busy}
-                                    className="text-[10px] px-2 py-0.5 rounded bg-amber-600/80 hover:bg-amber-500 text-white disabled:opacity-50 flex-shrink-0">
+                                    className="text-[10px] px-2 py-0.5 rounded bg-amber-700/80 hover:bg-amber-500 text-white disabled:opacity-50 flex-shrink-0">
                                     Practise
                                   </button>
                                 ) : (

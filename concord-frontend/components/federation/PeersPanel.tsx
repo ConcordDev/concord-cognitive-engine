@@ -132,7 +132,7 @@ function PeerManager({ onChanged }: { onChanged: () => void }) {
                 type="button"
                 onClick={register}
                 disabled={busy}
-                className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-white text-xs inline-flex items-center gap-1"
+                className="px-3 py-1 bg-emerald-700 hover:bg-emerald-600 rounded text-white text-xs inline-flex items-center gap-1"
               >
                 {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                 Register peer

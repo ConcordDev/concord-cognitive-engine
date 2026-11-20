@@ -424,7 +424,7 @@ export function GoalsListPanel() {
                       </button>
                       {confirmDeleteId === goal.id ? (
                         <span data-overlay-open="true" className="contents">
-                          <button type="button" onClick={() => deleteGoal(goal)} className="rounded-lg bg-rose-500/90 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-rose-400">Confirm delete</button>
+                          <button type="button" onClick={() => deleteGoal(goal)} className="rounded-lg bg-rose-600/90 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-rose-400">Confirm delete</button>
                           <button type="button" onClick={() => setConfirmDeleteId(null)} className="text-[13px] text-zinc-400 hover:text-zinc-200">Cancel</button>
                           <span className="text-[12px] text-zinc-500">You can undo after deleting.</span>
                         </span>

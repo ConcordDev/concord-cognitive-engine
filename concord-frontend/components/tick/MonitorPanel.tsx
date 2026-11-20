@@ -505,7 +505,7 @@ export function MonitorPanel() {
               </thead>
               <tbody className="divide-y divide-zinc-900">
                 {detail.length === 0 && (
-                  <tr><td colSpan={7} className="px-3 py-6 text-center text-zinc-600">
+                  <tr><td colSpan={7} className="px-3 py-6 text-center text-lattice-muted">
                     Recording the registered heartbeat modules — refresh after the next governor tick.
                   </td></tr>
                 )}
@@ -518,7 +518,7 @@ export function MonitorPanel() {
                       <td className="px-3 py-2 font-mono text-zinc-400">every {m.frequency}</td>
                       <td className="px-3 py-2 font-mono text-zinc-400">{m.periodHuman}</td>
                       <td className="px-3 py-2 font-mono text-zinc-400">{fmtMs(m.sinceRunMs)} ago</td>
-                      <td className={`px-3 py-2 font-mono ${m.recentErrors > 0 ? 'text-red-400' : 'text-zinc-600'}`}>
+                      <td className={`px-3 py-2 font-mono ${m.recentErrors > 0 ? 'text-red-400' : 'text-lattice-muted'}`}>
                         {m.errorCount}{m.recentErrors > 0 ? ` (+${m.recentErrors})` : ''}
                       </td>
                       <td className="px-3 py-2">
@@ -706,7 +706,7 @@ export function MonitorPanel() {
                     <div key={w.label} className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] uppercase tracking-wider text-zinc-400">{w.label} uptime</span>
-                        <Clock className="h-3.5 w-3.5 text-zinc-600" />
+                        <Clock className="h-3.5 w-3.5 text-lattice-muted" />
                       </div>
                       <div className={`mt-1 font-mono text-2xl ${color}`}>
                         {pct == null ? '—' : `${pct}%`}

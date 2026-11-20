@@ -77,16 +77,16 @@ export function ChatToolsDrawer({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             role="complementary"
             aria-label="Chat analysis and features"
-            className="fixed top-20 right-4 bottom-4 w-[28rem] max-w-[92vw] z-50 flex flex-col bg-lattice-surface border border-lattice-border rounded-lg shadow-2xl overflow-hidden"
+            className="fixed top-20 right-4 bottom-4 w-[28rem] max-w-[92vw] z-50 flex flex-col bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] rounded-lg shadow-2xl overflow-hidden"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-lattice-border flex-shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] flex-shrink-0">
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-neon-yellow" />
-                <span className="text-sm font-semibold text-white">Analysis &amp; features</span>
+                <Zap className="w-4 h-4 text-[color:var(--nb-ochre,#facc15)]" />
+                <span className="text-sm font-semibold text-[color:var(--nb-ink,#ffffff)]">Analysis &amp; features</span>
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors"
                 title="Close"
                 aria-label="Close chat tools"
               >
@@ -95,47 +95,47 @@ export function ChatToolsDrawer({
             </div>
             <div className="flex-1 overflow-y-auto">
               {/* ── Chat Computational Actions ── */}
-              <div className="border-t border-white/10 px-4 py-4 space-y-3">
+              <div className="border-t border-[color:var(--nb-rule,rgba(255,255,255,0.1))] px-4 py-4 space-y-3">
                 <div className="panel p-4">
-                  <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-neon-yellow" /> Computational Actions
+                  <h3 className="font-semibold text-[color:var(--nb-ink,#ffffff)] mb-4 flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-[color:var(--nb-ochre,#facc15)]" /> Computational Actions
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <button
                       onClick={() => onChatAction('threadSummarize')}
                       disabled={chatActionRunning !== null}
-                      className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-cyan/50 transition-colors disabled:opacity-50"
+                      className="flex flex-col items-center gap-2 p-3 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded-lg border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:border-[color:var(--nb-blue,rgba(0,255,247,0.5))] transition-colors disabled:opacity-50"
                     >
                       {chatActionRunning === 'threadSummarize' ? (
-                        <Loader2 className="w-5 h-5 text-neon-cyan animate-spin" />
+                        <Loader2 className="w-5 h-5 text-[color:var(--nb-blue,#00fff7)] animate-spin" />
                       ) : (
-                        <MessageSquare className="w-5 h-5 text-neon-cyan" />
+                        <MessageSquare className="w-5 h-5 text-[color:var(--nb-blue,#00fff7)]" />
                       )}
-                      <span className="text-xs text-gray-300">Thread Summarize</span>
+                      <span className="text-xs text-[color:var(--nb-ink-2,#d1d5db)]">Thread Summarize</span>
                     </button>
                     <button
                       onClick={() => onChatAction('participantAnalysis')}
                       disabled={chatActionRunning !== null}
-                      className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-purple/50 transition-colors disabled:opacity-50"
+                      className="flex flex-col items-center gap-2 p-3 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded-lg border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:border-[color:var(--nb-red,rgba(168,85,247,0.5))] transition-colors disabled:opacity-50"
                     >
                       {chatActionRunning === 'participantAnalysis' ? (
-                        <Loader2 className="w-5 h-5 text-neon-purple animate-spin" />
+                        <Loader2 className="w-5 h-5 text-[color:var(--nb-red,#a855f7)] animate-spin" />
                       ) : (
-                        <Users className="w-5 h-5 text-neon-purple" />
+                        <Users className="w-5 h-5 text-[color:var(--nb-red,#a855f7)]" />
                       )}
-                      <span className="text-xs text-gray-300">Participant Analysis</span>
+                      <span className="text-xs text-[color:var(--nb-ink-2,#d1d5db)]">Participant Analysis</span>
                     </button>
                     <button
                       onClick={() => onChatAction('topicDetection')}
                       disabled={chatActionRunning !== null}
-                      className="flex flex-col items-center gap-2 p-3 bg-lattice-bg rounded-lg border border-lattice-border hover:border-neon-green/50 transition-colors disabled:opacity-50"
+                      className="flex flex-col items-center gap-2 p-3 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded-lg border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:border-[color:var(--nb-green,rgba(34,197,94,0.5))] transition-colors disabled:opacity-50"
                     >
                       {chatActionRunning === 'topicDetection' ? (
-                        <Loader2 className="w-5 h-5 text-neon-green animate-spin" />
+                        <Loader2 className="w-5 h-5 text-[color:var(--nb-green,#22c55e)] animate-spin" />
                       ) : (
-                        <BarChart3 className="w-5 h-5 text-neon-green" />
+                        <BarChart3 className="w-5 h-5 text-[color:var(--nb-green,#22c55e)]" />
                       )}
-                      <span className="text-xs text-gray-300">Topic Detection</span>
+                      <span className="text-xs text-[color:var(--nb-ink-2,#d1d5db)]">Topic Detection</span>
                     </button>
                   </div>
                 </div>
@@ -147,27 +147,27 @@ export function ChatToolsDrawer({
                     className="panel p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-white flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-neon-cyan" /> Thread Summary
+                      <h3 className="font-semibold text-[color:var(--nb-ink,#ffffff)] flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-[color:var(--nb-blue,#00fff7)]" /> Thread Summary
                       </h3>
                       <button
                         onClick={onClearThreadSummarize}
-                        className="text-gray-400 hover:text-white"
+                        className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)]"
                         aria-label="Clear thread summary"
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-300">
+                    <div className="space-y-2 text-sm text-[color:var(--nb-ink-2,#d1d5db)]">
                       {!!threadSummarizeResult.summary && (
-                        <p className="text-white">{threadSummarizeResult.summary as string}</p>
+                        <p className="text-[color:var(--nb-ink,#ffffff)]">{threadSummarizeResult.summary as string}</p>
                       )}
                       {!!threadSummarizeResult.message && !threadSummarizeResult.summary && (
-                        <p className="text-amber-300">{threadSummarizeResult.message as string}</p>
+                        <p className="text-[color:var(--nb-ochre,#fcd34d)]">{threadSummarizeResult.message as string}</p>
                       )}
                       {Array.isArray(threadSummarizeResult.keyPoints) &&
                         (threadSummarizeResult.keyPoints as string[]).length > 0 && (
-                          <ul className="list-disc list-inside space-y-1 text-gray-300">
+                          <ul className="list-disc list-inside space-y-1 text-[color:var(--nb-ink-2,#d1d5db)]">
                             {(threadSummarizeResult.keyPoints as string[]).map((pt, i) => (
                               <li key={i}>{pt}</li>
                             ))}
@@ -175,18 +175,18 @@ export function ChatToolsDrawer({
                         )}
                       {threadSummarizeResult.messageCount !== undefined && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          <div className="p-2 bg-lattice-bg rounded text-center">
-                            <p className="text-sm font-bold text-neon-cyan">
+                          <div className="p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-center">
+                            <p className="text-sm font-bold text-[color:var(--nb-blue,#00fff7)]">
                               {threadSummarizeResult.messageCount as number}
                             </p>
-                            <p className="text-[10px] text-gray-400">Messages</p>
+                            <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">Messages</p>
                           </div>
                           {threadSummarizeResult.participants !== undefined && (
-                            <div className="p-2 bg-lattice-bg rounded text-center">
-                              <p className="text-sm font-bold text-neon-purple">
+                            <div className="p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-center">
+                              <p className="text-sm font-bold text-[color:var(--nb-red,#a855f7)]">
                                 {threadSummarizeResult.participants as number}
                               </p>
-                              <p className="text-[10px] text-gray-400">Participants</p>
+                              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">Participants</p>
                             </div>
                           )}
                         </div>
@@ -202,47 +202,47 @@ export function ChatToolsDrawer({
                     className="panel p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-white flex items-center gap-2">
-                        <Users className="w-4 h-4 text-neon-purple" /> Participant Analysis
+                      <h3 className="font-semibold text-[color:var(--nb-ink,#ffffff)] flex items-center gap-2">
+                        <Users className="w-4 h-4 text-[color:var(--nb-red,#a855f7)]" /> Participant Analysis
                       </h3>
                       <button
                         onClick={onClearParticipantAnalysis}
-                        className="text-gray-400 hover:text-white"
+                        className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)]"
                         aria-label="Clear participant analysis"
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-300">
+                    <div className="space-y-2 text-sm text-[color:var(--nb-ink-2,#d1d5db)]">
                       {participantAnalysisResult.totalParticipants !== undefined && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <div className="p-2 bg-lattice-bg rounded text-center">
-                            <p className="text-sm font-bold text-neon-purple">
+                          <div className="p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-center">
+                            <p className="text-sm font-bold text-[color:var(--nb-red,#a855f7)]">
                               {participantAnalysisResult.totalParticipants as number}
                             </p>
-                            <p className="text-[10px] text-gray-400">Total</p>
+                            <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">Total</p>
                           </div>
                           {participantAnalysisResult.activeParticipants !== undefined && (
-                            <div className="p-2 bg-lattice-bg rounded text-center">
-                              <p className="text-sm font-bold text-neon-green">
+                            <div className="p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-center">
+                              <p className="text-sm font-bold text-[color:var(--nb-green,#22c55e)]">
                                 {participantAnalysisResult.activeParticipants as number}
                               </p>
-                              <p className="text-[10px] text-gray-400">Active</p>
+                              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">Active</p>
                             </div>
                           )}
                           {participantAnalysisResult.engagementScore !== undefined && (
-                            <div className="p-2 bg-lattice-bg rounded text-center">
-                              <p className="text-sm font-bold text-neon-cyan">
+                            <div className="p-2 bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded text-center">
+                              <p className="text-sm font-bold text-[color:var(--nb-blue,#00fff7)]">
                                 {participantAnalysisResult.engagementScore as number}
                               </p>
-                              <p className="text-[10px] text-gray-400">Engagement</p>
+                              <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">Engagement</p>
                             </div>
                           )}
                         </div>
                       )}
                       {!!participantAnalysisResult.message &&
                         participantAnalysisResult.totalParticipants === undefined && (
-                          <p className="text-amber-300">
+                          <p className="text-[color:var(--nb-ochre,#fcd34d)]">
                             {participantAnalysisResult.message as string}
                           </p>
                         )}
@@ -250,7 +250,7 @@ export function ChatToolsDrawer({
                         (participantAnalysisResult.participants as Array<Record<string, unknown>>)
                           .length > 0 && (
                           <div className="mt-2 space-y-1">
-                            <p className="text-xs text-gray-400 uppercase tracking-wider">
+                            <p className="text-xs text-[color:var(--nb-muted,#9ca3af)] uppercase tracking-wider">
                               Top Participants
                             </p>
                             {(
@@ -262,10 +262,10 @@ export function ChatToolsDrawer({
                               .map((p, i) => (
                                 <div
                                   key={i}
-                                  className="flex items-center justify-between text-xs bg-lattice-bg rounded px-2 py-1"
+                                  className="flex items-center justify-between text-xs bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded px-2 py-1"
                                 >
-                                  <span className="text-gray-300">{p.name as string}</span>
-                                  <span className="text-neon-purple">
+                                  <span className="text-[color:var(--nb-ink-2,#d1d5db)]">{p.name as string}</span>
+                                  <span className="text-[color:var(--nb-red,#a855f7)]">
                                     {p.messageCount as number} msgs
                                   </span>
                                 </div>
@@ -283,28 +283,28 @@ export function ChatToolsDrawer({
                     className="panel p-4"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-semibold text-white flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-neon-green" /> Topic Detection
+                      <h3 className="font-semibold text-[color:var(--nb-ink,#ffffff)] flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4 text-[color:var(--nb-green,#22c55e)]" /> Topic Detection
                       </h3>
                       <button
                         onClick={onClearTopicDetection}
-                        className="text-gray-400 hover:text-white"
+                        className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#ffffff)]"
                         aria-label="Clear topic detection"
                       >
                         <XCircle className="w-4 h-4" />
                       </button>
                     </div>
-                    <div className="space-y-2 text-sm text-gray-300">
+                    <div className="space-y-2 text-sm text-[color:var(--nb-ink-2,#d1d5db)]">
                       {!!topicDetectionResult.primaryTopic && (
                         <p>
                           Primary:{' '}
-                          <span className="text-white font-medium">
+                          <span className="text-[color:var(--nb-ink,#ffffff)] font-medium">
                             {topicDetectionResult.primaryTopic as string}
                           </span>
                         </p>
                       )}
                       {!!topicDetectionResult.message && !topicDetectionResult.primaryTopic && (
-                        <p className="text-amber-300">{topicDetectionResult.message as string}</p>
+                        <p className="text-[color:var(--nb-ochre,#fcd34d)]">{topicDetectionResult.message as string}</p>
                       )}
                       {Array.isArray(topicDetectionResult.topics) &&
                         (topicDetectionResult.topics as Array<Record<string, unknown>>).length >
@@ -314,13 +314,13 @@ export function ChatToolsDrawer({
                               (t, i) => (
                                 <div
                                   key={i}
-                                  className="flex items-center justify-between text-xs bg-lattice-bg rounded px-2 py-1"
+                                  className="flex items-center justify-between text-xs bg-[var(--nb-paper,rgb(var(--lattice-bg-rgb)))] rounded px-2 py-1"
                                 >
-                                  <span className="text-gray-300">
+                                  <span className="text-[color:var(--nb-ink-2,#d1d5db)]">
                                     {(t.topic || t.name) as string}
                                   </span>
                                   {t.score !== undefined && (
-                                    <span className="text-neon-green">
+                                    <span className="text-[color:var(--nb-green,#22c55e)]">
                                       {Math.round(Number(t.score) * 100)}%
                                     </span>
                                   )}
@@ -335,7 +335,7 @@ export function ChatToolsDrawer({
                             {(topicDetectionResult.keywords as string[]).map((kw, i) => (
                               <span
                                 key={i}
-                                className="px-2 py-0.5 rounded-full text-[10px] bg-neon-green/10 text-neon-green border border-neon-green/20"
+                                className="px-2 py-0.5 rounded-full text-[10px] bg-[var(--nb-green-soft,rgba(34,197,94,0.1))] text-[color:var(--nb-green,#22c55e)] border border-[color:var(--nb-green,rgba(34,197,94,0.2))]"
                               >
                                 {kw}
                               </span>
@@ -348,10 +348,10 @@ export function ChatToolsDrawer({
               </div>
 
               {/* Related lenses + spatial context */}
-              <div className="border-t border-white/10">
+              <div className="border-t border-[color:var(--nb-rule,rgba(255,255,255,0.1))]">
                 <button
                   onClick={() => setFeaturesOpen(!featuresOpen)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300 hover:text-white transition-colors bg-white/[0.02] hover:bg-white/[0.04] rounded-lg"
+                  className="w-full flex items-center justify-between px-4 py-3 text-sm text-[color:var(--nb-ink-2,#d1d5db)] hover:text-[color:var(--nb-ink,#ffffff)] transition-colors bg-[var(--nb-wash,rgba(255,255,255,0.02))] hover:bg-[var(--nb-wash,rgba(255,255,255,0.04))] rounded-lg"
                 >
                   <span className="flex items-center gap-2">
                     <Layers className="w-4 h-4" />
@@ -364,8 +364,8 @@ export function ChatToolsDrawer({
                 {featuresOpen && (
                   <div className="px-4 pb-4 space-y-4">
                     {lensRecommendations.length > 0 && (
-                      <div className="p-3 rounded-lg border border-neon-purple/20 bg-neon-purple/5 space-y-2">
-                        <p className="text-xs font-semibold text-neon-purple flex items-center gap-1.5">
+                      <div className="p-3 rounded-lg border border-[color:var(--nb-red,rgba(168,85,247,0.2))] bg-[var(--nb-red-soft,rgba(168,85,247,0.05))] space-y-2">
+                        <p className="text-xs font-semibold text-[color:var(--nb-red,#a855f7)] flex items-center gap-1.5">
                           <Layers className="w-3.5 h-3.5" />
                           Suggested Lenses
                         </p>
@@ -381,18 +381,18 @@ export function ChatToolsDrawer({
                                 );
                                 window.location.href = `/lenses/${rec.lensId}`;
                               }}
-                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-lattice-surface border border-lattice-border hover:border-neon-purple/50 transition-colors text-left group"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[var(--nb-sheet,rgb(var(--lattice-surface-rgb)))] border border-[color:var(--nb-rule,rgb(var(--lattice-border-rgb)))] hover:border-[color:var(--nb-red,rgba(168,85,247,0.5))] transition-colors text-left group"
                             >
-                              <span className="text-xs font-medium text-white group-hover:text-neon-purple transition-colors">
+                              <span className="text-xs font-medium text-[color:var(--nb-ink,#ffffff)] group-hover:text-[color:var(--nb-red,#a855f7)] transition-colors">
                                 {rec.name}
                               </span>
-                              <span className="text-[10px] text-gray-400">
+                              <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
                                 {Math.round(rec.score * 100)}%
                               </span>
                             </button>
                           ))}
                         </div>
-                        <p className="text-[10px] text-gray-400">
+                        <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
                           Based on your current conversation context
                         </p>
                       </div>

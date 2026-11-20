@@ -325,7 +325,7 @@ export function AnalysisToolsPanel() {
               ) : sentimentResult && 'message' in sentimentResult ? (
                 <p className="text-sm text-gray-400 py-4 text-center">{String(sentimentResult.message)}</p>
               ) : (
-                <div className="text-center py-6 text-gray-600">
+                <div className="text-center py-6 text-lattice-muted">
                   <Heart className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">Click &quot;Analyze Sentiment&quot; to run VAD analysis</p>
                 </div>
@@ -463,7 +463,7 @@ export function AnalysisToolsPanel() {
                             }`}>
                               {String(tp.type)} ({Number(tp.valence).toFixed(3)})
                             </span>
-                            <span className="text-gray-600">
+                            <span className="text-lattice-muted">
                               magnitude: {Number(tp.magnitude).toFixed(3)}
                             </span>
                           </div>
@@ -497,7 +497,7 @@ export function AnalysisToolsPanel() {
               ) : timelineResult && 'message' in timelineResult ? (
                 <p className="text-sm text-gray-400 py-4 text-center">{String(timelineResult.message)}</p>
               ) : (
-                <div className="text-center py-6 text-gray-600">
+                <div className="text-center py-6 text-lattice-muted">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">Click &quot;Build Timeline&quot; to trace emotional arcs</p>
                 </div>
@@ -539,7 +539,7 @@ export function AnalysisToolsPanel() {
                   <div className="flex items-center gap-3 text-xs text-gray-400">
                     <span>{String(empathyResult.totalFeedback)} feedback items analyzed</span>
                     {!!empathyResult.analyzedAt && (
-                      <span className="text-gray-600">{new Date(String(empathyResult.analyzedAt)).toLocaleTimeString()}</span>
+                      <span className="text-lattice-muted">{new Date(String(empathyResult.analyzedAt)).toLocaleTimeString()}</span>
                     )}
                   </div>
 
@@ -681,7 +681,7 @@ export function AnalysisToolsPanel() {
               ) : empathyResult && 'message' in empathyResult ? (
                 <p className="text-sm text-gray-400 py-4 text-center">{String(empathyResult.message)}</p>
               ) : (
-                <div className="text-center py-6 text-gray-600">
+                <div className="text-center py-6 text-lattice-muted">
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">Click &quot;Build Empathy Map&quot; to categorize feedback</p>
                 </div>
@@ -789,7 +789,7 @@ export function AnalysisToolsPanel() {
                             <RefreshCw className="w-3 h-3 text-purple-400 shrink-0" />
                             <span className="text-gray-400">{String(cycle.label || cycle.description || cycle.name || `Cycle ${i + 1}`)}</span>
                             {!!(cycle.count ?? cycle.period) && (
-                              <span className="ml-auto text-gray-600 font-mono">{String(cycle.count ?? cycle.period)}</span>
+                              <span className="ml-auto text-lattice-muted font-mono">{String(cycle.count ?? cycle.period)}</span>
                             )}
                           </div>
                         ))}
@@ -864,7 +864,7 @@ export function AnalysisToolsPanel() {
               ) : patternResult && 'message' in patternResult ? (
                 <p className="text-sm text-gray-400 py-4 text-center">{String(patternResult.message)}</p>
               ) : (
-                <div className="text-center py-6 text-gray-600">
+                <div className="text-center py-6 text-lattice-muted">
                   <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
                   <p className="text-xs">Click &quot;Detect Patterns&quot; to find emotional triggers and cycles</p>
                 </div>

@@ -31,7 +31,9 @@ describe('maker duplicate names (FIX-maker-001)', () => {
   });
 
   it('server refusals surface their words through errorFrom', () => {
-    expect(page).toContain('data?.result?.error');
+    // errorFrom reads the error off the envelope AND off the nested macro result.
+    expect(page).toContain('typeof data.error === \'string\'');
+    expect(page).toMatch(/data\?\.result as \{ error\?: unknown \} \| null \| undefined\)\?\.error/);
   });
 
   it('the store refuses duplicates on create and rename', () => {

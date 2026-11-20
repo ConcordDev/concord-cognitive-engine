@@ -11,12 +11,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Loader2, Mic, MicOff, Send } from 'lucide-react';
 import { useConKayVoice } from '@/components/conkay/useConKayVoice';
 import { useMicAmplitude } from '@/components/conkay/useMicAmplitude';
+import { KayRing, type KayState } from '@/components/conkay/workshop/KayRing';
 
 interface Props {
   busy: boolean;
   onSend: (text: string) => void;
   /** Reply text to speak aloud while voice is on; changes trigger speech. */
   speakText: { id: string; text: string } | null;
+  /** 'workshop': the mic is Kay's ring (real mic level / in-flight / speaking). */
+  variant?: 'classic' | 'workshop';
+  /** Kay's most recent line, shown above the command line in the workshop. */
+  lastLine?: string | null;
 }
 
 function Waveform({ levelRef, active }: { levelRef: React.MutableRefObject<number>; active: boolean }) {
@@ -47,7 +52,7 @@ function Waveform({ levelRef, active }: { levelRef: React.MutableRefObject<numbe
   return <canvas ref={canvasRef} width={192} height={36} className="h-9 w-32 shrink-0 sm:w-48" aria-hidden />;
 }
 
-export function VoiceComposer({ busy, onSend, speakText }: Props) {
+export function VoiceComposer({ busy, onSend, speakText, variant = 'classic', lastLine = null }: Props) {
   const [text, setText] = useState('');
   const [voiceOn, setVoiceOn] = useState(false);
   const sendRef = useRef(onSend);
@@ -95,6 +100,55 @@ export function VoiceComposer({ busy, onSend, speakText }: Props) {
   else if (voiceOn) status = 'Starting microphone…';
   else status = 'Type, or tap the mic and speak. Reference dimensions, loads, supports or materials.';
 
+  if (variant === 'workshop') {
+    const ringState: KayState = !voice.supported ? 'unavailable'
+      : voiceOn && voice.speaking ? 'speaking'
+        : voiceOn && voice.listening ? 'listening'
+          : busy ? 'working' : 'idle';
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        {lastLine && (
+          <p className="ws-rise mb-2 line-clamp-2 px-16 text-center text-[13px] leading-snug text-[color:var(--ws-ice)] ws-glow-text" aria-hidden>{lastLine}</p>
+        )}
+        <div className="ws-glass ws-corners flex items-center gap-3 rounded-full py-1.5 pl-1.5 pr-2">
+          <button
+            type="button"
+            onClick={() => setVoiceOn((v) => !v)}
+            disabled={!voice.supported}
+            aria-pressed={voiceOn}
+            aria-label={voiceOn ? 'Stop voice input' : 'Start voice input'}
+            title={voiceOn ? 'Stop voice input (Space)' : 'Talk to Kay (Space)'}
+            className="relative flex shrink-0 items-center justify-center rounded-full disabled:opacity-50"
+          >
+            <KayRing state={ringState} levelRef={level} />
+            {!voice.supported && <MicOff className="absolute h-4 w-4 text-[color:var(--ws-faint)]" aria-hidden />}
+          </button>
+          <div className="min-w-0 flex-1">
+            <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Tell Kay what to build — “t_w = 8 mm and re-run”, “make it lighter”"
+                aria-label="Message ConKay"
+                className="w-full min-w-0 bg-transparent text-[15px] text-[color:var(--ws-text)] placeholder:text-[color:var(--ws-faint)] focus:outline-none"
+              />
+            </form>
+            <p className="ws-label mt-0.5 truncate normal-case tracking-normal" aria-live="polite">{status}</p>
+          </div>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={busy || !text.trim()}
+            aria-label="Send"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--ws-line-strong)] text-[color:var(--ws-arc)] transition-[background-color,box-shadow] hover:bg-[color:var(--ws-arc-soft)] hover:shadow-[0_0_16px_rgba(89,227,255,0.35)] disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <Send className="h-5 w-5" aria-hidden />}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 rounded-2xl border border-sky-400/20 bg-[#071222]/90 p-2 shadow-[0_0_24px_rgba(56,189,248,0.08)] sm:gap-3 sm:p-3">
       <button
@@ -119,7 +173,7 @@ export function VoiceComposer({ busy, onSend, speakText }: Props) {
             onChange={(e) => setText(e.target.value)}
             placeholder="Message ConKay — e.g. “t_w = 8 mm and re-run”"
             aria-label="Message ConKay"
-            className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none sm:text-base"
+            className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none sm:text-base"
           />
         </form>
         <p className="mt-0.5 truncate text-[11px] text-slate-400" aria-live="polite">{status}</p>

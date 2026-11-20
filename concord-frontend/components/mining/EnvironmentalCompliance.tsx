@@ -115,7 +115,7 @@ const BOND_BADGE: Record<BondStatus, string> = {
 };
 
 const inputCls = 'px-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded text-zinc-200 text-xs w-full';
-const btnPrimary = 'px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5';
+const btnPrimary = 'px-3 py-1.5 rounded bg-amber-700 hover:bg-amber-500 text-white text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5';
 
 const EMPTY_FORM = {
   category: 'air_quality_permit' as ComplianceCategory,

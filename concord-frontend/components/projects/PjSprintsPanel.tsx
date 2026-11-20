@@ -145,12 +145,12 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
                 {receipt.issuesDone}/{receipt.issuesTotal} issues · {receipt.pointsDone}/{receipt.pointsTotal} points
                 {receipt.carriedOver > 0 && <> · {receipt.carriedOver} carried over</>}
               </p>
-              <p className="text-[11px] text-gray-500 mt-1">Kept on the Activity feed of every settled issue — and in this project's Activity tab.</p>
+              <p className="text-[11px] text-lattice-muted mt-1">Kept on the Activity feed of every settled issue — and in this project's Activity tab.</p>
             </div>
             <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-emerald-300 border-2 border-emerald-500/70 rounded px-2 py-1 -rotate-[1.5deg]">
               {receipt.settledInFull ? 'Settled in full' : 'Settled'}
             </span>
-            <button type="button" aria-label="Dismiss receipt" onClick={() => setReceipt(null)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+            <button type="button" aria-label="Dismiss receipt" onClick={() => setReceipt(null)} className="text-lattice-muted hover:text-gray-300 text-xs">✕</button>
           </div>
         </section>
       )}
@@ -163,11 +163,11 @@ export function PjSprintsPanel({ projectId, onChange }: { projectId: string; onC
           <ResponsiveContainer width="100%" height={170}>
             <LineChart data={burndown.series}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#71717a' }} />
-              <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={28} />
+              <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#a1a1aa' }} />
+              <YAxis tick={{ fontSize: 9, fill: '#a1a1aa' }} width={28} />
               <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Line type="monotone" dataKey="ideal" stroke="#52525b" strokeWidth={1.5} strokeDasharray="4 3" dot={false} name="Ideal" />
+              <Line type="monotone" dataKey="ideal" stroke="#a1a1aa" strokeWidth={1.5} strokeDasharray="4 3" dot={false} name="Ideal" />
               <Line type="monotone" dataKey="remaining" stroke="#818cf8" strokeWidth={2} dot={{ r: 2 }} name="Remaining" />
             </LineChart>
           </ResponsiveContainer>

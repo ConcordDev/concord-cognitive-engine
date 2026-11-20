@@ -119,7 +119,7 @@ export function TournamentCreatePanel({
                   key={m}
                   onClick={() => setMode(m)}
                   className={`flex-1 rounded px-2 py-1 text-xs capitalize ${
-                    mode === m ? 'bg-amber-600 text-amber-50' : 'bg-slate-700 text-slate-400'
+                    mode === m ? 'bg-amber-700 text-amber-50' : 'bg-slate-700 text-slate-400'
                   }`}
                 >
                   {m}

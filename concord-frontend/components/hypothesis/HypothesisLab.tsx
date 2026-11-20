@@ -52,7 +52,7 @@ const STATUS_COLOR: Record<string, string> = {
   testing: 'bg-yellow-400/20 text-yellow-300',
   confirmed: 'bg-neon-green/20 text-neon-green',
   rejected: 'bg-red-400/20 text-red-300',
-  refined: 'bg-neon-purple/20 text-neon-purple',
+  refined: 'bg-neon-purple/20 text-neon-purple-bright',
   archived: 'bg-gray-500/20 text-gray-400',
 };
 
@@ -284,7 +284,7 @@ export function HypothesisLab() {
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
-                  className={`px-2 py-0.5 rounded transition-colors ${statusFilter === s ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'}`}
+                  className={`px-2 py-0.5 rounded transition-colors ${statusFilter === s ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/40' : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'}`}
                 >
                   {s}
                 </button>

@@ -836,6 +836,8 @@ export default function registerRetailActions(registerLensAction) {
       dailySalesRate,
       turnoverRate,
       priceHistory,
+      // A linked product photo (product-set-image) survives a re-save.
+      ...(existing?.imageDtuId ? { imageDtuId: existing.imageDtuId } : {}),
       updatedAt: now,
       createdAt: existing?.createdAt || now,
     };
@@ -1044,9 +1046,155 @@ export default function registerRetailActions(registerLensAction) {
     const existing = cart.lines.find((l) => l.sku === sku);
     if (existing) existing.qty += qty;
     else cart.lines.push({ sku, name: product.name, unitPrice: product.price, qty });
+    const discountNote = syncCartDiscount(s, userId, cart);
+    saveRetailState();
+    const lineQty = (existing ? existing.qty : qty);
+    return { ok: true, result: { cart, ...stockNote(product, lineQty), ...discountNote } };
+  });
+
+  // ── Register line editing, parked sales, customer attach ──────────
+  //
+  // A register has to be able to fix a mistake: change a quantity or take a
+  // line off. qty 0 removes the line. Every edit re-checks the applied
+  // discount against the new subtotal (syncCartDiscount), so a fixed-amount
+  // code keeps its real dollar value and a code whose minimum is no longer
+  // met is dropped AND reported — never silently kept.
+
+  // Fixed-amount codes are stored as a percent of the subtotal at apply time;
+  // re-derive it whenever the subtotal moves. Returns a note to merge into the
+  // response when the discount was dropped.
+  function syncCartDiscount(s, userId, cart) {
+    const code = cart?.appliedDiscountCode;
+    if (!code) return {};
+    const discount = ensureRetailBucket(s, "discounts", userId).find(d => d.code === code);
+    const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0);
+    if (!discount || subtotal <= 0 || subtotal < (Number(discount.minSubtotal) || 0)) {
+      cart.discountPercent = 0;
+      cart.freeShipping = false;
+      delete cart.appliedDiscountCode;
+      return { discountDropped: code, discountDroppedReason: !discount ? "code no longer exists" : `minimum subtotal $${discount.minSubtotal} not met` };
+    }
+    if (discount.kind === "fixed_amount") {
+      cart.discountPercent = (Math.min(subtotal, discount.value) / subtotal) * 100;
+    } else if (discount.kind === "percentage") {
+      cart.discountPercent = discount.value;
+    }
+    return {};
+  }
+
+  // Selling past stock is allowed (stock clamps at 0 on tender, as before),
+  // but the register is told the truth about it.
+  function stockNote(product, lineQty) {
+    if (!product) return {}; // custom (open-price) lines carry no stock
+    const stock = Number(product?.stock) || 0;
+    return lineQty > stock ? { stockWarning: `Only ${stock} of ${product.sku} in stock; this line has ${lineQty}.` } : {};
+  }
+
+  registerLensAction("retail", "cart-set-line-qty", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const sku = String(params.sku || "");
+    const qty = Number(params.qty);
+    if (!cartId || !sku) return { ok: false, error: "cartId and sku required" };
+    if (!Number.isInteger(qty) || qty < 0 || qty > 9999) return { ok: false, error: "qty must be a whole number from 0 to 9999" };
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.pendingPaymentIntentId) return { ok: false, error: "a card payment is in progress for this cart; finish or void it before editing" };
+    const idx = cart.lines.findIndex((l) => l.sku === sku);
+    if (idx < 0) return { ok: false, error: `line not in cart: ${sku}` };
+    if (qty === 0) cart.lines.splice(idx, 1);
+    else cart.lines[idx].qty = qty;
+    const discountNote = syncCartDiscount(s, userId, cart);
+    saveRetailState();
+    const product = s.products.get(userId)?.get(sku);
+    return { ok: true, result: { cart, removed: qty === 0, ...(qty > 0 ? stockNote(product, qty) : {}), ...discountNote } };
+  });
+
+  // Open carts = parked sales. Newest first, with a cheap pre-tax subtotal so
+  // the register can show what each one holds without N cart-total calls.
+  registerLensAction("retail", "cart-list", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const carts = Array.from(s.carts.get(userId)?.values() || [])
+      .map((c) => ({
+        id: c.id,
+        openedAt: c.openedAt,
+        lineCount: c.lines.length,
+        itemCount: c.lines.reduce((n, l) => n + l.qty, 0),
+        subtotal: Math.round(c.lines.reduce((sum, l) => sum + l.qty * l.unitPrice, 0) * 100) / 100,
+        customerId: c.customerId || null,
+        customerName: c.customerName || null,
+        appliedDiscountCode: c.appliedDiscountCode || null,
+        cardPending: Boolean(c.pendingPaymentIntentId),
+      }))
+      .sort((a, b) => String(b.openedAt).localeCompare(String(a.openedAt)));
+    return { ok: true, result: { carts } };
+  });
+
+  registerLensAction("retail", "cart-get", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = s.carts.get(userId)?.get(String(params.cartId || ""));
+    if (!cart) return { ok: false, error: "cart not found" };
+    return { ok: true, result: { cart } };
+  });
+
+  // Voiding a sale discards the cart. Nothing was decremented or redeemed
+  // yet (that only happens at tender), so there is nothing to roll back —
+  // except a pending card intent, which blocks the void so a captured
+  // payment can never be orphaned from its order.
+  registerLensAction("retail", "cart-void", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cartId = String(params.cartId || "");
+    const cart = s.carts.get(userId)?.get(cartId);
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.pendingPaymentIntentId && params.force !== true) {
+      return { ok: false, error: "a card payment was started for this cart; confirm it or pass force:true after checking Stripe" };
+    }
+    s.carts.get(userId).delete(cartId);
+    saveRetailState();
+    return { ok: true, result: { voided: cartId } };
+  });
+
+  // Attach (or detach, customerId:null) a customer to the sale. On tender the
+  // order carries the customer and the customer's real totals move.
+  registerLensAction("retail", "cart-set-customer", (ctx, _artifact, params = {}) => {
+    const s = getRetailState();
+    if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = s.carts.get(userId)?.get(String(params.cartId || ""));
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (params.customerId == null || params.customerId === "") {
+      delete cart.customerId;
+      delete cart.customerName;
+      saveRetailState();
+      return { ok: true, result: { cart } };
+    }
+    const customer = ensureRetailBucket(s, "customers", userId).find(c => c.id === String(params.customerId));
+    if (!customer) return { ok: false, error: "customer not found" };
+    cart.customerId = customer.id;
+    cart.customerName = customer.name;
     saveRetailState();
     return { ok: true, result: { cart } };
   });
+
+  // Called by both tender paths once the order exists.
+  function linkOrderToCustomer(s, userId, cart, order) {
+    if (!cart?.customerId) return;
+    const customer = ensureRetailBucket(s, "customers", userId).find(c => c.id === cart.customerId);
+    if (!customer) return;
+    order.customerId = customer.id;
+    order.customerName = customer.name;
+    customer.totalSpent = Math.round(((Number(customer.totalSpent) || 0) + order.total) * 100) / 100;
+    customer.orderCount = (Number(customer.orderCount) || 0) + 1;
+    customer.lastOrderAt = order.completedAt;
+  }
 
   registerLensAction("retail", "cart-total", (ctx, _artifact, params = {}) => {
     const s = getRetailState();
@@ -1095,8 +1243,34 @@ export default function registerRetailActions(registerLensAction) {
     const subtotalAfter = subtotal - discount;
     const tax = subtotalAfter * (taxRate / 100);
     const total = Math.round((subtotalAfter + tax) * 100) / 100;
+    for (const t of tenders) {
+      const amt = Number(t?.amount);
+      if (!Number.isFinite(amt) || amt <= 0) return { ok: false, error: "every tender needs a finite amount > 0" };
+    }
     const tendered = tenders.reduce((s, t) => s + Number(t.amount || 0), 0);
     if (tendered < total - 0.01) return { ok: false, error: `insufficient tender: ${tendered.toFixed(2)} < ${total.toFixed(2)}` };
+    // Change is only ever given back from cash: a gift card can't overpay.
+    const nonCash = tenders.filter(t => t.kind !== "cash").reduce((s, t) => s + Number(t.amount), 0);
+    if (nonCash > total + 0.01) return { ok: false, error: `non-cash tenders ($${nonCash.toFixed(2)}) exceed the $${total.toFixed(2)} total; change can only come from cash` };
+    // Gift-card tenders are validated in full BEFORE anything is written, then
+    // redeemed in the same handler as the order — a sale can never spend a
+    // card's balance without producing its order, or vice versa.
+    const giftCards = ensureRetailBucket(s, "giftCards", userId);
+    const giftDebits = new Map();
+    for (const t of tenders) {
+      if (t.kind !== "gift_card") continue;
+      const code = String(t.code || "").trim().toUpperCase();
+      const card = giftCards.find(c => c.code === code);
+      if (!card) return { ok: false, error: `gift card not found: ${code || "(no code)"}` };
+      if (card.status !== "active") return { ok: false, error: `gift card ${code} is ${card.status}` };
+      const want = (giftDebits.get(card) || 0) + Number(t.amount);
+      if (!Number.isFinite(card.balance) || card.balance < want - 0.001) return { ok: false, error: `gift card ${code} has only $${Number(card.balance || 0).toFixed(2)}` };
+      giftDebits.set(card, want);
+    }
+    for (const [card, amt] of giftDebits) {
+      card.balance = Math.round((card.balance - amt) * 100) / 100;
+      if (card.balance === 0) card.status = "redeemed";
+    }
     const change = Math.round((tendered - total) * 100) / 100;
     // Decrement stock
     for (const line of cart.lines) {
@@ -1126,6 +1300,7 @@ export default function registerRetailActions(registerLensAction) {
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
     redeemAppliedDiscount(s, userId, cart);
+    finalizePosOrder(s, userId, cart, order, params);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
@@ -1340,6 +1515,7 @@ export default function registerRetailActions(registerLensAction) {
     if (!s.orders.has(userId)) s.orders.set(userId, []);
     s.orders.get(userId).unshift(order);
     redeemAppliedDiscount(s, userId, cart);
+    finalizePosOrder(s, userId, cart, order, params);
     s.carts.get(userId).delete(cartId);
     saveRetailState();
     return { ok: true, result: { order } };
@@ -3768,4 +3944,345 @@ export default function registerRetailActions(registerLensAction) {
     saveRetailState();
     return { ok: true, result: { id, deleted: true } };
   });
+
+  // ════════════════════════════════════════════════════════════════════
+  // The Stall — register-floor features (2026-11-18)
+  //
+  // custom (open-price) lines · product photo (an owned image DTU) · the
+  // day board (hourly today vs yesterday + a daily goal) · regulars
+  // (customer insights from real orders) · till sessions (open with a
+  // float, close with a counted drawer; the day's ledger is minted as a
+  // DTU) · milestone stamps computed at the moment an order is created.
+  // Every figure below is derived from stored orders — nothing is seeded.
+  // ════════════════════════════════════════════════════════════════════
+
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const CUSTOM_PRICE_MAX = 100000;
+  const TILL_CASH_MAX = 1000000;
+  const GOAL_MAX = 10000000;
+  const PRODUCT_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+  const PRODUCT_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+  // Local-day bucketing. tzOffsetMinutes is the browser's
+  // Date#getTimezoneOffset() (UTC − local, minutes): EST = 300.
+  function readTz(params) {
+    if (params?.tzOffsetMinutes === undefined || params?.tzOffsetMinutes === null || params?.tzOffsetMinutes === "") return { ok: true, tz: 0 };
+    const tz = Number(params.tzOffsetMinutes);
+    if (!Number.isInteger(tz) || tz < -840 || tz > 840) return { ok: false, error: "tzOffsetMinutes must be a whole number of minutes between -840 and 840" };
+    return { ok: true, tz };
+  }
+  const localShift = (t, tz) => new Date(t - tz * 60000);
+  const localDayKey = (t, tz) => localShift(t, tz).toISOString().slice(0, 10);
+  const localHour = (t, tz) => localShift(t, tz).getUTCHours();
+  const prevDayKey = (key) => new Date(Date.parse(`${key}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+  const orderTime = (o) => new Date(o.completedAt).getTime();
+
+  // Strip control characters; collapse whitespace. Text is rendered as
+  // text by the client, this only keeps stored names sane.
+  function cleanText(v, max) {
+    return String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  }
+
+  // ── Custom (open-price) line: a hand-written price tag ──────────────
+  registerLensAction("retail", "cart-add-custom-line", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const cart = s.carts.get(userId)?.get(String(params.cartId || ""));
+    if (!cart) return { ok: false, error: "cart not found" };
+    if (cart.pendingPaymentIntentId) return { ok: false, error: "a card payment is in progress for this cart; finish or void it before editing" };
+    const name = cleanText(params.name, 60);
+    if (!name) return { ok: false, error: "name required" };
+    const price = finiteOrNull(params.price);
+    if (price === null || price <= 0 || price > CUSTOM_PRICE_MAX) return badNumber("price", `must be a finite amount > 0 and <= ${CUSTOM_PRICE_MAX}`);
+    const qty = params.qty === undefined ? 1 : Number(params.qty);
+    if (!Number.isInteger(qty) || qty < 1 || qty > 9999) return { ok: false, error: "qty must be a whole number from 1 to 9999" };
+    const sku = `CUSTOM-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    cart.lines.push({ sku, name, unitPrice: r2(price), qty, custom: true });
+    const discountNote = syncCartDiscount(s, userId, cart);
+    saveRetailState();
+    return { ok: true, result: { cart, sku, ...discountNote } };
+  });
+
+  // ── Product photo: link an image DTU the caller owns ────────────────
+  // The bytes are uploaded through the platform's real upload route
+  // (POST /api/artifact/upload: mime sniffing, storage quota, one owned
+  // DTU per file). This only links that DTU to a product, after checking
+  // the DTU exists, belongs to the caller, and is a raster image.
+  registerLensAction("retail", "product-set-image", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const product = s.products.get(userId)?.get(String(params.sku || "").trim());
+    if (!product) return { ok: false, error: "product not found" };
+    if (params.dtuId === null || params.dtuId === "") {
+      delete product.imageDtuId;
+      product.updatedAt = nowIsoRet();
+      saveRetailState();
+      return { ok: true, result: { product } };
+    }
+    const dtuId = String(params.dtuId || "");
+    const dtu = globalThis._concordSTATE?.dtus?.get?.(dtuId);
+    if (!dtu) return { ok: false, error: "image DTU not found" };
+    const owner = dtu.ownerId || dtu.meta?.ownerId || dtu.createdBy;
+    if (owner !== userId) return { ok: false, error: "you can only use your own images" };
+    const type = dtu.artifact?.type;
+    if (!PRODUCT_IMAGE_TYPES.has(type)) return { ok: false, error: "product photos must be PNG, JPEG or WebP" };
+    if (!(Number(dtu.artifact?.sizeBytes) > 0) || dtu.artifact.sizeBytes > PRODUCT_IMAGE_MAX_BYTES) return { ok: false, error: "product photos must be under 5 MB" };
+    product.imageDtuId = dtuId;
+    product.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { product } };
+  });
+
+  // ── Daily goal ──────────────────────────────────────────────────────
+  function ensureGoal(s, userId) {
+    if (!s.goals) s.goals = new Map();
+    if (!s.goals.has(userId)) s.goals.set(userId, { amount: 0, updatedAt: null });
+    return s.goals.get(userId);
+  }
+
+  registerLensAction("retail", "goal-set", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const amount = finiteOrNull(params.amount);
+    if (amount === null || amount < 0 || amount > GOAL_MAX) return badNumber("amount", `must be a finite amount from 0 (no goal) to ${GOAL_MAX}`);
+    const goal = ensureGoal(s, retailActor(ctx));
+    goal.amount = r2(amount);
+    goal.updatedAt = nowIsoRet();
+    saveRetailState();
+    return { ok: true, result: { goal } };
+  });
+
+  // ── Day board: today vs yesterday by local hour ─────────────────────
+  registerLensAction("retail", "analytics-hourly", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const tzr = readTz(params); if (!tzr.ok) return { ok: false, error: tzr.error };
+    const tz = tzr.tz;
+    const now = Date.now();
+    const todayKey = localDayKey(now, tz);
+    const yesterdayKey = prevDayKey(todayKey);
+    const blank = () => Array.from({ length: 24 }, (_, hour) => ({ hour, revenue: 0, orders: 0 }));
+    const today = blank(); const yesterday = blank();
+    let yesterdaySameTime = 0;
+    for (const o of s.orders.get(userId) || []) {
+      const t = orderTime(o); if (!Number.isFinite(t)) continue;
+      const key = localDayKey(t, tz);
+      const row = key === todayKey ? today : key === yesterdayKey ? yesterday : null;
+      if (!row) continue;
+      const h = row[localHour(t, tz)];
+      h.revenue = r2(h.revenue + netOrderValue(o)); h.orders++;
+      if (row === yesterday && t + 86400000 <= now) yesterdaySameTime = r2(yesterdaySameTime + netOrderValue(o));
+    }
+    const sum = (rows) => r2(rows.reduce((n, h) => n + h.revenue, 0));
+    const todayTotal = sum(today);
+    const goal = ensureGoal(s, userId).amount;
+    return {
+      ok: true,
+      result: {
+        salesBasis: SALES_BASIS,
+        tzOffsetMinutes: tz,
+        todayKey, yesterdayKey,
+        currentHour: localHour(now, tz),
+        today, yesterday,
+        todayTotal,
+        todayOrders: today.reduce((n, h) => n + h.orders, 0),
+        yesterdayTotal: sum(yesterday),
+        yesterdaySameTime,
+        goal,
+        goalProgress: goal > 0 ? Math.min(1, r2(todayTotal / goal)) : null,
+      },
+    };
+  });
+
+  // ── Regulars: what this customer's own orders say ───────────────────
+  registerLensAction("retail", "customer-insights", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const customerId = String(params.customerId || "");
+    const customer = ensureRetailBucket(s, "customers", userId).find((c) => c.id === customerId);
+    if (!customer) return { ok: false, error: "customer not found" };
+    const mine = (s.orders.get(userId) || []).filter((o) => o.customerId === customerId);
+    const bySku = new Map();
+    for (const o of mine) for (const l of o.lines) {
+      const e = bySku.get(l.sku) || { sku: l.sku, name: l.name, qty: 0, revenue: 0 };
+      e.qty += l.qty; e.revenue = r2(e.revenue + l.qty * l.unitPrice);
+      bySku.set(l.sku, e);
+    }
+    const favorite = Array.from(bySku.values()).filter((e) => !String(e.sku).startsWith("CUSTOM-"))
+      .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue || a.sku.localeCompare(b.sku))[0] || null;
+    const times = mine.map(orderTime).filter(Number.isFinite);
+    const last = times.length ? Math.max(...times) : null;
+    const spent = r2(mine.reduce((n, o) => n + netOrderValue(o), 0));
+    return {
+      ok: true,
+      result: {
+        customerId, name: customer.name,
+        visits: mine.length,
+        totalSpent: spent,
+        avgOrder: mine.length ? r2(spent / mine.length) : 0,
+        favorite,
+        firstVisitAt: times.length ? new Date(Math.min(...times)).toISOString() : null,
+        lastVisitAt: last ? new Date(last).toISOString() : null,
+        daysSinceLastVisit: last ? Math.floor((Date.now() - last) / 86400000) : null,
+      },
+    };
+  });
+
+  // ── Till sessions ───────────────────────────────────────────────────
+  function tills(s, userId) {
+    if (!s.tills) s.tills = new Map();
+    if (!s.tills.has(userId)) s.tills.set(userId, []);
+    return s.tills.get(userId);
+  }
+  const openTill = (s, userId) => tills(s, userId).find((t) => t.status === "open") || null;
+
+  // Expected drawer = float + cash taken − change given, over the orders
+  // rung up while this session was open. Refunds record no tender, so
+  // refunds on those orders are reported beside the figure, not netted
+  // into it (a cash refund handed back will show up as variance).
+  function tillFigures(s, userId, session) {
+    const orders = (s.orders.get(userId) || []).filter((o) => o.tillSessionId === session.id);
+    let cashIn = 0, change = 0, card = 0, gift = 0, other = 0, gross = 0, refunds = 0;
+    for (const o of orders) {
+      for (const t of o.tenders || []) {
+        const a = Number(t.amount) || 0;
+        if (t.kind === "cash") cashIn += a; else if (t.kind === "card") card += a; else if (t.kind === "gift_card") gift += a; else other += a;
+      }
+      change += Number(o.change) || 0;
+      gross += Number(o.total) || 0;
+      refunds += Number(o.refundedAmount) || 0;
+    }
+    return {
+      orderCount: orders.length,
+      grossSales: r2(gross),
+      cashIn: r2(cashIn), changeGiven: r2(change), cashSales: r2(cashIn - change),
+      cardSales: r2(card), giftCardSales: r2(gift), otherSales: r2(other),
+      refundsOnSessionOrders: r2(refunds),
+      expectedCash: r2(session.float + cashIn - change),
+    };
+  }
+
+  registerLensAction("retail", "till-open", (ctx, _artifact, params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    if (openTill(s, userId)) return { ok: false, error: "the till is already open; close it before opening a new session" };
+    const float = params.float === undefined ? 0 : finiteOrNull(params.float);
+    if (float === null || float < 0 || float > TILL_CASH_MAX) return badNumber("float", `must be a finite amount from 0 to ${TILL_CASH_MAX}`);
+    const session = { id: nextRetailId("till"), status: "open", float: r2(float), openedAt: nowIsoRet() };
+    tills(s, userId).unshift(session);
+    saveRetailState();
+    return { ok: true, result: { session } };
+  });
+
+  registerLensAction("retail", "till-status", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = retailActor(ctx);
+    const session = openTill(s, userId);
+    const lastClosed = tills(s, userId).find((t) => t.status === "closed") || null;
+    return { ok: true, result: { open: !!session, session, figures: session ? tillFigures(s, userId, session) : null, lastClosed } };
+  });
+
+  registerLensAction("retail", "till-close", async (ctx, _artifact, params = {}) => {
+    try {
+      const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+      const userId = retailActor(ctx);
+      const session = openTill(s, userId);
+      if (!session) return { ok: false, error: "the till is not open" };
+      const counted = finiteOrNull(params.countedCash);
+      if (counted === null || counted < 0 || counted > TILL_CASH_MAX) return badNumber("countedCash", `must be a finite amount from 0 to ${TILL_CASH_MAX}`);
+      const figures = tillFigures(s, userId, session);
+      const variance = r2(counted - figures.expectedCash);
+      Object.assign(session, {
+        status: "closed",
+        closedAt: nowIsoRet(),
+        countedCash: r2(counted),
+        variance,
+        note: cleanText(params.note, 280),
+        figures,
+      });
+      saveRetailState();
+
+      // Mint the day's ledger as a citable DTU. A failed mint never undoes
+      // the close — the session record above is the source of truth.
+      if (ctx?.macro?.run) {
+        const shop = ensureStorefront(s, userId).name || "the shop";
+        // The DTU commit gate refuses an exact-title repeat across the whole
+        // store, so the title names this session (close time + session id):
+        // two closes — same shop, same day, same figures — are two ledgers.
+        const title = `Till close — ${shop} — ${session.closedAt.slice(0, 16).replace("T", " ")} UTC · ${session.id.slice(-6)}`;
+        const varianceText = variance === 0 ? "drawer balanced" : variance > 0 ? `over by $${variance.toFixed(2)}` : `short by $${Math.abs(variance).toFixed(2)}`;
+        const claims = [
+          `Orders rung up: ${figures.orderCount}`,
+          `Gross sales: $${figures.grossSales.toFixed(2)}`,
+          `Cash sales: $${figures.cashSales.toFixed(2)} · Card: $${figures.cardSales.toFixed(2)} · Gift card: $${figures.giftCardSales.toFixed(2)}`,
+          `Float $${session.float.toFixed(2)} + cash in $${figures.cashIn.toFixed(2)} − change $${figures.changeGiven.toFixed(2)} = expected $${figures.expectedCash.toFixed(2)}`,
+          `Counted $${session.countedCash.toFixed(2)}: ${varianceText}`,
+          // Each close is its own record: the session id + times make two
+          // closes with identical figures distinct (the DTU duplicate gate
+          // otherwise refuses the second ledger as a copy).
+          `Till session ${session.id} · opened ${session.openedAt} · closed ${session.closedAt}`,
+        ];
+        try {
+          const mint = await ctx.macro.run("dtu", "create", {
+            title,
+            creti: [title, "", ...claims, session.note ? `Note: ${session.note}` : ""].filter(Boolean).join("\n"),
+            core: { claims },
+            tags: ["retail", "till", "ledger"],
+            source: "retail-till-close",
+            meta: { tillSession: { ...session } },
+          });
+          if (mint?.ok && mint.dtu) session.ledgerDtuId = mint.dtu.id;
+          else session.ledgerMintError = mint?.error || "dtu_create_failed";
+        } catch (e) { session.ledgerMintError = String(e?.message || e); }
+        saveRetailState();
+      }
+      return { ok: true, result: { session } };
+    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+  });
+
+  registerLensAction("retail", "till-history", (ctx, _artifact, _params = {}) => {
+    const s = getRetailState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    return { ok: true, result: { sessions: tills(s, retailActor(ctx)).filter((t) => t.status === "closed").slice(0, 30) } };
+  });
+
+  // ── Milestone stamps, computed when an order is created ─────────────
+  function computeStamps(s, userId, order, tz) {
+    const orders = s.orders.get(userId) || [];
+    const stamps = [];
+    const count = orders.length;
+    if (count === 1) stamps.push({ id: "first_sale", label: "First sale!" });
+    if (count > 1 && count % 100 === 0) stamps.push({ id: "order_milestone", label: `${count}th order` });
+    const byDay = new Map();
+    for (const o of orders) {
+      const t = orderTime(o); if (!Number.isFinite(t)) continue;
+      const k = localDayKey(t, tz);
+      const e = byDay.get(k) || { revenue: 0, orders: 0 };
+      e.revenue = r2(e.revenue + netOrderValue(o)); e.orders++;
+      byDay.set(k, e);
+    }
+    const todayKey = localDayKey(orderTime(order), tz);
+    const today = byDay.get(todayKey);
+    const before = r2(today.revenue - netOrderValue(order));
+    const goal = s.goals?.get(userId)?.amount || 0;
+    if (goal > 0 && before < goal && today.revenue >= goal) stamps.push({ id: "goal_hit", label: "Daily goal hit!" });
+    const prior = Array.from(byDay.entries()).filter(([k]) => k !== todayKey).map(([, v]) => v.revenue);
+    if (prior.length) {
+      const best = Math.max(...prior);
+      if (before <= best && today.revenue > best) stamps.push({ id: "best_day", label: "Best day yet" });
+    }
+    if (today.orders === 1) {
+      let streak = 1; let k = prevDayKey(todayKey);
+      while (byDay.has(k)) { streak++; k = prevDayKey(k); }
+      if (streak >= 3) stamps.push({ id: "streak", label: `${streak}-day streak` });
+    }
+    return stamps;
+  }
+
+  // Both POS tender paths call this once the order is in the ledger.
+  function finalizePosOrder(s, userId, cart, order, params) {
+    linkOrderToCustomer(s, userId, cart, order);
+    const till = openTill(s, userId);
+    if (till) order.tillSessionId = till.id;
+    const tzr = readTz(params);
+    try { order.stamps = computeStamps(s, userId, order, tzr.ok ? tzr.tz : 0); } catch { order.stamps = []; }
+  }
 };

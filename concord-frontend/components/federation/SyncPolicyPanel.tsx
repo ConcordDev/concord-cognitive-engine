@@ -112,7 +112,7 @@ export function SyncPolicyPanel() {
           type="button"
           onClick={submit}
           disabled={busy || !domain.trim()}
-          className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
+          className="px-3 py-2 bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save policy

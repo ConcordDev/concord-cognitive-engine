@@ -69,7 +69,7 @@ export function ArtistPage() {
         />
         <button
           type="button" onClick={run} disabled={loading}
-          className="rounded bg-emerald-600/80 hover:bg-emerald-600 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
+          className="rounded bg-emerald-700/80 hover:bg-emerald-700 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Look up'}
         </button>

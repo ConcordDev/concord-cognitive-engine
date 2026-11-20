@@ -234,11 +234,11 @@ function VoiceTab() {
       />
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-400">TTS voice</span>
+          <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)]">TTS voice</span>
           <select
             value={prefs.ttsVoice}
             onChange={(e) => patch({ ttsVoice: e.target.value })}
-            className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-cyan-500/50 focus:outline-none"
+            className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none"
           >
             {(voices.length ? voices : [prefs.ttsVoice]).map((v) => (
               <option key={v} value={v}>{v}</option>
@@ -246,14 +246,14 @@ function VoiceTab() {
           </select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider text-gray-400">Speech-in language</span>
+          <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)]">Speech-in language</span>
           <input
             type="text"
             value={prefs.sttLang}
             onChange={(e) => setPrefs({ ...prefs, sttLang: e.target.value })}
             onBlur={(e) => patch({ sttLang: e.target.value })}
             placeholder="en-US"
-            className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-cyan-500/50 focus:outline-none"
+            className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none"
           />
         </label>
       </div>
@@ -273,31 +273,31 @@ function VoiceTab() {
         step={0.05}
         onCommit={(v) => patch({ ttsPitch: v })}
       />
-      <div className="rounded-md border border-white/10 bg-black/20 p-3 space-y-2">
-        <span className="text-[10px] uppercase tracking-wider text-gray-400">Test the voice</span>
+      <div className="rounded-md border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 space-y-2">
+        <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)]">Test the voice</span>
         <textarea
           value={testText}
           onChange={(e) => setTestText(e.target.value)}
           placeholder="Type text to hear it spoken with these settings"
           rows={2}
-          className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none resize-none"
+          className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none resize-none"
         />
         <button
           type="button"
           onClick={speakTest}
           disabled={!ttsSupported}
-          className="inline-flex items-center gap-1 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 hover:brightness-110 disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.3))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.1))] px-3 py-1 text-xs text-[color:var(--nb-blue,#a5f3fc)] hover:brightness-110 disabled:opacity-40"
         >
           <Volume2 className="w-3 h-3" /> Speak
         </button>
       </div>
-      <div className="text-[10px] text-gray-400 space-y-0.5">
+      <div className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] space-y-0.5">
         <p>Speech-in {sttSupported ? 'supported' : 'not supported'} in this browser.</p>
         <p>Text-to-speech {ttsSupported ? 'supported' : 'not supported'} in this browser.</p>
         {prefs.updatedAt && <p>Last saved {fmtTime(prefs.updatedAt)}.</p>}
       </div>
-      {saving && <p className="text-[11px] text-gray-400">Saving…</p>}
-      {error && <p className="text-[11px] text-rose-300">{error}</p>}
+      {saving && <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)]">Saving…</p>}
+      {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
     </div>
   );
 }
@@ -377,20 +377,20 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
         <button
           type="button"
           onClick={startNew}
-          className="w-full inline-flex items-center justify-center gap-1 rounded-md border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs text-violet-200 hover:brightness-110"
+          className="w-full inline-flex items-center justify-center gap-1 rounded-md border border-[color:var(--nb-red,rgba(139,92,246,0.3))] bg-[var(--nb-red-soft,rgba(139,92,246,0.1))] px-3 py-1.5 text-xs text-[color:var(--nb-red,#ddd6fe)] hover:brightness-110"
         >
           <Plus className="w-3 h-3" /> New custom GPT
         </button>
       )}
       {composing && (
-        <div className="rounded-md border border-violet-500/30 bg-violet-500/5 p-3 space-y-2">
+        <div className="rounded-md border border-[color:var(--nb-red,rgba(139,92,246,0.3))] bg-[var(--nb-red-soft,rgba(139,92,246,0.05))] p-3 space-y-2">
           <input
             type="text"
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Name (e.g. SQL Tutor)"
             maxLength={60}
-            className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-violet-500/50 focus:outline-none"
+            className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-red,rgba(139,92,246,0.5))] focus:outline-none"
           />
           <input
             type="text"
@@ -398,7 +398,7 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
             placeholder="Short description"
             maxLength={300}
-            className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-violet-500/50 focus:outline-none"
+            className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-red,rgba(139,92,246,0.5))] focus:outline-none"
           />
           <textarea
             value={draft.instructions}
@@ -406,32 +406,32 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
             placeholder="System instructions — how this GPT should behave"
             rows={5}
             maxLength={8000}
-            className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-violet-500/50 focus:outline-none resize-none"
+            className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-red,rgba(139,92,246,0.5))] focus:outline-none resize-none"
           />
           <textarea
             value={draft.starters}
             onChange={(e) => setDraft({ ...draft, starters: e.target.value })}
             placeholder="Conversation starters — one per line"
             rows={3}
-            className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-violet-500/50 focus:outline-none resize-none"
+            className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-red,rgba(139,92,246,0.5))] focus:outline-none resize-none"
           />
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] uppercase tracking-wider text-gray-400">Default mode</span>
+            <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)]">Default mode</span>
             <select
               value={draft.model}
               onChange={(e) => setDraft({ ...draft, model: e.target.value })}
-              className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-violet-500/50 focus:outline-none"
+              className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-red,rgba(139,92,246,0.5))] focus:outline-none"
             >
               {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </label>
-          {error && <p className="text-[11px] text-rose-300">{error}</p>}
+          {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={save}
               disabled={saving}
-              className="inline-flex items-center gap-1 rounded-md border border-violet-500/40 bg-violet-500/15 px-3 py-1 text-xs text-violet-100 hover:brightness-110 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-red,rgba(139,92,246,0.4))] bg-[var(--nb-red-soft,rgba(139,92,246,0.15))] px-3 py-1 text-xs text-[color:var(--nb-red,#ede9fe)] hover:brightness-110 disabled:opacity-40"
             >
               {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
               {editing ? 'Update' : 'Create'}
@@ -439,7 +439,7 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
             <button
               type="button"
               onClick={() => setComposing(false)}
-              className="px-3 py-1 text-xs text-gray-400 hover:text-gray-200"
+              className="px-3 py-1 text-xs text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#e5e7eb)]"
             >
               Cancel
             </button>
@@ -450,18 +450,18 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
         <TabEmpty icon={Bot} text="No custom GPTs yet" sub="Build a reusable assistant with its own instructions." />
       ) : (
         list.map((a) => (
-          <div key={a.id} className="rounded-md border border-violet-500/20 bg-black/20 p-3 group">
+          <div key={a.id} className="rounded-md border border-[color:var(--nb-red,rgba(139,92,246,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 group">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-100 truncate">{a.name}</p>
-                {a.description && <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-2">{a.description}</p>}
-                <span className="text-[9px] uppercase tracking-wider text-violet-300/70 mt-1 inline-block">{a.model}</span>
+                <p className="text-sm font-medium text-[color:var(--nb-ink,#f3f4f6)] truncate">{a.name}</p>
+                {a.description && <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] mt-0.5 line-clamp-2">{a.description}</p>}
+                <span className="text-[9px] uppercase tracking-wider text-[color:var(--nb-red,rgba(196,181,253,0.7))] mt-1 inline-block">{a.model}</span>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button type="button" onClick={() => startEdit(a)} className="p-1 text-gray-400 hover:text-violet-300" aria-label="Edit GPT">
+                <button type="button" onClick={() => startEdit(a)} className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#c4b5fd)]" aria-label="Edit GPT">
                   <Save className="w-3 h-3" />
                 </button>
-                <button type="button" onClick={() => remove(a.id)} className="p-1 text-gray-400 hover:text-rose-300" aria-label="Delete GPT">
+                <button type="button" onClick={() => remove(a.id)} className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)]" aria-label="Delete GPT">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -470,7 +470,7 @@ function GptsTab({ onActivate }: { onActivate?: (a: Assistant) => void }) {
               <button
                 type="button"
                 onClick={() => onActivate(a)}
-                className="mt-2 inline-flex items-center gap-1 rounded border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-[11px] text-violet-200 hover:brightness-110"
+                className="mt-2 inline-flex items-center gap-1 rounded border border-[color:var(--nb-red,rgba(139,92,246,0.3))] bg-[var(--nb-red-soft,rgba(139,92,246,0.1))] px-2 py-0.5 text-[11px] text-[color:var(--nb-red,#ddd6fe)] hover:brightness-110"
               >
                 <Play className="w-3 h-3" /> Use this GPT
               </button>
@@ -569,29 +569,29 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <button type="button" onClick={() => setActive(null)} className="text-[11px] text-gray-400 hover:text-gray-200">
+          <button type="button" onClick={() => setActive(null)} className="text-[11px] text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#e5e7eb)]">
             ‹ All documents
           </button>
-          <span className="text-[10px] text-gray-400">{draftContent.length} chars</span>
+          <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">{draftContent.length} chars</span>
         </div>
-        <p className="text-sm font-medium text-gray-100">{active.title}</p>
+        <p className="text-sm font-medium text-[color:var(--nb-ink,#f3f4f6)]">{active.title}</p>
         <textarea
           value={draftContent}
           onChange={(e) => setDraftContent(e.target.value)}
           rows={14}
           className={cn(
-            'w-full px-2 py-1.5 text-sm bg-black/40 border rounded text-gray-100 placeholder-gray-500 focus:outline-none resize-none',
-            active.kind === 'code' ? 'font-mono text-[12px] border-emerald-500/30 focus:border-emerald-500/50' : 'border-cyan-500/20 focus:border-cyan-500/50',
+            'w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:outline-none resize-none',
+            active.kind === 'code' ? 'font-mono text-[12px] border-[color:var(--nb-green,rgba(16,185,129,0.3))] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))]' : 'border-[color:var(--nb-blue,rgba(6,182,212,0.2))] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))]',
           )}
           placeholder={active.kind === 'code' ? '// edit code here' : 'Write your document…'}
         />
-        {error && <p className="text-[11px] text-rose-300">{error}</p>}
+        {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={saveDoc}
             disabled={saving || !dirty}
-            className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/15 px-3 py-1 text-xs text-cyan-100 hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.4))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.15))] px-3 py-1 text-xs text-[color:var(--nb-blue,#cffafe)] hover:brightness-110 disabled:opacity-40"
           >
             {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
             Save revision
@@ -600,7 +600,7 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
             <button
               type="button"
               onClick={() => onInsert(`[Canvas: ${active.title}]\n\n${draftContent.slice(0, 4000)}`)}
-              className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/30 px-3 py-1 text-xs text-gray-300 hover:text-gray-100"
+              className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] bg-[var(--nb-paper,rgba(0,0,0,0.3))] px-3 py-1 text-xs text-[color:var(--nb-ink-2,#d1d5db)] hover:text-[color:var(--nb-ink,#f3f4f6)]"
             >
               <Copy className="w-3 h-3" /> Send to chat
             </button>
@@ -608,26 +608,26 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
           <button
             type="button"
             onClick={() => remove(active.id)}
-            className="inline-flex items-center gap-1 rounded-md border border-rose-500/20 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/10"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-red,rgba(244,63,94,0.2))] px-3 py-1 text-xs text-[color:var(--nb-red,#fda4af)] hover:bg-[var(--nb-red-soft,rgba(244,63,94,0.1))]"
           >
             <Trash2 className="w-3 h-3" /> Delete
           </button>
         </div>
         {active.revisions.length > 0 && (
           <details className="mt-2">
-            <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-400">
+            <summary className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] cursor-pointer hover:text-[color:var(--nb-muted,#9ca3af)]">
               {active.revisions.length} revision{active.revisions.length === 1 ? '' : 's'}
             </summary>
             <div className="mt-1.5 space-y-1">
               {active.revisions.map((rev, i) => (
-                <div key={`${rev.savedAt}-${i}`} className="flex items-center justify-between gap-2 rounded border border-white/5 bg-black/10 px-2 py-1">
-                  <span className="text-[10px] text-gray-400">
+                <div key={`${rev.savedAt}-${i}`} className="flex items-center justify-between gap-2 rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.05))] bg-[var(--nb-paper,rgba(0,0,0,0.1))] px-2 py-1">
+                  <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
                     {rev.editedBy === 'ai' ? 'AI' : 'You'} · {fmtTime(rev.savedAt)} · {rev.content.length} chars
                   </span>
                   <button
                     type="button"
                     onClick={() => revert(i)}
-                    className="inline-flex items-center gap-1 text-[10px] text-amber-300 hover:brightness-110"
+                    className="inline-flex items-center gap-1 text-[10px] text-[color:var(--nb-ochre,#fcd34d)] hover:brightness-110"
                   >
                     <RotateCcw className="w-2.5 h-2.5" /> Restore
                   </button>
@@ -642,20 +642,20 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-cyan-500/20 bg-black/20 p-3 space-y-2">
+      <div className="rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 space-y-2">
         <input
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
           placeholder="New canvas title"
           maxLength={120}
-          className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-cyan-500/50 focus:outline-none"
+          className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none"
         />
         <div className="flex items-center gap-2">
           <select
             value={newKind}
             onChange={(e) => setNewKind(e.target.value as 'document' | 'code')}
-            className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-cyan-500/50 focus:outline-none"
+            className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-blue,rgba(6,182,212,0.5))] focus:outline-none"
           >
             <option value="document">Document</option>
             <option value="code">Code</option>
@@ -664,12 +664,12 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
             type="button"
             onClick={createDoc}
             disabled={saving || !newTitle.trim()}
-            className="inline-flex items-center gap-1 rounded-md border border-cyan-500/40 bg-cyan-500/15 px-3 py-1 text-xs text-cyan-100 hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.4))] bg-[var(--nb-blue-soft,rgba(6,182,212,0.15))] px-3 py-1 text-xs text-[color:var(--nb-blue,#cffafe)] hover:brightness-110 disabled:opacity-40"
           >
             <Plus className="w-3 h-3" /> Create
           </button>
         </div>
-        {error && <p className="text-[11px] text-rose-300">{error}</p>}
+        {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
       </div>
       {docs.length === 0 ? (
         <TabEmpty icon={FileCode} text="No canvas documents yet" sub="Co-edit a doc or code file side-by-side with the AI." />
@@ -679,13 +679,13 @@ function CanvasTab({ threadId, onInsert }: { threadId?: string | null; onInsert?
             key={d.id}
             type="button"
             onClick={() => openDoc(d.id)}
-            className="w-full text-left rounded-md border border-cyan-500/15 bg-black/20 p-3 hover:bg-white/5 transition"
+            className="w-full text-left rounded-md border border-[color:var(--nb-blue,rgba(6,182,212,0.15))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] transition"
           >
             <div className="flex items-center gap-2">
-              {d.kind === 'code' ? <FileCode className="w-3.5 h-3.5 text-emerald-400" /> : <FileCode className="w-3.5 h-3.5 text-cyan-400" />}
-              <span className="text-sm text-gray-100 truncate">{d.title}</span>
+              {d.kind === 'code' ? <FileCode className="w-3.5 h-3.5 text-[color:var(--nb-green,#34d399)]" /> : <FileCode className="w-3.5 h-3.5 text-[color:var(--nb-blue,#22d3ee)]" />}
+              <span className="text-sm text-[color:var(--nb-ink,#f3f4f6)] truncate">{d.title}</span>
             </div>
-            <div className="mt-1 text-[10px] text-gray-400 flex items-center gap-2">
+            <div className="mt-1 text-[10px] text-[color:var(--nb-muted,#9ca3af)] flex items-center gap-2">
               <span>{d.kind}{d.language ? ` · ${d.language}` : ''}</span>
               <span>·</span>
               <span>{d.charCount} chars</span>
@@ -753,20 +753,20 @@ function MemoryTab() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-amber-500/20 bg-black/20 p-3 space-y-2">
+      <div className="rounded-md border border-[color:var(--nb-ochre,rgba(245,158,11,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 space-y-2">
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="A fact the AI should remember across every conversation"
           rows={2}
           maxLength={500}
-          className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-amber-500/50 focus:outline-none resize-none"
+          className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-ochre,rgba(245,158,11,0.5))] focus:outline-none resize-none"
         />
         <div className="flex items-center gap-2">
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value as MemoryFact['category'])}
-            className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-amber-500/50 focus:outline-none"
+            className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-ochre,rgba(245,158,11,0.5))] focus:outline-none"
           >
             <option value="fact">Fact</option>
             <option value="preference">Preference</option>
@@ -777,34 +777,34 @@ function MemoryTab() {
             type="button"
             onClick={add}
             disabled={saving || !draft.trim()}
-            className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/15 px-3 py-1 text-xs text-amber-100 hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-ochre,rgba(245,158,11,0.4))] bg-[var(--nb-hl,rgba(245,158,11,0.15))] px-3 py-1 text-xs text-[color:var(--nb-ochre,#fef3c7)] hover:brightness-110 disabled:opacity-40"
           >
             <Plus className="w-3 h-3" /> Remember
           </button>
         </div>
-        {error && <p className="text-[11px] text-rose-300">{error}</p>}
+        {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
       </div>
       {items.length === 0 ? (
         <TabEmpty icon={Brain} text="No memories yet" sub="Saved facts are injected into every chat's system prompt." />
       ) : (
         <>
-          <div className="flex items-center justify-between text-[10px] text-gray-400">
+          <div className="flex items-center justify-between text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
             <span>{active} of {items.length} active</span>
-            <button type="button" onClick={clearAll} className="text-rose-400 hover:brightness-110">Forget all</button>
+            <button type="button" onClick={clearAll} className="text-[color:var(--nb-red,#fb7185)] hover:brightness-110">Forget all</button>
           </div>
           {items.map((m) => (
-            <div key={m.id} className="rounded-md border border-amber-500/15 bg-black/20 p-2.5 group flex items-start gap-2">
+            <div key={m.id} className="rounded-md border border-[color:var(--nb-ochre,rgba(245,158,11,0.15))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-2.5 group flex items-start gap-2">
               <input
                 type="checkbox"
                 checked={m.active}
                 onChange={() => toggle(m)}
-                className="mt-0.5 accent-amber-500"
+                className="mt-0.5 accent-[color:var(--nb-ochre,#f59e0b)]"
                 aria-label="Toggle memory active"
               />
               <div className="flex-1 min-w-0">
-                <p className={cn('text-sm', m.active ? 'text-gray-100' : 'text-gray-400 line-through')}>{m.fact}</p>
-                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-400">
-                  <span className="uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300">{m.category}</span>
+                <p className={cn('text-sm', m.active ? 'text-[color:var(--nb-ink,#f3f4f6)]' : 'text-[color:var(--nb-muted,#9ca3af)] line-through')}>{m.fact}</p>
+                <div className="mt-1 flex items-center gap-2 text-[9px] text-[color:var(--nb-muted,#9ca3af)]">
+                  <span className="uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--nb-hl,rgba(245,158,11,0.1))] text-[color:var(--nb-ochre,#fcd34d)]">{m.category}</span>
                   <span>{m.source === 'ai' ? 'AI-extracted' : 'You'}</span>
                   <span>·</span>
                   <span>{fmtTime(m.updatedAt)}</span>
@@ -813,7 +813,7 @@ function MemoryTab() {
               <button
                 type="button"
                 onClick={() => remove(m.id)}
-                className="p-1 text-gray-400 hover:text-rose-300 opacity-0 group-hover:opacity-100 transition"
+                className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)] opacity-0 group-hover:opacity-100 transition"
                 aria-label="Delete memory"
               >
                 <Trash2 className="w-3 h-3" />
@@ -857,7 +857,7 @@ function CodeTab() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-emerald-500/20 bg-black/20 p-3 space-y-2">
+      <div className="rounded-md border border-[color:var(--nb-green,rgba(16,185,129,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 space-y-2">
         <textarea
           value={code}
           onChange={(e) => setCode(e.target.value)}
@@ -865,26 +865,26 @@ function CodeTab() {
           rows={6}
           maxLength={20000}
           spellCheck={false}
-          className="w-full px-2 py-1.5 font-mono text-[12px] bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-emerald-500/50 focus:outline-none resize-none"
+          className="w-full px-2 py-1.5 font-mono text-[12px] bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-green,rgba(16,185,129,0.5))] focus:outline-none resize-none"
         />
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={run}
             disabled={running || !code.trim()}
-            className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-3 py-1 text-xs text-emerald-100 hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-green,rgba(16,185,129,0.4))] bg-[var(--nb-green-soft,rgba(16,185,129,0.15))] px-3 py-1 text-xs text-[color:var(--nb-green,#d1fae5)] hover:brightness-110 disabled:opacity-40"
           >
             {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
             Run
           </button>
-          <span className="text-[10px] text-gray-400">1.5s wall budget · CPU only</span>
+          <span className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">1.5s wall budget · CPU only</span>
         </div>
-        {error && <p className="text-[11px] text-rose-300">{error}</p>}
+        {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
       </div>
       {current && <RunResult run={current} />}
       {history.length > 0 && (
         <details>
-          <summary className="text-[10px] uppercase tracking-wider text-gray-400 cursor-pointer hover:text-gray-400 flex items-center gap-1">
+          <summary className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] cursor-pointer hover:text-[color:var(--nb-muted,#9ca3af)] flex items-center gap-1">
             <History className="w-3 h-3" /> Run history ({history.length})
           </summary>
           <div className="mt-2 space-y-1.5">
@@ -893,10 +893,10 @@ function CodeTab() {
                 key={r.id}
                 type="button"
                 onClick={() => { setCode(r.code); setCurrent(r); }}
-                className="w-full text-left rounded border border-white/5 bg-black/10 px-2 py-1.5 hover:bg-white/5"
+                className="w-full text-left rounded border border-[color:var(--nb-rule,rgba(255,255,255,0.05))] bg-[var(--nb-paper,rgba(0,0,0,0.1))] px-2 py-1.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))]"
               >
-                <p className="font-mono text-[11px] text-gray-400 truncate">{r.code.split('\n')[0]}</p>
-                <span className={cn('text-[9px]', r.error ? 'text-rose-400' : 'text-emerald-400')}>
+                <p className="font-mono text-[11px] text-[color:var(--nb-muted,#9ca3af)] truncate">{r.code.split('\n')[0]}</p>
+                <span className={cn('text-[9px]', r.error ? 'text-[color:var(--nb-red,#fb7185)]' : 'text-[color:var(--nb-green,#34d399)]')}>
                   {r.error ? 'error' : 'ok'} · {r.durationMs}ms · {fmtTime(r.ranAt)}
                 </span>
               </button>
@@ -912,26 +912,26 @@ function RunResult({ run }: { run: CodeRun }) {
   return (
     <div className={cn(
       'rounded-md border p-3 space-y-1.5',
-      run.error ? 'border-rose-500/30 bg-rose-500/5' : 'border-emerald-500/20 bg-black/20',
+      run.error ? 'border-[color:var(--nb-red,rgba(244,63,94,0.3))] bg-[var(--nb-red-soft,rgba(244,63,94,0.05))]' : 'border-[color:var(--nb-green,rgba(16,185,129,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))]',
     )}>
-      <div className="flex items-center justify-between text-[10px] text-gray-400">
+      <div className="flex items-center justify-between text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
         <span>{run.error ? 'Errored' : 'Completed'} in {run.durationMs}ms{run.timedOut ? ' (timed out)' : ''}</span>
         <span>{fmtTime(run.ranAt)}</span>
       </div>
       {run.logs.length > 0 && (
-        <pre className="font-mono text-[11px] text-gray-200 bg-black/40 rounded p-2 overflow-x-auto whitespace-pre-wrap">
+        <pre className="font-mono text-[11px] text-[color:var(--nb-ink,#e5e7eb)] bg-[var(--nb-paper,rgba(0,0,0,0.4))] rounded p-2 overflow-x-auto whitespace-pre-wrap">
           {run.logs.join('\n')}
         </pre>
       )}
       {run.returnValue !== null && (
         <div className="text-[11px]">
-          <span className="text-gray-400">returns </span>
-          <span className="font-mono text-cyan-300">{run.returnValue}</span>
+          <span className="text-[color:var(--nb-muted,#9ca3af)]">returns </span>
+          <span className="font-mono text-[color:var(--nb-blue,#67e8f9)]">{run.returnValue}</span>
         </div>
       )}
-      {run.error && <p className="font-mono text-[11px] text-rose-300">{run.error}</p>}
+      {run.error && <p className="font-mono text-[11px] text-[color:var(--nb-red,#fda4af)]">{run.error}</p>}
       {run.logs.length === 0 && run.returnValue === null && !run.error && (
-        <p className="text-[11px] text-gray-400">No output. Use console.log() to print.</p>
+        <p className="text-[11px] text-[color:var(--nb-muted,#9ca3af)]">No output. Use console.log() to print.</p>
       )}
     </div>
   );
@@ -994,42 +994,42 @@ function ShareTab({ threadId, messages }: { threadId?: string | null; messages?:
         type="button"
         onClick={createLink}
         disabled={!canShare || creating}
-        className="w-full inline-flex items-center justify-center gap-1 rounded-md border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs text-sky-200 hover:brightness-110 disabled:opacity-40"
+        className="w-full inline-flex items-center justify-center gap-1 rounded-md border border-[color:var(--nb-blue,rgba(14,165,233,0.3))] bg-[var(--nb-blue-soft,rgba(14,165,233,0.1))] px-3 py-1.5 text-xs text-[color:var(--nb-blue,#bae6fd)] hover:brightness-110 disabled:opacity-40"
       >
         {creating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Share2 className="w-3 h-3" />}
         Share current conversation
       </button>
       {!canShare && (
-        <p className="text-[10px] text-gray-400">
+        <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)]">
           Open a conversation with at least one message to create a public read-only link.
         </p>
       )}
-      {error && <p className="text-[11px] text-rose-300">{error}</p>}
+      {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
       {links.length === 0 ? (
         <TabEmpty icon={Share2} text="No share links yet" sub="Create a read-only snapshot anyone can open." />
       ) : (
         links.map((l) => (
-          <div key={l.token} className={cn('rounded-md border bg-black/20 p-3 group', l.revoked ? 'border-white/5 opacity-60' : 'border-sky-500/20')}>
+          <div key={l.token} className={cn('rounded-md border bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 group', l.revoked ? 'border-[color:var(--nb-rule,rgba(255,255,255,0.05))] opacity-60' : 'border-[color:var(--nb-blue,rgba(14,165,233,0.2))]')}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-sm text-gray-100 truncate">{l.title}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{l.url}</p>
-                <div className="mt-1 flex items-center gap-2 text-[9px] text-gray-400">
+                <p className="text-sm text-[color:var(--nb-ink,#f3f4f6)] truncate">{l.title}</p>
+                <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-0.5 truncate">{l.url}</p>
+                <div className="mt-1 flex items-center gap-2 text-[9px] text-[color:var(--nb-muted,#9ca3af)]">
                   <span>{l.messageCount} msgs</span>
                   <span>·</span>
                   <span className="inline-flex items-center gap-0.5"><Eye className="w-2.5 h-2.5" /> {l.viewCount}</span>
                   <span>·</span>
                   <span>{fmtTime(l.createdAt)}</span>
-                  {l.revoked && <span className="text-rose-400">· revoked</span>}
+                  {l.revoked && <span className="text-[color:var(--nb-red,#fb7185)]">· revoked</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 {!l.revoked && (
                   <>
-                    <button type="button" onClick={() => copy(l.url)} className="p-1 text-gray-400 hover:text-sky-300" aria-label="Copy share URL">
-                      {copied === l.url ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <button type="button" onClick={() => copy(l.url)} className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-blue,#7dd3fc)]" aria-label="Copy share URL">
+                      {copied === l.url ? <Check className="w-3 h-3 text-[color:var(--nb-green,#34d399)]" /> : <Copy className="w-3 h-3" />}
                     </button>
-                    <button type="button" onClick={() => revoke(l.token)} className="p-1 text-gray-400 hover:text-rose-300" aria-label="Revoke share link">
+                    <button type="button" onClick={() => revoke(l.token)} className="p-1 text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)]" aria-label="Revoke share link">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </>
@@ -1079,20 +1079,20 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-fuchsia-500/20 bg-black/20 p-3 space-y-2">
+      <div className="rounded-md border border-[color:var(--nb-red,rgba(217,70,239,0.2))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] p-3 space-y-2">
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Describe the image to generate"
           rows={2}
           maxLength={800}
-          className="w-full px-2 py-1.5 text-sm bg-black/40 border border-white/10 rounded text-gray-100 placeholder-gray-500 focus:border-fuchsia-500/50 focus:outline-none resize-none"
+          className="w-full px-2 py-1.5 text-sm bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] placeholder:text-[color:var(--nb-faint,#6b7280)] focus:border-[color:var(--nb-red,rgba(217,70,239,0.5))] focus:outline-none resize-none"
         />
         <div className="flex items-center gap-2">
           <select
             value={size}
             onChange={(e) => setSize(Number(e.target.value) as 512 | 768 | 1024)}
-            className="px-2 py-1.5 text-xs bg-black/40 border border-white/10 rounded text-gray-100 focus:border-fuchsia-500/50 focus:outline-none"
+            className="px-2 py-1.5 text-xs bg-[var(--nb-paper,rgba(0,0,0,0.4))] border border-[color:var(--nb-rule,rgba(255,255,255,0.1))] rounded text-[color:var(--nb-ink,#f3f4f6)] focus:border-[color:var(--nb-red,rgba(217,70,239,0.5))] focus:outline-none"
           >
             <option value={512}>512 × 512</option>
             <option value={768}>768 × 768</option>
@@ -1102,37 +1102,37 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
             type="button"
             onClick={generate}
             disabled={generating || !prompt.trim()}
-            className="inline-flex items-center gap-1 rounded-md border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-1 text-xs text-fuchsia-100 hover:brightness-110 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border border-[color:var(--nb-red,rgba(217,70,239,0.4))] bg-[var(--nb-red-soft,rgba(217,70,239,0.15))] px-3 py-1 text-xs text-[color:var(--nb-red,#fae8ff)] hover:brightness-110 disabled:opacity-40"
           >
             {generating ? <Loader2 className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
             Generate
           </button>
         </div>
-        {error && <p className="text-[11px] text-rose-300">{error}</p>}
+        {error && <p className="text-[11px] text-[color:var(--nb-red,#fda4af)]">{error}</p>}
       </div>
       {images.length === 0 ? (
         <TabEmpty icon={ImageIcon} text="No images yet" sub="Generate an image from a text prompt." />
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {images.map((img) => (
-            <div key={img.id} className="rounded-md border border-fuchsia-500/15 bg-black/20 overflow-hidden group">
+            <div key={img.id} className="rounded-md border border-[color:var(--nb-red,rgba(217,70,239,0.15))] bg-[var(--nb-paper,rgba(0,0,0,0.2))] overflow-hidden group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.url}
                 alt={img.prompt}
                 loading="lazy"
-                className="w-full aspect-square object-cover bg-black/40"
+                className="w-full aspect-square object-cover bg-[var(--nb-paper,rgba(0,0,0,0.4))]"
               />
               <div className="p-2">
-                <p className="text-[10px] text-gray-300 line-clamp-2">{img.prompt}</p>
+                <p className="text-[10px] text-[color:var(--nb-ink-2,#d1d5db)] line-clamp-2">{img.prompt}</p>
                 <div className="mt-1 flex items-center justify-between">
-                  <span className="text-[9px] text-gray-400">{img.width}×{img.height}</span>
+                  <span className="text-[9px] text-[color:var(--nb-muted,#9ca3af)]">{img.width}×{img.height}</span>
                   <div className="flex items-center gap-1">
                     {onInsert && (
                       <button
                         type="button"
                         onClick={() => onInsert(`![${img.prompt}](${img.url})`)}
-                        className="text-[9px] text-fuchsia-300 hover:brightness-110"
+                        className="text-[9px] text-[color:var(--nb-red,#f0abfc)] hover:brightness-110"
                       >
                         Insert
                       </button>
@@ -1140,7 +1140,7 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
                     <button
                       type="button"
                       onClick={() => remove(img.id)}
-                      className="text-gray-400 hover:text-rose-300"
+                      className="text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-red,#fda4af)]"
                       aria-label="Delete image"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -1160,7 +1160,7 @@ function ImageTab({ onInsert }: { onInsert?: (t: string) => void }) {
 
 function TabLoading() {
   return (
-    <div className="flex items-center justify-center py-10 text-xs text-gray-400">
+    <div className="flex items-center justify-center py-10 text-xs text-[color:var(--nb-muted,#9ca3af)]">
       <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
     </div>
   );
@@ -1169,9 +1169,9 @@ function TabLoading() {
 function TabEmpty({ icon: Icon, text, sub }: { icon: typeof Mic; text: string; sub?: string }) {
   return (
     <div className="text-center py-10 px-4">
-      <Icon className="w-8 h-8 mx-auto text-gray-600 mb-2" />
-      <p className="text-xs text-gray-400">{text}</p>
-      {sub && <p className="text-[10px] text-gray-400 mt-1">{sub}</p>}
+      <Icon className="w-8 h-8 mx-auto text-[color:var(--nb-faint,#4b5563)] mb-2" />
+      <p className="text-xs text-[color:var(--nb-muted,#9ca3af)]">{text}</p>
+      {sub && <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-1">{sub}</p>}
     </div>
   );
 }
@@ -1180,8 +1180,8 @@ function ToggleRow({ label, sub, checked, onChange }: { label: string; sub: stri
   return (
     <label className="flex items-start justify-between gap-3 cursor-pointer">
       <div>
-        <p className="text-sm text-gray-100">{label}</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>
+        <p className="text-sm text-[color:var(--nb-ink,#f3f4f6)]">{label}</p>
+        <p className="text-[10px] text-[color:var(--nb-muted,#9ca3af)] mt-0.5">{sub}</p>
       </div>
       <button aria-label="Toggle"
         type="button"
@@ -1190,10 +1190,10 @@ function ToggleRow({ label, sub, checked, onChange }: { label: string; sub: stri
         onClick={() => onChange(!checked)}
         className={cn(
           'mt-0.5 w-9 h-5 rounded-full transition-colors relative shrink-0',
-          checked ? 'bg-cyan-500/70' : 'bg-white/10',
+          checked ? 'bg-[var(--nb-blue,rgba(6,182,212,0.7))]' : 'bg-[var(--nb-wash,rgba(255,255,255,0.1))]',
         )}
       >
-        <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all', checked ? 'left-4' : 'left-0.5')} />
+        <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-[var(--nb-ink,#ffffff)] transition-all', checked ? 'left-4' : 'left-0.5')} />
       </button>
     </label>
   );
@@ -1206,9 +1206,9 @@ function RangeRow({ label, value, min, max, step, onCommit }: {
   useEffect(() => { setLocal(value); }, [value]);
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider text-gray-400 flex justify-between">
+      <span className="text-[10px] uppercase tracking-wider text-[color:var(--nb-muted,#9ca3af)] flex justify-between">
         <span>{label}</span>
-        <span className="text-cyan-300">{local.toFixed(2)}×</span>
+        <span className="text-[color:var(--nb-blue,#67e8f9)]">{local.toFixed(2)}×</span>
       </span>
       <input
         type="range"
@@ -1219,7 +1219,7 @@ function RangeRow({ label, value, min, max, step, onCommit }: {
         onChange={(e) => setLocal(Number(e.target.value))}
         onMouseUp={() => onCommit(local)}
         onTouchEnd={() => onCommit(local)}
-        className="accent-cyan-500"
+        className="accent-[color:var(--nb-blue,#06b6d4)]"
       />
     </label>
   );
@@ -1234,23 +1234,23 @@ export function ChatStudioPanel({ open, onClose, initialTab, threadId, messages,
   if (!open) return null;
 
   return (
-    <div className="fixed inset-y-0 right-0 w-[460px] max-w-[100vw] z-40 bg-[#0d1117] border-l border-cyan-500/20 shadow-2xl overflow-hidden flex flex-col">
-      <header className="px-4 py-3 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-violet-950/40 to-transparent">
+    <div className="fixed inset-y-0 right-0 w-[460px] max-w-[100vw] z-40 bg-[var(--nb-sheet,#0d1117)] border-l border-[color:var(--nb-blue,rgba(6,182,212,0.2))] shadow-2xl overflow-hidden flex flex-col">
+      <header className="px-4 py-3 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))] flex items-center justify-between bg-gradient-to-r from-[var(--nb-red-soft,rgba(46,16,101,0.4))] to-transparent">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-violet-400" />
-          <span className="text-sm font-semibold text-gray-200">Chat Studio</span>
+          <Bot className="w-4 h-4 text-[color:var(--nb-red,#a78bfa)]" />
+          <span className="text-sm font-semibold text-[color:var(--nb-ink,#e5e7eb)]">Chat Studio</span>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded-md hover:bg-white/5 text-gray-400"
+          className="p-1 rounded-md hover:bg-[var(--nb-wash,rgba(255,255,255,0.05))] text-[color:var(--nb-muted,#9ca3af)]"
           aria-label="Close chat studio"
         >
           <X className="w-4 h-4" />
         </button>
       </header>
 
-      <nav className="flex items-center gap-0.5 px-2 py-1.5 border-b border-white/10 overflow-x-auto">
+      <nav className="flex items-center gap-0.5 px-2 py-1.5 border-b border-[color:var(--nb-rule,rgba(255,255,255,0.1))] overflow-x-auto">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -1261,8 +1261,8 @@ export function ChatStudioPanel({ open, onClose, initialTab, threadId, messages,
               className={cn(
                 'inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] whitespace-nowrap transition-colors',
                 tab === t.id
-                  ? 'bg-violet-500/15 text-violet-200 border border-violet-500/30'
-                  : 'text-gray-400 hover:text-gray-200 border border-transparent',
+                  ? 'bg-[var(--nb-red-soft,rgba(139,92,246,0.15))] text-[color:var(--nb-red,#ddd6fe)] border border-[color:var(--nb-red,rgba(139,92,246,0.3))]'
+                  : 'text-[color:var(--nb-muted,#9ca3af)] hover:text-[color:var(--nb-ink,#e5e7eb)] border border-transparent',
               )}
             >
               <Icon className="w-3 h-3" /> {t.label}

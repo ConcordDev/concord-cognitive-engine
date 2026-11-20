@@ -9,6 +9,12 @@
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
+// The guarded public-fetch does its own DNS lookup before any request, so on a
+// box without DNS the "blocked" branch below failed on ENOTFOUND instead of
+// reaching the no-egress guard. Send it through globalThis.fetch, which the
+// no-egress preload replaces, so the blocked branch is the same on every box.
+import { __setPublicFetchTestTransport } from "../../lib/public-fetch.js";
+__setPublicFetchTestTransport((url, init) => globalThis.fetch(url, init));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Analysis calc contracts — exact computed values from artifact.data

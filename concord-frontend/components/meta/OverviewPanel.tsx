@@ -93,7 +93,7 @@ export function OverviewPanel() {
               className="flex items-center justify-between p-2 bg-lattice-deep rounded-lg"
             >
               <span className="text-sm text-gray-300 font-mono truncate max-w-[70%]" title={c.path}>{baseName(c.path)}</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple font-mono">
+              <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright font-mono">
                 {c.usedByCount} lens{c.usedByCount === 1 ? '' : 'es'}
               </span>
             </motion.div>

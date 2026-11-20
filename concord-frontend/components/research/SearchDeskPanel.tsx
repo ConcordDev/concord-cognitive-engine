@@ -554,7 +554,7 @@ export function SearchDeskPanel() {
                 rawData={generateResult}
                 confirm
                 onSaved={() => { refetch(); refetchDTUs(); }}
-                className="!bg-neon-purple/10 !text-neon-purple hover:!bg-neon-purple/20"
+                className="!bg-neon-purple/10 !text-neon-purple-bright hover:!bg-neon-purple/20"
               />
               <button
                 onClick={() => setGenerateResult(null)}

@@ -204,7 +204,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                 value={personId}
                 onChange={(e) => setPersonId(e.target.value)}
                 placeholder="A person's user ID…"
-                className="bg-[#3a3b3c] rounded-full px-3 py-1 text-xs text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500 w-44"
+                className="bg-[#3a3b3c] rounded-full px-3 py-1 text-xs text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500 w-44"
               />
               <button
                 onClick={() => { if (personId.trim() && personId.trim() !== viewerId) setViewAs(personId.trim()); }}
@@ -231,7 +231,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="How your name appears on the wall"
-              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
             />
             <label className="text-[11px] text-gray-400 flex items-center gap-1">
               <Camera className="w-3 h-3" /> Cover photo URL
@@ -241,7 +241,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                 value={coverUrl}
                 onChange={(e) => setCoverUrl(e.target.value)}
                 placeholder="https://…"
-                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 onClick={() => pickFor('cover')}
@@ -260,7 +260,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
                 placeholder="https://…"
-                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 onClick={() => pickFor('avatar')}
@@ -287,7 +287,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
               onChange={(e) => setBio(e.target.value)}
               rows={2}
               placeholder="Tell people about yourself"
-              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none resize-none focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none resize-none focus:ring-1 focus:ring-blue-500"
             />
             {aboutRows.map((row) => (
               <input
@@ -295,7 +295,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                 value={about[row.key]}
                 onChange={(e) => setAbout((a) => ({ ...a, [row.key]: e.target.value }))}
                 placeholder={row.label}
-                className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full bg-[#3a3b3c] rounded px-3 py-2 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
               />
             ))}
             <button
@@ -325,7 +325,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
             {profile?.bio ? (
               <p className="text-sm text-gray-300">{profile.bio}</p>
             ) : (
-              <p className="text-sm text-gray-600 italic">No bio yet.</p>
+              <p className="text-sm text-lattice-muted italic">No bio yet.</p>
             )}
             <div className="space-y-1 pt-1">
               {aboutRows
@@ -386,7 +386,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
                         ))}
                       </div>
                     )}
-                    <p className="text-[11px] text-gray-500 mt-2">
+                    <p className="text-[11px] text-lattice-muted mt-2">
                       {p.reactionTotal} reactions · {p.commentCount} comments · {p.shareCount ?? 0} shares
                     </p>
                   </article>
@@ -413,7 +413,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
         <div>
           <p className="text-xs font-semibold text-gray-300 mb-2">Muted</p>
           {(safety?.muted ?? []).length === 0 ? (
-            <p className="text-xs text-gray-500">You haven&apos;t muted anyone.</p>
+            <p className="text-xs text-lattice-muted">You haven&apos;t muted anyone.</p>
           ) : (
             <div className="space-y-1.5">
               {(safety?.muted ?? []).map((p) => (
@@ -434,7 +434,7 @@ export function ProfilePanel({ viewerId }: { viewerId: string }) {
         <div>
           <p className="text-xs font-semibold text-gray-300 mb-2">Blocked</p>
           {(safety?.blocked ?? []).length === 0 ? (
-            <p className="text-xs text-gray-500">You haven&apos;t blocked anyone.</p>
+            <p className="text-xs text-lattice-muted">You haven&apos;t blocked anyone.</p>
           ) : (
             <div className="space-y-1.5">
               {(safety?.blocked ?? []).map((p) => (

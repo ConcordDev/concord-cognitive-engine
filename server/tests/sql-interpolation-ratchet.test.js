@@ -80,6 +80,25 @@ const SQL_INTERP = /db\.(prepare|exec)\(`[^`]*\$\{/g;
 // Every entry below was individually read and found to interpolate only
 // identifiers from literals, constants, allowlists or regex-guarded input.
 const REVIEWED = {
+  // ── Reviewed 2026-11-19 (Auction House pass): sites that had landed unreviewed and
+  // turned this ratchet red. Each traced to its source; none carries request data.
+  // domains/fitness.js (1) — `table` iterates the literal pair ["dtu_store", "dtu_store_archive"].
+  "domains/fitness.js": 1,
+  // domains/move-builder.js (1) — duplicate-move INSERT: column names are the keys of a
+  // row read back from `dtus` plus literal keys (id/title/bodyCol); values bound '?'.
+  "domains/move-builder.js": 1,
+  // lib/chronicle/chronicle.js (2) — `kind` is sagaKindColumn(): the literal "type" or
+  // "content_type" chosen from PRAGMA table_info; the INSERT's names are filtered by
+  // cols.has(), i.e. real schema columns; values bound '?'.
+  "lib/chronicle/chronicle.js": 2,
+  // lib/idle-budget.js (2) — bump()'s `column` is OUTCOME_COLUMNS[cls], a frozen map of
+  // three literal column names; idleSplit's `placeholders` is "?" repeated.
+  "lib/idle-budget.js": 2,
+  // Grown, same review: vault.js +1 (status IN over the `allowed` literal list, "?"
+  // placeholders); cross-lens-discovery.js +1 (plan.kindCol, schema-derived literal);
+  // mcp-tools.js +2 (shape.col()/kindCol: a column name only if PRAGMA lists it, else
+  // "NULL AS x"; id placeholders "?"); player-mail.js +2 (starred/archived pick the
+  // literal "unixepoch()" or "NULL"); world-vehicles.js +1 (sets of literal "col = ?").
   // lib/cockpit/run-store.js (2) — updateRun/updateStep interpolate `sets.join(", ")`, fragments built only from the
   // fixed RUN_COLS/STEP_COLS column maps and literals; every value is bound '?'.
   "lib/cockpit/run-store.js": 2,
@@ -118,7 +137,7 @@ const REVIEWED = {
   "domains/profile.js": 2,
   "domains/repair.js": 1,
   "domains/sessions.js": 3,
-  "domains/vault.js": 2,
+  "domains/vault.js": 3,
   "domains/world-overview.js": 2,
   "domains/world.js": 1,
   "durable.js": 7,
@@ -175,7 +194,7 @@ const REVIEWED = {
   "lib/combat/loadout.js": 4,
   "lib/companions-mount-evo.js": 1,
   "lib/creator-dashboard.js": 1,
-  "lib/cross-lens-discovery.js": 2,
+  "lib/cross-lens-discovery.js": 3,
   "lib/detectors/dtu-lineage-detector.js": 4,
   "lib/detectors/predictive-growth-detector.js": 1,
   // lib/dila-recall.js (1) — `kinds` = config.skipMemoryKinds.map(() =>
@@ -225,7 +244,7 @@ const REVIEWED = {
   // lib/mcp-tools.js (1) — dhtpCompress's `placeholders` is the same
   // fixed-count IN-clause idiom, over boundRefs (dtuRefs capped at 33);
   // values bound via .all(...boundRefs).
-  "lib/mcp-tools.js": 1,
+  "lib/mcp-tools.js": 3,
   "lib/mentorship.js": 2,
   "lib/mount-gear.js": 2,
   "lib/news-story-composer.js": 1,
@@ -237,7 +256,7 @@ const REVIEWED = {
   "lib/npc-persona.js": 1,
   "lib/npc-stress.js": 1,
   "lib/personal-stake.js": 2,
-  "lib/player-mail.js": 1,
+  "lib/player-mail.js": 3,
   "lib/player-titles.js": 1,
   "lib/project-thread.js": 1,
   "lib/pvp-loot.js": 2,
@@ -316,7 +335,7 @@ const REVIEWED = {
   "lib/quests/quest-engine.js": 1,
   "lib/world-snapshot.js": 3,
   "lib/world-tenancy.js": 2,
-  "lib/world-vehicles.js": 2,
+  "lib/world-vehicles.js": 3,
   "routes/evo-asset.js": 3,
   // routes/frontier-part2.js (2) — `where` is `title IN (${placeholders})`
   // over SEEDED_SYSTEM_LISTING_TITLES (a frozen constant; placeholders are

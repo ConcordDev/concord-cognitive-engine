@@ -149,7 +149,7 @@ export function PetProfileCard({ petId, recordTick = 0, onChange }: { petId: str
             <input type="checkbox" checked={form.neutered} onChange={(e) => setForm({ ...form, neutered: e.target.checked })} /> Spayed / neutered
           </label>
           <div className="col-span-2 flex gap-2 sm:col-span-3">
-            <button type="button" onClick={() => void save()} disabled={busy} className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-40">Save</button>
+            <button type="button" onClick={() => void save()} disabled={busy} className="rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-40">Save</button>
             <button type="button" onClick={() => setEditing(false)} className="text-xs text-zinc-400 hover:text-zinc-200">Cancel</button>
           </div>
         </div>

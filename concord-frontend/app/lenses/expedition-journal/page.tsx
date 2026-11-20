@@ -74,7 +74,10 @@ export default function ExpeditionJournalPage() {
         if (r.data?.ok && r.data.result) {
           const ws = (r.data.result.worlds as WorldCatalogEntry[]) || [];
           setWorlds(ws);
-          if (ws.length > 0) setActiveWorld((cur) => cur || ws[0].worldId);
+          // Keep the current world only if the catalog actually has it; the initial default
+          // may not be an authored expedition, which left no tab selected and asked the
+          // progress macro about a world with no stages.
+          if (ws.length > 0) setActiveWorld((cur) => (ws.some((w) => w.worldId === cur) ? cur : ws[0].worldId));
         } else {
           setError(r.data?.error || 'Could not load expeditions.');
         }

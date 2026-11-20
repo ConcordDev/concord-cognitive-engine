@@ -205,11 +205,11 @@ export function MarketingActionPanel() {
 
   const actions = [
     { id: 'roi' as ActionId, label: 'ROI', desc: 'campaignROI', icon: Megaphone, accent: '#f59e0b', handler: actRoi },
-    { id: 'ab' as ActionId, label: 'A/B', desc: 'abTestAnalysis', icon: FlaskConical, accent: '#a855f7', handler: actAb },
+    { id: 'ab' as ActionId, label: 'A/B', desc: 'abTestAnalysis', icon: FlaskConical, accent: '#c084fc', handler: actAb },
     { id: 'funnel' as ActionId, label: 'Funnel', desc: 'funnelOptimize', icon: Filter, accent: '#3b82f6', handler: actFunnel },
     { id: 'seg' as ActionId, label: 'Segment', desc: 'audienceSegment', icon: Users, accent: '#22c55e', handler: actSeg },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId || 'Private report DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send report', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send report', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId || 'Anon playbook', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Play', desc: 'Agent: top play', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

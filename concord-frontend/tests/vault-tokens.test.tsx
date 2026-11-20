@@ -188,7 +188,11 @@ describe('TheVault — no dark-surface leakage (it is a self-contained light isl
   });
 
   it('all Vault CSS is namespaced so it cannot reach another lens', () => {
-    const block = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    // The Vault block runs from its banner to the NEXT section banner — later sections
+    // (e.g. the light-theme readability overrides) are global by design and not Vault CSS.
+    const afterBanner = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    const nextBanner = afterBanner.indexOf('\n/* ═');
+    const block = nextBanner === -1 ? afterBanner : afterBanner.slice(0, nextBanner);
     expect(block.length).toBeGreaterThan(0);
     const selectors = block.match(/^\s*\.[a-zA-Z-]+[^{]*\{/gm) ?? [];
     expect(selectors.length).toBeGreaterThan(0);
@@ -228,7 +232,11 @@ describe('TheVault — texture is real, not decorative intent', () => {
 
 describe('TheVault — motion is still', () => {
   it('uses the zero-overshoot expo-out curve, never a bouncing one', () => {
-    const block = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    // The Vault block runs from its banner to the NEXT section banner — later sections
+    // (e.g. the light-theme readability overrides) are global by design and not Vault CSS.
+    const afterBanner = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    const nextBanner = afterBanner.indexOf('\n/* ═');
+    const block = nextBanner === -1 ? afterBanner : afterBanner.slice(0, nextBanner);
     const animations = block.match(/animation:\s*vault-[a-z]+\s+\d+ms\s+([^;]+);/g) ?? [];
     expect(animations.length).toBeGreaterThanOrEqual(3);
     for (const a of animations) {
@@ -250,7 +258,11 @@ describe('TheVault — motion is still', () => {
   });
 
   it('overrides the global transition-all so controls change color but never move', () => {
-    const block = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    // The Vault block runs from its banner to the NEXT section banner — later sections
+    // (e.g. the light-theme readability overrides) are global by design and not Vault CSS.
+    const afterBanner = GLOBALS_CSS.slice(GLOBALS_CSS.indexOf('THEVAULT'));
+    const nextBanner = afterBanner.indexOf('\n/* ═');
+    const block = nextBanner === -1 ? afterBanner : afterBanner.slice(0, nextBanner);
     const still = block.match(/\.vault-surface button,[\s\S]*?transition-property:\s*([^;]+);/);
     expect(still).not.toBeNull();
     expect(still![1]).not.toContain('transform');

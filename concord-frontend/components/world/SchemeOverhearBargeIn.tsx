@@ -98,7 +98,7 @@ export function SchemeOverhearBargeIn() {
       ) : (
         <div className="flex gap-1.5">
           <button disabled={busy} onClick={() => act('expose')}
-            className="flex flex-1 items-center justify-center gap-1 rounded bg-amber-600/80 px-2 py-1 text-[11px] font-medium text-amber-50 hover:bg-amber-500 disabled:opacity-50">
+            className="flex flex-1 items-center justify-center gap-1 rounded bg-amber-700/80 px-2 py-1 text-[11px] font-medium text-amber-50 hover:bg-amber-500 disabled:opacity-50">
             <ShieldAlert size={12} /> Expose
           </button>
           {canBlackmail && (

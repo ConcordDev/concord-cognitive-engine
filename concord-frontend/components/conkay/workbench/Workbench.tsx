@@ -59,7 +59,7 @@ export function Workbench({ id, initialView, client = workbenchClient }: { id: s
           <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Design variables</h2>
           <div className="flex flex-col gap-3">
             {view.knobs.map((k) => <Knob key={k.variable} k={k} busy={busy} onSet={(v) => run(() => client.knob(id, k.variable, v))} onLock={(l) => run(() => client.lock(id, k.variable, l))} onSelect={() => setSelected(`knob:${k.variable}`)} />)}
-            {view.knobs.length === 0 && <p className="text-xs text-slate-500">This design has no adjustable variables.</p>}
+            {view.knobs.length === 0 && <p className="text-xs text-slate-400">This design has no adjustable variables.</p>}
           </div>
         </section>
         <section className={`${PANEL} overflow-x-auto`} aria-label="design graph">
@@ -82,13 +82,13 @@ export function Workbench({ id, initialView, client = workbenchClient }: { id: s
               </ol>
             ))}
           </div>
-          {hood && <p className="mt-2 text-[11px] text-slate-500">{hood.up.size} upstream (violet) · {hood.down.size} downstream (amber) of the selection</p>}
+          {hood && <p className="mt-2 text-[11px] text-slate-400">{hood.up.size} upstream (violet) · {hood.down.size} downstream (amber) of the selection</p>}
         </section>
         <Receipt check={check} />
       </div>
       <form className={`${PANEL} flex items-center gap-2`} onSubmit={(e) => { e.preventDefault(); if (text.trim()) run(() => client.ask(id, text.trim())); }}>
         <input aria-label="follow-up" value={text} onChange={(e) => setText(e.target.value)} placeholder='What if… ("make the tail shorter", "what about 150 mph", "use titanium for the tub")'
-          className="flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400/50 focus:outline-none" />
+          className="flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-sm text-slate-100 placeholder:text-slate-400 focus:border-sky-400/50 focus:outline-none" />
         <button type="submit" disabled={busy} className="inline-flex items-center gap-1 rounded-md bg-sky-500/80 px-3 py-1.5 text-sm text-white hover:bg-sky-500 disabled:opacity-40">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Send className="h-3.5 w-3.5" aria-hidden />} Apply
         </button>
@@ -121,7 +121,7 @@ function Knob({ k, busy, onSet, onLock, onSelect }: { k: WorkbenchKnob; busy: bo
         </div>
       )}
       <div className="flex items-center justify-between">
-        <span className="truncate text-[10px] text-slate-500" title={k.source}>{k.bounds ? `${k.bounds[0]}–${k.bounds[1]} ${k.unit ?? ''}` : `${k.options?.length ?? 0} options`}</span>
+        <span className="truncate text-[10px] text-slate-400" title={k.source}>{k.bounds ? `${k.bounds[0]}–${k.bounds[1]} ${k.unit ?? ''}` : `${k.options?.length ?? 0} options`}</span>
         <button type="button" disabled={k.locked || busy || draft === k.value} onClick={() => onSet(draft)} className="rounded border border-white/10 px-1.5 py-0.5 text-[11px] text-slate-200 hover:bg-white/5 disabled:opacity-40">Set</button>
       </div>
     </div>
@@ -129,7 +129,7 @@ function Knob({ k, busy, onSet, onLock, onSelect }: { k: WorkbenchKnob; busy: bo
 }
 
 function Receipt({ check }: { check: WorkbenchCheck | null }) {
-  if (!check) return <aside className={`${PANEL} text-xs text-slate-500`} aria-label="receipt">Select a check in the graph to see its receipt.</aside>;
+  if (!check) return <aside className={`${PANEL} text-xs text-slate-400`} aria-label="receipt">Select a check in the graph to see its receipt.</aside>;
   return (
     <aside className={`${PANEL} flex flex-col gap-2 text-xs`} aria-label="receipt" data-testid="wb-receipt">
       <div className="flex items-center justify-between gap-2">
@@ -137,10 +137,10 @@ function Receipt({ check }: { check: WorkbenchCheck | null }) {
         <span className={`rounded-full border px-2 py-0.5 text-[10px] ${statusCls(check.status)}`}>{check.status}</span>
       </div>
       <dl className="grid grid-cols-[90px_1fr] gap-x-2 gap-y-0.5 text-[11px]">
-        <dt className="text-slate-500">solver</dt><dd className="font-mono text-slate-300">{check.solver.id}@{check.solver.version} {check.solver.fidelity}</dd>
-        <dt className="text-slate-500">input hash</dt><dd className="truncate font-mono text-slate-300">{check.inputHash}</dd>
-        {check.solver.regime && <><dt className="text-slate-500">valid for</dt><dd className="text-slate-300">{check.solver.regime}</dd></>}
-        {check.solver.reference && <><dt className="text-slate-500">reference</dt><dd className="text-slate-300">{check.solver.reference}</dd></>}
+        <dt className="text-slate-400">solver</dt><dd className="font-mono text-slate-300">{check.solver.id}@{check.solver.version} {check.solver.fidelity}</dd>
+        <dt className="text-slate-400">input hash</dt><dd className="truncate font-mono text-slate-300">{check.inputHash}</dd>
+        {check.solver.regime && <><dt className="text-slate-400">valid for</dt><dd className="text-slate-300">{check.solver.regime}</dd></>}
+        {check.solver.reference && <><dt className="text-slate-400">reference</dt><dd className="text-slate-300">{check.solver.reference}</dd></>}
       </dl>
       {check.margins.length > 0 && (
         <table className="w-full text-[11px]"><tbody>
@@ -166,7 +166,7 @@ export function Reply({ r }: { r: WorkbenchReply }) {
       {r.error && <p className="text-sm text-rose-300">{r.error}</p>}
       {r.diff && (
         <>
-          <ul className="text-sm text-slate-200">{r.diff.changed.map((c, i) => <li key={i}><span className="font-medium">{c.field}</span>: {String(c.before)} → {String(c.after)} <span className="text-xs text-slate-500">({c.source})</span></li>)}</ul>
+          <ul className="text-sm text-slate-200">{r.diff.changed.map((c, i) => <li key={i}><span className="font-medium">{c.field}</span>: {String(c.before)} → {String(c.after)} <span className="text-xs text-slate-400">({c.source})</span></li>)}</ul>
           <p className="mt-1 text-xs text-slate-400">{Array.isArray(r.diff.rerun) ? `${r.diff.rerun.length} runs recomputed` : r.diff.rerun}; {r.diff.flipped.length} checks flipped</p>
           {r.diff.flipped.length > 0 && <ul className="mt-1 flex flex-wrap gap-1">{r.diff.flipped.map((f) => <li key={f.runId} className="rounded border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">{f.runId}: {f.from ?? '—'} → {f.to ?? '—'}</li>)}</ul>}
         </>

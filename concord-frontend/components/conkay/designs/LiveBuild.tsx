@@ -89,9 +89,9 @@ export function LiveBuildStream({ id, onSnapshot, onMissing, hideViewer = false 
             {snap?.file ? (
               <>
                 <StlViewer url={liveFileUrl(id, snap.file)} />
-                <p className="font-mono text-[10px] text-slate-500" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
+                <p className="font-mono text-[10px] text-slate-400" data-testid="live-snapshot">cad.body solid · {snap.triangles ?? '?'} triangles · sha256 {snap.sha256?.slice(0, 12)}</p>
               </>
-            ) : <p className="text-xs text-slate-500">No solid yet.</p>}
+            ) : <p className="text-xs text-slate-400">No solid yet.</p>}
           </aside>
         )}
       </div>
@@ -100,7 +100,8 @@ export function LiveBuildStream({ id, onSnapshot, onMissing, hideViewer = false 
 }
 
 /** LiveBuild — /conkay/designs/[id]/live: the site chrome around LiveBuildStream. */
-export function LiveBuild({ id }: { id: string }) {
+export function LiveBuild({ id, embedded = false }: { id: string; embedded?: boolean }) {
+  if (embedded) return <LiveBuildStream id={id} />;
   return (
     <div className="flex min-h-screen flex-col bg-[#040a13] text-slate-100" data-lens-theme="conkay">
       <DesignsHeader crumb={{ label: `${id} · live` }} />
@@ -164,7 +165,7 @@ function Step({ e }: { e: LiveEvent }) {
         ) : (
           <p className="mt-2 text-sm text-rose-200">No candidate improves the failing checks without breaking another.</p>
         )}
-        {e.rerunNodes && <p className="mt-1 text-[11px] text-slate-500">{e.rerunNodes.length} runs recomputed (their inputs changed)</p>}
+        {e.rerunNodes && <p className="mt-1 text-[11px] text-slate-400">{e.rerunNodes.length} runs recomputed (their inputs changed)</p>}
       </li>
     );
   }
@@ -185,7 +186,7 @@ function Candidates({ rows, chosen }: { rows: LiveCandidate[]; chosen: LiveEvent
   return (
     <div className="mt-3 overflow-x-auto">
       <table className="w-full text-left text-xs" data-testid="live-candidates">
-        <thead className="text-[10px] uppercase tracking-wider text-slate-500">
+        <thead className="text-[10px] uppercase tracking-wider text-slate-400">
           <tr><th className="py-1 pr-3 font-medium">Candidate (run)</th><th className="pr-3 font-medium">Margin gain</th><th className="pr-3 font-medium">Δ mass</th><th className="font-medium">Result</th></tr>
         </thead>
         <tbody className="font-mono text-slate-300">
@@ -228,7 +229,7 @@ function Outcome({ e }: { e: LiveEvent }) {
           <ul className="list-disc pl-5">{o.requirementOptions.map((r, i) => <li key={i}>{r.option}</li>)}</ul>
         </div>
       )}
-      {e.receiptSha256 && <p className="mt-2 font-mono text-[10px] text-slate-500" data-testid="live-receipt">receipt {e.receiptSha256}</p>}
+      {e.receiptSha256 && <p className="mt-2 font-mono text-[10px] text-slate-400" data-testid="live-receipt">receipt {e.receiptSha256}</p>}
     </li>
   );
 }

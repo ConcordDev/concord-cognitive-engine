@@ -243,7 +243,7 @@ export function MaintenanceReminders() {
                 <div className="space-y-2 border-t border-lattice-border pt-2">
                   <input value={taskEdit.task} onChange={(e) => setTaskEdit((f) => ({ ...f, task: e.target.value }))}
                     aria-label="Edit reminder task" placeholder="Task" className="input-lattice w-full" />
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <select value={taskEdit.season} onChange={(e) => setTaskEdit((f) => ({ ...f, season: e.target.value }))}
                       aria-label="Edit reminder season" className="input-lattice">
                       {['spring', 'summer', 'fall', 'winter', 'any'].map((s) => <option key={s} value={s}>{s}</option>)}

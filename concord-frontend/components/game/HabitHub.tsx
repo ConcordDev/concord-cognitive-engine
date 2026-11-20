@@ -393,7 +393,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
               onClick={() => setTab(t.id)}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-t text-xs transition-colors',
-                tab === t.id ? 'bg-neon-purple/20 text-neon-purple border-b-2 border-neon-purple' : 'text-gray-400 hover:text-white',
+                tab === t.id ? 'bg-neon-purple/20 text-neon-purple-bright border-b-2 border-neon-purple' : 'text-gray-400 hover:text-white',
               )}
             >
               <Icon className="w-3.5 h-3.5" /> {t.label}
@@ -719,7 +719,7 @@ export function HabitHub({ onXpChange }: { onXpChange?: (xp: number) => void }) 
                 <button
                   key={d}
                   onClick={() => setNewReminder((p) => ({ ...p, days: p.days.includes(d) ? p.days.filter((x) => x !== d) : [...p.days, d] }))}
-                  className={cn('text-[10px] uppercase px-2 py-1 rounded', newReminder.days.includes(d) ? 'bg-neon-purple/25 text-neon-purple' : 'bg-lattice-bg text-gray-400')}
+                  className={cn('text-[10px] uppercase px-2 py-1 rounded', newReminder.days.includes(d) ? 'bg-neon-purple/25 text-neon-purple-bright' : 'bg-lattice-bg text-gray-400')}
                 >
                   {d}
                 </button>

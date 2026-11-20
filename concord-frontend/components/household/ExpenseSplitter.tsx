@@ -92,7 +92,7 @@ export function ExpenseSplitter() {
         <input value={form.splitAmong} onChange={e => setForm({ ...form, splitAmong: e.target.value })} placeholder="Split among (comma-sep)"
           className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={add} disabled={busy || !form.description.trim() || !(Number(form.amount) > 0) || !form.paidBy.trim() || !form.splitAmong.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1">
+          className="px-2.5 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center justify-center gap-1">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add
         </button>
       </div>
@@ -141,7 +141,7 @@ export function ExpenseSplitter() {
               <span className="text-xs font-bold text-amber-400 shrink-0">${e.amount.toFixed(2)}</span>
               <button onClick={() => settle(e.id, e.settled)} title={e.settled ? 'Mark unsettled' : 'Mark settled'}
                 className={cn('w-5 h-5 rounded-full flex items-center justify-center shrink-0',
-                  e.settled ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-emerald-700 hover:text-white')}>
+                  e.settled ? 'bg-emerald-700 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-emerald-700 hover:text-white')}>
                 <Check className="w-3 h-3" />
               </button>
               <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-rose-400" aria-label="Delete">

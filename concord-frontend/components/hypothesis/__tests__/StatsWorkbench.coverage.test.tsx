@@ -63,6 +63,14 @@ describe('StatsWorkbench', () => {
       await goTab(k);
       await exercise({ passes: 2, text: '1, 2, 3, 4, 5', skip: new RegExp(`${TAB_RE.source}|${KIND_RE.source}|delete|remove|cancel|close|^×$`, 'i') });
       await settle();
+      // Run Test is gated on valid input (FIX-hypothesis-003): the generic exerciser
+      // types the same junk into every field (alpha = 5), so enter a valid form and run it.
+      for (const ta of Array.from(document.querySelectorAll('textarea'))) {
+        await act(async () => { fireEvent.change(ta, { target: { value: '1, 2, 3, 4, 5\n2, 4, 6, 8, 10' } }); });
+      }
+      await act(async () => { fireEvent.change(screen.getByLabelText(/Significance level/), { target: { value: '0.05' } }); });
+      await click(screen.getByRole('button', { name: /Run Test/ }));
+      await settle();
     }
     const calls = sent();
     for (const a of ['tTest', 'anova', 'chiSquare', 'correlation', 'regression']) expect(calls).toContain(a);

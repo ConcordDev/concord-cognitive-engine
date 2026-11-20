@@ -183,7 +183,7 @@ export function SpaceArtifactPanel({ view }: { view: SpaceArtifactView }) {
   const isTelemetry = view === 'telemetry';
   const noun = NOUN[currentType] || `${currentType.toLowerCase()} records`;
   const statuses = currentType === 'Mission' ? MISSION_STATUSES : currentType === 'Satellite' ? SATELLITE_STATUSES : null;
-  const fieldCls = 'w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-sm text-white placeholder-gray-500';
+  const fieldCls = 'w-full bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-sm text-white placeholder:text-lattice-muted';
   const labelCls = 'flex flex-col gap-1 text-[11px] text-zinc-400';
 
   return (
@@ -201,7 +201,7 @@ export function SpaceArtifactPanel({ view }: { view: SpaceArtifactView }) {
             onChange={e => setSearchQuery(e.target.value)}
             placeholder={`Search ${noun}...`}
             aria-label={`Search ${noun}`}
-            className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder-gray-500"
+            className="w-full pl-9 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-white placeholder:text-lattice-muted"
           />
         </div>
         <button

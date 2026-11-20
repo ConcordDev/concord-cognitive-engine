@@ -114,7 +114,7 @@ export default function LabLensPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="mt-1 font-vault text-[2.25rem] leading-tight text-zinc-100 sm:text-5xl">Lab</h1>
-          <p className="mt-2 max-w-2xl text-[14px] text-zinc-500">
+          <p className="mt-2 max-w-2xl text-[14px] text-lattice-muted">
             Run experiments against the growth organs, keep the notebook and inventory, and explore what could be.
           </p>
         </div>
@@ -197,7 +197,7 @@ export default function LabLensPage() {
               organ) to the user's lab data — no code executes, so the
               label says exactly that instead of implying a compute
               backend. */}
-          <p className="text-[11px] text-gray-500" data-testid="lab-compute-disclosure">
+          <p className="text-[11px] text-lattice-muted" data-testid="lab-compute-disclosure">
             Compute: none. Run records this experiment (code + selected organ) to your lab
             notebook — code is not executed, no GPU or paid compute is used, and there is no cost.
           </p>

@@ -90,7 +90,7 @@ const CONCORD_DARK_THEME: editor.IStandaloneThemeData = {
     'editor.selectionBackground': '#00e5ff30',
     'editor.inactiveSelectionBackground': '#00e5ff15',
     'editorCursor.foreground': '#00e5ff',
-    'editorLineNumber.foreground': '#475569',
+    'editorLineNumber.foreground': '#94a3b8',
     'editorLineNumber.activeForeground': '#94a3b8',
     'editor.selectionHighlightBackground': '#00e5ff15',
     'editorIndentGuide.background': '#1e293b',
@@ -159,6 +159,8 @@ interface MonacoWrapperProps {
    * should resolve to the macro `result`. `projectId`/`path` are read fresh on
    * every request (via an internal ref) so switching tabs Just Works.
    */
+  /** A lens-owned editor theme (name + Monaco theme data). Defaults to Concord Dark. */
+  theme?: { name: string; data: editor.IStandaloneThemeData };
   semantic?: {
     projectId: string;
     path: string;
@@ -180,6 +182,7 @@ export default function MonacoWrapper({
   options,
   inlineCompletion,
   semantic,
+  theme,
 }: MonacoWrapperProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   // Read fresh on every provider call (handleMount captures only the first value).
@@ -189,7 +192,8 @@ export default function MonacoWrapper({
   const handleMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monaco.editor.defineTheme('concord-dark', CONCORD_DARK_THEME);
-    monaco.editor.setTheme('concord-dark');
+    if (theme) monaco.editor.defineTheme(theme.name, theme.data);
+    monaco.editor.setTheme(theme ? theme.name : 'concord-dark');
     // Register the Concord DSL language (highlighting + keyword/macro completions).
     try { registerConcordDsl(monaco as unknown as Parameters<typeof registerConcordDsl>[0]); } catch { /* non-fatal */ }
     editor.focus();
@@ -355,7 +359,7 @@ export default function MonacoWrapper({
         });
       }
     }
-  }, [onEditorReady, onSelectionChange, onGutterLineClick, inlineCompletion, language]);
+  }, [onEditorReady, onSelectionChange, onGutterLineClick, inlineCompletion, language, theme]);
 
   const handleChange: OnChange = useCallback(
     (val) => {

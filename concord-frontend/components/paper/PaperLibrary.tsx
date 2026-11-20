@@ -170,7 +170,7 @@ export function PaperLibrary() {
         <input value={form.year} onChange={e => setForm({ ...form, year: e.target.value })} placeholder="year" aria-label="Year" inputMode="numeric"
           className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button type="button" onClick={save} disabled={!form.title.trim() || saving}
-          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+          className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />{saving ? 'Saving…' : 'Save'}
         </button>
         {saveError && <p className="w-full text-[11px] text-rose-300">{saveError}</p>}
@@ -178,9 +178,9 @@ export function PaperLibrary() {
 
       {/* Status filter */}
       <div className="flex gap-1 mb-2">
-        <button onClick={() => setFilter('')} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>All</button>
+        <button onClick={() => setFilter('')} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-cyan-700 text-white' : 'text-zinc-400')}>All</button>
         {STATUS.map(s => (
-          <button key={s.id} onClick={() => setFilter(s.id)} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', filter === s.id ? 'bg-cyan-600 text-white' : 'text-zinc-400')}>{s.label}</button>
+          <button key={s.id} onClick={() => setFilter(s.id)} className={cn('min-h-11 px-2 py-0.5 text-[11px] rounded', filter === s.id ? 'bg-cyan-700 text-white' : 'text-zinc-400')}>{s.label}</button>
         ))}
         <div className="ml-auto flex gap-1">
           <input value={newCollection} onChange={e => setNewCollection(e.target.value)} placeholder="+ collection"

@@ -912,7 +912,7 @@ export function FractalRenderer() {
               {renders.map(r => (
                 <div key={r.id} className="flex items-center justify-between rounded border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[10px]">
                   <span className="text-zinc-300">{r.type} · {r.width}×{r.height}</span>
-                  <span className="text-zinc-600">{r.format} · {(r.bytes / 1024).toFixed(0)}KB</span>
+                  <span className="text-lattice-muted">{r.format} · {(r.bytes / 1024).toFixed(0)}KB</span>
                 </div>
               ))}
             </div>

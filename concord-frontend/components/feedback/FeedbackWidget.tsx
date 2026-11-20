@@ -118,7 +118,7 @@ export function FeedbackWidget({ targetType, targetId }: FeedbackWidgetProps) {
           <button
             onClick={handleDetailed}
             disabled={submitting || !description.trim()}
-            className="px-3 py-1.5 text-xs font-medium rounded bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium rounded bg-emerald-700 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
           >
             {submitting ? "Submitting..." : "Submit"}
           </button>

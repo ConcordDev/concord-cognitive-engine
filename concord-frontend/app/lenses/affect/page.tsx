@@ -120,7 +120,7 @@ export default function AffectLensPage() {
                   title={`${v.hint} (${v.keys})`}
                   className={cn(
                     'inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                   )}
                   aria-current={on ? 'page' : undefined}
                   tabIndex={rovingTabIndex(on, index, true)}

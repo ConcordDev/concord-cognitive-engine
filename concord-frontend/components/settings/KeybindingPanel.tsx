@@ -132,7 +132,7 @@ export function KeybindingPanel() {
                   disabled={busy === b.id}
                   className={`min-w-[110px] text-center px-2 py-1 text-[11px] font-mono rounded border focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
                     capturing === b.id
-                      ? 'bg-cyan-600 border-cyan-500 text-white animate-pulse'
+                      ? 'bg-cyan-700 border-cyan-500 text-white animate-pulse'
                       : 'bg-zinc-800 border-zinc-700 text-cyan-200 hover:border-cyan-600'
                   }`}
                 >

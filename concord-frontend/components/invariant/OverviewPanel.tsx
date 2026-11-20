@@ -204,7 +204,7 @@ export function OverviewPanel() {
                   <span className="text-gray-400">Critical / high</span>
                   <span className={`font-mono ${((vio?.critical ?? 0) + (vio?.high ?? 0)) > 0 ? 'text-red-400' : 'text-neon-green'}`}>{(vio?.critical ?? 0) + (vio?.high ?? 0)}</span>
                 </div>
-                <p className="pt-2 border-t border-white/5 text-[10px] text-gray-500">
+                <p className="pt-2 border-t border-white/5 text-[10px] text-lattice-muted">
                   Register monitors + inspect history in the Formal Verification Workbench.
                 </p>
               </div>

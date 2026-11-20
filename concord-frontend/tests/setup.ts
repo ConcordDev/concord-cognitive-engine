@@ -28,6 +28,37 @@ vi.mock('next/font/google', () => {
     Source_Serif_4: face('Source Serif 4'),
     Instrument_Serif: face('Instrument Serif'),
     Montserrat: face('Montserrat'),
+    // ConKay — the Workshop (components/conkay/workshop/workshopFonts.ts)
+    Chakra_Petch: face('Chakra Petch'),
+    // Retail — The Stall (components/retail/app/stallFonts.ts)
+    Permanent_Marker: face('Permanent Marker'),
+    Caveat: face('Caveat'),
+    Courier_Prime: face('Courier Prime'),
+    // Studio — The Booth (components/studio/booth/boothFonts.ts)
+    Bebas_Neue: face('Bebas Neue'),
+    Gochi_Hand: face('Gochi Hand'),
+    Share_Tech_Mono: face('Share Tech Mono'),
+    // Music — Liner Notes (components/music/liner/linerFonts.ts)
+    Fraunces: face('Fraunces'),
+    Inter_Tight: face('Inter Tight'),
+    IBM_Plex_Mono: face('IBM Plex Mono'),
+    // Code — Proof (components/code/proof/proofFonts.ts)
+    Geist: face('Geist'),
+    Geist_Mono: face('Geist Mono'),
+    // News — The Situation Room (components/news/room/roomFonts.ts)
+    Barlow: face('Barlow'),
+    Barlow_Condensed: face('Barlow Condensed'),
+    Azeret_Mono: face('Azeret Mono'),
+    // Market — The Auction House (components/market/house/houseFonts.ts)
+    Cormorant_Garamond: face('Cormorant Garamond'),
+    Jost: face('Jost'),
+    // Art — The Atelier (components/art/atelier/atelierFonts.ts)
+    Young_Serif: face('Young Serif'),
+    Work_Sans: face('Work Sans'),
+    // Chat — The Notebook (components/chat/notebook/notebookFonts.ts)
+    Newsreader: face('Newsreader'),
+    Instrument_Sans: face('Instrument Sans'),
+    Kalam: face('Kalam'),
   };
 });
 

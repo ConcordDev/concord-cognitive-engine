@@ -44,7 +44,7 @@ export function SearchPanel() {
         );
       case 'lens':
         return (
-          <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple border border-neon-purple/30">
+          <span className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30">
             Lens
           </span>
         );

@@ -214,10 +214,10 @@ export function MlActionPanel() {
   const actions = [
     { id: 'eval' as ActionId, label: 'Evaluate', desc: 'Score predictions vs actuals', icon: Target, accent: '#22c55e', handler: actEval },
     { id: 'feat' as ActionId, label: 'Features', desc: 'Rank feature importance', icon: BarChart3, accent: '#06b6d4', handler: actFeat },
-    { id: 'profile' as ActionId, label: 'Profile', desc: 'Profile the dataset', icon: Brain, accent: '#a855f7', handler: actProfile },
+    { id: 'profile' as ActionId, label: 'Profile', desc: 'Profile the dataset', icon: Brain, accent: '#c084fc', handler: actProfile },
     { id: 'hyper' as ActionId, label: 'Hyper', desc: 'Suggest hyperparameters', icon: Sliders, accent: '#f59e0b', handler: actHyper },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private ML run DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send model brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send model brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : publishArm ? 'Click again to confirm' : 'Public model card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Lever', desc: 'Agent: top leverage', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

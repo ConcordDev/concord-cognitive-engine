@@ -16,6 +16,7 @@ import { MarketingScoringPanel } from '@/components/marketing/MarketingScoringPa
 import { MarketingSEOPanel } from '@/components/marketing/MarketingSEOPanel';
 import { MarketingContactsPanel } from '@/components/marketing/MarketingContactsPanel';
 import { MarketingCalendarPanel } from '@/components/marketing/MarketingCalendarPanel';
+import { MarketResearchSection } from '@/components/marketing/MarketResearchSection';
 import { PipingProvider } from '@/components/panel-polish';
 import { useLensNav } from '@/hooks/useLensNav';
 import { useLensCommand } from '@/hooks/useLensCommand';
@@ -163,6 +164,8 @@ export default function MarketingLensPage() {
           </nav>
           <div className="p-4">{renderStudioPanel()}</div>
         </section>
+
+        <MarketResearchSection />
 
         <section className="space-y-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-white px-1">

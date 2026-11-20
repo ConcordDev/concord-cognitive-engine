@@ -85,7 +85,7 @@ function LensTemplateGenerator() {
       <div className="flex items-center gap-3">
         <Layers className="w-6 h-6 text-neon-purple" />
         <h2 className="text-xl font-bold text-gray-100">Lens Template Generator</h2>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+        <span className="text-xs px-2 py-0.5 rounded-full bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20">
           Generate
         </span>
       </div>
@@ -159,7 +159,7 @@ function LensTemplateGenerator() {
         <button
           onClick={handleGenerate}
           disabled={!selectedTemplate || generateMutation.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-lg text-sm font-medium hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20 rounded-lg text-sm font-medium hover:bg-neon-purple/20 disabled:opacity-50 transition-colors"
         >
           {generateMutation.isPending ? (
             <>

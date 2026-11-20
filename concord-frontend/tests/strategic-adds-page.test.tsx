@@ -21,12 +21,13 @@ vi.mock('@/components/hr/BlsWageForecast', () => ({ BlsWageForecast: () => <div>
 vi.mock('@/components/grounding/ClaimVerificationPanel', () => ({ ClaimVerificationPanel: () => <div>ClaimVerificationPanel</div> }));
 vi.mock('@/components/grounding/FactGroundingWorkbench', () => ({ FactGroundingWorkbench: () => <div>FactGroundingWorkbench</div> }));
 vi.mock('@/components/dx-platform/DevToolingPulse', () => ({ DevToolingPulse: () => <div>DevToolingPulse</div> }));
+vi.mock('@/components/strategic-adds/ContactPreferenceGraph', () => ({ ContactPreferenceGraph: () => <div>ContactPreferenceGraph</div> }));
 
 import StrategicAddsPage from '@/app/lenses/strategic-adds/page';
 
 describe('/lenses/strategic-adds', () => {
-  it('renders all eight tracks and keeps honest deferred state for contact network', () => {
-    const { getByText } = render(<StrategicAddsPage />);
+  it('renders all eight tracks and Track 7 mounts the real contact graph (no deferred-state note)', () => {
+    const { getByText, queryByText } = render(<StrategicAddsPage />);
 
     getByText('1) Sovereign API Hub');
     getByText('2) Burnout + Focus');
@@ -38,6 +39,9 @@ describe('/lenses/strategic-adds', () => {
     getByText('8) Go-live Platform');
 
     fireEvent.click(getByText('7) Contact + Preference Network'));
-    getByText('Honest status: foundational packaging only');
+    // FIX-strategic-adds-002: Track 7 is built — the graph renders, and the old
+    // "foundational packaging only" placeholder is gone.
+    getByText('ContactPreferenceGraph');
+    expect(queryByText(/foundational packaging only/)).toBeNull();
   });
 });

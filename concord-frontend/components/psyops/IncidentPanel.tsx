@@ -9,7 +9,7 @@ import type { PsyopsIncident } from './types';
 
 const SEVERITY_BADGE: Record<string, string> = {
   critical: 'bg-rose-600 text-white',
-  high: 'bg-amber-600 text-white',
+  high: 'bg-amber-700 text-white',
   medium: 'bg-zinc-700 text-zinc-200',
 };
 

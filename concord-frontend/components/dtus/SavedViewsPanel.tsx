@@ -102,7 +102,7 @@ export function SavedViewsPanel({
             <button
               onClick={save}
               disabled={!name.trim() || saving}
-              className="flex items-center gap-1 rounded bg-neon-purple/20 px-2 py-1 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+              className="flex items-center gap-1 rounded bg-neon-purple/20 px-2 py-1 text-xs text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               Save
