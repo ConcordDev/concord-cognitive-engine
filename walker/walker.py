@@ -357,6 +357,18 @@ def cmd_walk(args, cfg, log):
                     json.dump(res, f, indent=1)
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
                               checks_not_run=checks_not_run(res), deploy=deploy, state=res["state"])
+                # GB-1575 W2: post-lens dossier hook — OFF unless config
+                # dossier.enabled; best-effort, never fails the lens. The
+                # canonical dossiers are (re)built offline by the dossier
+                # subcommand over the finished run.
+                if (cfg.get("dossier") or {}).get("enabled"):
+                    try:
+                        from concord_walker import dossier as _dossier_mod
+                        _dossier_mod.build_one(
+                            rec.run_dir, slug,
+                            repo=(cfg.get("dossier") or {}).get("repo") or None)
+                    except Exception as _de:
+                        log("dossier hook: %s dossier skipped (%s)" % (slug, _de))
                 summary.append(res)
                 # ULW v3 W4: recipe-reported NOT_RUN items (validation-recipe
                 # budget cuts) queue as carry-over with the walk's own NOT_RUNs.
@@ -451,6 +463,25 @@ def write_summary(rec, summary, left, dry, manifest=None):
     lines.append("\nLeftover fixtures: %s\n" % (", ".join(f["label"] for f in left) if left else "none"))
     with open(os.path.join(rec.run_dir, "SUMMARY.md"), "w") as f:
         f.write("".join(lines))
+
+
+def cmd_dossier(args, cfg, log):
+    """GB-1575 W2: per-lens redesign dossiers over a FINISHED run dir —
+    offline; records + wiring + manifest + reverify.jsonl plus a read-only
+    git show of the repo at the walk build. Never walks, never signs in."""
+    from concord_walker import dossier as dossier_mod
+    lenses = None
+    if getattr(args, "lens", None):
+        lenses = [s.strip() for s in args.lens.split(",") if s.strip()]
+    out_dir = getattr(args, "out", None) or os.path.join(args.run_dir, "dossiers")
+    idx = dossier_mod.build_all(args.run_dir,
+                                repo=getattr(args, "repo", None) or None,
+                                out_dir=out_dir, lenses=lenses,
+                                misses_path=getattr(args, "misses", None) or None)
+    log("dossier: %d lens dossier(s) for run %s -> %s"
+        % (len(idx["lenses"]), idx["run_id"], out_dir))
+    for row in idx["lenses"]:
+        log("  %s score=%d" % (row["lens"], row["score"]))
 
 
 def cmd_reverify(args, cfg, log):
@@ -893,6 +924,12 @@ def main():
     p.add_argument("--login-timeout", type=int, default=600, help="seconds to wait for /api/auth/me to show a session after submit (default 600)")
     p = sub.add_parser("whoami", help="GET /api/auth/me with a saved session")
     p.add_argument("--account", default="t1", help="any account key in config")
+    p = sub.add_parser("dossier", help="GB-1575 W2: per-lens redesign dossiers over a finished run dir (offline; read-only git show at the walk build)")
+    p.add_argument("--run-dir", required=True, help="finished walk run dir (lens-*.json + walk-manifest.json + wiring-*.json)")
+    p.add_argument("--lens", help="comma list of lens slugs (default: every walked lens)")
+    p.add_argument("--repo", help="Concord repo checkout for git show at the walk build (component/code-scan/backend sections stay empty without one)")
+    p.add_argument("--out", help="output dir (default: <run-dir>/dossiers)")
+    p.add_argument("--misses", help="W1 redesign_misses.jsonl (default: walker/analysis/redesign_misses.jsonl when present)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     if getattr(args, "base_url", None):
@@ -914,6 +951,8 @@ def main():
         cmd_merge_runs(args, cfg, log)
     elif args.cmd == "merge-shards":
         cmd_merge_shards(args, cfg, log)
+    elif args.cmd == "dossier":
+        cmd_dossier(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":
