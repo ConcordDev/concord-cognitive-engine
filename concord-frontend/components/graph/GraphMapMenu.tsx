@@ -105,10 +105,10 @@ export function GraphMapMenu({ facts, platform = 'x' }: Props) {
   const drafted = (draftId || sentDrafts[dtuId] || '') as string;
 
   return (
-    <div className="rounded-xl border border-violet-500/20 bg-zinc-950/40 p-3 mt-3">
+    <div className="rounded-xl border border-[rgba(216,183,102,0.35)] bg-zinc-950/40 p-3 mt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-xs font-semibold text-zinc-200">
-          <ShieldCheck className="h-3.5 w-3.5 text-violet-400" />
+          <ShieldCheck className="h-3.5 w-3.5 text-[var(--sk-gold-2,#a5f3fc)]" />
           Map report
         </h3>
         <div className="flex items-center gap-2">
@@ -116,7 +116,7 @@ export function GraphMapMenu({ facts, platform = 'x' }: Props) {
             type="button"
             onClick={() => void save()}
             disabled={busy !== null}
-            className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-violet-500 disabled:opacity-50"
+            className="rounded-lg bg-[var(--sk-gold,#7c3aed)] px-3 py-1.5 text-xs font-medium text-[#1a1405] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-50"
           >
             {busy === 'save' ? 'Saving…' : 'Save map as DTU'}
           </button>

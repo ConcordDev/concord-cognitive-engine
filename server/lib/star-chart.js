@@ -173,7 +173,7 @@ export function buildSky(g, opts = {}) {
   consts.forEach((c, i) => {
     const r = 0.06 + 0.4 * Math.sqrt((i + 0.5) / Math.max(1, consts.length));
     const cx = 0.5 + r * Math.cos(i * GOLD); const cy = 0.5 + r * Math.sin(i * GOLD);
-    const spread = Math.min(0.16, 0.035 + 0.012 * Math.sqrt(c.size));
+    const spread = Math.min(0.2, 0.07 + 0.02 * Math.sqrt(c.size));
     const pos = new Map(c.members.map((id) => [id, { x: cx + (unitHash(id, 1) - 0.5) * spread, y: cy + (unitHash(id, 2) - 0.5) * spread }]));
     for (let it = 0; it < 60; it++) {
       for (const a of c.members) {
@@ -181,7 +181,7 @@ export function buildSky(g, opts = {}) {
         for (const b of c.members) {
           if (a === b) continue;
           const pb = pos.get(b); const dx = pa.x - pb.x; const dy = pa.y - pb.y; const d2 = dx * dx + dy * dy + 1e-6;
-          fx += (dx / d2) * 0.00002; fy += (dy / d2) * 0.00002; // repel
+          fx += (dx / d2) * 0.00006; fy += (dy / d2) * 0.00006; // repel
         }
         for (const b of adj.get(a)) {
           if (!pos.has(b)) continue;
