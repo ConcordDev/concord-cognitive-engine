@@ -59,3 +59,18 @@ lane (`.github/workflows/conkay-engine-mpi.yml`,
 manual dispatch per F8), which installs OpenMPI +
 mpi4py, sets `CONKAY_ENGINE_MPI_BIN`, and fails if any
 test skips.
+
+## First-live corrections (2026-11-19)
+
+The lane's first live dispatch failed in ~40 ms: the
+runner's distro OpenMPI (apt, 5.0.10 — also short of
+the 5.0.11 pin) is broken on the current runner image
+(its pmix/prrte help files are missing, and mpirun
+dies at init). The lane now provisions the pinned
+pair from conda-forge — `openmpi=5.0.11` +
+`mpi4py=4.1.2` in one env at
+`/opt/concord-engines/mpi` (conda-forge carries both
+pins for linux-64; verified 2026-11-19) — self-
+contained, with its own pmix/prrte, and exports the
+env's bin on PATH for the test step (the kernel finds
+mpirun by PATH).

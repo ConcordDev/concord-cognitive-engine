@@ -69,3 +69,33 @@ in the CI lane (`.github/workflows/conkay-engine-
 calculix.yml`, manual dispatch per F8), which installs
 ccx, sets `CONKAY_ENGINE_CALCULIX_BIN`, and fails if
 any test skips.
+
+## First-live corrections (2026-11-19)
+
+The lane's first live dispatch (2026-11-19) failed, and
+local reproduction against the real ccx binaries (the
+Ubuntu pool's 2.21-1build1 and the pinned 2.23-1) found
+the causes in the KERNEL, not the version: (1) the decks
+requested `*NODE FILE` / `*EL FILE` — results land in
+the .frd while the parser reads the .dat, and a set-less
+PRINT writes nothing on current builds; the decks now
+use `*NODE PRINT, NSET=NALL` / `*EL PRINT, ELSET=EALL`.
+(2) The tension case clamped its whole back face (dofs
+1–3), strangling the Poisson contraction — measured
+stress spread ±14%, delta −8%, unpassable at the 1e-3
+band under a correct ccx; the back face is now fixed in
+x only (node 1 fully), and the single-element case
+reproduces the closed form EXACTLY (maxRelError 0.0).
+(3) The C3D20 connectivity rode one 21-entry line —
+ccx's limit is 16 entries per line (a splitline error,
+no output at all); element lines now wrap at 16.
+Health + cantilever pass identically under ccx 2.21
+and 2.23 with these fixes. The suite's kernel-direct
+absence leg now pins `CONKAY_CCX_BIN` to a missing
+path (the kernel honours the override exclusively),
+so the leg is environment-independent. The lane
+installs the pinned 2.23 as the pool's
+`calculix-ccx_2.23-1_amd64.deb` (the runner's own
+release pocket serves 2.21) and asserts the installed
+version with dpkg-query — the pin governs provenance,
+and no other version runs under its claim.

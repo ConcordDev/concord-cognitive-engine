@@ -71,10 +71,10 @@ test("real lane: Poisson health + elasticity band (CI lane only)", async (t) => 
     return;
   }
   const h = await runEngine("fenicsx", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.l2Error < 1e-3, `L2 error ${h.outputs.l2Error} within the plan bound 1e-3`);
   const e = await runEngine("fenicsx", "elasticity", { traction: -0.25 }, { fresh: true });
-  assert.equal(e.status, "PASS");
+  assert.equal(e.status, "PASS", JSON.stringify(e));
   assert.ok(e.outputs.relDeviation < 0.12,
     `tip deflection within 12% of beam theory (got ${(e.outputs.relDeviation * 100).toFixed(1)}%)`);
 });

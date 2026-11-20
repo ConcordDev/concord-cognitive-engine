@@ -58,6 +58,11 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 test("kernel: missing blockMesh is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
     input: JSON.stringify({ op: "health", request: {} }),
+    // blockMesh absent BY CONSTRUCTION in any environment:
+    // the lane sources the OpenFOAM bashrc before running
+    // this suite, so an ambient-PATH spawn would find the
+    // tools and run the case instead of naming the absence.
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     encoding: "utf8",
     timeout: 60_000,
   });
@@ -71,7 +76,7 @@ test("real lane: cavity centreline vs Ghia 1982 within band (CI lane only)", asy
     return;
   }
   const h = await runEngine("openfoam", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(Math.abs(h.outputs.uLid - 1) < 0.05, `lid value served (${h.outputs.uLid})`);
   assert.ok(h.outputs.maxDeviation <= 0.05,
     `centreline within the 0.05 band of Ghia et al. 1982 (max dev ${h.outputs.maxDeviation})`);

@@ -73,10 +73,10 @@ test("real lane: KSP health + SLEPc eigenvalue vs exact discrete value (CI lane 
     return;
   }
   const h = await runEngine("petsc", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.maxError < 1e-3, `KSP max error ${h.outputs.maxError} within the plan bound 1e-3`);
   const e = await runEngine("petsc", "eigen", { n: 63 }, { fresh: true });
-  assert.equal(e.status, "PASS");
+  assert.equal(e.status, "PASS", JSON.stringify(e));
   assert.ok(e.outputs.relError < 1e-6,
     `smallest eigenvalue matches the exact discrete value (rel err ${e.outputs.relError})`);
 });

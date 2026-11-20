@@ -64,3 +64,22 @@ legs run only in the CI lane
 dispatch per F8), which provisions the env, sets
 `CONKAY_ENGINE_PETSC_BIN` to it, and fails if any test
 skips.
+
+## First-live corrections (2026-11-19)
+
+The lane's first live dispatch died at the conda
+solve: EVERY current conda-forge build of
+fenics-dolfinx 0.11.0 requires petsc >=3.25.2, so the
+original one-env solve (dolfinx 0.11.0 + petsc4py
+3.24 + slepc4py 3.24) is unsatisfiable — the shared
+fenicsx-env co-install is impossible at the current
+pins, an upstream constraint change since the build.
+The lane now provisions the env at the same path
+(`/opt/concord-engines/fenicsx`) with petsc4py=3.24 +
+slepc4py=3.24 only; the petsc kernel imports nothing
+of dolfinx, and each engine's lane proves its kernel
+against its own pin. The prod shared-env install, if
+a host ticket ever runs it, must resolve the pair
+openly (bump the petsc pin to >=3.25.2 beside dolfinx
+0.11.0, or drop the sharing) — recorded here, not
+decided silently in a lane.

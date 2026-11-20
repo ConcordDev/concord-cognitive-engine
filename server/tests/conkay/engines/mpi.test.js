@@ -132,7 +132,7 @@ test("real lane: health through runEngine (CI lane only)", async (t) => {
     return;
   }
   const r = await runEngine("mpi", "health", {}, { fresh: true });
-  assert.equal(r.status, "PASS");
+  assert.equal(r.status, "PASS", JSON.stringify(r));
   assert.equal(r.outputs.total, 3);
   assert.equal(r.outputs.np, 2);
 });

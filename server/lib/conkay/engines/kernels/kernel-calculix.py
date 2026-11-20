@@ -29,7 +29,10 @@ Ops:
     defaults L=1, H=0.05, P=0.01, E=1e6, nu=0.3, nx=10.
 
 No ccx on PATH is a provisioning defect: exit 3 naming it.
-An unparseable .dat is rejected (exit 5), never guessed.
+CONKAY_CCX_BIN, when set, names the ccx binary exclusively
+(a set-but-missing override is the same provisioning
+defect). An unparseable .dat is rejected (exit 5), never
+guessed.
 """
 import json
 import os
@@ -44,6 +47,9 @@ def fail(code, message):
 
 
 def find_ccx():
+    override = os.environ.get("CONKAY_CCX_BIN")
+    if override:
+        return override if os.path.isfile(override) and os.access(override, os.X_OK) else None
     return shutil.which("ccx") or ("/usr/bin/ccx" if os.path.exists("/usr/bin/ccx") else None)
 
 
@@ -105,6 +111,18 @@ TENSION = {
 def tension_deck(c):
     L, H, E, nu, F = c["L"], c["H"], c["E"], c["nu"], c["F"]
     q = F / 4.0
+    # Boundary shape matters: the back face is fixed in x
+    # only (node 1 fully, killing the rigid-body modes), so
+    # the element can contract laterally — the exact uniaxial
+    # state the closed form describes. Clamping the whole
+    # back face (dofs 1-3) strangles the Poisson contraction
+    # and the stress field is no longer uniform (measured
+    # +-14% across the integration points, delta -8%): the
+    # case then fails its own 1e-3 band under a CORRECT ccx.
+    # Output goes to the .dat via PRINT cards naming the
+    # sets — the FILE cards write the .frd instead, and a
+    # set-less PRINT writes nothing on current ccx builds;
+    # both leave the parser an empty .dat (exit 5).
     return f"""*HEADING
 ConKay SXE-07 tension case - single C3D8 element
 *NODE, NSET=NALL
@@ -124,9 +142,9 @@ ConKay SXE-07 tension case - single C3D8 element
 *SOLID SECTION, ELSET=EALL, MATERIAL=MAT
 *BOUNDARY
 1, 1, 3, 0.0
-4, 1, 3, 0.0
-5, 1, 3, 0.0
-8, 1, 3, 0.0
+4, 1, 1, 0.0
+5, 1, 1, 0.0
+8, 1, 1, 0.0
 *STEP
 *STATIC
 *CLOAD
@@ -134,9 +152,9 @@ ConKay SXE-07 tension case - single C3D8 element
 3, 1, {q}
 6, 1, {q}
 7, 1, {q}
-*NODE FILE
+*NODE PRINT, NSET=NALL
 U
-*EL FILE
+*EL PRINT, ELSET=EALL
 S
 *END STEP
 """
@@ -198,7 +216,13 @@ def cantilever_deck(L, H, E, nu, P, nx):
         lines.append(f"{n}, {x}, {y}, {z}")
     lines.append("*ELEMENT, TYPE=C3D20, ELSET=EALL")
     for ei, el in enumerate(elements, 1):
-        lines.append(f"{ei}, " + ", ".join(str(n) for n in el))
+        # ccx takes at most 16 entries per input line; a
+        # C3D20 element (id + 20 nodes) wraps to a second
+        # line. One 21-entry line is a splitline error and
+        # the run produces no output at all.
+        entries = [str(ei)] + [str(n) for n in el]
+        lines.append(", ".join(entries[:16]))
+        lines.append(", ".join(entries[16:]))
     lines += ["*MATERIAL, NAME=MAT", "*ELASTIC", f"{E}, {nu}",
               "*SOLID SECTION, ELSET=EALL, MATERIAL=MAT", "*BOUNDARY"]
     for ci in range(4):
@@ -211,7 +235,7 @@ def cantilever_deck(L, H, E, nu, P, nx):
         n = nodes[("c", nx, ci)]
         tip.append(n)
         lines.append(f"{n}, 2, {-q}")
-    lines += ["*NODE FILE", "U", "*END STEP", ""]
+    lines += ["*NODE PRINT, NSET=NALL", "U", "*END STEP", ""]
     return "\n".join(lines), tip
 
 

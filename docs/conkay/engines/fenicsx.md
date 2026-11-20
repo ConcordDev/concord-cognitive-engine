@@ -58,3 +58,19 @@ legs run only in the CI lane
 dispatch per F8), which installs the pinned conda env,
 sets `CONKAY_ENGINE_FENICSX_BIN`, and fails if any test
 skips.
+
+## First-live corrections (2026-11-19)
+
+The lane's first live dispatch installed DOLFINx
+0.11.0 cleanly but the Poisson health returned FAIL
+with no reason in the log — the suite's bare
+`status === "PASS"` assertion hid the result. The
+suite's real-lane legs now carry the full result JSON
+in their assertion messages (the same fix in all five
+SXE-52 suites), and the lane runs a kernel-direct
+smoke step before the suite so a kernel failure names
+itself on stderr in the log. The root cause itself is
+named by the re-dispatch's surfaced output; the kernel
+was verified API-correct against the 0.11 surface by
+inspection (functionspace, fem.petsc.LinearProblem,
+exterior_facet_indices).

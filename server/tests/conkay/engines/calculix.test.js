@@ -4,9 +4,11 @@
  * Locally provable legs: registration + GPL process-only
  * discipline, the engine_unavailable absence, schema
  * refusal before spawn, unknown-op refusal, and the
- * kernel's provisioning-defect shape (ccx absent on this
- * machine: the kernel must exit naming ccx, never print a
- * result). The value legs — single-element tension vs its
+ * kernel's provisioning-defect shape (the leg pins
+ * CONKAY_CCX_BIN to a missing path, so ccx is absent BY
+ * CONSTRUCTION in any environment — a lane that installs
+ * ccx system-wide must not turn this leg into a real run:
+ * the kernel must exit naming ccx, never print a result). The value legs — single-element tension vs its
  * exact closed form (rel err < 1e-3), C3D20 cantilever vs
  * Euler-Bernoulli (band < 8%) — run in the CI lane
  * (conkay-engine-calculix.yml, manual dispatch per F8),
@@ -60,6 +62,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 test("kernel: missing ccx is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
     input: JSON.stringify({ op: "health", request: {} }),
+    env: { ...process.env, CONKAY_CCX_BIN: "/nonexistent/ccx" },
     encoding: "utf8",
     timeout: 60_000,
   });
@@ -73,11 +76,11 @@ test("real lane: tension vs exact closed form + cantilever band (CI lane only)",
     return;
   }
   const h = await runEngine("calculix", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.maxRelError < 1e-3,
     `single-element tension matches the closed form (rel err ${h.outputs.maxRelError})`);
   const c = await runEngine("calculix", "cantilever", CANTILEVER, { fresh: true });
-  assert.equal(c.status, "PASS");
+  assert.equal(c.status, "PASS", JSON.stringify(c));
   assert.ok(c.outputs.relDeviation < 0.08,
     `cantilever tip within 8% of Euler-Bernoulli (got ${(c.outputs.relDeviation * 100).toFixed(1)}%)`);
 });

@@ -76,3 +76,18 @@ manual dispatch per F8 — the plan's nightly wording is
 overridden by F8), which installs v2406, sets
 `CONKAY_ENGINE_OPENFOAM_BIN`, and fails if any test
 skips.
+
+## First-live corrections (2026-11-19)
+
+The lane's first live dispatch died in the test step:
+the current openfoam2406 package installs to
+`/usr/lib/openfoam/openfoam2406` (not `/opt`), and the
+step's `source A || source B` line did not survive the
+runner's `bash -e` shell. The step now locates the
+bashrc by test -f across both roots, sources it with
+errexit suspended, and verifies the tools with
+`which` before running. The suite's kernel-direct
+absence leg also spawns with a scrubbed PATH now —
+sourcing the bashrc puts blockMesh on PATH for the
+whole suite, and the leg's absence must hold by
+construction, not by accident of environment.
