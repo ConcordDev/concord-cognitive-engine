@@ -114,7 +114,7 @@ export function RecipeLedger() {
                   <div className="flex items-center justify-between">
                     <span className="text-white">
                       {x.skill_type}
-                      {x.native_world_type && <span className="text-zinc-500"> · {x.native_world_type}</span>}
+                      {x.native_world_type && <span className="text-lattice-muted"> · {x.native_world_type}</span>}
                     </span>
                     <span className="font-mono text-[10px] text-cyan-300">L{x.level ?? '-'}</span>
                   </div>

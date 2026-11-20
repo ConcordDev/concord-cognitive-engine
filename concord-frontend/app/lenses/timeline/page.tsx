@@ -214,7 +214,7 @@ export default function TimelineLensPage() {
                   title={`${t.hint} (${t.keys})`}
                   className={cn(
                     'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -303,7 +303,7 @@ export default function TimelineLensPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search feed by author or content…"
-                      className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                      className="flex-1 bg-[#3a3b3c] rounded px-3 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <span className="text-xs text-gray-400 whitespace-nowrap">
                       {debouncedSearch

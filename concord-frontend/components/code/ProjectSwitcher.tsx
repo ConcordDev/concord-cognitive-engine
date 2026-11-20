@@ -63,7 +63,7 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
       <div className="flex items-center gap-2 mb-2">
         <Folder className="w-3.5 h-3.5 text-blue-400" />
         <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Projects</span>
-        <button onClick={() => setCreating(v => !v)} className="ml-auto px-1.5 py-0.5 text-[10px] rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-0.5">
+        <button onClick={() => setCreating(v => !v)} className="ml-auto px-1.5 py-0.5 text-[10px] rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 inline-flex items-center gap-0.5">
           <Plus className="w-3 h-3" />New
         </button>
       </div>
@@ -75,7 +75,7 @@ export function ProjectSwitcher({ value, onChange, onCreated, onDeleted }: { val
             <option value="node-ts">Scaffold: Node + TypeScript</option>
             <option value="">Empty workspace</option>
           </select>
-          <button onClick={create} className="w-full px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">Create</button>
+          <button onClick={create} className="w-full px-2 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">Create</button>
         </div>
       )}
       {loading ? (

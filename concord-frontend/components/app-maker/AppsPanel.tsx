@@ -458,7 +458,7 @@ export function AppsPanel() {
           className={`w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-all duration-200 ${
             deployStatus === 'deployed'
               ? 'bg-neon-green/20 border border-neon-green/50 text-neon-green'
-              : 'bg-neon-purple/10 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed'
+              : 'bg-neon-purple/10 border border-neon-purple/30 text-neon-purple-bright hover:bg-neon-purple/20 disabled:opacity-50 disabled:cursor-not-allowed'
           }`}
         >
           {deployStatus === 'deploying' ? (

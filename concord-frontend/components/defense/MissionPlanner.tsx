@@ -297,7 +297,7 @@ export function MissionPlanner() {
                     aria-label="Edit task duration hours" placeholder="Hours"
                     className="w-20 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
                   <button onClick={() => saveEdit(t)} disabled={!editForm.name.trim() || busy}
-                    className="rounded bg-amber-600 hover:bg-amber-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                    className="rounded bg-amber-700 hover:bg-amber-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
                   <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
                 </div>
               )}
@@ -365,7 +365,7 @@ export function MissionPlanner() {
       <button
         onClick={addTask}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-md bg-amber-700 hover:bg-amber-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
       >
         {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
         Add Task

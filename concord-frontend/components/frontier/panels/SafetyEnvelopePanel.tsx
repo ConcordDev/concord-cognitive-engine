@@ -173,7 +173,7 @@ export function SafetyEnvelopePanel({ engine }: { engine: FrontierEngineDef }) {
             <NumberField id="env-x1max" label="velocity max" value={x1Max} onChange={setX1Max} step={0.1} />
             <NumberField id="env-x1n" label="velocity grid n" value={x1N} onChange={(v) => setX1N(Math.round(v))} min={4} max={200} step={1} />
           </div>
-          <p className={cn(ds.monoXs, 'text-gray-500 mt-1')}>
+          <p className={cn(ds.monoXs, 'text-lattice-muted mt-1')}>
             Total grid cells: {totalCells.toLocaleString()} {totalCells > 250000 && '— exceeds MAX_GRID_CELLS, reduce the grid n above'}
           </p>
         </div>

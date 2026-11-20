@@ -350,7 +350,7 @@ export function KialoArgumentMap() {
         <button
           onClick={createDebate}
           disabled={busy}
-          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
+          className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
         >
           New debate
         </button>
@@ -834,7 +834,7 @@ function ClaimCard({
         >
           <BookOpen className="w-3 h-3" />
           {sources.length > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-600 rounded-full px-1 text-white">
+            <span className="absolute -top-1.5 -right-1.5 text-[8px] bg-cyan-700 rounded-full px-1 text-white">
               {sources.length}
             </span>
           )}
@@ -979,7 +979,7 @@ function SourceForm({
         <button
           onClick={submit}
           disabled={title.trim().length < 3 || busy}
-          className="px-2 py-1 text-[10px] rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
+          className="px-2 py-1 text-[10px] rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
         >
           Add source
         </button>
@@ -1030,7 +1030,7 @@ function InlineComposer({
         onClick={submit}
         disabled={draft.trim().length < 4 || busy}
         aria-label="Add sub-claim"
-        className="px-1.5 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40"
+        className="px-1.5 py-0.5 rounded bg-cyan-700 hover:bg-cyan-500 text-white disabled:opacity-40"
       >
         <Plus className="w-3 h-3" />
       </button>
@@ -1090,7 +1090,7 @@ function RootComposer({
       <button
         onClick={submit}
         disabled={draft.trim().length < 4 || busy}
-        className="px-2.5 py-1 text-[11px] rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
+        className="px-2.5 py-1 text-[11px] rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40"
       >
         <Plus className="w-3 h-3 inline" /> Add claim
       </button>

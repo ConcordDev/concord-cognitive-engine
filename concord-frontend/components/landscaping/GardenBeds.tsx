@@ -327,7 +327,7 @@ function BedRow({
                   className="rounded border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300"
                 >
                   {p.plant} ×{p.quantity}{' '}
-                  <span className="text-zinc-600">{p.status}</span>
+                  <span className="text-lattice-muted">{p.status}</span>
                 </span>
               ))}
               {bed.plantings.length === 0 && (
@@ -376,7 +376,7 @@ function BedRow({
                 .map((c) => (
                   <div key={c.id} className="flex gap-2 text-[11px] text-zinc-400">
                     <span className="text-sky-300 capitalize">{c.kind.replace('_', ' ')}</span>
-                    <span className="text-zinc-600">{c.date}</span>
+                    <span className="text-lattice-muted">{c.date}</span>
                     {c.notes && <span className="truncate">{c.notes}</span>}
                   </div>
                 ))}

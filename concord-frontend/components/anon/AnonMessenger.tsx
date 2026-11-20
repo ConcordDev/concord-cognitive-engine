@@ -647,7 +647,7 @@ export function AnonMessenger() {
                     No messages yet.
                   </p>
                 )}
-                <p className="px-1 pb-2 text-[11px] text-zinc-500">{notice.body}</p>
+                <p className="px-1 pb-2 text-[11px] text-lattice-muted">{notice.body}</p>
                 {activeView.messages.map((m) => (
                   <motion.div
                     key={m.id}

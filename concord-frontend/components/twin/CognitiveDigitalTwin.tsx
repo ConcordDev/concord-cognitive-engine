@@ -94,7 +94,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
           <button
             onClick={() => updateTwin.mutate()}
             disabled={updateTwin.isPending}
-            className="p-1.5 rounded-lg hover:bg-neon-purple/20 text-gray-400 hover:text-neon-purple transition-colors"
+            className="p-1.5 rounded-lg hover:bg-neon-purple/20 text-gray-400 hover:text-neon-purple-bright transition-colors"
             title="Update twin"
           >
             {updateTwin.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -239,7 +239,7 @@ function CognitiveDigitalTwin({ className }: { className?: string }) {
                 <button
                   onClick={() => cloneQuestion.trim() && askClone.mutate(cloneQuestion.trim())}
                   disabled={!cloneQuestion.trim() || askClone.isPending}
-                  className="px-3 py-2 bg-neon-purple/20 text-neon-purple rounded-lg hover:bg-neon-purple/30 disabled:opacity-50"
+                  className="px-3 py-2 bg-neon-purple/20 text-neon-purple-bright rounded-lg hover:bg-neon-purple/30 disabled:opacity-50"
                 >
                   {askClone.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>

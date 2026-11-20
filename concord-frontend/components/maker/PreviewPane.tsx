@@ -68,7 +68,7 @@ export function PreviewPane({
               key={p.id}
               onClick={() => render(p.id)}
               className={`rounded px-2 py-0.5 text-[10px] ${
-                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/40 text-pink-500 hover:text-pink-300'
+                activePage === p.id ? 'bg-pink-700/50 text-pink-100' : 'bg-pink-950/40 text-pink-400 hover:text-pink-300'
               }`}
             >
               {p.name}
@@ -79,7 +79,7 @@ export function PreviewPane({
           <button
             onClick={deploy}
             disabled={deploying}
-            className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-500 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded bg-emerald-700 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-600 disabled:opacity-40"
           >
             {deploying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />} Deploy
           </button>

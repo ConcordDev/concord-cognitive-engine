@@ -213,25 +213,25 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
       </button>
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100">
         <span className="relative flex items-center" title="Move to chapter">
-          <FolderInput className="w-3 h-3 text-zinc-600 pointer-events-none absolute -left-0.5" />
+          <FolderInput className="w-3 h-3 text-lattice-muted pointer-events-none absolute -left-0.5" />
           <select
             aria-label="Move to chapter"
             value={sc.chapterId || ''}
             onChange={(e) => { e.stopPropagation(); void moveSceneToChapter(sc.id, e.target.value); }}
             onClick={(e) => e.stopPropagation()}
-            className="max-w-[64px] pl-3.5 bg-transparent text-zinc-500 hover:text-zinc-300 text-[9px] border-none focus:outline-none cursor-pointer"
+            className="max-w-[64px] pl-3.5 bg-transparent text-lattice-muted hover:text-zinc-300 text-[9px] border-none focus:outline-none cursor-pointer"
           >
             <option value="" className="bg-zinc-900 text-zinc-100">Unfiled</option>
             {chapters.map((c) => <option key={c.id} value={c.id} className="bg-zinc-900 text-zinc-100">{c.title}</option>)}
           </select>
         </span>
-        <button aria-label="Collapse" type="button" onClick={() => moveScene(sc.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
+        <button aria-label="Collapse" type="button" onClick={() => moveScene(sc.id, 'up')} className="text-lattice-muted hover:text-zinc-300">
           <ChevronUp className="w-3 h-3" />
         </button>
-        <button aria-label="Expand" type="button" onClick={() => moveScene(sc.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
+        <button aria-label="Expand" type="button" onClick={() => moveScene(sc.id, 'down')} className="text-lattice-muted hover:text-zinc-300">
           <ChevronDown className="w-3 h-3" />
         </button>
-        <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
+        <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-lattice-muted hover:text-rose-400">
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
@@ -294,17 +294,17 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                     <Check className="w-3 h-3" />
                   </button>
                 ) : (
-                  <button aria-label="Rename chapter" type="button" onClick={() => startRenameChapter(ch)} className="text-zinc-600 hover:text-zinc-300">
+                  <button aria-label="Rename chapter" type="button" onClick={() => startRenameChapter(ch)} className="text-lattice-muted hover:text-zinc-300">
                     <Pencil className="w-3 h-3" />
                   </button>
                 )}
-                <button aria-label="Collapse" type="button" onClick={() => moveChapter(ch.id, 'up')} className="text-zinc-600 hover:text-zinc-300">
+                <button aria-label="Collapse" type="button" onClick={() => moveChapter(ch.id, 'up')} className="text-lattice-muted hover:text-zinc-300">
                   <ChevronUp className="w-3 h-3" />
                 </button>
-                <button aria-label="Expand" type="button" onClick={() => moveChapter(ch.id, 'down')} className="text-zinc-600 hover:text-zinc-300">
+                <button aria-label="Expand" type="button" onClick={() => moveChapter(ch.id, 'down')} className="text-lattice-muted hover:text-zinc-300">
                   <ChevronDown className="w-3 h-3" />
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => delChapter(ch.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => delChapter(ch.id)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
@@ -366,7 +366,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-300" />
             )}
             {focusMode && (
-              <div className="flex items-center justify-between text-[11px] text-zinc-500 px-0.5">
+              <div className="flex items-center justify-between text-[11px] text-lattice-muted px-0.5">
                 <span className="truncate">{draft.title}</span>
                 <span className="tabular-nums">{liveWords} words</span>
               </div>
@@ -379,7 +379,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                 focusMode && 'text-base leading-loose border-transparent bg-transparent focus:outline-none')} />
             <div className="flex items-center gap-2">
               <button type="button" onClick={saveScene} disabled={!dirty || saving}
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 disabled:opacity-40 text-white rounded-lg">
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 {dirty ? 'Save scene' : 'Saved'}
               </button>
@@ -417,7 +417,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                     return (
                       <button key={t.id} type="button" onClick={() => toggleThreadTag(t.id, !attached)}
                         className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] border transition-colors',
-                          attached ? 'border-zinc-600 bg-zinc-800 text-zinc-100' : 'border-zinc-800 text-zinc-500 hover:text-zinc-300')}
+                          attached ? 'border-zinc-600 bg-zinc-800 text-zinc-100' : 'border-zinc-800 text-lattice-muted hover:text-zinc-300')}
                       >
                         <span className={cn('w-1.5 h-1.5 rounded-full', THREAD_COLOR_BG[t.color] || 'bg-zinc-500', !attached && 'opacity-40')} />
                         {t.name}
@@ -436,11 +436,11 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                   {snapshots.map((sn) => (
                     <li key={sn.id} className="flex items-center gap-2 text-[11px] text-zinc-400">
                       <span className="flex-1 truncate">{sn.title}</span>
-                      <span className="text-zinc-600">{sn.wordCount}w</span>
+                      <span className="text-lattice-muted">{sn.wordCount}w</span>
                       <button type="button" onClick={() => restoreSnapshot(sn.id)}
                         className="text-amber-400 hover:underline">restore</button>
                       <button aria-label="Delete snapshot" type="button" onClick={() => deleteSnapshot(sn.id)}
-                        className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                        className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
                     </li>
                   ))}
                 </ul>
@@ -456,7 +456,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
                     <span className="flex-1 text-zinc-300">{c.body}</span>
                     <button type="button"
                       onClick={() => lensRun('creative-writing', 'scene-comment-delete', { id: c.id }).then(loadSceneExtras)}
-                      className="text-zinc-600 hover:text-rose-400">×</button>
+                      className="text-lattice-muted hover:text-rose-400">×</button>
                   </li>
                 ))}
               </ul>
@@ -479,17 +479,17 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
           <div className="flex items-center gap-2">
             <BookOpen className="w-3.5 h-3.5 text-amber-400" />
             <span className="text-xs font-semibold text-zinc-200 flex-1">Reference</span>
-            <button aria-label="Close" type="button" onClick={() => setRefOpen(false)} className="text-zinc-600 hover:text-zinc-300">
+            <button aria-label="Close" type="button" onClick={() => setRefOpen(false)} className="text-lattice-muted hover:text-zinc-300">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <div className="flex gap-1">
             <button type="button" onClick={() => setRefMode('scene')}
               className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
-                refMode === 'scene' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Scene</button>
+                refMode === 'scene' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>Scene</button>
             <button type="button" onClick={() => setRefMode('note')}
               className={cn('flex-1 text-[11px] px-2 py-1 rounded-lg',
-                refMode === 'note' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>Note</button>
+                refMode === 'note' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>Note</button>
           </div>
           {refMode === 'scene' ? (
             <>
@@ -503,7 +503,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               {refScene ? (
                 <article className="text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed font-serif">
                   <p className="text-zinc-400 italic mb-1">{refScene.synopsis || 'No synopsis'}</p>
-                  {refScene.content || <span className="text-zinc-600 italic">Empty scene.</span>}
+                  {refScene.content || <span className="text-lattice-muted italic">Empty scene.</span>}
                 </article>
               ) : (
                 <p className="text-[10px] text-zinc-400 italic">Select a scene to read it side-by-side while you write.</p>
@@ -519,7 +519,7 @@ export function CwBinderPanel({ projectId, onChange }: { projectId: string; onCh
               {refNote ? (
                 <article className="text-[11px] text-zinc-300 whitespace-pre-wrap leading-relaxed">
                   <p className="text-[9px] uppercase text-amber-400 mb-1">{refNote.kind}</p>
-                  {refNote.body || <span className="text-zinc-600 italic">No content.</span>}
+                  {refNote.body || <span className="text-lattice-muted italic">No content.</span>}
                 </article>
               ) : (
                 <p className="text-[10px] text-zinc-400 italic">

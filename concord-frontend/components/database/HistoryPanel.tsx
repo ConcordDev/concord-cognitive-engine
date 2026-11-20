@@ -91,14 +91,14 @@ export function HistoryPanel({ onLoadQuery }: { onLoadQuery?: (sql: string) => v
                     ? <CheckCircle className="w-3.5 h-3.5 text-green-400" />
                     : <XCircle className="w-3.5 h-3.5 text-red-400" />}
                   <span className="text-gray-400">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-                  <span className="text-gray-600">|</span>
+                  <span className="text-lattice-muted">|</span>
                   <span className="text-gray-400">{entry.duration}ms</span>
-                  <span className="text-gray-600">|</span>
+                  <span className="text-lattice-muted">|</span>
                   <span className="text-gray-400">{entry.rowCount} rows</span>
                   {entry.source && (
                     <>
-                      <span className="text-gray-600">|</span>
-                      <span className="text-gray-500">{entry.source}</span>
+                      <span className="text-lattice-muted">|</span>
+                      <span className="text-lattice-muted">{entry.source}</span>
                     </>
                   )}
                 </div>

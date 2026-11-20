@@ -106,7 +106,7 @@ export function StandPolygonPanel() {
         placeholder={'Boundary vertices, one per line:\n45.012, -122.034\n45.015, -122.030\n45.013, -122.025'}
         className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs font-mono text-zinc-200 mb-2" />
       <button onClick={save} disabled={busy}
-        className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
+        className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Save polygon
       </button>
       {err && <p className="text-xs text-rose-400 mt-2">{err}</p>}

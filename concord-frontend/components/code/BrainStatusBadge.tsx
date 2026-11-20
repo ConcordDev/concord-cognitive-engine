@@ -139,7 +139,7 @@ export function BrainStatusBadge() {
           Swap brain <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
-      <p className="text-gray-500 leading-snug">
+      <p className="text-lattice-muted leading-snug">
         Your coding assistant runs on this brain. Plug in your own Claude/GPT/Grok/Gemini key for a stronger reasoning bump.
       </p>
     </div>

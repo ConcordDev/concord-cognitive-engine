@@ -243,7 +243,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                 <button aria-label="Save label" type="button" onClick={saveEditLabel} className="text-emerald-400 hover:text-emerald-300">
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button aria-label="Cancel edit" type="button" onClick={cancelEditLabel} className="text-gray-500 hover:text-gray-300">
+                <button aria-label="Cancel edit" type="button" onClick={cancelEditLabel} className="text-lattice-muted hover:text-gray-300">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </span>
@@ -283,7 +283,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                 <span className="text-xs text-gray-200 flex-1">{f.name}</span>
                 <span className="text-[10px] text-gray-400">{f.type}{f.options.length ? ` · ${f.options.join('/')}` : ''}</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('projects', 'custom-field-delete', { id: f.id }).then(refresh)}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -321,7 +321,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                   {r.enabled ? 'on' : 'off'}
                 </button>
                 <button aria-label="Delete" type="button" onClick={() => { setRules((prev) => prev.filter((x) => x.id !== r.id)); void lensRun('projects', 'rule-delete', { id: r.id }).then(refresh); }}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -352,7 +352,7 @@ export function PjSettingsPanel({ projectId, project, onProjectSaved, onChange }
                 <button type="button" onClick={() => lensRun('projects', 'template-apply', { id: t.id }).then(refresh)}
                   className="text-[10px] px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded">Apply</button>
                 <button aria-label="Delete" type="button" onClick={() => { setTemplates((prev) => prev.filter((x) => x.id !== t.id)); void lensRun('projects', 'template-delete', { id: t.id }).then(refresh); }}
-                  className="text-gray-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -370,7 +370,7 @@ function Empty({ text }: { text: string }) {
 function cssColor(c: string): string {
   const map: Record<string, string> = {
     red: '#dc2626', orange: '#ea580c', amber: '#d97706', lime: '#65a30d', emerald: '#059669',
-    teal: '#0d9488', sky: '#0284c7', indigo: '#4f46e5', violet: '#7c3aed', pink: '#db2777', zinc: '#52525b',
+    teal: '#0d9488', sky: '#0284c7', indigo: '#4f46e5', violet: '#7c3aed', pink: '#db2777', zinc: '#a1a1aa',
   };
-  return map[c] || '#52525b';
+  return map[c] || '#a1a1aa';
 }

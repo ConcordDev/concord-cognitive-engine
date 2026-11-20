@@ -68,7 +68,7 @@ export function AnimToolsPanel({ anim, onChange }: { anim: Anim; onChange: () =>
         {TOOL_TABS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTab(t.id)}
             className={cn('flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg',
-              tab === t.id ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+              tab === t.id ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
             <t.icon className="w-3 h-3" /> {t.label}
           </button>
         ))}
@@ -213,7 +213,7 @@ function ExportPanel({ anim }: { anim: Anim }) {
             onChange={(e) => setScale(Number(e.target.value))} className="w-24 accent-cyan-500" />
         </label>
         <button type="button" onClick={runExport} disabled={busy}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           Export
         </button>
@@ -331,7 +331,7 @@ function AudioSyncPanel({ anim, onChange }: { anim: Anim; onChange: () => void }
         <input ref={fileRef} type="file" accept="audio/*" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f); }} />
         <button type="button" onClick={() => fileRef.current?.click()} disabled={busy}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           Add audio + waveform
         </button>
@@ -522,7 +522,7 @@ function TweenPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
         <button type="button" onClick={runPreview}
           className="px-3 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Preview</button>
         <button type="button" onClick={commit} disabled={busy}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Spline className="w-3.5 h-3.5" />}
           Insert as frames
         </button>
@@ -630,7 +630,7 @@ function CanvasPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
           {fpsPresets.map((f) => (
             <button key={f} type="button" onClick={() => applyFps(f)}
               className={cn('px-2.5 py-1 text-[11px] rounded-lg',
-                f === anim.fps ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                f === anim.fps ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
               {f} fps
             </button>
           ))}
@@ -776,7 +776,7 @@ function RigPanel({ anim, onChange }: { anim: Anim; onChange: () => void }) {
           {bones.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
         <button type="button" onClick={addBone}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Bone
         </button>
         <select aria-label="Pose frame" onChange={(e) => setSelFrame(e.target.value)}
@@ -904,7 +904,7 @@ function BrushPanel() {
             onChange={(e) => setForm({ ...form, taper: Number(e.target.value) })} className="flex-1 accent-cyan-500" />
         </label>
         <button type="button" onClick={save} disabled={!form.name.trim()}
-          className="col-span-2 flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
+          className="col-span-2 flex items-center justify-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
           <Plus className="w-3.5 h-3.5" /> Save brush
         </button>
       </div>
@@ -978,7 +978,7 @@ function SharePanel({ anim }: { anim: Anim }) {
             Allow viewers to download frames
           </label>
           <button type="button" onClick={create} disabled={busy}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
+            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg disabled:opacity-50">
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
             Create share link
           </button>

@@ -145,7 +145,7 @@ export function LineagePanel() {
                 <button
                   onClick={() => runConsolidate(c)}
                   disabled={busy}
-                  className="px-3 py-1 text-[11px] bg-amber-600 hover:bg-amber-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1"
+                  className="px-3 py-1 text-[11px] bg-amber-700 hover:bg-amber-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1"
                 >
                   {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   Consolidate

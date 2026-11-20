@@ -614,11 +614,11 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         )}
         <button type="button" onClick={() => setOnion(!onion)}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
-            onion ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300')}>
+            onion ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300')}>
           <Layers className="w-3.5 h-3.5" /> Onion
         </button>
         <button type="button" onClick={() => setPlaying(!playing)}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg">
           {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
           {playing ? 'Pause' : 'Play'}
         </button>
@@ -632,7 +632,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         </button>
         <button type="button" onClick={() => setShowTools((v) => !v)}
           className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
-            showTools ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+            showTools ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
           <Wrench className="w-3.5 h-3.5" /> Tools
         </button>
       </div>
@@ -677,7 +677,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
           </button>
           <div className="flex-1" />
           <button type="button" onClick={() => addFrame(false)}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-cyan-600 hover:bg-cyan-500 text-white rounded">
+            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-cyan-700 hover:bg-cyan-500 text-white rounded">
             <Plus className="w-3 h-3" /> Frame
           </button>
           <button type="button" onClick={() => addFrame(true)}
@@ -719,7 +719,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
             <button key={b.id} type="button"
               onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setPressureSize(0); }}
               className={cn('flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg',
-                tool === b.tool ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                tool === b.tool ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
               {b.tool === 'eraser' && <Eraser className="w-3 h-3" />}{b.name}
             </button>
           ))}

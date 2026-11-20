@@ -21,7 +21,7 @@ interface Dash { assets: number; openVulns: number; bySeverity: Record<string, n
 
 const SEV_COLOR: Record<string, string> = {
   critical: 'bg-rose-600 text-white', high: 'bg-orange-600 text-white',
-  medium: 'bg-amber-600 text-white', low: 'bg-zinc-700 text-zinc-200', unknown: 'bg-zinc-800 text-zinc-400',
+  medium: 'bg-amber-700 text-white', low: 'bg-zinc-700 text-zinc-200', unknown: 'bg-zinc-800 text-zinc-400',
 };
 const STATUSES = ['open', 'triaged', 'in_progress', 'remediated', 'accepted'];
 

@@ -224,7 +224,7 @@ export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: 
             maxLength={120}
             className="mt-1 block w-full rounded-md border border-lattice-border bg-lattice-void/60 px-2 py-1 text-[12px] text-gray-100 outline-none transition-colors focus:border-neon-blue"
           />
-          <span className="mt-0.5 block text-right text-[10px] text-gray-500">{composeSubject.length}/120</span>
+          <span className="mt-0.5 block text-right text-[10px] text-lattice-muted">{composeSubject.length}/120</span>
         </label>
         <label className="mb-2 block">
           <span className={ds.overline}>Message</span>
@@ -255,7 +255,7 @@ export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: 
               className="mt-1 block w-full rounded-md border border-lattice-border bg-lattice-void/60 px-2 py-1 text-[12px] tabular-nums text-gray-100 outline-none transition-colors focus:border-neon-blue"
             />
           </label>
-          <p className="col-span-2 text-[10px] text-gray-500">Amounts are CC from 0 to 1,000,000 — the server refuses more.</p>
+          <p className="col-span-2 text-[10px] text-lattice-muted">Amounts are CC from 0 to 1,000,000 — the server refuses more.</p>
           {amountError && <p className="col-span-2 text-[11px] text-rose-300" role="alert">{amountError}</p>}
         </div>
         <div className="mb-3">
@@ -271,7 +271,7 @@ export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: 
             </button>
           </div>
           {composeAttachments.length === 0 ? (
-            <p className="mt-1 text-[10px] text-gray-500">No DTUs attached. Only DTUs you own can be attached — ownership transfers to the recipient on claim.</p>
+            <p className="mt-1 text-[10px] text-lattice-muted">No DTUs attached. Only DTUs you own can be attached — ownership transfers to the recipient on claim.</p>
           ) : (
             <ul className="mt-1.5 space-y-1">
               {composeAttachments.map((d) => (
@@ -302,7 +302,7 @@ export function ComposeMailPanel({ onSent, seed }: { onSent: () => void; seed?: 
             <Send className="h-3.5 w-3.5" />
             Send
           </button>
-          <span className="text-[10px] text-gray-500" role="status">
+          <span className="text-[10px] text-lattice-muted" role="status">
             {draftSavedAt
               ? `Draft saved ${new Date(draftSavedAt).toLocaleTimeString()} — it survives a reload.`
               : 'Drafts autosave as you type.'}

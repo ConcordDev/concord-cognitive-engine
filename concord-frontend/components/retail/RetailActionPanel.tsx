@@ -158,8 +158,8 @@ export function RetailActionPanel() {
     { id: 'pipe' as ActionId, label: 'Pipeline', desc: 'pipelineValue', icon: Target, accent: '#3b82f6', handler: actPipe },
     { id: 'ltv' as ActionId, label: 'LTV', desc: 'customerLTV', icon: Users, accent: '#22c55e', handler: actLtv },
     { id: 'sla' as ActionId, label: 'SLA', desc: 'slaStatus', icon: Clock, accent: '#f59e0b', handler: actSla },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send ops brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private ops DTU', icon: Sparkles, accent: '#c084fc', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send ops brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon unit econ', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Lever', desc: 'Agent: top lever', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

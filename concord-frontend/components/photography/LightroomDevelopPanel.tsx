@@ -169,7 +169,7 @@ export function LightroomDevelopPanel({ onChange }: { onChange: () => void }) {
                       {pr.name}
                     </button>
                     <button aria-label="Delete preset" type="button" onClick={() => deletePreset(pr.id)}
-                      className="text-zinc-600 hover:text-rose-400">
+                      className="text-lattice-muted hover:text-rose-400">
                       <Trash2 className="w-3 h-3" />
                     </button>
                   </span>

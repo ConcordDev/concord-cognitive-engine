@@ -136,7 +136,7 @@ export function CarbonCreditPanel() {
           className="bg-zinc-950 border border-zinc-800 rounded px-2 py-1.5 text-xs text-zinc-200" />
       </div>
       <button onClick={issue} disabled={busy}
-        className="px-3 py-1.5 text-xs rounded bg-teal-600 hover:bg-teal-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
+        className="px-3 py-1.5 text-xs rounded bg-teal-700 hover:bg-teal-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1.5">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Issue credit
       </button>
       {err && <p className="text-xs text-rose-400 mt-2">{err}</p>}

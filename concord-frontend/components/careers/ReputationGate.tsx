@@ -67,7 +67,7 @@ export function ReputationGate({ trackId, onLoaded }: Props) {
           <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Loading reputation…
         </div>
       ) : !reputation ? (
-        <p className="text-gray-500 text-xs">{user?.id ? 'No reputation data for this track yet.' : 'Sign in to see your reputation for this track.'}</p>
+        <p className="text-lattice-muted text-xs">{user?.id ? 'No reputation data for this track yet.' : 'Sign in to see your reputation for this track.'}</p>
       ) : (
         <div className="text-xs text-gray-300 space-y-1.5">
           <div className="flex items-center gap-2">
@@ -77,18 +77,18 @@ export function ReputationGate({ trackId, onLoaded }: Props) {
             <span className="tabular-nums text-amber-200">{reputation.reputation}/100</span>
           </div>
           <p>Hireable up to <span className="text-amber-200">tier {reputation.gateTier}</span> · wage ×{reputation.wageMultiplier.toFixed(2)}</p>
-          <p className="text-gray-500">
+          <p className="text-lattice-muted">
             Reputation is earned, not bought: +4 per shift worked, +20 per contract active or completed.
             {reputation.nextGate
               ? <> Tier {reputation.nextGate.gateTier} contracts open at {reputation.nextGate.atReputation} reputation.</>
               : <> You are at the top gate — every tier is open to your contracts.</>}
           </p>
           {reputation.gatedTiers.length > 0 ? (
-            <p className="text-gray-500 flex items-center gap-1">
+            <p className="text-lattice-muted flex items-center gap-1">
               <Lock className="w-3 h-3 shrink-0" aria-hidden="true" /> Gated out of tier{reputation.gatedTiers.length > 1 ? 's' : ''} {reputation.gatedTiers.join(', ')} until your reputation grows — sign more contracts or work more shifts.
             </p>
           ) : (
-            <p className="text-gray-500">No tier gate — your reputation clears every tier in this track.</p>
+            <p className="text-lattice-muted">No tier gate — your reputation clears every tier in this track.</p>
           )}
         </div>
       )}

@@ -369,7 +369,7 @@ function StatCard({
 }) {
   const colors = {
     cyan: 'text-neon-cyan bg-neon-cyan/10',
-    purple: 'text-neon-purple bg-neon-purple/10',
+    purple: 'text-neon-purple-bright bg-neon-purple/10',
     green: 'text-green-400 bg-green-400/10',
     yellow: 'text-yellow-400 bg-yellow-400/10',
   };

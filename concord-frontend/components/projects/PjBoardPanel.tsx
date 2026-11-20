@@ -35,7 +35,7 @@ const STATUSES = [
 ];
 const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 const PRIORITY_COLOR: Record<string, string> = {
-  none: 'text-gray-600', low: 'text-sky-400', medium: 'text-amber-400',
+  none: 'text-lattice-muted', low: 'text-sky-400', medium: 'text-amber-400',
   high: 'text-orange-400', urgent: 'text-rose-400',
 };
 const TYPE_COLOR: Record<string, string> = {
@@ -228,7 +228,7 @@ export function PjBoardPanel({ projectId, onChange, openTaskRequest, onOpenTaskR
               <div key={col.id} className={cn('bg-lattice-surface/50 border-t-2 rounded-lg p-2', over ? 'border-rose-600' : 'border-indigo-700')}>
                 <div className="flex items-center justify-between gap-1 mb-1.5">
                   <p className="text-[10px] font-semibold text-gray-400 uppercase">
-                    {col.label} <span className={cn('tabular-nums', over ? 'text-rose-400' : 'text-gray-600')}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
+                    {col.label} <span className={cn('tabular-nums', over ? 'text-rose-400' : 'text-lattice-muted')}>{tasks.length}{limit > 0 ? `/${limit}` : ''}</span>
                   </p>
                   <input
                     type="number"
@@ -289,7 +289,7 @@ function cssColor(c: string): string {
     red: '#dc2626', rose: '#e11d48', orange: '#ea580c', amber: '#d97706', yellow: '#ca8a04',
     lime: '#65a30d', green: '#16a34a', emerald: '#059669', teal: '#0d9488', cyan: '#0891b2',
     sky: '#0284c7', blue: '#2563eb', indigo: '#4f46e5', violet: '#7c3aed', purple: '#9333ea',
-    fuchsia: '#c026d3', pink: '#db2777', zinc: '#52525b',
+    fuchsia: '#c026d3', pink: '#db2777', zinc: '#a1a1aa',
   };
-  return map[c] || '#52525b';
+  return map[c] || '#a1a1aa';
 }

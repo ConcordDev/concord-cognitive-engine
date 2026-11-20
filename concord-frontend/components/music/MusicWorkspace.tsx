@@ -1481,12 +1481,12 @@ export function MusicWorkspace() {
                       </span>
                     )}
                     {regularDTUs.length > 0 && (
-                      <span className="px-3 py-1.5 rounded-full text-xs bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+                      <span className="px-3 py-1.5 rounded-full text-xs bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20">
                         {regularDTUs.length} Regular DTUs
                       </span>
                     )}
                     {hyperDTUs.length > 0 && (
-                      <span className="px-3 py-1.5 rounded-full text-xs bg-neon-pink/10 text-neon-pink border border-neon-pink/20">
+                      <span className="px-3 py-1.5 rounded-full text-xs bg-neon-pink/10 text-neon-pink-bright border border-neon-pink/20">
                         {hyperDTUs.length} Hyper DTUs
                       </span>
                     )}
@@ -1888,7 +1888,7 @@ export function MusicWorkspace() {
                                     lic.tier === 'listen'
                                       ? 'bg-neon-cyan/10 text-neon-cyan hover:bg-neon-cyan/20'
                                       : lic.tier === 'create'
-                                        ? 'bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20'
+                                        ? 'bg-neon-purple/10 text-neon-purple-bright hover:bg-neon-purple/20'
                                         : 'bg-neon-green/10 text-neon-green hover:bg-neon-green/20'
                                   )}
                                   title={`Click to buy ${lic.tier} license`}

@@ -95,7 +95,7 @@ const VIEWS: { id: ClassView; label: string; keys: string; hint: string; icon: t
   { id: 'library', label: 'Library', keys: '3', hint: 'Open Library book search', icon: Library },
 ];
 
-const inputCls = 'w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-zinc-100 placeholder:text-zinc-600 focus:border-teal-400/50 focus:outline-none';
+const inputCls = 'w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-[13px] text-zinc-100 placeholder:text-lattice-muted focus:border-teal-400/50 focus:outline-none';
 const submitCls = 'w-full rounded-full bg-white/10 py-2 text-[13px] text-zinc-100 transition-colors hover:bg-white/15 disabled:opacity-40';
 
 export default function ClassroomPage() {
@@ -227,8 +227,8 @@ export default function ClassroomPage() {
           activeCohort === c.id ? 'border-teal-400/40 bg-teal-400/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20',
         )}
       >
-        <span className="truncate text-zinc-100"><span className="font-mono text-zinc-500">#{c.id}</span> {c.name}</span>
-        <span className="shrink-0 text-zinc-500">{right}</span>
+        <span className="truncate text-zinc-100"><span className="font-mono text-lattice-muted">#{c.id}</span> {c.name}</span>
+        <span className="shrink-0 text-lattice-muted">{right}</span>
       </button>
       <StickyDeleteConfirm
         onConfirm={action.onClick}
@@ -268,7 +268,7 @@ export default function ClassroomPage() {
                 title={`${v.hint} (${v.keys})`}
                 className={cn(
                   'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                  on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                  on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -320,9 +320,9 @@ export default function ClassroomPage() {
                 {refusal('enrol')}
               </section>
             </div>
-            <p className="text-[13px] text-zinc-500">Hand work in on an assignment in the workspace. This view does not take a homework DTU.</p>
+            <p className="text-[13px] text-lattice-muted">Hand work in on an assignment in the workspace. This view does not take a homework DTU.</p>
 
-            {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-zinc-500">Loading classroom cohorts…</div>}
+            {loading && <div role="status" aria-busy="true" className="text-[13px] italic text-lattice-muted">Loading classroom cohorts…</div>}
             {refusal('list')}
 
             {activeCohort !== null && (() => {
@@ -335,12 +335,12 @@ export default function ClassroomPage() {
                   <h2 className="text-[13px] font-medium text-zinc-300">
                     Cohort #{c.id} — {c.name}
                   </h2>
-                  <p className="text-[12px] text-zinc-500">
+                  <p className="text-[12px] text-lattice-muted">
                     {t ? 'You teach this cohort' : `You study in this cohort · teacher: ${teacherLabel(c)}`}
                     {typeof c.enrolled === 'number' ? ` · ${c.enrolled} student${c.enrolled === 1 ? '' : 's'} enrolled` : ''}
                     {c.rubric_dtu_id ? ` · rubric DTU ${c.rubric_dtu_id}` : ' · no rubric DTU attached'}
                   </p>
-                  <p className="text-[12px] text-zinc-500">
+                  <p className="text-[12px] text-lattice-muted">
                     The workspace below is scoped to this cohort.{' '}
                     <button type="button" onClick={() => { setActiveCohort(null); writeStoredCohort(null); }}
                       className="text-teal-300 underline hover:text-teal-200">Clear scope</button>
@@ -354,13 +354,13 @@ export default function ClassroomPage() {
               <section className={cardCls}>
                 <h2 className="mb-3 text-[13px] font-medium text-zinc-300">Teaching</h2>
                 {loading || loadError ? null : teaching.length === 0
-                  ? <p className="text-[13px] italic text-zinc-500">No cohorts you teach.</p>
+                  ? <p className="text-[13px] italic text-lattice-muted">No cohorts you teach.</p>
                   : <ul className="space-y-1.5">{teaching.map((c) => cohortRow(c, `${c.enrolled ?? 0} students`, { label: 'Archive', onClick: () => void archive(c.id) }))}</ul>}
               </section>
               <section className={cardCls}>
                 <h2 className="mb-3 text-[13px] font-medium text-zinc-300">Studying</h2>
                 {loading || loadError ? null : studying.length === 0
-                  ? <p className="text-[13px] italic text-zinc-500">No cohorts you are enrolled in.</p>
+                  ? <p className="text-[13px] italic text-lattice-muted">No cohorts you are enrolled in.</p>
                   : <ul className="space-y-1.5">{studying.map((c) => cohortRow(c, teacherLabel(c), { label: 'Leave', onClick: () => void leave(c.id) }))}</ul>}
               </section>
             </div>
@@ -369,7 +369,7 @@ export default function ClassroomPage() {
 
         {view === 'workspace' && (
           <section>
-            <p className="mb-3 text-[13px] text-zinc-500">
+            <p className="mb-3 text-[13px] text-lattice-muted">
               {activeCohort ? (
                 <>
                   {`Scoped to cohort #${activeCohort}. Pick another on the Cohorts view, or `}

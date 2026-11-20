@@ -976,7 +976,7 @@ function WinProbPanel() {
               {result.homeWinPct}%
             </div>
             <div
-              className="flex items-center justify-end bg-rose-500/60 px-2 text-[10px] font-bold text-white"
+              className="flex items-center justify-end bg-rose-600/60 px-2 text-[10px] font-bold text-white"
               style={{ width: `${result.awayWinPct}%` }}
             >
               {result.awayWinPct}%

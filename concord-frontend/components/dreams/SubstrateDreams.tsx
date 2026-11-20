@@ -116,7 +116,7 @@ function SubstrateDreams({ className }: { className?: string }) {
             <button
               onClick={() => startDream.mutate()}
               disabled={startDream.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neon-purple/20 text-neon-purple rounded-lg hover:bg-neon-purple/30 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-neon-purple/20 text-neon-purple-bright rounded-lg hover:bg-neon-purple/30 transition-colors disabled:opacity-50"
             >
               {startDream.isPending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

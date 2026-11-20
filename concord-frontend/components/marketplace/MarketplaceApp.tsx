@@ -168,7 +168,7 @@ export function MarketplaceApp() {
               title={`${t.label} (${t.keys})`}
               className={cn(
                 'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                m.tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200'
+                m.tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200'
               )}
             >
               <t.icon className="h-3.5 w-3.5" />

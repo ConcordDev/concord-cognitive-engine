@@ -158,7 +158,7 @@ export function AviationActionPanel() {
     { id: 'to' as ActionId, label: 'Takeoff', desc: 'C172 perf model', icon: Plane, accent: '#22c55e', handler: actTo },
     { id: 'ldg' as ActionId, label: 'Landing', desc: 'C172 perf model', icon: ArrowDown, accent: '#f59e0b', handler: actLdg },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private prep DTU', icon: Sparkles, accent: '#8b5cf6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to crew', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to crew', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public airport profile', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: go/no-go + risk', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

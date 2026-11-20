@@ -86,7 +86,7 @@ export function ArtifactUploader({ lens, onUploadComplete, acceptTypes, multi = 
         <button
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-50 transition-colors"
+          className="px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-700 text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors"
         >
           {uploading ? "Uploading..." : "Upload"}
         </button>

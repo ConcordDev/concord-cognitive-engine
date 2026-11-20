@@ -288,10 +288,10 @@ export function CommonsenseActionPanel() {
     { id: 'edges' as ActionId, label: 'Edges', desc: 'ConceptNet edges', icon: Link2, accent: '#3b82f6', handler: actEdges },
     { id: 'rel' as ActionId, label: 'Related', desc: 'embedding similarity', icon: ArrowLeftRight, accent: '#22c55e', handler: actRel },
     { id: 'plaus' as ActionId, label: 'Plausible', desc: 'plausibilityCheck', icon: Lightbulb, accent: '#f59e0b', handler: actPlaus },
-    { id: 'analog' as ActionId, label: 'Analogy', desc: 'analogyMapping', icon: Brain, accent: '#a855f7', handler: actAnalog },
+    { id: 'analog' as ActionId, label: 'Analogy', desc: 'analogyMapping', icon: Brain, accent: '#c084fc', handler: actAnalog },
     { id: 'reason' as ActionId, label: 'Reason', desc: 'defaultReasoning', icon: GitMerge, accent: '#14b8a6', handler: actReason },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private KG DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public KG card', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Insight', desc: 'Agent: observation', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

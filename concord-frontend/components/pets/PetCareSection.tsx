@@ -157,7 +157,7 @@ export function PetCareSection() {
           </button>
         ))}
         <button type="button" onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-teal-600 hover:bg-teal-500 text-white rounded-full whitespace-nowrap">
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-teal-700 hover:bg-teal-500 text-white rounded-full whitespace-nowrap">
           <Plus className="w-3 h-3" /> Add pet
         </button>
         {selected && (
@@ -184,7 +184,7 @@ export function PetCareSection() {
           <input placeholder="Weight (kg)" inputMode="decimal" value={form.weightKg} onChange={(e) => setForm({ ...form, weightKg: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addPet}
-            className="bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save pet</button>
+            className="bg-teal-700 hover:bg-teal-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save pet</button>
         </div>
       )}
 

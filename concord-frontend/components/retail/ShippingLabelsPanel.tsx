@@ -112,7 +112,7 @@ export function ShippingLabelsPanel() {
           <input id="retail-state-2" name="state-2" aria-label="State" value={buyForm.toState} onChange={e => setBuyForm({ ...buyForm, toState: e.target.value })} placeholder="State" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
           <input id="retail-zip" name="zip" aria-label="ZIP" value={buyForm.toZip} onChange={e => setBuyForm({ ...buyForm, toZip: e.target.value })} placeholder="ZIP" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         </div>
-        <button onClick={buyLabel} disabled={busy} className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+        <button onClick={buyLabel} disabled={busy} className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           <Printer className="w-3 h-3" /> Buy label
         </button>
       </div>

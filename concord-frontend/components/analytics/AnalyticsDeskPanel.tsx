@@ -341,7 +341,7 @@ export function AnalyticsDeskPanel({ mode }: { mode: DeskMode }) {
                         className={cn(
                           'text-xs px-2 py-0.5 rounded capitalize',
                           tx.type === 'royalty'
-                            ? 'bg-neon-purple/20 text-neon-purple'
+                            ? 'bg-neon-purple/20 text-neon-purple-bright'
                             : 'bg-neon-cyan/20 text-neon-cyan'
                         )}
                       >

@@ -165,7 +165,7 @@ export function PhysicsActionPanel() {
     { id: 'unit' as ActionId, label: 'Convert', desc: `${unitKind} units`, icon: Rocket, accent: '#06b6d4', handler: actUnit },
     { id: 'const' as ActionId, label: 'Constants', desc: 'c, G, h, kB...', icon: Atom, accent: '#8b5cf6', handler: actConst },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? mintedDtuId : 'Private calc DTU', icon: Sparkles, accent: '#22c55e', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send results', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send results', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? publishedDtuId : 'Public problem', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Scenario', desc: 'Agent: real-world tie', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

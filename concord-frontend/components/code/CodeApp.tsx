@@ -108,7 +108,7 @@ export default function CodeApp() {
               title="Editor only"
               className={cn(
                 'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                extras === 'none' ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                extras === 'none' ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
               )}
             >
               Editor
@@ -126,7 +126,7 @@ export default function CodeApp() {
                   title={`${t.hint} (${t.keys})`}
                   className={cn(
                     'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />

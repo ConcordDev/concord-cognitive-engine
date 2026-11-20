@@ -349,7 +349,7 @@ export function GCalSection() {
           <span className="text-xs font-semibold text-gray-200">Calendar</span>
         </header>
         <div className="p-3">
-          <button onClick={() => openNewEvent()} className="w-full px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 inline-flex items-center justify-center gap-1">
+          <button onClick={() => openNewEvent()} className="w-full px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 inline-flex items-center justify-center gap-1">
             <Plus className="w-3 h-3" />Create event
           </button>
         </div>
@@ -361,14 +361,14 @@ export function GCalSection() {
           </div>
           {showCalForm && (
             <div className="mb-2 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
-              <input aria-label="New calendar name" value={calName} onChange={e => setCalName(e.target.value)} placeholder="Calendar name" className="w-full bg-lattice-deep rounded px-2 py-1 text-xs text-white placeholder:text-gray-500 outline-none" />
+              <input aria-label="New calendar name" value={calName} onChange={e => setCalName(e.target.value)} placeholder="Calendar name" className="w-full bg-lattice-deep rounded px-2 py-1 text-xs text-white placeholder:text-lattice-muted outline-none" />
               <div className="flex items-center gap-1">
                 {['#4285f4', '#ea4335', '#34a853', '#fbbc04', '#a142f4', '#24c1e0', '#f538a0', '#f6911e'].map(c => (
                   <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => setCalColor(c)} className={cn('w-4 h-4 rounded-full border-2', calColor === c ? 'border-white' : 'border-transparent')} style={{ backgroundColor: c }} />
                 ))}
               </div>
               <div className="flex gap-1.5">
-                <button onClick={addCalendar} disabled={!calName.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-500 text-white font-semibold disabled:opacity-40">Create</button>
+                <button onClick={addCalendar} disabled={!calName.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-600 text-white font-semibold disabled:opacity-40">Create</button>
                 <button onClick={() => setShowCalForm(false)} className="flex-1 px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
               </div>
             </div>
@@ -388,7 +388,7 @@ export function GCalSection() {
                       onClick={() => setConfirmCalId(c.id)}
                       aria-label={`Delete calendar ${c.name}`}
                       title="Delete calendar (its events are removed too)"
-                      className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-rose-400 px-1"
+                      className="opacity-0 group-hover:opacity-100 text-lattice-muted hover:text-rose-400 px-1"
                     ><Trash2 className="w-3 h-3" /></button>
                   )
                 )}
@@ -409,7 +409,7 @@ export function GCalSection() {
             <>
               {showTaskForm && (
                 <div className="mb-1.5 space-y-1.5 rounded border border-white/10 bg-white/[0.03] p-2">
-                  <input aria-label="New task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" className="w-full bg-lattice-deep rounded px-2 py-1 text-[11px] text-white placeholder:text-gray-500 outline-none" />
+                  <input aria-label="New task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} placeholder="Task title" className="w-full bg-lattice-deep rounded px-2 py-1 text-[11px] text-white placeholder:text-lattice-muted outline-none" />
                   <div className="flex items-center gap-1.5">
                     <label className="text-[10px] text-gray-400">Minutes
                       <input aria-label="Estimate minutes" type="number" min={5} step={5} value={taskEstimate} onChange={e => setTaskEstimate(Math.max(0, Number(e.target.value) || 0))} className="ml-1 w-14 bg-lattice-deep rounded px-1 py-0.5 text-[11px] text-white outline-none" />
@@ -421,7 +421,7 @@ export function GCalSection() {
                     </select>
                   </div>
                   <div className="flex gap-1.5">
-                    <button onClick={addTask} disabled={!taskTitle.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-500 text-white font-semibold disabled:opacity-40">Add task</button>
+                    <button onClick={addTask} disabled={!taskTitle.trim()} className="flex-1 px-2 py-1 text-[11px] rounded bg-blue-600 text-white font-semibold disabled:opacity-40">Add task</button>
                     <button onClick={() => setShowTaskForm(false)} className="flex-1 px-2 py-1 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
                   </div>
                 </div>
@@ -477,7 +477,7 @@ export function GCalSection() {
           )}
           <div className="ml-auto flex items-center gap-1">
             {(['month', 'week', 'day'] as View[]).map(v => (
-              <button key={v} onClick={() => setView(v)} className={cn('px-2.5 py-1 text-xs rounded', view === v ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30' : 'text-gray-400 border border-transparent hover:text-white')}>
+              <button key={v} onClick={() => setView(v)} className={cn('px-2.5 py-1 text-xs rounded', view === v ? 'bg-blue-600/15 text-blue-300 border border-blue-500/30' : 'text-gray-400 border border-transparent hover:text-white')}>
                 {v[0].toUpperCase() + v.slice(1)}
               </button>
             ))}
@@ -494,7 +494,7 @@ export function GCalSection() {
             placeholder='Quick add — e.g. "Team standup every Monday at 9am for 30 min"'
             className="flex-1 bg-transparent text-xs text-white placeholder:text-gray-400 outline-none"
           />
-          <button onClick={quickAddSubmit} disabled={quickBusy || !quickAdd.trim()} className="px-2.5 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
+          <button onClick={quickAddSubmit} disabled={quickBusy || !quickAdd.trim()} className="px-2.5 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40">
             {quickBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Add'}
           </button>
         </div>
@@ -510,7 +510,7 @@ export function GCalSection() {
               {' · '}
             </span>
             <span className="text-[11px] text-white font-medium flex-1 truncate">{parsedPreview.title}</span>
-            <button onClick={() => void confirmQuickAdd()} disabled={quickBusy} className="px-2 py-0.5 text-[11px] rounded bg-blue-500 text-white font-semibold hover:bg-blue-400 disabled:opacity-40">Add event</button>
+            <button onClick={() => void confirmQuickAdd()} disabled={quickBusy} className="px-2 py-0.5 text-[11px] rounded bg-blue-600 text-white font-semibold hover:bg-blue-400 disabled:opacity-40">Add event</button>
             <button onClick={() => setParsedPreview(null)} className="px-2 py-0.5 text-[11px] rounded border border-white/15 text-gray-300">Cancel</button>
           </div>
         )}
@@ -565,7 +565,7 @@ export function GCalSection() {
               <input value={editEvent.location || ''} onChange={e => setEditEvent({ ...editEvent, location: e.target.value })} placeholder="Location" className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <textarea value={editEvent.description || ''} onChange={e => setEditEvent({ ...editEvent, description: e.target.value })} placeholder="Description" rows={2} className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
               <div className="flex items-center gap-2 pt-1">
-                <button onClick={saveEvent} className="flex-1 px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400">{editEvent._new ? 'Create' : 'Save'}</button>
+                <button onClick={saveEvent} className="flex-1 px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400">{editEvent._new ? 'Create' : 'Save'}</button>
                 {!editEvent._new && editEvent.id && <button onClick={() => deleteEvent(editEvent.id!)} className="px-3 py-1.5 text-xs rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10">{confirmDelete ? 'Delete?' : 'Delete'}</button>}
               </div>
             </div>
@@ -599,7 +599,7 @@ function MonthGrid({ grid, cursor, today, eventsForDay, calById, onDayClick, onE
         const dayEvents = eventsForDay(d);
         return (
           <div key={i} onClick={() => onDayClick(d)} className={cn('border-r border-b border-white/5 p-1 overflow-hidden cursor-pointer hover:bg-white/[0.02]', !inMonth && 'bg-lattice-deep/30')} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
-            <div className={cn('text-[11px] font-mono tabular-nums mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-500 text-white' : inMonth ? 'text-gray-300' : 'text-gray-600')}>{d.getDate()}</div>
+            <div className={cn('text-[11px] font-mono tabular-nums mb-0.5 w-5 h-5 flex items-center justify-center rounded-full', isToday ? 'bg-blue-600 text-white' : inMonth ? 'text-gray-300' : 'text-lattice-muted')}>{d.getDate()}</div>
             <div className="space-y-0.5">
               {dayEvents.slice(0, 4).map(e => {
                 const cal = calById.get(e.calendarId);

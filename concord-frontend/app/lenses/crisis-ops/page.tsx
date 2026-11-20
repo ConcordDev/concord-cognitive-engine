@@ -237,7 +237,7 @@ export default function CrisisOpsPage() {
                       {declaring ? 'Declaring…' : 'Declare'}
                     </button>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-zinc-500">
+                  <p className="mt-1.5 text-[11px] text-lattice-muted">
                     Declaring opens the command deck — playbook, roster, and timeline — on the new crisis.
                   </p>
                 </div>

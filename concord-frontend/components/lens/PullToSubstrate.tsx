@@ -112,7 +112,7 @@ function PullToSubstrateBase({ domain, artifactId, dtuId, compact = false }: Pul
       <button
         onClick={() => forkMutation.mutate()}
         disabled={forkMutation.isPending}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-neon-purple/10 text-neon-purple border border-neon-purple/20 hover:bg-neon-purple/20 transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20 hover:bg-neon-purple/20 transition-colors disabled:opacity-50"
       >
         <GitFork className="w-3 h-3" />
         {forkMutation.isPending ? 'Forking...' : 'Fork / Remix'}

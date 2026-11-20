@@ -477,8 +477,8 @@ export function BrowserPanel({ initialQuery = '' }: { initialQuery?: string }) {
                     <div className="flex items-center gap-2 mb-2">
                       <span className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded uppercase font-medium',
-                        dtu.tier === 'mega' ? 'bg-neon-purple/20 text-neon-purple' :
-                        dtu.tier === 'hyper' ? 'bg-neon-pink/20 text-neon-pink' :
+                        dtu.tier === 'mega' ? 'bg-neon-purple/20 text-neon-purple-bright' :
+                        dtu.tier === 'hyper' ? 'bg-neon-pink/20 text-neon-pink-bright' :
                         dtu.tier === 'shadow' ? 'bg-gray-500/20 text-gray-400' :
                         'bg-neon-blue/20 text-neon-blue'
                       )}>

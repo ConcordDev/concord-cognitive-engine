@@ -208,7 +208,7 @@ export function CrisisActionPanel() {
     { id: 'timeline', label: 'Timeline',  desc: 'responseTimeline 5-phase response',         icon: Clock,        accent: '#06b6d4', handler: actTimeline },
     { id: 'impact',   label: 'Impact',    desc: 'stakeholderImpact per-group analysis',      icon: Users,        accent: '#f97316', handler: actImpact },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint crisis',  desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private crisis state DTU',                 icon: Sparkles,     accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM IC',     desc: 'Send brief to incident commander',          icon: Send,         accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM IC',     desc: 'Send brief to incident commander',          icon: Send,         accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish brief',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public crisis brief + federation',          icon: Globe,        accent: '#22c55e', handler: actPublish },
     { id: 'agent',    label: 'IC brief',  desc: 'Agent drafts 3-bullet IC brief',            icon: Wand2,        accent: '#eab308', handler: actAgent },
   ];

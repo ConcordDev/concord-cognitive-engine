@@ -91,7 +91,7 @@ export function ContractVersions({ contractId }: { contractId: string }) {
             <span className="text-gray-400">{diff.from} → {diff.to}</span>
             <span className="text-neon-green">+{diff.added}</span>
             <span className="text-rose-400">−{diff.removed}</span>
-            <span className="text-gray-600">{diff.unchanged} unchanged</span>
+            <span className="text-lattice-muted">{diff.unchanged} unchanged</span>
           </div>
           <pre className="max-h-64 overflow-auto text-[10px] font-mono leading-relaxed p-2 bg-black/30">
             {diff.ops.map((o, i) => (

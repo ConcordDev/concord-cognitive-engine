@@ -207,7 +207,7 @@ export default function TrainingMatchPanel({ myUserId }: Props) {
             <button
               disabled={busy}
               onClick={acceptChallenge}
-              className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded transition-colors disabled:opacity-50"
+              className="flex-1 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-semibold rounded transition-colors disabled:opacity-50"
             >
               Accept
             </button>
@@ -266,7 +266,7 @@ export default function TrainingMatchPanel({ myUserId }: Props) {
             <button
               disabled={busy || match.status !== 'active'}
               onClick={triggerSafeReset}
-              className="flex-1 px-3 py-1.5 bg-amber-600/80 hover:bg-amber-500 text-white text-xs font-semibold rounded transition-colors disabled:opacity-40"
+              className="flex-1 px-3 py-1.5 bg-amber-700/80 hover:bg-amber-500 text-white text-xs font-semibold rounded transition-colors disabled:opacity-40"
             >
               Safe Reset
             </button>

@@ -248,7 +248,7 @@ export function MarketListingsPanel() {
       {showCreate && (
         <div data-market-create-form className="panel p-4 space-y-3 border border-neon-purple/20">
           <h2 className="font-semibold flex items-center gap-2">
-            <Store className="w-4 h-4 text-neon-purple" />
+            <Store className="w-4 h-4 text-neon-purple-bright" />
             New Listing
           </h2>
           <select className="w-full px-3 py-2 bg-lattice-surface border border-lattice-border rounded-lg text-sm" value={dtuId} onChange={(e) => setDtuId(e.target.value)}>
@@ -359,7 +359,7 @@ export function MarketListingsPanel() {
             <Filter className="w-3 h-3" />
             <span>Showing {filteredListings.length} of {totalListings} listings</span>
             {filterType !== 'all' && (
-              <span className="px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-neon-purple/10 text-neon-purple-bright rounded flex items-center gap-1">
                 <Tag className="w-3 h-3" />{filterType}
                 <button onClick={() => setFilterType('all')} aria-label="Close"><X className="w-3 h-3" /></button>
               </span>

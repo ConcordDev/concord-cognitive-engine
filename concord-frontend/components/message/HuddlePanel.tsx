@@ -187,7 +187,7 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
               <option value="audio">Audio</option>
               <option value="video">Video</option>
             </select>
-            <button onClick={startHuddle} disabled={busy} className="ml-auto px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white inline-flex items-center gap-1 disabled:opacity-50">
+            <button onClick={startHuddle} disabled={busy} className="ml-auto px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white inline-flex items-center gap-1 disabled:opacity-50">
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Phone className="w-3 h-3" />} Start
             </button>
           </div>
@@ -208,7 +208,7 @@ export function HuddlePanel({ channelId, channelName }: { channelId: string; cha
               <div className="text-[10px] text-gray-400">{h.participants.length} in call · host {h.host}</div>
             </div>
             {activeId !== h.id && (
-              <button onClick={() => joinHuddle(h)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50">Join</button>
+              <button onClick={() => joinHuddle(h)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-50">Join</button>
             )}
             <button onClick={() => endHuddle(h.id)} disabled={busy} className="px-2 py-1 text-[10px] rounded bg-white/5 hover:bg-white/10 text-rose-300 disabled:opacity-50">End</button>
           </div>

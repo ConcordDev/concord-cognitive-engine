@@ -1290,7 +1290,7 @@ export function EventsWorkbench({
           className={cn(
             ds.btnSmall,
             typeFilter === 'all'
-              ? 'bg-neon-pink/20 text-neon-pink border border-neon-pink/50'
+              ? 'bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/50'
               : ds.btnGhost
           )}
         >
@@ -1305,7 +1305,7 @@ export function EventsWorkbench({
               className={cn(
                 ds.btnSmall,
                 typeFilter === t.id
-                  ? 'bg-neon-pink/20 text-neon-pink border border-neon-pink/50'
+                  ? 'bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/50'
                   : ds.btnGhost
               )}
             >

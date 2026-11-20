@@ -447,7 +447,7 @@ function ViewerKnob({ k, busy, onCommit }: { k: WorkbenchKnob; busy: boolean; on
     <div className="flex flex-col gap-1" data-testid={`viewer-knob-${k.variable}`}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-slate-200">{k.label}</span>
-        <span className="font-mono text-[10px] text-slate-500">{lo}–{hi} {k.unit ?? ''}</span>
+        <span className="font-mono text-[10px] text-slate-400">{lo}–{hi} {k.unit ?? ''}</span>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -468,7 +468,7 @@ function ViewerKnob({ k, busy, onCommit }: { k: WorkbenchKnob; busy: boolean; on
           onChange={(e) => setDraft(Number(e.target.value))}
           className="w-20 rounded border border-white/10 bg-black/30 px-1 py-0.5 font-mono text-[11px] text-slate-100 disabled:opacity-50"
         />
-        <span className="text-slate-500">{k.unit ?? ''}</span>
+        <span className="text-slate-400">{k.unit ?? ''}</span>
         <button
           type="button"
           data-testid={`viewer-knob-${k.variable}-set`}
@@ -738,7 +738,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
               </div>
               <input data-testid="explode" type="range" min={0} max={EXPLODE_SUBSYSTEMS.length} step={0.01} value={explode} onChange={(e) => { setPlaying(false); setExplode(Number(e.target.value)); }} className="w-full" aria-label="Explode sequence position" />
               <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px]">
-                <span className="text-slate-500">Camera</span>
+                <span className="text-slate-400">Camera</span>
                 {Object.entries(CAMERA_PRESETS).map(([id, preset]) => (
                   <button key={id} type="button" data-testid={`cam-${id}`} aria-pressed={cameraPreset === id} className={`rounded px-1.5 py-0.5 ${cameraPreset === id ? 'bg-white/15 text-slate-100' : 'text-slate-400 hover:bg-white/5'}`} onClick={() => setCameraPreset(cameraPreset === id ? null : id)}>{preset.label}</button>
                 ))}
@@ -812,7 +812,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                   {wbView.knobs.filter((k) => k.bounds).map((k) => (
                     <ViewerKnob key={k.variable} k={k} busy={busy} onCommit={(kk, v) => void commitKnob(kk, v)} />
                   ))}
-                  {wbView.knobs.filter((k) => k.bounds).length === 0 && <p className="text-slate-500">This design has no editable driving parameters.</p>}
+                  {wbView.knobs.filter((k) => k.bounds).length === 0 && <p className="text-slate-400">This design has no editable driving parameters.</p>}
                 </div>
                 {busy && <p role="status" className="mt-1 text-sky-200">Recomputing…</p>}
                 {wbError && <p role="alert" className="mt-1 text-rose-300">{wbError}</p>}
@@ -830,7 +830,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                         {f.id}: {f.from ?? '—'} → {f.to ?? '—'}
                       </p>
                     )) : <p className="text-slate-400">No fit checks flipped.</p>}
-                    <p className="text-slate-500">{diff.rerun} solver runs re-ran.</p>
+                    <p className="text-slate-400">{diff.rerun} solver runs re-ran.</p>
                   </div>
                 )}
               </div>
@@ -888,11 +888,11 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                         {a.keyOutputs.map((o) => (
                           <p key={o.id} className="text-slate-300">{o.id}: {fmtAnalysisValue(o.value)}{o.unit ? ` ${o.unit}` : ''}</p>
                         ))}
-                        {a.receipt && <p className="text-slate-500">receipt {a.receipt.runId} · inputs {a.receipt.inputHash ? `${a.receipt.inputHash.slice(0, 12)}…` : '—'}</p>}
-                        {a.ranAt && <p className="text-slate-500">ran {a.ranAt}</p>}
-                        {a.recordedAt && <p className="text-slate-500">recorded run imported {a.recordedAt}</p>}
+                        {a.receipt && <p className="text-slate-400">receipt {a.receipt.runId} · inputs {a.receipt.inputHash ? `${a.receipt.inputHash.slice(0, 12)}…` : '—'}</p>}
+                        {a.ranAt && <p className="text-slate-400">ran {a.ranAt}</p>}
+                        {a.recordedAt && <p className="text-slate-400">recorded run imported {a.recordedAt}</p>}
                         {a.reason && <p className="text-slate-400">{a.reason}</p>}
-                        {a.solver === 'aero.cfd' && a.status !== 'not_run' && <p className="text-slate-500">Recorded OpenFOAM result — imported from the pod, not re-run here.</p>}
+                        {a.solver === 'aero.cfd' && a.status !== 'not_run' && <p className="text-slate-400">Recorded OpenFOAM result — imported from the pod, not re-run here.</p>}
                         {workbench && a.status !== 'not_run' && a.solver !== 'aero.cfd' && (
                           <button type="button" data-testid={`rerun-${a.solver}`} disabled={busy} className="mt-1 rounded border border-sky-400/40 bg-sky-400/10 px-2 py-0.5 text-sky-100 hover:bg-sky-400/20 disabled:opacity-40" onClick={() => void runAnalysis(a.solver)}>Re-run</button>
                         )}
@@ -904,7 +904,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                 <>
                 <ul className="mt-2 space-y-1">
                   {(part.parameters || []).map((p) => (
-                    <li key={p.id}><span className="text-slate-200">{p.name}</span> {String(p.value)} {p.unit} <span className="text-slate-500">({p.provenance.state}{p.provenance.note ? `: ${p.provenance.note}` : ''})</span></li>
+                    <li key={p.id}><span className="text-slate-200">{p.name}</span> {String(p.value)} {p.unit} <span className="text-slate-400">({p.provenance.state}{p.provenance.note ? `: ${p.provenance.note}` : ''})</span></li>
                   ))}
                 </ul>
                 {partClearances.length > 0 && (
@@ -917,7 +917,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                         </li>
                       ))}
                     </ul>
-                    <p className="text-slate-500">Stored solver values from the fit checks — not recomputed here.</p>
+                    <p className="text-slate-400">Stored solver values from the fit checks — not recomputed here.</p>
                   </div>
                 )}
                 {(part.relationships || []).length > 0 && (
@@ -948,7 +948,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
                   ))}
                 </ul>
                 {overlays.coverage && overlays.coverage.missed > 0 && (
-                  <p className="mt-1 text-slate-500">{overlays.coverage.missed} of {overlays.coverage.samples} overlay points miss the solid and are left out.</p>
+                  <p className="mt-1 text-slate-400">{overlays.coverage.missed} of {overlays.coverage.samples} overlay points miss the solid and are left out.</p>
                 )}
               </div>
             )}
@@ -968,7 +968,7 @@ export function AssemblyViewer({ assembly, viewOnly = false, glbUrl = null, hdri
           </aside>
         )}
       </div>
-      {locked && <p className="text-[11px] text-slate-500">View only on this screen. Orbit still works.</p>}
+      {locked && <p className="text-[11px] text-slate-400">View only on this screen. Orbit still works.</p>}
     </div>
   );
 }

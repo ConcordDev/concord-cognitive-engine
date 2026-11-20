@@ -147,7 +147,7 @@ function StrategyCard({
             className={`text-xs px-2 py-0.5 rounded ${
               hints.preferredIntentBias === 'exploratory'
                 ? 'bg-neon-blue/10 text-neon-blue'
-                : 'bg-neon-purple/10 text-neon-purple'
+                : 'bg-neon-purple/10 text-neon-purple-bright'
             }`}
           >
             {hints.preferredIntentBias ?? 'balanced'}

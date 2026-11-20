@@ -192,7 +192,7 @@ export function FoodActionPanel() {
     { id: 'suggest' as ActionId, label: 'Suggest', desc: 'suggestMeals from pantry', icon: UtensilsCrossed, accent: '#8b5cf6', handler: actSuggest },
     { id: 'waste' as ActionId, label: 'Waste', desc: 'wasteReport weekly', icon: Trash2, accent: '#ef4444', handler: actWaste },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private recipe DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recipe to user', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recipe to user', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public recipe DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Subs', desc: 'Agent: 3 cost-cutting subs', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

@@ -113,7 +113,7 @@ export function FieldLog() {
       </div>
       <p className="text-xs text-rose-400 mb-2">{error}</p>
       <button onClick={() => { setLoading(true); void refresh(); }}
-        className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold">
+        className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold">
         Retry
       </button>
     </div>
@@ -156,16 +156,16 @@ export function FieldLog() {
           <input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Field notes"
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
           <button onClick={log} disabled={!form.name.trim()}
-            className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+            className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />Log
           </button>
         </div>
       </div>
 
       <div className="flex gap-1 mb-2">
-        <button onClick={() => setFilter('')} className={cn('px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-amber-600 text-white' : 'text-zinc-400')}>All</button>
+        <button onClick={() => setFilter('')} className={cn('px-2 py-0.5 text-[11px] rounded', !filter ? 'bg-amber-700 text-white' : 'text-zinc-400')}>All</button>
         {KINDS.map(k => (
-          <button key={k} onClick={() => setFilter(k)} className={cn('px-2 py-0.5 text-[11px] rounded capitalize', filter === k ? 'bg-amber-600 text-white' : 'text-zinc-400')}>{k}</button>
+          <button key={k} onClick={() => setFilter(k)} className={cn('px-2 py-0.5 text-[11px] rounded capitalize', filter === k ? 'bg-amber-700 text-white' : 'text-zinc-400')}>{k}</button>
         ))}
       </div>
 
@@ -223,7 +223,7 @@ export function FieldLog() {
               <input aria-label="Field notes" value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Field notes"
                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               <button onClick={() => void saveEdit()} disabled={!editForm.name.trim()}
-                className="px-3 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">Save</button>
+                className="px-3 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">Save</button>
             </div>
           </div>
         </div>

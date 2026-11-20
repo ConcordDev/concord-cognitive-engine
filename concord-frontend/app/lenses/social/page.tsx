@@ -340,7 +340,7 @@ export default function SocialHubPage() {
                   <Icon className="h-5 w-5" />
                   {t.label}
                   {!!t.badge && t.id !== 'create' && (
-                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                    <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
                       {t.badge > 99 ? '99+' : t.badge}
                     </span>
                   )}
@@ -380,7 +380,7 @@ export default function SocialHubPage() {
                     <Icon className="h-4 w-4" aria-hidden="true" />
                     {t.label}
                     {!!t.badge && t.id !== 'create' && (
-                      <span className="absolute right-2 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
+                      <span className="absolute right-2 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white">
                         {t.badge > 99 ? '99+' : t.badge}
                       </span>
                     )}
@@ -507,7 +507,7 @@ export default function SocialHubPage() {
                       <button type="button" role="tab" aria-selected={inboxTab === 'notifications'} className={subTabClass(inboxTab === 'notifications')} onClick={() => setInboxTab('notifications')}>
                         Notifications
                         {unreadCount > 0 ? (
-                          <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                          <span className="ml-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>
                         ) : null}
                       </button>
                     </div>

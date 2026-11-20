@@ -359,7 +359,7 @@ function OrgNotebookTab({ orgId, canEdit }: { orgId: string; canEdit: boolean })
           </button>
         </div>
       ) : (
-        <p className="text-xs text-gray-500">Read-only (guest tier) — a PI or tech can add entries.</p>
+        <p className="text-xs text-lattice-muted">Read-only (guest tier) — a PI or tech can add entries.</p>
       )}
       <ErrLine msg={err} />
       <div className="space-y-1">
@@ -419,7 +419,7 @@ function OrgInventoryTab({ orgId, canEdit }: { orgId: string; canEdit: boolean }
           </button>
         </div>
       ) : (
-        <p className="text-xs text-gray-500">Read-only (guest tier) — a PI or tech can add/consume reagents.</p>
+        <p className="text-xs text-lattice-muted">Read-only (guest tier) — a PI or tech can add/consume reagents.</p>
       )}
       <ErrLine msg={err} />
       <div className="space-y-1">

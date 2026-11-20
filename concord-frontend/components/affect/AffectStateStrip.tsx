@@ -107,7 +107,7 @@ export function AffectStateStrip() {
             </button>
           </>
         ) : (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-lattice-muted">
             Reset and cooldown act on the session&apos;s owner — or an operator.
           </p>
         )}

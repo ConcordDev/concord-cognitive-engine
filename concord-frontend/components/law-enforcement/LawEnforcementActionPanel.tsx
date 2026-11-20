@@ -294,12 +294,12 @@ export function LawEnforcementActionPanel() {
   }
 
   const actions = [
-    { id: 'case' as ActionId, label: 'Case', desc: 'caseAnalysis', icon: Shield, accent: '#a855f7', handler: actCase },
+    { id: 'case' as ActionId, label: 'Case', desc: 'caseAnalysis', icon: Shield, accent: '#c084fc', handler: actCase },
     { id: 'patrol' as ActionId, label: 'Patrol', desc: 'patrolOptimize', icon: MapPin, accent: '#3b82f6', handler: actPatrol },
     { id: 'report' as ActionId, label: 'Report', desc: 'incidentReport', icon: FileText, accent: '#f59e0b', handler: actReport },
     { id: 'stats' as ActionId, label: 'Stats', desc: 'crimeStats', icon: BarChart3, accent: '#22c55e', handler: actStats },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private beat DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send beat report', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send beat report', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon stats', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: shift brief', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

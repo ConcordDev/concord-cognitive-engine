@@ -829,7 +829,7 @@ function WorkflowBuilder({ project, run, reload }: SubProps) {
             <div className="flex items-center gap-2">
               <Workflow className="w-3.5 h-3.5 text-neon-purple" />
               <span className="text-sm font-medium">{w.name}</span>
-              <span className="text-[10px] bg-neon-purple/15 text-neon-purple rounded px-1.5 py-0.5">{w.trigger.replace(/_/g, ' ')}</span>
+              <span className="text-[10px] bg-neon-purple/15 text-neon-purple-bright rounded px-1.5 py-0.5">{w.trigger.replace(/_/g, ' ')}</span>
               <button aria-label="Delete" onClick={() => deleteWorkflow(w.id)} className="ml-auto text-gray-600 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
@@ -1571,7 +1571,7 @@ function DeployPanel({ project, run, reload, onViewPreview }: SubProps & { onVie
           <button
             onClick={publish}
             disabled={deploying}
-            className="bg-neon-purple/10 border border-neon-purple/30 text-neon-purple rounded px-4 py-1.5 text-sm flex items-center gap-1.5 disabled:opacity-40"
+            className="bg-neon-purple/10 border border-neon-purple/30 text-neon-purple-bright rounded px-4 py-1.5 text-sm flex items-center gap-1.5 disabled:opacity-40"
           >
             {deploying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
             {deploying ? 'Publishing…' : 'Publish snapshot'}

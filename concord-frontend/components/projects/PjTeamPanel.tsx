@@ -86,7 +86,7 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
           <Plus className="w-3.5 h-3.5" /> Member
         </button>
       </section>
-      <p className="text-[11px] text-gray-500">Members are Concord accounts — add them by username. They get the access level you choose, and you can assign them work in this project. Removing a member revokes their access and unassigns their open work here.</p>
+      <p className="text-[11px] text-lattice-muted">Members are Concord accounts — add them by username. They get the access level you choose, and you can assign them work in this project. Removing a member revokes their access and unassigns their open work here.</p>
 
       {members.length === 0 ? (
         <p className="text-[11px] text-gray-400 italic py-6 text-center">No team members yet.</p>
@@ -100,13 +100,13 @@ export function PjTeamPanel({ projectId, onChange }: { projectId: string; onChan
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-white flex items-center gap-1">
                   <User className="w-3 h-3 text-gray-400" />{m.name}
-                  {m.username && <span className="text-gray-500 font-normal">@{m.username}</span>}
+                  {m.username && <span className="text-lattice-muted font-normal">@{m.username}</span>}
                 </p>
                 <p className="text-[10px] text-gray-400 capitalize">{m.level === 'owner' ? 'Owner' : m.level === 'edit' ? 'Can edit' : 'Can view'}</p>
               </div>
               <span className="text-[11px] text-gray-400 tabular-nums">{m.assigned} active</span>
               {m.level !== 'owner' && (
-                <button aria-label="Remove member" type="button" onClick={() => del(m.id)} className="text-gray-600 hover:text-rose-400">
+                <button aria-label="Remove member" type="button" onClick={() => del(m.id)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               )}

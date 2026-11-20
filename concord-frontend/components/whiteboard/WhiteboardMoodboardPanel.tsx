@@ -157,7 +157,7 @@ export function WhiteboardMoodboardPanel() {
                     key={k}
                     type="button"
                     onClick={() => setMoodKind(k)}
-                    className={`px-3 py-1 rounded-lg text-xs capitalize ${moodKind === k ? 'bg-neon-pink/20 text-neon-pink' : 'bg-lattice-bg text-gray-400'}`}
+                    className={`px-3 py-1 rounded-lg text-xs capitalize ${moodKind === k ? 'bg-neon-pink/20 text-neon-pink-bright' : 'bg-lattice-bg text-gray-400'}`}
                   >
                     {k}
                   </button>

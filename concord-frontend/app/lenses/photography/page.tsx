@@ -296,7 +296,7 @@ export default function PhotographyPage() {
           className="min-h-[22rem] rounded-2xl border border-white/10 bg-zinc-950 px-6 py-5"
         >
           {phase === 'loading' && (
-            <p data-testid="ph-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="ph-loading" role="status" aria-busy="true" className="text-[14px] text-lattice-muted">
               Opening the roll.
             </p>
           )}
@@ -310,16 +310,16 @@ export default function PhotographyPage() {
           )}
           {empty && (
             <div data-testid="ph-empty" className="flex min-h-[20rem] items-center justify-center">
-              <p className="text-[14px] text-zinc-500">No roll loaded.</p>
+              <p className="text-[14px] text-lattice-muted">No roll loaded.</p>
             </div>
           )}
           {phase === 'ready' && rolls.length > 1 && (
             <input value={rollQuery} onChange={(e) => setRollQuery(e.target.value)}
               placeholder="Search rolls by name or date" aria-label="Search rolls"
-              className="mb-5 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500" />
+              className="mb-5 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-lattice-muted" />
           )}
           {phase === 'ready' && rolls.length > 0 && visibleRolls.length === 0 && (
-            <p className="text-[14px] text-zinc-500">No rolls match &ldquo;{rollQuery}&rdquo;.</p>
+            <p className="text-[14px] text-lattice-muted">No rolls match &ldquo;{rollQuery}&rdquo;.</p>
           )}
           {phase === 'ready' && rolls.length > 0 && (
             <ul data-testid="ph-rolls" className="space-y-8">
@@ -369,7 +369,7 @@ export default function PhotographyPage() {
                           type="button"
                           onClick={() => setConfirmDeleteId(roll.id)}
                           disabled={busy}
-                          className="text-[13px] text-zinc-500 underline hover:text-zinc-300"
+                          className="text-[13px] text-lattice-muted underline hover:text-zinc-300"
                         >
                           Delete
                         </button>
@@ -433,7 +433,7 @@ export default function PhotographyPage() {
                   className="mt-1 block w-full text-[14px] text-zinc-300"
                 />
               </label>
-              {file ? <p className="text-[13px] text-zinc-500">{file.name}</p> : null}
+              {file ? <p className="text-[13px] text-lattice-muted">{file.name}</p> : null}
             </div>
           )}
         </section>

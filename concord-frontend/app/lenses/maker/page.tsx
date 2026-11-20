@@ -307,7 +307,7 @@ export default function MakerPage() {
           className="flex min-h-[22rem] flex-col justify-center rounded-2xl border border-white/10 bg-zinc-950 px-6 py-16"
         >
           {phase === 'loading' && (
-            <p data-testid="maker-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="maker-loading" role="status" aria-busy="true" className="text-[14px] text-lattice-muted">
               Opening the bench.
             </p>
           )}
@@ -321,7 +321,7 @@ export default function MakerPage() {
           )}
           {phase === 'ready' && makes.length === 0 && !open && (
             <div data-testid="maker-empty" className="text-center">
-              <p className="text-[14px] text-zinc-500">Nothing on the bench.</p>
+              <p className="text-[14px] text-lattice-muted">Nothing on the bench.</p>
             </div>
           )}
           {phase === 'ready' && makes.length > 0 && (
@@ -350,7 +350,7 @@ export default function MakerPage() {
                       )}
                     </span>
                   </div>
-                  {item.spec ? <p className="mt-1 text-[13px] text-zinc-500">{item.spec}</p> : null}
+                  {item.spec ? <p className="mt-1 text-[13px] text-lattice-muted">{item.spec}</p> : null}
                 </li>
               ))}
             </ul>
@@ -358,7 +358,7 @@ export default function MakerPage() {
           {phase === 'ready' && reclaimables.length > 0 && (
             <div data-testid="maker-reclaim" className="mt-8 w-full max-w-xl self-stretch border-t border-white/10 pt-5">
               <h3 className="text-[13px] uppercase tracking-wider text-zinc-400">From before the bench had its own store</h3>
-              <p className="mt-1 text-[13px] text-zinc-500">
+              <p className="mt-1 text-[13px] text-lattice-muted">
                 These sit in App Maker, where makes lived before the bench kept its own records.
                 Import one to put it on the bench — it stays in App Maker too.
               </p>
@@ -366,7 +366,7 @@ export default function MakerPage() {
                 {reclaimables.map((item) => (
                   <li key={item.id} className="flex items-baseline justify-between gap-4">
                     <span className="text-[14px] text-zinc-200">
-                      {item.name} <span className="text-zinc-500">· App Maker</span>
+                      {item.name} <span className="text-lattice-muted">· App Maker</span>
                     </span>
                     <button
                       type="button"
@@ -423,7 +423,7 @@ export default function MakerPage() {
                 />
               </label>
               {actionError ? <p role="alert" className="mt-3 text-[14px] text-zinc-300">{actionError}</p> : null}
-              {busy ? <p role="status" className="mt-3 text-[14px] text-zinc-500">Saving the make.</p> : null}
+              {busy ? <p role="status" className="mt-3 text-[14px] text-lattice-muted">Saving the make.</p> : null}
             </form>
           )}
         </section>

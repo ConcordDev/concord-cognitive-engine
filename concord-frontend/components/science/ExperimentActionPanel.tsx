@@ -444,7 +444,7 @@ export function ExperimentActionPanel() {
     { id: 'audit',       label: 'Sample audit',  desc: 'Storage / expiry / handling compliance',       icon: ListChecks,    accent: '#eab308', handler: actAudit,       disabled: namedSampleRows().length === 0 },
     { id: 'custody',     label: 'Chain custody', desc: 'Sample provenance transfer chain',             icon: GitMerge,      accent: '#8b5cf6', handler: actCustody,     disabled: namedCustodyRows().length === 0 },
     { id: 'mint',        label: mintDtuId      ? 'Saved'     : 'Mint experiment',  desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU with full experiment state',                icon: Sparkles, accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintDtuId },
-    { id: 'dm',          label: 'DM collaborator', desc: 'Send protocol + samples + DTU embed',         icon: Send,          accent: '#ec4899', handler: actDm,          disabled: !ready },
+    { id: 'dm',          label: 'DM collaborator', desc: 'Send protocol + samples + DTU embed',         icon: Send,          accent: '#f472b6', handler: actDm,          disabled: !ready },
     { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish protocol', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public protocol DTU + federation',                       icon: Globe,    accent: '#15803d', handler: actPublish,     disabled: !ready || !!publishedDtuId },
     { id: 'agent',       label: 'Replication',   desc: 'Agent: minimum-viable replication plan',       icon: Wand2,         accent: '#f97316', handler: actAgent,       disabled: !ready },
   ];

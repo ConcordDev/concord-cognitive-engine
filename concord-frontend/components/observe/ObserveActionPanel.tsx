@@ -239,7 +239,7 @@ export function ObserveActionPanel() {
     { id: 'incident', label: 'Open incident', desc: 'incidentTrack + open ticket',           icon: AlertOctagon, accent: '#ef4444', handler: actIncident },
     { id: 'slo',      label: 'SLO check',    desc: 'sloCheck target vs actual + burn rate', icon: Target,      accent: '#22c55e', handler: actSlo },
     { id: 'mint',     label: mintedDtuId    ? 'Saved'     : 'Mint snapshot',  desc: mintedDtuId    ? `DTU ${mintedDtuId}`     : 'Private DTU of full state',     icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM on-call',   desc: 'Send snapshot to on-call user',          icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM on-call',   desc: 'Send snapshot to on-call user',          icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish SLO',    desc: publishedDtuId ? `DTU ${publishedDtuId}` : 'Public SLO report + federation', icon: Globe,    accent: '#15803d', handler: actPublish },
     { id: 'agent',    label: 'Triage agent',  desc: 'Top-3 actions for next 30 min',         icon: Wand2,        accent: '#eab308', handler: actAgent },
   ];

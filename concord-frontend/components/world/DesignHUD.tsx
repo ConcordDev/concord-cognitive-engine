@@ -469,7 +469,7 @@ export function DesignHUD({ worldId, worldType = 'standard', onClose, onSaved }:
                     <button
                       key={e}
                       onClick={() => toggleEnchantment(e)}
-                      className={`px-2 py-0.5 rounded text-[10px] transition-all ${spec.enchantments.includes(e) ? 'bg-amber-600/70 text-amber-100 border border-amber-500/50' : 'bg-white/5 text-white/30 hover:text-white/50'}`}
+                      className={`px-2 py-0.5 rounded text-[10px] transition-all ${spec.enchantments.includes(e) ? 'bg-amber-700/70 text-amber-100 border border-amber-500/50' : 'bg-white/5 text-white/30 hover:text-white/50'}`}
                     >
                       {e}
                     </button>
@@ -521,7 +521,7 @@ export function DesignHUD({ worldId, worldType = 'standard', onClose, onSaved }:
               <button
                 onClick={craft}
                 disabled={!savedRecipeId || crafting}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-30 transition-all"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-30 transition-all"
               >
                 {crafting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />

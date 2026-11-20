@@ -226,14 +226,14 @@ export default function BountiesPage() {
                   <div className="text-lg font-bold text-amber-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardTotals ? boardTotals.openPoolCc : viewStats.openPool} CC
                   </div>
-                  <div className="text-[10px] text-zinc-500">{statsScope}</div>
+                  <div className="text-[10px] text-lattice-muted">{statsScope}</div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-[#111] px-4 py-3">
                   <div className="text-[10px] text-zinc-400 uppercase tracking-wide">Paid out · whole board</div>
                   <div className="text-lg font-bold text-emerald-300 flex items-center gap-1">
                     <Coins className="w-4 h-4" /> {boardTotals ? boardTotals.paidOutCc : viewStats.paidOut} CC
                   </div>
-                  <div className="text-[10px] text-zinc-500">{statsScope}</div>
+                  <div className="text-[10px] text-lattice-muted">{statsScope}</div>
                 </div>
               </div>
 

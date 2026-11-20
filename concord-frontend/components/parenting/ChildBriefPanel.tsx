@@ -248,7 +248,7 @@ export function ChildBriefPanel() {
     { id: 'milestone', label: 'Milestone check', desc: 'This child\'s stored CDC record', icon: Milestone, accent: '#8b5cf6', handler: actMilestone, disabled: !childId },
     { id: 'routine',   label: 'Optimize routine', desc: 'Day schedule reflowed against age',           icon: Clock,     accent: '#06b6d4', handler: actRoutine,   disabled: !childKnown },
     { id: 'mint',      label: snapshotDtuId ? 'Snapshot saved' : 'Mint snapshot', desc: snapshotDtuId ? `DTU ${snapshotDtuId.slice(0, 8)}…` : 'Private DTU of this child', icon: Sparkles, accent: '#3b82f6', handler: actMint, disabled: !childKnown || !!snapshotDtuId },
-    { id: 'dm',        label: 'DM caregiver',     desc: 'Update co-parent / nanny / family',           icon: Send,      accent: '#ec4899', handler: actDm,        disabled: !childKnown },
+    { id: 'dm',        label: 'DM caregiver',     desc: 'Update co-parent / nanny / family',           icon: Send,      accent: '#f472b6', handler: actDm,        disabled: !childKnown },
     { id: 'publish',   label: publishedDtuId ? 'Journey published' : 'Publish journey', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Anonymized public DTU + federation', icon: Globe, accent: '#22c55e', handler: actPublish, disabled: !childKnown || !!publishedDtuId },
     { id: 'notes',     label: 'Age-targeted notes', desc: 'Notes for this child\'s age band', icon: Wand2, accent: '#eab308', handler: actNotes, disabled: !childId },
   ];

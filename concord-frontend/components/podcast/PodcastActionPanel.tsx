@@ -153,7 +153,7 @@ export function PodcastActionPanel() {
     { id: 'checklist' as ActionId, label: 'Production', desc: 'productionChecklist progress', icon: ListChecks, accent: '#22c55e', handler: actChecklist },
     { id: 'monetize' as ActionId, label: 'Money', desc: 'monetizationCalc ad + premium', icon: DollarSign, accent: '#eab308', handler: actMonetize },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private show DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send show brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send show brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public show notes + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Growth', desc: 'Agent: next growth move', icon: Wand2, accent: '#f97316', handler: actAgent },
   ];

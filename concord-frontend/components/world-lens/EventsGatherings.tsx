@@ -251,7 +251,7 @@ export default function EventsGatherings({
           className={`w-full px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
             rsvpedIds.has(event.id)
               ? 'bg-green-600/30 text-green-400 border border-green-500/30'
-              : 'bg-cyan-600/80 hover:bg-cyan-500 text-white'
+              : 'bg-cyan-700/80 hover:bg-cyan-500 text-white'
           }`}
         >
           {rsvpedIds.has(event.id) ? <><Check size={14} /> RSVP&apos;d</> : 'RSVP'}
@@ -412,7 +412,7 @@ export default function EventsGatherings({
         <button
           onClick={handleCreate}
           disabled={!createForm.name || !createForm.date}
-          className="w-full px-4 py-2 rounded-lg bg-cyan-600/80 hover:bg-cyan-500 disabled:opacity-30 text-white text-sm font-medium transition-colors"
+          className="w-full px-4 py-2 rounded-lg bg-cyan-700/80 hover:bg-cyan-500 disabled:opacity-30 text-white text-sm font-medium transition-colors"
         >
           Create Event
         </button>

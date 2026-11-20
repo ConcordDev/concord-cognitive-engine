@@ -135,7 +135,7 @@ export function PushProposalsPanel() {
 
       {listError && <p role="alert" className="mt-2 text-[11px] text-rose-400">{listError}</p>}
       {!loading && !listError && proposals.length === 0 && (
-        <p className="mt-2 text-[11px] text-gray-500">No proposals yet. Nothing is pushed until you approve one here.</p>
+        <p className="mt-2 text-[11px] text-lattice-muted">No proposals yet. Nothing is pushed until you approve one here.</p>
       )}
 
       <ul className="mt-2 space-y-1.5">

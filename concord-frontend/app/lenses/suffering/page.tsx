@@ -307,7 +307,7 @@ function EngineWellbeing() {
         <div className={`px-4 py-2 rounded-lg ${
           healthScore > 70 ? 'bg-neon-green/20 text-neon-green'
             : healthScore > 40 ? 'bg-neon-blue/20 text-neon-blue'
-              : 'bg-neon-pink/20 text-neon-pink'
+              : 'bg-neon-pink/20 text-neon-pink-bright'
         }`}>
           <span className="text-lg font-bold">{healthScore.toFixed(0)}%</span>
           <span className="text-sm ml-2">Health</span>

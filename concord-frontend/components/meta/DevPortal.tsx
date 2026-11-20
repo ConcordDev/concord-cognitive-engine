@@ -394,7 +394,7 @@ function ServiceCatalogPanel() {
         <button
           onClick={register}
           disabled={busy || !form.name.trim()}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+          className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple-bright disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
           Register service
@@ -607,7 +607,7 @@ function DependencyGraphPanel() {
                 {data.mostDependedOn.map((m) => (
                   <span
                     key={m.id}
-                    className="rounded bg-neon-purple/15 px-2 py-1 text-xs text-neon-purple"
+                    className="rounded bg-neon-purple/15 px-2 py-1 text-xs text-neon-purple-bright"
                   >
                     {m.name} · {m.dependents} dependent{m.dependents !== 1 ? 's' : ''}
                   </span>
@@ -1394,7 +1394,7 @@ function MacroExplorerPanel() {
                   <button
                     onClick={runTry}
                     disabled={trying}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple-bright disabled:opacity-40"
                   >
                     {trying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
                     Invoke {tryMacro.name}
@@ -1541,7 +1541,7 @@ function QualityMetricsPanel() {
         <button
           onClick={analyze}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple-bright disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
           Analyze
@@ -1668,7 +1668,7 @@ function ActionAnalyticsPanel() {
         <button
           onClick={analyze}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple-bright disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
           Analyze
@@ -1824,7 +1824,7 @@ function SystemReflectionPanel() {
         <button
           onClick={analyze}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 rounded-md bg-neon-purple/20 px-3 py-1.5 text-xs font-medium text-neon-purple-bright disabled:opacity-40"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
           Analyze
@@ -1945,7 +1945,7 @@ export function DevPortal() {
             onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
               tab === t.key
-                ? 'bg-neon-purple/20 text-neon-purple'
+                ? 'bg-neon-purple/20 text-neon-purple-bright'
                 : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
             }`}
           >

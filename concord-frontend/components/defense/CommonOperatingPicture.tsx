@@ -274,7 +274,7 @@ export function CommonOperatingPicture() {
         <button
           onClick={add}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-cyan-700 hover:bg-cyan-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
           Plot
@@ -348,7 +348,7 @@ export function CommonOperatingPicture() {
                   aria-label="Edit marker note" placeholder="Note"
                   className="flex-1 min-w-32 rounded bg-zinc-900 border border-zinc-700 px-2 py-1 text-xs text-white" />
                 <button onClick={() => saveEdit(m)} disabled={!editForm.label.trim() || busy}
-                  className="rounded bg-cyan-600 hover:bg-cyan-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
+                  className="rounded bg-cyan-700 hover:bg-cyan-500 px-2.5 py-1 text-xs font-medium text-white disabled:opacity-50">Save</button>
                 <button onClick={() => setEditingId(null)} className="text-xs text-zinc-400 px-1.5">Cancel</button>
               </div>
             )}

@@ -66,7 +66,7 @@ export function LeaderboardPanel({ refreshKey }: { refreshKey?: number }) {
   const chartData = board.slice(0, 10).map((r) => ({ name: r.userId, xp: r.xp }));
 
   const medal = (pos: number) =>
-    pos === 1 ? 'text-amber-400' : pos === 2 ? 'text-zinc-300' : pos === 3 ? 'text-orange-400' : 'text-zinc-600';
+    pos === 1 ? 'text-amber-400' : pos === 2 ? 'text-zinc-300' : pos === 3 ? 'text-orange-400' : 'text-lattice-muted';
 
   return (
     <div className="space-y-4">

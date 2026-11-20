@@ -289,7 +289,7 @@ function NetworkTool() {
           </div>
           <div className="flex flex-wrap gap-1">
             {nodes.map((n) => (
-              <span key={n.id} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple border border-neon-purple/20">
+              <span key={n.id} className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20">
                 {n.name}
                 <button type="button" onClick={() => setNodes((p) => p.filter((x) => x.id !== n.id))} aria-label={`Remove ${n.name}`}><X className="w-3 h-3" /></button>
               </span>
@@ -516,7 +516,7 @@ export function AllianceAnalyticsPanel() {
             onClick={() => setTool(t.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-              tool === t.id ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30' : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
+              tool === t.id ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30' : 'text-gray-400 hover:text-white hover:bg-lattice-surface'
             )}
             title={t.desc}
           >

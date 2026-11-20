@@ -119,7 +119,7 @@ export function VoiceComposer({ busy, onSend, speakText }: Props) {
             onChange={(e) => setText(e.target.value)}
             placeholder="Message ConKay — e.g. “t_w = 8 mm and re-run”"
             aria-label="Message ConKay"
-            className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none sm:text-base"
+            className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none sm:text-base"
           />
         </form>
         <p className="mt-0.5 truncate text-[11px] text-slate-400" aria-live="polite">{status}</p>

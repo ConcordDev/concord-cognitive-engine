@@ -288,9 +288,9 @@ export function CookingActionPanel() {
     { id: 'usda' as ActionId, label: 'USDA', desc: 'FoodData Central', icon: Apple, accent: '#22c55e', handler: actUsda },
     { id: 'scale' as ActionId, label: 'Scale', desc: 'scaleRecipe', icon: ChefHat, accent: '#f59e0b', handler: actScale },
     { id: 'nutr' as ActionId, label: 'Nutrition', desc: 'nutritionEstimate', icon: Calculator, accent: '#3b82f6', handler: actNutr },
-    { id: 'sub' as ActionId, label: 'Substitute', desc: 'substitution', icon: Shuffle, accent: '#a855f7', handler: actSub },
+    { id: 'sub' as ActionId, label: 'Substitute', desc: 'substitution', icon: Shuffle, accent: '#c084fc', handler: actSub },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ?? 'Private recipe DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recipe brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recipe brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ?? 'Public recipe', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Tips', desc: 'Agent: tech + flavor', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

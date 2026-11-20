@@ -26,7 +26,7 @@ export function MassPanel({ mass, meaning }: { mass: DesignMass; meaning: Record
         {states.map((s) => (
           <div key={s} className="flex items-center justify-between gap-2" title={meaning[s]}>
             <dt className="flex items-center gap-1.5 text-slate-400"><span className={`h-2 w-2 rounded-full ${VALUE_STYLE[s].bar}`} />{s}</dt>
-            <dd className="tabular-nums text-slate-200">{formatValue(mass.byState[s])} kg <span className="text-slate-500">({Math.round((mass.byState[s] / sum) * 100)}%)</span></dd>
+            <dd className="tabular-nums text-slate-200">{formatValue(mass.byState[s])} kg <span className="text-slate-400">({Math.round((mass.byState[s] / sum) * 100)}%)</span></dd>
           </div>
         ))}
       </dl>
@@ -37,7 +37,7 @@ export function MassPanel({ mass, meaning }: { mass: DesignMass; meaning: Record
           <span className={mass.limit.marginKg < 0 ? 'text-rose-300' : 'text-emerald-200'}>{formatValue(mass.limit.marginKg, 4)} kg</span>
         </p>
       )}
-      {mass.note && <p className="mt-2 text-[11px] text-slate-500">{mass.note}</p>}
+      {mass.note && <p className="mt-2 text-[11px] text-slate-400">{mass.note}</p>}
       {mass.notIncluded.length > 0 && (
         <details className="mt-2 text-[11px] text-slate-400">
           <summary className="cursor-pointer select-none text-slate-300">Not included in the total ({mass.notIncluded.length})</summary>

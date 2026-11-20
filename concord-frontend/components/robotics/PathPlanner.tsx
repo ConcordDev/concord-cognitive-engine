@@ -90,7 +90,7 @@ export function PathPlanner() {
               const isGoal = goal.x === x && goal.y === y;
               const isPath = pathSet.has(k) && !isStart && !isGoal;
               let fill = '#0a0a0a';
-              if (isObs) fill = '#52525b';
+              if (isObs) fill = '#a1a1aa';
               else if (isStart) fill = '#22c55e';
               else if (isGoal) fill = '#ef4444';
               else if (isPath) fill = '#22d3ee';

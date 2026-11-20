@@ -312,7 +312,7 @@ export function ClaimVerificationPanel() {
     { id: 'credibility', label: 'Source tier',    desc: 'Score the source below',                   icon: FileBadge,   accent: '#06b6d4', handler: actCredibility, disabled: !srcUrl.trim() && !srcName.trim() },
     { id: 'decompose',   label: 'Decompose',      desc: 'Break claim into atomic, verifiable parts', icon: ListTree,   accent: '#8b5cf6', handler: actDecompose,   disabled: !ready },
     { id: 'mint',        label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? 'Saved — full DTU ID below'          : 'Private verification DTU',                  icon: Sparkles,    accent: '#3b82f6', handler: actMint,        disabled: !ready || !!mintedDtuId },
-    { id: 'dm',          label: 'DM',             desc: 'Send verdict + sources to another user',   icon: Send,        accent: '#ec4899', handler: actDm,          disabled: !ready },
+    { id: 'dm',          label: 'DM',             desc: 'Send verdict + sources to another user',   icon: Send,        accent: '#f472b6', handler: actDm,          disabled: !ready },
     { id: 'publish',     label: publishedDtuId ? 'Published' : 'Publish',        desc: publishedDtuId ? 'Published — full DTU ID below'      : 'Public reviewed-claim DTU + federation',    icon: Globe,       accent: '#15803d', handler: actPublish,     disabled: !ready || !!publishedDtuId },
     { id: 'agent',       label: 'Counter (agent)', desc: 'Strongest counter-evidence + biases',     icon: Wand2,       accent: '#eab308', handler: actAgent,       disabled: !ready },
   ];

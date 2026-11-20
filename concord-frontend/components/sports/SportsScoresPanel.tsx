@@ -87,7 +87,7 @@ function GameCard({ g, onChange, watchIds, refresh }: {
           </div>
           <div className="flex gap-1.5">
             <button type="button" onClick={() => void saveEdit()} disabled={!editForm.homeTeam.trim() || !editForm.awayTeam.trim()}
-              className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
+              className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">Save</button>
             <button type="button" onClick={() => setEditing(false)} className="px-2.5 py-1 text-xs rounded bg-zinc-800 text-zinc-300">Cancel</button>
           </div>
         </div>

@@ -100,7 +100,7 @@ export function CuratedGalleries() {
           <div className="flex items-center gap-2">
             {gallery.featured && <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />}
             <h2 className="text-lg font-bold">{gallery.title}</h2>
-            <span className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink">{gallery.theme}</span>
+            <span className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink-bright">{gallery.theme}</span>
           </div>
           {gallery.description && <p className="text-sm text-gray-400 mt-1">{gallery.description}</p>}
         </div>
@@ -186,7 +186,7 @@ export function CuratedGalleries() {
                         onClick={() => togglePick(op.id)}
                         className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
                           gPicked.has(op.id)
-                            ? 'bg-neon-pink/20 border-neon-pink/30 text-neon-pink'
+                            ? 'bg-neon-pink/20 border-neon-pink/30 text-neon-pink-bright'
                             : 'bg-white/5 border-white/10 text-gray-400 hover:border-neon-pink/30'
                         }`}
                       >

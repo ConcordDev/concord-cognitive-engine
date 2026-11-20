@@ -99,7 +99,7 @@ export function ReputationCard({ refreshKey }: { refreshKey?: number }) {
             className={`rounded px-1.5 py-0.5 text-[9px] ${
               r.name === rep.rank ? 'bg-amber-500/20 text-amber-300'
                 : rep.xp >= r.min ? 'bg-zinc-800 text-zinc-400'
-                  : 'bg-zinc-900 text-zinc-600'}`}>
+                  : 'bg-zinc-900 text-lattice-muted'}`}>
             {r.name}
           </span>
         ))}

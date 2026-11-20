@@ -192,8 +192,8 @@ export function EmergencyServicesActionPanel() {
     { id: 'disp' as ActionId, label: 'Dispatch', desc: 'dispatchOptimize', icon: Radio, accent: '#f59e0b', handler: actDisp },
     { id: 'log' as ActionId, label: 'Log', desc: 'incidentLog 24h', icon: ListChecks, accent: '#3b82f6', handler: actLog },
     { id: 'ready' as ActionId, label: 'Ready', desc: 'resourceReadiness', icon: Truck, accent: '#22c55e', handler: actReady },
-    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private shift DTU', icon: Sparkles, accent: '#a855f7', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shift brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private shift DTU', icon: Sparkles, accent: '#c084fc', handler: actMint },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shift brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon volume report', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: shift action', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

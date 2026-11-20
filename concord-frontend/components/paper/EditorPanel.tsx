@@ -819,7 +819,7 @@ export function EditorPanel() {
               {tab.label}
               <span className={cn(
                 'text-xs px-1.5 py-0.5 rounded-full',
-                isActive ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'
+                isActive ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface text-gray-400'
               )}>
                 {activeTab === tab.key ? sortedItems.length : '--'}
               </span>
@@ -905,7 +905,7 @@ export function EditorPanel() {
                     className={cn(
                       'w-full text-left flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors',
                       expandedSections.has(section)
-                        ? 'bg-neon-purple/10 text-neon-purple'
+                        ? 'bg-neon-purple/10 text-neon-purple-bright'
                         : 'text-gray-400 hover:text-white hover:bg-lattice-elevated'
                     )}
                   >
@@ -947,7 +947,7 @@ export function EditorPanel() {
                       }}
                       className={cn(
                         'text-xs px-2 py-0.5 rounded-full transition-colors',
-                        activeSection === sec.heading ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
+                        activeSection === sec.heading ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface text-gray-400 hover:text-gray-300'
                       )}
                     >
                       {sec.heading}
@@ -1068,7 +1068,7 @@ export function EditorPanel() {
                 <div className="flex flex-wrap gap-1 mt-1">
                   {(selectedItem.meta?.tags || []).length > 0
                     ? selectedItem.meta.tags.map((t: string) => (
-                        <span key={t} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{t}</span>
+                        <span key={t} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">{t}</span>
                       ))
                     : <span className={ds.textMuted}>No tags</span>
                   }
@@ -1534,7 +1534,7 @@ function PaperComposer({
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowPreview((v) => !v)}
-            className={cn('text-xs px-2 py-1 rounded transition-colors flex items-center gap-1', showPreview ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}
+            className={cn('text-xs px-2 py-1 rounded transition-colors flex items-center gap-1', showPreview ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated')}
             title="Toggle preview"
           >
             <BookOpen className="w-3 h-3" /> Preview
@@ -1654,7 +1654,7 @@ function PapersGrid({ items, onEdit, onSelect, onDelete, onValidate, validationR
             )}
             <div className="flex flex-wrap gap-1">
               {(item.meta?.tags || []).slice(0, 3).map((tag: string) => (
-                <span key={tag} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple">{tag}</span>
+                <span key={tag} className="text-xs px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple-bright">{tag}</span>
               ))}
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-lattice-border">
@@ -2033,7 +2033,7 @@ function BibliographyManager({ items, onSelect, citationStyle, onStyleChange }: 
               className={cn(
                 'text-xs px-3 py-1 rounded-full font-medium uppercase transition-colors',
                 citationStyle === s
-                  ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/30'
+                  ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/30'
                   : 'bg-lattice-surface text-gray-400 hover:text-white border border-lattice-border'
               )}
             >

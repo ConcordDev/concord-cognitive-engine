@@ -213,7 +213,7 @@ export function SynthPanel({
                 <button
                   key={shape}
                   onClick={() => updateOsc(i, { shape })}
-                  className={cn('px-1.5 py-0.5 rounded text-[9px] capitalize', osc.shape === shape ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white')}
+                  className={cn('px-1.5 py-0.5 rounded text-[9px] capitalize', osc.shape === shape ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white')}
                 >
                   {shape.slice(0, 3)}
                 </button>

@@ -343,7 +343,7 @@ export function ArgumentWorkbench() {
     { id: 'fallacy',  label: 'Fallacies',   desc: 'Scan for logical fallacies',                      icon: AlertTriangle, accent: '#ef4444', handler: actFallacy,  disabled: !ready },
     { id: 'premise',  label: 'Premises',    desc: 'Classify sentences: premise / conclusion',        icon: ListChecks,   accent: '#8b5cf6', handler: actPremise,  disabled: !ready },
     { id: 'mint',     label: mintDtuId      ? 'Saved' : 'Mint derivation',  desc: mintDtuId      ? `DTU ${mintDtuId.slice(0, 8)}…`      : 'Private DTU with full analysis',         icon: Sparkles,     accent: '#3b82f6', handler: actMint,     disabled: !ready || !!mintDtuId },
-    { id: 'dm',       label: 'DM for review', desc: 'DM premises + verdict to another user',         icon: Send,         accent: '#ec4899', handler: actDm,       disabled: !ready },
+    { id: 'dm',       label: 'DM for review', desc: 'DM premises + verdict to another user',         icon: Send,         accent: '#f472b6', handler: actDm,       disabled: !ready },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish proof', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public DTU + federation flag',         icon: Globe,        accent: '#15803d', handler: actPublish,  disabled: !ready || !!publishedDtuId },
     { id: 'agent',    label: 'Cross-check',  desc: 'Agent returns strongest counter-derivation',     icon: Wand2,        accent: '#eab308', handler: actAgent,    disabled: !ready },
   ];

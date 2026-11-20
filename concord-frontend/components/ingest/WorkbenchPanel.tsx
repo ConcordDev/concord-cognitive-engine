@@ -304,7 +304,7 @@ export function WorkbenchPanel() {
           <span className="text-xs text-gray-400">Sources:</span>
           {[
             { label: '.txt', icon: FileText, color: 'text-neon-cyan bg-neon-cyan/10' },
-            { label: '.json', icon: FileJson, color: 'text-neon-purple bg-neon-purple/10' },
+            { label: '.json', icon: FileJson, color: 'text-neon-purple-bright bg-neon-purple/10' },
             { label: '.csv', icon: Database, color: 'text-neon-green bg-neon-green/10' },
             { label: '.md', icon: FileUp, color: 'text-amber-400 bg-amber-400/10' },
           ].map((src) => (
@@ -681,7 +681,7 @@ export function WorkbenchPanel() {
                 {(d.urls || []).length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     <span className="text-xs text-gray-400 mr-1">URLs:</span>
-                    {d.urls.slice(0, 2).map((u, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-purple/10 text-neon-purple rounded truncate max-w-32">{u}</span>)}
+                    {d.urls.slice(0, 2).map((u, i) => <span key={i} className="text-xs px-2 py-0.5 bg-neon-purple/10 text-neon-purple-bright rounded truncate max-w-32">{u}</span>)}
                   </div>
                 )}
                 {(d.dates || []).length > 0 && (

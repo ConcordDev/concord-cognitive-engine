@@ -212,7 +212,7 @@ export function FacetedSearchPanel({
       {onSaveView && hasActiveFilter && (
         <button
           onClick={() => onSaveView(filter)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neon-purple/30 bg-neon-purple/10 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/20"
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-neon-purple/30 bg-neon-purple/10 py-1.5 text-xs text-neon-purple-bright hover:bg-neon-purple/20"
         >
           <Save className="h-3.5 w-3.5" /> Save as smart collection
         </button>

@@ -225,7 +225,7 @@ export function CompareMergePanel({
                   onClick={() => setStrategy(s)}
                   className={`rounded px-1.5 py-0.5 text-[11px] ${
                     strategy === s
-                      ? 'bg-neon-pink/20 text-neon-pink'
+                      ? 'bg-neon-pink/20 text-neon-pink-bright'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -236,7 +236,7 @@ export function CompareMergePanel({
             <button
               onClick={runMerge}
               disabled={loading !== null}
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-neon-pink/20 py-1.5 text-xs text-neon-pink hover:bg-neon-pink/30 disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-neon-pink/20 py-1.5 text-xs text-neon-pink-bright hover:bg-neon-pink/30 disabled:opacity-40"
             >
               {loading === 'merge' ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

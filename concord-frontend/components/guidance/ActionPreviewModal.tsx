@@ -190,7 +190,7 @@ function ActionPreviewModal({
             className={cn(
               'px-3 py-1.5 text-xs rounded font-medium transition-colors',
               hasWarnings
-                ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                ? 'bg-amber-700 hover:bg-amber-500 text-white'
                 : 'bg-neon-blue hover:bg-neon-blue/80 text-white'
             )}
           >

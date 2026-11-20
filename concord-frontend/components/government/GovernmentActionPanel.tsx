@@ -157,7 +157,7 @@ export function GovernmentActionPanel() {
     { id: 'permit' as ActionId, label: 'Permit', desc: 'permitTimeline by type', icon: FileBadge, accent: '#22c55e', handler: actPermit },
     { id: 'violation' as ActionId, label: 'Violation', desc: 'violationEscalation tier', icon: AlertOctagon, accent: '#ef4444', handler: actViolation },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private civic DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send civic brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send civic brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public civic guide + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Letter', desc: 'Agent: 3-line constituent letter', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

@@ -122,7 +122,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
               <ol className="space-y-2">
                 {selected.steps.map((step, i) => (
                   <li key={i} className="flex items-start gap-3 text-sm">
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-neon-purple/20 text-neon-purple flex items-center justify-center text-xs font-mono">
+                    <span className="shrink-0 w-6 h-6 rounded-full bg-neon-purple/20 text-neon-purple-bright flex items-center justify-center text-xs font-mono">
                       {i + 1}
                     </span>
                     <span className="text-gray-300 pt-0.5">{step}</span>
@@ -135,7 +135,7 @@ export function AutoMLPanel({ onUseModel }: { onUseModel?: (modelId: string) => 
               <div className="flex flex-wrap gap-2">
                 {selected.recommendedModels.map((m) => (
                   <button key={m} onClick={() => onUseModel?.(m)}
-                    className="text-xs bg-lattice-surface hover:bg-neon-purple/20 hover:text-neon-purple px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                    className="text-xs bg-lattice-surface hover:bg-neon-purple/20 hover:text-neon-purple-bright px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" />{m}
                   </button>
                 ))}

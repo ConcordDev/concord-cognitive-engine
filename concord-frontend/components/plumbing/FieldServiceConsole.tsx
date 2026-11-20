@@ -738,7 +738,7 @@ export function FieldServiceConsole() {
 
           <div className={cardCls}>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-xs font-semibold text-white">Dispatch Board {emergencyCount > 0 && <span className="ml-2 rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] text-rose-300">{emergencyCount} emergency</span>}</h4>
+              <h4 className="text-xs font-semibold text-white">Dispatch Board {emergencyCount > 0 && <span className="ml-2 rounded bg-rose-600/20 px-1.5 py-0.5 text-[10px] text-rose-300">{emergencyCount} emergency</span>}</h4>
               <input type="date" className={inputCls} value={boardDate} onChange={(e) => setBoardDate(e.target.value)} title="Filter by date" />
             </div>
             {loadChart.length > 0 && (
@@ -1232,7 +1232,7 @@ function AssignmentRow({
           {['scheduled', 'en_route', 'on_site', 'completed', 'cancelled'].map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
         {a.status !== 'completed' && a.status !== 'cancelled' && (
-          <button onClick={() => onComplete(a.id)} className="rounded bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-500">Complete</button>
+          <button onClick={() => onComplete(a.id)} className="rounded bg-emerald-700 px-2 py-1 text-[11px] font-medium text-white hover:bg-emerald-600">Complete</button>
         )}
         <RowDelete label={`job “${a.jobTitle}”`} onConfirm={() => onDelete(a.id)} />
       </div>

@@ -130,7 +130,7 @@ export default function GoddessPage() {
                 className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 font-mono text-xs text-zinc-100"
               />
               {worldNote && (
-                <span role={worldMalformed ? 'alert' : undefined} className={`mt-0.5 text-[10px] ${worldMalformed ? 'text-amber-300' : 'text-zinc-500'}`}>
+                <span role={worldMalformed ? 'alert' : undefined} className={`mt-0.5 text-[10px] ${worldMalformed ? 'text-amber-300' : 'text-lattice-muted'}`}>
                   {worldNote}
                 </span>
               )}

@@ -74,7 +74,7 @@ interface DefectRow {
 
 const card = 'rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 space-y-3';
 const btn = 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50';
-const btnPrimary = `${btn} bg-amber-600 hover:bg-amber-500 text-white`;
+const btnPrimary = `${btn} bg-amber-700 hover:bg-amber-500 text-white`;
 const inputCls = 'w-full rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-sm text-zinc-100 focus:border-amber-500 focus:outline-none';
 const labelCls = 'mb-1 block text-xs font-medium text-zinc-400';
 

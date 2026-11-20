@@ -216,7 +216,7 @@ export function MaterialActionMenu({ material, onClose }: { material: MaterialLi
 
   const panes: { id: PaneId; label: string; icon: React.ComponentType<{ className?: string }>; accent: string }[] = [
     { id: 'spec',    label: 'Spec',    icon: Sparkles,  accent: '#06b6d4' },
-    { id: 'quote',   label: 'Quote',   icon: Send,      accent: '#ec4899' },
+    { id: 'quote',   label: 'Quote',   icon: Send,      accent: '#f472b6' },
     { id: 'compare', label: 'Compare', icon: GitCompare, accent: '#8b5cf6' },
     { id: 'publish', label: 'Publish', icon: Globe,     accent: '#22c55e' },
     { id: 'agent',   label: 'Agent',   icon: Wand2,     accent: '#eab308' },

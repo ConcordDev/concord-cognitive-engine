@@ -668,7 +668,7 @@ function MaterialsTab({ cohortId, flash }: TabProps) {
           <ul className="space-y-1">
             {other.map((m) => (
               <li key={m.id} className="flex justify-between items-start gap-2 text-xs">
-                <span className="text-zinc-200">{m.title} <span className="text-zinc-500">cohort #{m.cohortId}</span></span>
+                <span className="text-zinc-200">{m.title} <span className="text-lattice-muted">cohort #{m.cohortId}</span></span>
                 <StickyDeleteConfirm onConfirm={() => void remove(m.id)} armLabel="Delete" confirmLabel={`Delete “${m.title}”?`} armAriaLabel={`Delete ${m.title}`} confirmAriaLabel={`Confirm delete ${m.title}`} className="text-[10px] text-rose-300" />
               </li>
             ))}
@@ -704,7 +704,7 @@ function TodoTab({ cohortId }: { cohortId: number | null }) {
         {title} ({items.length})
       </h4>
       {items.length === 0 ? (
-        <p className="text-zinc-600 italic text-[11px]">Nothing here.</p>
+        <p className="text-lattice-muted italic text-[11px]">Nothing here.</p>
       ) : (
         <ul className="space-y-1">
           {items.map((i) => (

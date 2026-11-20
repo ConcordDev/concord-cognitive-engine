@@ -527,7 +527,7 @@ export function FoundryCanvas() {
               onChange={(field, value) => updateConfig(activeSystem.id, field, value)}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-slate-600">
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center text-slate-400">
               <X className="h-5 w-5" />
               <p className="text-xs">Select a system on the canvas to configure it.</p>
             </div>

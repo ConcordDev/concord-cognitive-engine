@@ -502,7 +502,7 @@ export function ForgeStudio() {
                 <button
                   type="button"
                   onClick={() => void loadSaved()}
-                  className="ml-auto rounded p-1 text-slate-500 hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="ml-auto rounded p-1 text-slate-400 hover:text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   aria-label="Refresh project list"
                   title="Refresh"
                 >
@@ -521,7 +521,7 @@ export function ForgeStudio() {
                       <Hammer className="h-3.5 w-3.5 shrink-0 text-amber-400/70" />
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-medium text-slate-200">{sp.appName}</div>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400">
                           <span>{sp.template}</span>
                           <span>·</span>
                           <span>{sp.versions} version{sp.versions === 1 ? '' : 's'}</span>
@@ -530,7 +530,7 @@ export function ForgeStudio() {
                       </div>
                       {reopeningId === sp.projectId
                         ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-amber-400" />
-                        : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-slate-500" />}
+                        : <FolderOpen className="h-3.5 w-3.5 shrink-0 text-slate-400" />}
                     </button>
                     <StickyDeleteConfirm onConfirm={() => void dropSaved(sp.projectId)} armAriaLabel={`Delete ${sp.appName}`} confirmAriaLabel={`Confirm delete ${sp.appName}`} className="shrink-0 text-rose-300" />
                   </li>
@@ -714,7 +714,7 @@ export function ForgeStudio() {
                       </div>
                       <div className="truncate text-slate-400">{v.label}</div>
                     </div>
-                    <span className="shrink-0 text-slate-600">{v.lines} ln · {v.files} files</span>
+                    <span className="shrink-0 text-slate-400">{v.lines} ln · {v.files} files</span>
                     {v.versionId !== project.versionId && (
                       <button
                         type="button"

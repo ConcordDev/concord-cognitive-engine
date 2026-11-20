@@ -158,7 +158,7 @@ function TrendTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1.5">
-        <button onClick={addRow} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
+        <button onClick={addRow} className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
           <Plus className="w-3 h-3" /> Add price point
         </button>
         <button onClick={() => setPasteOpen(!pasteOpen)} className="px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 inline-flex items-center gap-1">
@@ -183,7 +183,7 @@ function TrendTab() {
           />
           {pasteError && <ErrorRow msg={pasteError} />}
           <div className="flex gap-1.5">
-            <button onClick={importCsv} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold">Import rows</button>
+            <button onClick={importCsv} className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold">Import rows</button>
             <button onClick={() => { setPasteOpen(false); setPasteText(''); setPasteError(null); }} className="px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Cancel</button>
           </div>
         </div>
@@ -220,7 +220,7 @@ function TrendTab() {
         <label className="text-[10px] text-zinc-400">SMA short<input value={smaShort} onChange={(e) => setSmaShort(e.target.value)} className={`block w-16 mt-0.5 ${inputCls}`} /></label>
         <label className="text-[10px] text-zinc-400">SMA long<input value={smaLong} onChange={(e) => setSmaLong(e.target.value)} className={`block w-16 mt-0.5 ${inputCls}`} /></label>
         <label className="text-[10px] text-zinc-400">RSI period<input value={rsiPeriod} onChange={(e) => setRsiPeriod(e.target.value)} className={`block w-16 mt-0.5 ${inputCls}`} /></label>
-        <button onClick={run} disabled={busy || rows.length < 2} className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1 ml-auto">
+        <button onClick={run} disabled={busy || rows.length < 2} className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1 ml-auto">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run trend analysis
         </button>
       </div>
@@ -349,7 +349,7 @@ function CompetitorMatrixTab() {
         <button onClick={addFeature} className="px-2 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300" aria-label="Add feature"><Plus className="w-3 h-3" aria-hidden="true" /></button>
       </div>
 
-      <button onClick={addCompetitor} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
+      <button onClick={addCompetitor} className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
         <Plus className="w-3 h-3" /> Add competitor
       </button>
 
@@ -380,7 +380,7 @@ function CompetitorMatrixTab() {
         ))}
       </ul>
 
-      <button onClick={run} disabled={busy || comps.filter((c) => c.name.trim()).length === 0} className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+      <button onClick={run} disabled={busy || comps.filter((c) => c.name.trim()).length === 0} className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Run competitor matrix
       </button>
 
@@ -460,7 +460,7 @@ function ElasticityTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-1.5">
-        <button onClick={addRow} className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
+        <button onClick={addRow} className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
           <Plus className="w-3 h-3" /> Add observation
         </button>
         <div className="flex gap-1 ml-auto">
@@ -497,7 +497,7 @@ function ElasticityTab() {
         <ChartKit kind="scatter" data={chartData} xKey="price" series={[{ key: 'quantity', label: 'Quantity vs price', color: '#22d3ee' }]} height={140} showLegend={false} />
       )}
 
-      <button onClick={run} disabled={busy || rows.length < 2} className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+      <button onClick={run} disabled={busy || rows.length < 2} className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
         {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />} Compute elasticity
       </button>
 

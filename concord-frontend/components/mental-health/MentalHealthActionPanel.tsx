@@ -200,8 +200,8 @@ export function MentalHealthActionPanel() {
   const actions = [
     { id: 'hotline' as ActionId, label: 'Hotlines', desc: 'crisis lines by country', icon: Phone, accent: '#ef4444', handler: actHotline },
     { id: 'stats' as ActionId, label: 'CDC stats', desc: 'BRFSS prevalence', icon: BarChart3, accent: '#06b6d4', handler: actStats },
-    { id: 'mood' as ActionId, label: 'Mood', desc: 'your tracked check-ins', icon: Heart, accent: '#ec4899', handler: actMood },
-    { id: 'prompt' as ActionId, label: 'Journal', desc: 'journalPrompt seed', icon: BookOpen, accent: '#a855f7', handler: actPrompt },
+    { id: 'mood' as ActionId, label: 'Mood', desc: 'your tracked check-ins', icon: Heart, accent: '#f472b6', handler: actMood },
+    { id: 'prompt' as ActionId, label: 'Journal', desc: 'journalPrompt seed', icon: BookOpen, accent: '#c084fc', handler: actPrompt },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private wellness DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
     { id: 'dm' as ActionId, label: 'DM', desc: 'Send wellness check', icon: Send, accent: '#f59e0b', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : publishArmed ? 'Confirm publish' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : publishArmed ? 'Public CDC data only — click to confirm' : 'PUBLIC stats card — asks first', icon: Globe, accent: '#15803d', handler: actPublish },

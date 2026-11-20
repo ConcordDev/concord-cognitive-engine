@@ -301,9 +301,9 @@ export default function CareersLens() {
         </div>
       ) : tracks.length === 0 ? (
         <div role="status" className="rounded-lg border border-white/10 bg-black/40 p-6 text-center animate-in fade-in duration-200 motion-reduce:animate-none">
-          <Briefcase className="w-8 h-8 mx-auto mb-2 text-gray-600" aria-hidden="true" />
+          <Briefcase className="w-8 h-8 mx-auto mb-2 text-lattice-muted" aria-hidden="true" />
           <p className="text-gray-300 text-sm font-medium">No professions available yet.</p>
-          <p className="text-gray-500 text-xs mt-1">The profession taxonomy is empty. Refresh once the career substrate is seeded.</p>
+          <p className="text-lattice-muted text-xs mt-1">The profession taxonomy is empty. Refresh once the career substrate is seeded.</p>
           <button onClick={() => void refresh()} aria-label="Refresh professions" className="mt-3 bg-amber-600 hover:bg-amber-500 transition-colors text-black text-xs font-medium rounded px-3 py-1">
             Refresh
           </button>
@@ -353,12 +353,12 @@ export default function CareersLens() {
                 <div className="absolute inset-y-0 left-[40%] w-[20%] bg-amber-500/25" />
                 <div className="absolute inset-y-0 w-1 rounded bg-amber-200" style={{ left: `calc(${(markerPos * 100).toFixed(2)}% - 2px)` }} />
               </div>
-              <p className="mt-1 text-[11px] text-gray-500" role="status">
+              <p className="mt-1 text-[11px] text-lattice-muted" role="status">
                 {timingStart !== null
                   ? 'You are clocked in. Stop the marker inside the shaded zone to work the shift (closer to the centre is a better shift), or Clock out to abandon it.'
                   : 'You are clocked out. Start a shift, then stop the marker in the centre. Accuracy is your shift skill.'}
               </p>
-              <p className="mt-1 text-[11px] text-gray-500">
+              <p className="mt-1 text-[11px] text-lattice-muted">
                 {sparksBalance !== null && (
                   <>Balance: <span className="text-amber-200 tabular-nums">{sparksBalance} sparks</span>{cooldownSeconds !== null ? ' · ' : ''}</>
                 )}
@@ -389,7 +389,7 @@ export default function CareersLens() {
                 <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Loading ladder…
               </div>
             ) : ladder.length === 0 ? (
-              <p className="text-gray-500 text-xs">No ladder data for this track.</p>
+              <p className="text-lattice-muted text-xs">No ladder data for this track.</p>
             ) : (
               <>
               <CareerLadderPath ladder={ladder} currentTier={progress?.tier ?? 1} gatedTiers={reputation?.gatedTiers ?? []} />
@@ -399,7 +399,7 @@ export default function CareersLens() {
                   return (
                     <li key={t.tier} className={`flex items-center justify-between gap-2 bg-black/30 border rounded px-2 py-1 ${gated ? 'border-red-500/20 opacity-60' : 'border-white/5'}`}>
                       <span className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-gray-500 tabular-nums w-5 shrink-0">{t.tier}.</span>
+                        <span className="text-lattice-muted tabular-nums w-5 shrink-0">{t.tier}.</span>
                         <span className="text-gray-100 truncate">{t.title}</span>
                         {t.isBranchPoint && <GitBranch className="w-3 h-3 text-sky-300 shrink-0" aria-label="Branch point" />}
                         {t.isMastery && <Star className="w-3 h-3 text-amber-300 shrink-0" aria-label="Mastery tier" />}
@@ -410,7 +410,7 @@ export default function CareersLens() {
                   );
                 })}
               </ol>
-              <p className="mt-2 text-[11px] text-gray-500">
+              <p className="mt-2 text-[11px] text-lattice-muted">
                 Two different rules, kept apart: climbing this ladder is promotion, earned with XP (the gate column).
                 The lock marks <span className="text-gray-400">contract</span> hireability, which runs on reputation —
                 your reach and its next rung are in My reputation below.
@@ -431,7 +431,7 @@ export default function CareersLens() {
             <h2 className="text-sm font-semibold text-amber-100 mb-2">Professions</h2>
             {Object.entries(byCategory).map(([cat, ts]) => (
               <div key={cat} className="mb-2">
-                <div className="text-xs uppercase tracking-wide text-gray-500">{cat}</div>
+                <div className="text-xs uppercase tracking-wide text-lattice-muted">{cat}</div>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ts.map((t) => <span key={t.id} className="text-xs bg-white/5 border border-white/10 rounded px-2 py-0.5">{t.id}</span>)}
                 </div>
@@ -443,7 +443,7 @@ export default function CareersLens() {
           <section className="rounded-2xl border border-white/10 bg-[#111] p-4" aria-label="My contracts">
             <h2 className="text-sm font-semibold text-amber-100 mb-2">My contracts ({contracts.length})</h2>
             {contracts.length === 0 ? (
-              <p className="text-gray-500 text-xs">No active contracts. Negotiate one to lock in a wage.</p>
+              <p className="text-lattice-muted text-xs">No active contracts. Negotiate one to lock in a wage.</p>
             ) : (
               <ul className="space-y-1.5 text-xs">
                 {contracts.map((c) => (
@@ -454,12 +454,12 @@ export default function CareersLens() {
                     </div>
                     {NEGOTIABLE.has(c.status) && (
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 border-t border-white/10 pt-1.5">
-                        <span className="text-gray-500">Awaiting response —</span>
+                        <span className="text-lattice-muted">Awaiting response —</span>
                         <button
                           onClick={() => negotiate('accept', c.id)}
                           disabled={negBusy === c.id}
                           aria-label={`Accept contract ${c.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                         ><Check className="w-3 h-3" aria-hidden="true" /> accept</button>
                         <input
                           type="number" min={0}
@@ -487,7 +487,7 @@ export default function CareersLens() {
                           }}
                           disabled={negBusy === c.id}
                           aria-label={`Send counter-offer for contract ${c.id}`}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-600/70 hover:bg-amber-600 text-amber-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-700/70 hover:bg-amber-700 text-amber-50 disabled:opacity-50"
                         ><ArrowLeftRight className="w-3 h-3" aria-hidden="true" /> counter</button>
                         <button
                           onClick={() => negotiate('reject', c.id)}

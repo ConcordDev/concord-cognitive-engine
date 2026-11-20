@@ -764,7 +764,7 @@ export function SceneStudio({ onCountsStale }: { onCountsStale?: () => void } = 
                 className={cn(
                   'text-xs px-2 py-1 rounded-md border flex items-center gap-1',
                   o.id === selectedId
-                    ? 'border-neon-purple text-neon-purple bg-neon-purple/10'
+                    ? 'border-neon-purple text-neon-purple-bright bg-neon-purple/10'
                     : 'border-lattice-border text-gray-400 hover:text-white',
                 )}
               >
@@ -796,7 +796,7 @@ export function SceneStudio({ onCountsStale }: { onCountsStale?: () => void } = 
                 onClick={() => setPanel(id)}
                 className={cn(
                   'flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs',
-                  panel === id ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white',
+                  panel === id ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white',
                 )}
               >
                 <Icon className="w-3.5 h-3.5" /> {label}

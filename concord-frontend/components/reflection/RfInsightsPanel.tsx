@@ -119,7 +119,7 @@ export function RfInsightsPanel() {
                   className="w-14 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-[11px] text-white"
                 />
                 <button type="button" onClick={saveGoal} disabled={goalSaving}
-                  className="rounded bg-emerald-600/80 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-emerald-500 disabled:opacity-50">
+                  className="rounded bg-emerald-700/80 px-2 py-0.5 text-[10px] font-medium text-white hover:bg-emerald-600 disabled:opacity-50">
                   {goalSaving ? '…' : 'Save'}
                 </button>
                 <button type="button" onClick={() => setGoalDraft(null)}

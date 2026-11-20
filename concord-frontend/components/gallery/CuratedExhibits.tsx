@@ -166,7 +166,7 @@ export function CuratedExhibits() {
             />
             <button
               type="button" onClick={createExhibit} disabled={busy}
-              className="flex items-center gap-1 rounded bg-amber-600/80 hover:bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
+              className="flex items-center gap-1 rounded bg-amber-700/80 hover:bg-amber-700 px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40"
             >
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />} Create
             </button>
@@ -237,7 +237,7 @@ export function CuratedExhibits() {
             </div>
             <input type="text" value={pImage} onChange={(e) => setPImage(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Image URL (optional)" />
             <textarea value={pWall} onChange={(e) => setPWall(e.target.value)} rows={2} className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1 text-[11px] text-white" placeholder="Curatorial wall text" />
-            <button type="button" onClick={addPanel} disabled={busy} className="flex items-center gap-1 rounded bg-amber-600/80 hover:bg-amber-600 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
+            <button type="button" onClick={addPanel} disabled={busy} className="flex items-center gap-1 rounded bg-amber-700/80 hover:bg-amber-700 px-3 py-1 text-[11px] font-semibold text-white disabled:opacity-40">
               {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} Add panel
             </button>
           </div>

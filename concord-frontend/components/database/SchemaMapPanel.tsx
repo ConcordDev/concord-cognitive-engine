@@ -52,7 +52,7 @@ export function SchemaMapPanel() {
                     {c.isForeign && !c.isPrimary && <Link2 className="w-2.5 h-2.5 text-neon-blue flex-shrink-0" />}
                     {!c.isPrimary && !c.isForeign && <span className="w-2.5 flex-shrink-0" />}
                     <span className="text-gray-300">{c.name}</span>
-                    <span className="text-gray-600 ml-auto">{c.type}</span>
+                    <span className="text-lattice-muted ml-auto">{c.type}</span>
                   </div>
                 ))}
               </div>
@@ -61,14 +61,14 @@ export function SchemaMapPanel() {
                   {outgoing.map((r, i) => (
                     <div key={`out-${i}`} className="flex items-center gap-1 text-[10px]">
                       <span className="text-neon-blue">{r.fromCol}</span>
-                      <span className="text-gray-600">--&gt;</span>
+                      <span className="text-lattice-muted">--&gt;</span>
                       <span className="text-neon-green">{r.to}.{r.toCol}</span>
                     </div>
                   ))}
                   {incoming.map((r, i) => (
                     <div key={`in-${i}`} className="flex items-center gap-1 text-[10px]">
                       <span className="text-neon-pink">{r.from}.{r.fromCol}</span>
-                      <span className="text-gray-600">--&gt;</span>
+                      <span className="text-lattice-muted">--&gt;</span>
                       <span className="text-neon-yellow">{r.toCol}</span>
                     </div>
                   ))}

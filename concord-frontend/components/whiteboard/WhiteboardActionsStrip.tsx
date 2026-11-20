@@ -42,7 +42,7 @@ export function WhiteboardActionsStrip({ boardId }: { boardId?: string }) {
             type="button"
             onClick={() => handleWbAction(action)}
             disabled={!boardId || wbActiveAction !== null}
-            className="px-3 py-1.5 text-sm rounded-lg bg-neon-pink/10 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-3 py-1.5 text-sm rounded-lg bg-neon-pink/10 text-neon-pink-bright border border-neon-pink/30 hover:bg-neon-pink/20 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {wbActiveAction === action ? (
               <div className="w-3 h-3 border border-neon-pink border-t-transparent rounded-full animate-spin" />
@@ -62,7 +62,7 @@ export function WhiteboardActionsStrip({ boardId }: { boardId?: string }) {
                 {shapes && (
                   <div className="flex flex-wrap gap-2 text-xs">
                     {Object.entries(shapes).map(([shape, count]) => (
-                      <span key={shape} className="bg-neon-pink/10 text-neon-pink px-2 py-0.5 rounded-full capitalize">
+                      <span key={shape} className="bg-neon-pink/10 text-neon-pink-bright px-2 py-0.5 rounded-full capitalize">
                         {shape}: <span className="tabular-nums">{String(count)}</span>
                       </span>
                     ))}

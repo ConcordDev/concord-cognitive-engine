@@ -210,8 +210,8 @@ function ExtendedAchievements() {
               <div className="space-y-1">
                 {report.nextUp.map((a: any, i: number) => (
                   <div key={i} className="flex items-center justify-between text-[11px] text-zinc-300">
-                    <span>{a.name} <span className="text-zinc-500">— {a.desc}</span></span>
-                    <span className="text-zinc-500">{a.rarity}</span>
+                    <span>{a.name} <span className="text-lattice-muted">— {a.desc}</span></span>
+                    <span className="text-lattice-muted">{a.rarity}</span>
                   </div>
                 ))}
               </div>
@@ -258,7 +258,7 @@ function GuildPlanner() {
         tab, which only shows guilds that already exist.
       </p>
       <div>
-        <label className={FIELD_LABEL}>Prospective members — <span className="normal-case text-zinc-500">name | xp | questsCompleted</span></label>
+        <label className={FIELD_LABEL}>Prospective members — <span className="normal-case text-lattice-muted">name | xp | questsCompleted</span></label>
         <textarea rows={3} className={AREA} value={roster} onChange={(e) => setRoster(e.target.value)}
           placeholder={'Aria | 1200 | 14\nBex | 640 | 7\nCato | 2100 | 22'} />
       </div>

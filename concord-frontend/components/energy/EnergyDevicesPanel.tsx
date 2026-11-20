@@ -171,7 +171,7 @@ export function EnergyDevicesPanel({
                       {d.category.replace(/_/g, ' ')}{d.wattage > 0 ? ` · ${d.wattage}W` : ''} · {d.totalKwh} kWh logged{d.liveKwh ? ` · ${d.liveKwh} kWh from live samples` : ''}
                     </p>
                   </div>
-                  <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-zinc-600 hover:text-rose-400">
+                  <button aria-label="Delete" type="button" onClick={() => del(d.id)} className="text-lattice-muted hover:text-rose-400">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

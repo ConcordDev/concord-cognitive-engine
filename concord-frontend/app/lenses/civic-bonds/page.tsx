@@ -273,7 +273,7 @@ export default function CivicBondsLens() {
           className="mb-4 rounded-2xl border border-white/10 bg-[#111] p-4"
         >
           <div className="text-sm font-medium text-gray-200 mb-2">Open a drive</div>
-          <p className="text-xs text-gray-500 mb-3">
+          <p className="text-xs text-lattice-muted mb-3">
             Propose a sparks-backed project for this world. After create, use Open on the card to move it into voting.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
@@ -355,13 +355,13 @@ export default function CivicBondsLens() {
               {spilloverLoading ? (
                 <span role="status" aria-live="polite" className="text-gray-400">Loading…</span>
               ) : spilloverAmount === null ? (
-                <span className="text-gray-500">Unavailable</span>
+                <span className="text-lattice-muted">Unavailable</span>
               ) : (
                 <span className="text-amber-200 font-medium">{spilloverAmount.toLocaleString()} sparks</span>
               )}
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-lattice-muted mt-1">
             Restricted residue from completed bond closeouts at this scope, held for the next
             project in {worldId}.
           </p>
@@ -488,7 +488,7 @@ export default function CivicBondsLens() {
                   aria-expanded={!!expanded[b.id]}
                   aria-label={expanded[b.id] ? `Hide ledger for ${b.title}` : `Show public ledger for ${b.title}`}
                 >{expanded[b.id] ? 'Hide ledger' : 'Ledger'}</button>
-                <span className="text-xs text-gray-500 sm:ml-auto">▲{b.votes_for} ▼{b.votes_against} · {b.labor_source}</span>
+                <span className="text-xs text-lattice-muted sm:ml-auto">▲{b.votes_for} ▼{b.votes_against} · {b.labor_source}</span>
               </div>
 
               {expanded[b.id] && (
@@ -499,7 +499,7 @@ export default function CivicBondsLens() {
                     <>
                       <div className="text-gray-400 font-medium mb-1">Public pledge ledger</div>
                       {(ledgers[b.id]?.pledges?.length ?? 0) === 0 ? (
-                        <div className="text-gray-500">No pledges recorded yet.</div>
+                        <div className="text-lattice-muted">No pledges recorded yet.</div>
                       ) : (
                         <ul className="space-y-0.5">
                           {ledgers[b.id]!.pledges.map((p) => (
@@ -517,7 +517,7 @@ export default function CivicBondsLens() {
                             {ledgers[b.id]!.milestones.map((m) => (
                               <li key={m.idx} className="flex justify-between text-gray-300">
                                 <span>{m.idx + 1}. {m.description || 'milestone'}</span>
-                                <span className={m.status === 'complete' ? 'text-emerald-300' : 'text-gray-500'}>
+                                <span className={m.status === 'complete' ? 'text-emerald-300' : 'text-lattice-muted'}>
                                   {m.status} · {Math.round(m.release_pct * 100)}% release
                                 </span>
                               </li>

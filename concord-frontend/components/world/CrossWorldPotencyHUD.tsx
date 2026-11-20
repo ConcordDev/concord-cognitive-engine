@@ -42,7 +42,7 @@ interface PotencyResponse {
 
 function pctBadgeColor(mul: number): string {
   if (mul >= 0.9) return 'bg-emerald-500/85 text-emerald-50';
-  if (mul >= 0.6) return 'bg-amber-500/80 text-amber-50';
+  if (mul >= 0.6) return 'bg-amber-700/80 text-amber-50';
   if (mul >= 0.3) return 'bg-orange-500/80 text-orange-50';
   return 'bg-red-500/85 text-red-50';
 }

@@ -143,7 +143,7 @@ export function TimelinePanel({ crisisId }: { crisisId: string }) {
                 </div>
                 <p className="mt-1 text-[12px] text-zinc-200">{e.note}</p>
                 {(e.byName || e.byIsMe) && (
-                  <p className="mt-0.5 font-mono text-[10px] text-zinc-500">
+                  <p className="mt-0.5 font-mono text-[10px] text-lattice-muted">
                     {e.byName || 'you'}{e.byName && e.byIsMe ? ' (you)' : ''}
                   </p>
                 )}

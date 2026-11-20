@@ -453,7 +453,7 @@ export function EditorPane({
               <Fingerprint className="w-3 h-3" />Provenance
             </button>
             <button onClick={format} className="px-1.5 py-0.5 rounded border border-white/15 text-gray-300 hover:bg-white/[0.05]" title="Format file">format</button>
-            <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
+            <button onClick={save} disabled={!active.modified} className="px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1" title="Save (⌘S)">
               <Save className="w-3 h-3" />Save
             </button>
           </div>
@@ -469,19 +469,19 @@ export function EditorPane({
                     <div className="text-gray-300">No history yet — this file hasn't been committed or snapshotted. Its first commit starts the record.</div>
                   )}
                   <div className="flex gap-2">
-                    <span className="text-gray-500 w-24 shrink-0">Content hash</span>
+                    <span className="text-lattice-muted w-24 shrink-0">Content hash</span>
                     <span className="font-mono text-gray-200" title={provState.hash || undefined}>{provState.hash ? `${provState.hash.slice(0, 16)}…` : 'unavailable in this browser context'}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-gray-500 w-24 shrink-0">Last commit</span>
+                    <span className="text-lattice-muted w-24 shrink-0">Last commit</span>
                     <span className="text-gray-200">{provState.lastCommit ? `${provState.lastCommit.number || ''} ${provState.lastCommit.message} · ${provState.lastCommit.committedAt.slice(0, 16).replace('T', ' ')}` : 'never committed'}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-gray-500 w-24 shrink-0">Snapshots</span>
+                    <span className="text-lattice-muted w-24 shrink-0">Snapshots</span>
                     <span className="text-gray-200">{provState.snapshotCount} DTU snapshot{provState.snapshotCount === 1 ? '' : 's'} bundle this file</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="text-gray-500 w-24 shrink-0">Rights</span>
+                    <span className="text-lattice-muted w-24 shrink-0">Rights</span>
                     <span className="text-gray-200">Yours — a private project file. Per-DTU rights (see / post / derive) attach when you mint or snapshot this work as a DTU.</span>
                   </div>
                 </div>
@@ -501,7 +501,7 @@ export function EditorPane({
                   className="flex-1 px-2 py-1 text-xs bg-lattice-deep border border-blue-500/30 rounded text-white"
                 />
                 <span className="text-[10px] text-gray-400 shrink-0">{selection.length} chars selected</span>
-                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+                <button onClick={runInlineEdit} disabled={inlineLoading || !inlineInstruction.trim()} className="px-2 py-1 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
                   {inlineLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}Propose edit
                 </button>
                 <button onClick={() => { setShowInlineEdit(false); setInlineProposal(null); setInlineError(''); }} className="text-gray-400 hover:text-white text-[10px]">esc</button>
@@ -515,9 +515,9 @@ export function EditorPane({
                   <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-rose-500/[0.07] text-rose-200 line-through decoration-rose-400/50">{inlineProposal.original}</pre>
                   <pre className="px-2 py-1.5 text-[11px] font-mono whitespace-pre-wrap bg-emerald-500/[0.07] text-emerald-200">{inlineProposal.edited}</pre>
                   <div className="px-2 py-1.5 flex items-center gap-1.5 bg-white/[0.02] border-t border-white/10">
-                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-500/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
+                    <button onClick={acceptInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-emerald-700/80 text-white font-semibold hover:bg-emerald-400">Accept</button>
                     <button onClick={rejectInlineEdit} className="px-2 py-0.5 text-[11px] rounded bg-white/10 text-gray-200 hover:bg-white/15">Reject</button>
-                    <span className="text-[10px] text-gray-500">Reject leaves the file exactly as it is.</span>
+                    <span className="text-[10px] text-lattice-muted">Reject leaves the file exactly as it is.</span>
                   </div>
                 </div>
               )}
@@ -558,7 +558,7 @@ export function EditorPane({
                   </div>
                   <pre className="max-h-48 overflow-auto p-2 rounded bg-black/40 font-mono text-[11px] text-emerald-200 whitespace-pre-wrap">{testGenResult.tests}</pre>
                   <div className="mt-2 flex items-center gap-2">
-                    <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 disabled:opacity-40">
+                    <button onClick={saveGeneratedTests} disabled={!projectId} className="px-2 py-1 rounded bg-emerald-700 text-white font-bold hover:bg-emerald-600 disabled:opacity-40">
                       Save as {testGenResult.suggestedPath}
                     </button>
                     <button onClick={runGenerated} disabled={testRun?.running} className="px-2 py-1 rounded bg-blue-600 text-white font-bold hover:bg-blue-500 disabled:opacity-40 inline-flex items-center gap-1">
@@ -602,7 +602,7 @@ export function EditorPane({
                   <div className="p-3 text-gray-400 italic">No blame data.</div>
                 ) : blameRows.map(row => (
                   <div key={row.lineNo} className="flex items-start gap-2 px-3 py-0.5 hover:bg-white/[0.03]" title={row.committedAt ? `${row.message} · ${new Date(row.committedAt).toLocaleString()}` : row.message}>
-                    <span className="w-8 shrink-0 text-right text-gray-600">{row.lineNo}</span>
+                    <span className="w-8 shrink-0 text-right text-lattice-muted">{row.lineNo}</span>
                     <span className={`w-16 shrink-0 ${row.commitId ? 'text-blue-300' : 'text-amber-400 italic'}`}>{row.commitId ? row.commitId.slice(0, 7) : 'uncommit'}</span>
                     <span className="w-24 shrink-0 truncate text-gray-400">{row.author?.slice(0, 12) || '—'}</span>
                     <span className="flex-1 truncate text-gray-200 whitespace-pre">{row.text || ' '}</span>

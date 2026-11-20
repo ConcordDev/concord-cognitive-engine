@@ -213,9 +213,9 @@ export function MarketplaceActionPanel() {
     { id: 'price',    label: 'Price',   desc: 'priceOptimize against competitors',    icon: TrendingUp,  accent: '#eab308', handler: actPrice },
     { id: 'metrics',  label: 'Metrics', desc: 'sellerMetrics views / sales / conv',  icon: BarChart3,   accent: '#8b5cf6', handler: actMetrics },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private listing DTU',                       icon: Sparkles,    accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM',      desc: 'Send listing + score to user',         icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM',      desc: 'Send listing + score to user',         icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Live' : 'Go live',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public listing DTU + federation',          icon: Globe,    accent: '#22c55e', handler: actPublish },
-    { id: 'agent',    label: 'Copy AI', desc: 'Agent rewrites title + opening',       icon: Wand2,       accent: '#a855f7', handler: actAgent },
+    { id: 'agent',    label: 'Copy AI', desc: 'Agent rewrites title + opening',       icon: Wand2,       accent: '#c084fc', handler: actAgent },
   ];
 
   return (

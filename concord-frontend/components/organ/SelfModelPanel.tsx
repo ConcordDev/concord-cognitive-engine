@@ -311,13 +311,13 @@ export function SelfModelPanel({ onGridTimelineCommand }: { onGridTimelineComman
           </select>
           <div className="flex rounded-lg border border-lattice-border overflow-hidden">
             <button
-              className={`px-3 py-2 text-sm ${viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'}`}
+              className={`px-3 py-2 text-sm ${viewMode === 'grid' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface text-gray-400'}`}
               onClick={() => setViewMode('grid')}
             >
               Grid
             </button>
             <button
-              className={`px-3 py-2 text-sm ${viewMode === 'timeline' ? 'bg-neon-purple/20 text-neon-purple' : 'bg-lattice-surface text-gray-400'}`}
+              className={`px-3 py-2 text-sm ${viewMode === 'timeline' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-lattice-surface text-gray-400'}`}
               onClick={() => setViewMode('timeline')}
             >
               Timeline

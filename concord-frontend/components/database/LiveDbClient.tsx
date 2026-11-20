@@ -698,7 +698,7 @@ export function LiveDbClient() {
                 maxLength={80}
                 className="input-lattice w-full text-xs"
               />
-              {connForm.name.length > 60 && <span className="text-[10px] text-zinc-500">{connForm.name.length}/80</span>}
+              {connForm.name.length > 60 && <span className="text-[10px] text-lattice-muted">{connForm.name.length}/80</span>}
               <select
                 value={connForm.engine}
                 onChange={(e) => setConnForm((f) => ({ ...f, engine: e.target.value }))}
@@ -744,7 +744,7 @@ export function LiveDbClient() {
                     className="input-lattice w-full text-xs"
                     aria-label="Password"
                   />
-                  <p className="text-[10px] text-gray-500">The password is stored encrypted and never shown again. With a real host, a {connForm.engine === 'postgresql' ? 'PostgreSQL' : 'MySQL'} connection can be tested against the server{connForm.engine === 'postgresql' ? ' and queried read-only' : ''}.</p>
+                  <p className="text-[10px] text-lattice-muted">The password is stored encrypted and never shown again. With a real host, a {connForm.engine === 'postgresql' ? 'PostgreSQL' : 'MySQL'} connection can be tested against the server{connForm.engine === 'postgresql' ? ' and queried read-only' : ''}.</p>
                 </>
               )}
               <label className="flex items-center gap-2 text-xs text-gray-400">
@@ -801,7 +801,7 @@ export function LiveDbClient() {
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteConn(c.id); }}
                       onBlur={() => setArmedConnDelete((a) => (a === c.id ? null : a))}
-                      className={armedConnDelete === c.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      className={armedConnDelete === c.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
                       aria-label={armedConnDelete === c.id ? `Confirm delete connection ${c.name}` : 'Delete connection'}
                     >
                       {armedConnDelete === c.id ? `Delete ${c.name}?` : <Trash2 className="w-3 h-3" />}
@@ -834,8 +834,8 @@ export function LiveDbClient() {
                     PostgreSQL connection's tests and read-only queries
                     DO contact the server, and the card must say so. */}
                 {isRemotePostgresConnection(c)
-                  ? <p className="mt-1 text-[10px] text-gray-500">Remote PostgreSQL — tests and read-only queries contact {c.host}{c.port ? `:${c.port}` : ''}; the workspace copy below stays local.</p>
-                  : <p className="mt-1 text-[10px] text-gray-500">Workspace copy — no remote server is contacted.</p>}
+                  ? <p className="mt-1 text-[10px] text-lattice-muted">Remote PostgreSQL — tests and read-only queries contact {c.host}{c.port ? `:${c.port}` : ''}; the workspace copy below stays local.</p>
+                  : <p className="mt-1 text-[10px] text-lattice-muted">Workspace copy — no remote server is contacted.</p>}
                 {pwEditId === c.id && (
                   <div className="mt-2 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                     <input
@@ -943,7 +943,7 @@ export function LiveDbClient() {
                     >
                       <Columns className="w-3 h-3" />
                       {d.name}
-                      <span className="text-gray-600">({d.rowCount})</span>
+                      <span className="text-lattice-muted">({d.rowCount})</span>
                     </button>
                     {renamingDataset === d.id ? (
                       <input
@@ -958,7 +958,7 @@ export function LiveDbClient() {
                     ) : (
                       <button
                         onClick={() => { setRenamingDataset(d.id); setRenameDraft(d.name); }}
-                        className="p-0.5 text-gray-500 hover:text-gray-300"
+                        className="p-0.5 text-lattice-muted hover:text-gray-300"
                         aria-label={`Rename dataset ${d.name}`}
                       >
                         <Pencil className="w-3 h-3" />
@@ -980,7 +980,7 @@ export function LiveDbClient() {
                     <button
                       onClick={() => deleteDataset(d.id)}
                       onBlur={() => setArmedDatasetDelete((a) => (a === d.id ? null : a))}
-                      className={armedDatasetDelete === d.id ? 'px-1.5 py-0.5 rounded bg-rose-500 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
+                      className={armedDatasetDelete === d.id ? 'px-1.5 py-0.5 rounded bg-rose-600 text-white text-[10px] font-semibold' : 'p-0.5 text-gray-400 hover:text-red-400'}
                       aria-label={armedDatasetDelete === d.id ? `Confirm delete dataset ${d.name}` : 'Delete dataset'}
                     >
                       {armedDatasetDelete === d.id ? `Delete ${d.name}?` : <Trash2 className="w-3 h-3" />}
@@ -1131,7 +1131,7 @@ export function LiveDbClient() {
                             className="w-full flex items-center justify-between px-2 py-1 text-xs hover:bg-lattice-surface text-left"
                           >
                             <span className="font-mono text-gray-200">{s.value}</span>
-                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple'
+                            <span className={`text-[9px] px-1 rounded ${s.kind === 'keyword' ? 'bg-neon-purple/20 text-neon-purple-bright'
                               : s.kind === 'table' ? 'bg-neon-cyan/20 text-neon-cyan'
                               : 'bg-neon-green/20 text-neon-green'}`}>
                               {s.kind}{s.type ? `:${s.type}` : ''}
@@ -1251,7 +1251,7 @@ export function LiveDbClient() {
                                         ) : (
                                           <span className="block truncate">
                                             {row[col] === null || row[col] === undefined
-                                              ? <span className="text-gray-600 italic">NULL</span>
+                                              ? <span className="text-lattice-muted italic">NULL</span>
                                               : String(row[col])}
                                           </span>
                                         )}
@@ -1263,7 +1263,7 @@ export function LiveDbClient() {
                                       <button
                                         onClick={() => deleteResultRow(rid)}
                                         onBlur={() => setArmedRowDelete((a) => (a === rid ? null : a))}
-                                        className={armedRowDelete === rid ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-500 text-white font-semibold' : 'text-gray-400 hover:text-red-400'}
+                                        className={armedRowDelete === rid ? 'text-[10px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-semibold' : 'text-gray-400 hover:text-red-400'}
                                         aria-label={armedRowDelete === rid ? 'Confirm delete row' : 'Delete row'}
                                       >
                                         {armedRowDelete === rid ? 'Confirm?' : <Trash2 className="w-3 h-3" />}
@@ -1275,7 +1275,7 @@ export function LiveDbClient() {
                             })}
                             {result.rows.length === 0 && (
                               <tr>
-                                <td colSpan={result.columns.length + 1} className="px-2 py-6 text-center text-gray-600">
+                                <td colSpan={result.columns.length + 1} className="px-2 py-6 text-center text-lattice-muted">
                                   No rows returned.
                                 </td>
                               </tr>
@@ -1410,7 +1410,7 @@ export function LiveDbClient() {
                         {d.columns.map((c) => (
                           <div key={c.name} className="flex items-center justify-between text-[10px] font-mono">
                             <span className="text-gray-300">{c.name}</span>
-                            <span className="text-gray-600">{c.type}</span>
+                            <span className="text-lattice-muted">{c.type}</span>
                           </div>
                         ))}
                       </div>
@@ -1419,7 +1419,7 @@ export function LiveDbClient() {
                 </div>
               )}
               {activeConn && datasets.length === 1 && (
-                <p className="text-[11px] text-gray-500">Add a second dataset to draw relations between tables.</p>
+                <p className="text-[11px] text-lattice-muted">Add a second dataset to draw relations between tables.</p>
               )}
               {activeConn && impliedRelations.length > 0 && (
                 <p className="font-serif italic text-[12px] text-gray-400">
@@ -1451,7 +1451,7 @@ export function LiveDbClient() {
                       <option value="">fk column</option>
                       {(datasets.find((d) => d.name === relForm.fromDataset)?.columns || []).map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </select>
-                    <span className="text-gray-500 text-[11px]">→</span>
+                    <span className="text-lattice-muted text-[11px]">→</span>
                     <select value={relForm.toDataset} onChange={(e) => setRelForm({ ...relForm, toDataset: e.target.value, toColumn: '' })}
                       className="bg-lattice-surface border border-lattice-border rounded px-1.5 py-1 text-[11px] text-gray-200" aria-label="Relation target dataset">
                       <option value="">to dataset</option>

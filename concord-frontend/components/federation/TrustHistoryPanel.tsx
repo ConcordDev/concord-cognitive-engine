@@ -118,7 +118,7 @@ export function TrustHistoryPanel() {
           type="button"
           onClick={record}
           disabled={busy || !domain.trim() || !score.trim()}
-          className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
+          className="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 rounded text-white text-sm inline-flex items-center gap-1"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Record

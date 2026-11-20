@@ -303,7 +303,7 @@ export function GalleryPanel({
                     loading="lazy"
                   />
                 ) : (
-                  <ImageIcon className="w-8 h-8 text-gray-600" />
+                  <ImageIcon className="w-8 h-8 text-lattice-muted" />
                 )}
                 <button
                   onClick={(e) => toggleFavorite(photo.id, e)}
@@ -433,7 +433,7 @@ export function GalleryPanel({
                   />
                 ) : (
                   <div className="w-full aspect-[4/3] max-w-lg bg-gradient-to-br from-sky-900/40 to-purple-900/40 rounded-lg flex items-center justify-center shadow-2xl">
-                    <ImageIcon className="w-16 h-16 text-gray-600" />
+                    <ImageIcon className="w-16 h-16 text-lattice-muted" />
                   </div>
                 )}
               </div>

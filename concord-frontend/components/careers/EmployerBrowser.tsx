@@ -109,19 +109,19 @@ export function EmployerBrowser({ trackId, gateTier = null, onContractProposed }
           <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Finding employers…
         </div>
       ) : employers.length === 0 ? (
-        <p className="text-gray-500 text-xs">No NPCs are currently hiring for {trackId} in this world.</p>
+        <p className="text-lattice-muted text-xs">No NPCs are currently hiring for {trackId} in this world.</p>
       ) : (
         <ul className="space-y-1.5 text-xs">
           {employers.map((npc) => (
             <li key={npc.npcId} className="bg-black/30 border border-white/10 rounded px-2 py-1.5">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <span className="text-gray-100">
-                  {npc.name} <span className="text-gray-500">· {npc.archetype}{npc.faction ? ` · ${npc.faction}` : ''}</span>
+                  {npc.name} <span className="text-lattice-muted">· {npc.archetype}{npc.faction ? ` · ${npc.faction}` : ''}</span>
                 </span>
                 <span className="text-amber-200 tabular-nums">tier {npc.tier}{npc.tierTitle ? ` · ${npc.tierTitle}` : ''} · {npc.suggestedWage ?? 0} sparks/shift</span>
               </div>
               {gateTier !== null && (npc.tier > gateTier ? (
-                <p className="mt-1 flex items-center gap-1 text-gray-500">
+                <p className="mt-1 flex items-center gap-1 text-lattice-muted">
                   <Lock className="w-3 h-3 shrink-0" aria-hidden="true" />
                   Above your current reach (tier {gateTier}) — this offer opens as your reputation grows; proposing now returns an honest refusal.
                 </p>
@@ -152,15 +152,15 @@ export function EmployerBrowser({ trackId, gateTier = null, onContractProposed }
                     onClick={() => void propose(npc)}
                     disabled={busy === npc.npcId}
                     aria-label={`Send contract offer to ${npc.name}`}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                   ><Send className="w-3 h-3" aria-hidden="true" /> {busy === npc.npcId ? 'Sending…' : 'Send offer'}</button>
-                  <button onClick={() => setProposingFor(null)} aria-label="Cancel proposing a contract" className="text-gray-500 hover:text-gray-300">cancel</button>
+                  <button onClick={() => setProposingFor(null)} aria-label="Cancel proposing a contract" className="text-lattice-muted hover:text-gray-300">cancel</button>
                 </div>
               ) : (
                 <button
                   onClick={() => setProposingFor(npc.npcId)}
                   aria-label={`Propose a contract to ${npc.name}`}
-                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-600/70 hover:bg-amber-600 text-amber-50"
+                  className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-700/70 hover:bg-amber-700 text-amber-50"
                 ><Send className="w-3 h-3" aria-hidden="true" /> Propose contract</button>
               )}
             </li>

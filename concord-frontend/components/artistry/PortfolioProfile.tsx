@@ -140,7 +140,7 @@ export function PortfolioProfile() {
           {profile.disciplines.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {profile.disciplines.map((d) => (
-                <span key={d} className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink">{d}</span>
+                <span key={d} className="text-[11px] px-2 py-0.5 bg-neon-pink/10 border border-neon-pink/20 rounded-full text-neon-pink-bright">{d}</span>
               ))}
             </div>
           )}

@@ -84,7 +84,7 @@ export function RecurringTemplates() {
           {EFFORTS.map(ef => <option key={ef} value={ef}>{ef}</option>)}
         </select>
         <button onClick={add} disabled={busy || !form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
+          className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40 inline-flex items-center gap-1">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Add
         </button>
       </div>

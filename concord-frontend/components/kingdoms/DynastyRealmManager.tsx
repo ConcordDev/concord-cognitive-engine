@@ -101,7 +101,7 @@ export function DynastyRealmManager() {
               type="button"
               onClick={() => { setTab(t.id); setFeedback(null); }}
               className={`flex items-center gap-1.5 rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                tab === t.id ? 'bg-amber-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+                tab === t.id ? 'bg-amber-700 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
               }`}
             >
               <Icon className="h-3 w-3" /> {t.label}

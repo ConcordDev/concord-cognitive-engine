@@ -362,7 +362,7 @@ export function StrategiesDeskPanel() {
                   onClick={() => setStrategyTypeFilter('all')}
                   className={`px-2 py-0.5 rounded transition-colors ${
                     strategyTypeFilter === 'all'
-                      ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40'
+                      ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/40'
                       : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'
                   }`}
                 >
@@ -374,7 +374,7 @@ export function StrategiesDeskPanel() {
                     onClick={() => setStrategyTypeFilter(t)}
                     className={`px-2 py-0.5 rounded transition-colors ${
                       strategyTypeFilter === t
-                        ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/40'
+                        ? 'bg-neon-purple/20 text-neon-purple-bright border border-neon-purple/40'
                         : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white'
                     }`}
                   >
@@ -429,7 +429,7 @@ export function StrategiesDeskPanel() {
                     onClick={() => { setOutcomeBusyId(s.id); adaptStrategyMut.mutate(s.id); }}
                     disabled={outcomeBusyId === s.id}
                     title="Force an adaptation pass now based on recent outcomes"
-                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-neon-purple/10 text-neon-purple border border-neon-purple/20 hover:bg-neon-purple/20 disabled:opacity-40 ml-auto"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/20 hover:bg-neon-purple/20 disabled:opacity-40 ml-auto"
                   >
                     {outcomeBusyId === s.id && adaptStrategyMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} Adapt
                   </button>

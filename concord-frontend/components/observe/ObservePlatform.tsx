@@ -772,7 +772,7 @@ export function ObservePlatform() {
             return (
               <button key={t.id} onClick={() => setTab(t.id)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[11px] whitespace-nowrap ${
-                  tab === t.id ? 'bg-cyan-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'}`}>
+                  tab === t.id ? 'bg-cyan-700 text-white' : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'}`}>
                 <Icon className="w-3 h-3" /> {t.label}
               </button>
             );

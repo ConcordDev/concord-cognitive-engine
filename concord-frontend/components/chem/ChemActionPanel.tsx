@@ -244,7 +244,7 @@ export function ChemActionPanel() {
     { id: 'ph' as ActionId, label: 'pH', desc: 'calc-ph from conc.', icon: FlaskConical, accent: '#f59e0b', handler: actPh },
     { id: 'dilution' as ActionId, label: 'Dilution', desc: 'M1V1=M2V2', icon: Droplets, accent: '#06b6d4', handler: actDilution },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId || 'Private lab DTU', icon: Sparkles, accent: '#8b5cf6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send bench results', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId || 'Public compound', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Brief', desc: 'Agent: use + safety', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

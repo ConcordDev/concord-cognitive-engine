@@ -312,7 +312,7 @@ export function AccountSecurityPanel() {
             <button
               onClick={() => { setTfCodes(null); setTfAck(false); }}
               disabled={!tfAck}
-              className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 rounded text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               Done
             </button>
@@ -390,7 +390,7 @@ export function AccountSecurityPanel() {
               <button
                 onClick={confirmEnable}
                 disabled={busy === 'tf-enable' || !tfCode.trim()}
-                className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 rounded text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
                 {busy === 'tf-enable' ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Turn on two-factor'}
               </button>
@@ -411,7 +411,7 @@ export function AccountSecurityPanel() {
             <button
               onClick={startSetup}
               disabled={busy === 'tf-setup'}
-              className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               {busy === 'tf-setup' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shield className="w-3 h-3" />}
               Set up two-factor
@@ -445,7 +445,7 @@ export function AccountSecurityPanel() {
           <button
             onClick={submitPassword}
             disabled={busy === 'pw' || !currentPw || !newPw}
-            className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           >
             {busy === 'pw' ? <Loader2 className="w-3 h-3 animate-spin" /> : <KeyRound className="w-3 h-3" />}
             Update password
@@ -540,7 +540,7 @@ export function AccountSecurityPanel() {
           <button
             onClick={link}
             disabled={busy === 'connect' || PROVIDERS.every((p) => accounts.some((a) => a.provider === p))}
-            className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 rounded text-white inline-flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           >
             {busy === 'connect' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}
             Link account

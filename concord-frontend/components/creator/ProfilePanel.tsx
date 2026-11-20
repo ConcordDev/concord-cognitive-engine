@@ -120,7 +120,7 @@ function ProfileTab({
 
       <div className="mt-4 flex items-center gap-3">
         <button onClick={save} disabled={saving}
-          className="px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white inline-flex items-center gap-1">
+          className="px-4 py-2 text-sm font-medium bg-amber-700 hover:bg-amber-500 disabled:bg-stone-800 disabled:text-gray-400 rounded text-white inline-flex items-center gap-1">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save profile
         </button>
@@ -137,7 +137,7 @@ function ProfileTab({
             {broadcasts.data.artifacts.slice(0, 5).map((a) => (
               <li key={a.id} className="text-gray-400">
                 <span className="text-gray-200">{a.title}</span>
-                <span className="text-gray-600 ml-2">
+                <span className="text-lattice-muted ml-2">
                   {new Date((a.data as { at?: string })?.at ?? a.createdAt).toLocaleString()}
                 </span>
               </li>

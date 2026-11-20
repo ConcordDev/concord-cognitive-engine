@@ -114,7 +114,7 @@ export function MineSiteManager() {
         <input value={form.productionTonnes} onChange={e => setForm({ ...form, productionTonnes: e.target.value })} placeholder="tonnes"
           className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         <button onClick={editingSite ? saveSite : addSite} disabled={!form.name.trim()}
-          className="px-2.5 py-1 text-xs rounded bg-amber-600 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">{editingSite ? 'Save site' : 'Add site'}</button>
+          className="px-2.5 py-1 text-xs rounded bg-amber-700 hover:bg-amber-500 text-white font-semibold disabled:opacity-40">{editingSite ? 'Save site' : 'Add site'}</button>
         {editingSite && (
           <button onClick={cancelEditSite}
             className="px-2.5 py-1 text-xs rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300">Cancel</button>

@@ -170,7 +170,7 @@ export function InventoryPanel() {
         <button
           type="submit"
           disabled={busy || !name.trim()}
-          className="col-span-2 md:col-span-4 flex items-center justify-center gap-2 rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50"
+          className="col-span-2 md:col-span-4 flex items-center justify-center gap-2 rounded bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Add inventory item

@@ -144,7 +144,7 @@ function RobotScene({
               <group matrix={poseToMatrix4(pose)} matrixAutoUpdate={false}>
                 <mesh>
                   <sphereGeometry args={[0.015, 8, 8]} />
-                  <meshBasicMaterial color={flagged ? '#ef4444' : '#52525b'} />
+                  <meshBasicMaterial color={flagged ? '#ef4444' : '#a1a1aa'} />
                 </mesh>
               </group>
             ) : (
@@ -226,7 +226,7 @@ export function UrdfViewer() {
 
           {!urdfText.trim() && (
             <div className="panel p-6 text-center text-sm text-gray-400 flex flex-col items-center gap-2">
-              <Box className="w-8 h-8 text-gray-600" />
+              <Box className="w-8 h-8 text-lattice-muted" />
               No URDF loaded. A real robot needs a real URDF document — this viewer never invents one. Paste your own above.
             </div>
           )}
@@ -254,7 +254,7 @@ export function UrdfViewer() {
                   <OrbitControls />
                 </Canvas>
               </div>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-lattice-muted">
                 {robot.links.length} links · {robot.joints.length} joints · Z-up, meters. Grid = ground plane (z=0).
                 Red = a link flagged by the geometric clearance check below.
               </p>
@@ -293,12 +293,12 @@ export function UrdfViewer() {
             <div className="panel p-3 text-xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 uppercase tracking-wide text-[11px]">Geometric clearance</span>
-                <label className="flex items-center gap-1 text-[10px] text-gray-500">
+                <label className="flex items-center gap-1 text-[10px] text-lattice-muted">
                   <input type="checkbox" checked={ignoreAdjacent} onChange={(e) => setIgnoreAdjacent(e.target.checked)} />
                   ignore joint-adjacent pairs
                 </label>
               </div>
-              <p className="text-[10px] text-gray-500 leading-snug">
+              <p className="text-[10px] text-lattice-muted leading-snug">
                 Bounding-volume approximation, not a physics/dynamics solve — a real AABB overlap test over the
                 FK-posed link geometry. No collision-response engine is used; a false "clear" from a tight-fitting
                 rotated shape is possible (the box superset is conservative), a false "intersect" is not.
@@ -326,13 +326,13 @@ export function UrdfViewer() {
 
               {clearance.uncheckedLinks.length > 0 && (
                 <div className="pt-1 border-t border-white/10">
-                  <span className="text-gray-500 text-[10px]">Not checked (mesh geometry, extents unknown): {clearance.uncheckedLinks.join(', ')}</span>
+                  <span className="text-lattice-muted text-[10px]">Not checked (mesh geometry, extents unknown): {clearance.uncheckedLinks.join(', ')}</span>
                 </div>
               )}
             </div>
           )}
 
-          <div className="panel p-2 text-[10px] text-gray-500 leading-snug">
+          <div className="panel p-2 text-[10px] text-lattice-muted leading-snug">
             Full rigid-body physics/collision <em>response</em> (mass, contact forces, dynamics) needs a physics
             engine and is a separate, deferred capability — not built here by design.
           </div>

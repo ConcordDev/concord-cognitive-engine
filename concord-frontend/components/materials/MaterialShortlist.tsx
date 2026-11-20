@@ -94,7 +94,7 @@ export function MaterialShortlist() {
           </span>
         )}
         <button onClick={compare} disabled={materials.length < 2}
-          className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white disabled:opacity-40">Compare</button>
+          className="ml-auto px-2.5 py-1 text-xs rounded-lg bg-cyan-700 hover:bg-cyan-500 text-white disabled:opacity-40">Compare</button>
       </div>
 
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-2.5 mb-3 flex flex-wrap gap-1.5">
@@ -107,7 +107,7 @@ export function MaterialShortlist() {
             className="w-20 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
         ))}
         <button onClick={add}
-          className="px-2.5 py-1 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
+          className="px-2.5 py-1 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold inline-flex items-center gap-1">
           <Plus className="w-3 h-3" />Add
         </button>
       </div>

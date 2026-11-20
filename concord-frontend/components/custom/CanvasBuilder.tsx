@@ -392,7 +392,7 @@ export function CanvasBuilder({ onStatsChange }: { onStatsChange?: (s: CanvasBui
     <div className="space-y-4">
       {toast && (
         <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg ${
-          toast.kind === 'ok' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+          toast.kind === 'ok' ? 'bg-emerald-700 text-white' : 'bg-red-600 text-white'}`}>
           {toast.kind === 'ok' ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
           {toast.msg}
         </div>

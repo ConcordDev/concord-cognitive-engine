@@ -174,7 +174,7 @@ export function TransportBar({
       </div>
 
       {genre && (
-        <div className="px-2 py-1 bg-neon-purple/10 text-neon-purple rounded text-[10px] capitalize">
+        <div className="px-2 py-1 bg-neon-purple/10 text-neon-purple-bright rounded text-[10px] capitalize">
           {genre}
         </div>
       )}

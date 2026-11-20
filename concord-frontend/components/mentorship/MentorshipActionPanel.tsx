@@ -145,9 +145,9 @@ export function MentorshipActionPanel() {
     { id: 'match' as ActionId, label: 'Match', desc: 'matchScore', icon: Users, accent: '#3b82f6', handler: actMatch },
     { id: 'prog' as ActionId, label: 'Progress', desc: 'progressTrack', icon: Target, accent: '#22c55e', handler: actProg },
     { id: 'fb' as ActionId, label: 'Feedback', desc: 'feedbackSummary', icon: MessageSquare, accent: '#f59e0b', handler: actFb },
-    { id: 'plan' as ActionId, label: 'Dev plan', desc: 'developmentPlan', icon: TrendingUp, accent: '#a855f7', handler: actPlan },
+    { id: 'plan' as ActionId, label: 'Dev plan', desc: 'developmentPlan', icon: TrendingUp, accent: '#c084fc', handler: actPlan },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private session DTU', icon: Sparkles, accent: '#06b6d4', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recap', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send recap', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public dev plan', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Coach', desc: 'Agent: next topic', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

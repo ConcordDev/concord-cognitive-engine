@@ -186,7 +186,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
               onChange={(e) => setRewardCc(e.target.value === '' ? 0 : Number(e.target.value))}
               className="w-24 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
             />
-            <span className="text-[10px] text-zinc-500">Minimum 1 CC — the amount you enter is the amount posted.</span>
+            <span className="text-[10px] text-lattice-muted">Minimum 1 CC — the amount you enter is the amount posted.</span>
           </label>
         ) : (
           <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/50 p-2">
@@ -205,7 +205,7 @@ export function CreateBountyForm({ onCreated, prefill, onConsumePrefill }: {
                   className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
                 {milestones.length > 1 && (
-                  <button aria-label="Remove milestone" onClick={() => setMilestones((ms) => ms.filter((_, j) => j !== i))} className="text-zinc-600 hover:text-red-400">
+                  <button aria-label="Remove milestone" onClick={() => setMilestones((ms) => ms.filter((_, j) => j !== i))} className="text-lattice-muted hover:text-red-400">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}

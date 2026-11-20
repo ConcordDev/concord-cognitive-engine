@@ -192,7 +192,7 @@ export function ArtActionPanel() {
     { id: 'palette' as ActionId, label: 'Palette', desc: 'generatePalette from seed', icon: Brush, accent: '#22c55e', handler: actPalette },
     { id: 'style' as ActionId, label: 'Style', desc: 'styleClassify + confidence', icon: Eye, accent: '#f97316', handler: actStyle },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private piece DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send critique brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send critique brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public piece DTU + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Critique', desc: 'Agent: 3 next-iteration moves', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

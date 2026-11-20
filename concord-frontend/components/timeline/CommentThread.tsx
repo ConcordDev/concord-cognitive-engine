@@ -93,7 +93,7 @@ function CommentNode({
                   onChange={(e) => setEditDraft(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && submitEdit()}
                   autoFocus
-                  className="bg-[#242526] rounded-full px-3 py-1 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                  className="bg-[#242526] rounded-full px-3 py-1 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
                   onClick={submitEdit}
@@ -209,7 +209,7 @@ function CommentNode({
               <p className="text-[11px] font-semibold text-gray-300">Edit history</p>
               {[...comment.editHistory].reverse().map((v, i) => (
                 <div key={`${v.editedAt}-${i}`} className="border-t border-gray-700 pt-1.5 first:border-0 first:pt-0">
-                  <p className="text-[10px] text-gray-500">Replaced {new Date(v.editedAt).toLocaleString()}</p>
+                  <p className="text-[10px] text-lattice-muted">Replaced {new Date(v.editedAt).toLocaleString()}</p>
                   <p className="text-xs text-gray-400 whitespace-pre-wrap break-words">{v.text}</p>
                 </div>
               ))}
@@ -224,7 +224,7 @@ function CommentNode({
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
                 placeholder={`Reply to ${comment.displayName || comment.authorId || 'Member'}…`}
                 autoFocus
-                className="flex-1 bg-[#3a3b3c] rounded-full px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+                className="flex-1 bg-[#3a3b3c] rounded-full px-3 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
               />
               <button
                 onClick={submit}
@@ -372,7 +372,7 @@ export function CommentThread({ postId, viewerId }: CommentThreadProps) {
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && submitRoot()}
           placeholder="Write a comment…"
-          className="flex-1 bg-[#3a3b3c] rounded-full px-3 py-1.5 text-sm text-white placeholder-gray-500 outline-none focus:ring-1 focus:ring-blue-500"
+          className="flex-1 bg-[#3a3b3c] rounded-full px-3 py-1.5 text-sm text-white placeholder:text-lattice-muted outline-none focus:ring-1 focus:ring-blue-500"
         />
         <button
           onClick={submitRoot}

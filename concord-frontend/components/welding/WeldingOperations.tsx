@@ -153,7 +153,7 @@ function DeleteButton({ onDelete, label = 'Delete' }: { onDelete: () => void | P
   }
   return (
     <span className="inline-flex items-center gap-1">
-      <button type="button" className="inline-flex items-center gap-1 rounded bg-rose-500/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-400" onClick={() => { void onDelete(); }}>Confirm delete</button>
+      <button type="button" className="inline-flex items-center gap-1 rounded bg-rose-600/80 px-2 py-1 text-[11px] font-semibold text-white hover:bg-rose-400" onClick={() => { void onDelete(); }}>Confirm delete</button>
       <button type="button" className={ghostBtn} onClick={() => setArm(false)}>Keep</button>
     </span>
   );

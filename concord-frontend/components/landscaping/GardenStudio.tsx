@@ -351,7 +351,7 @@ function YardDesigner({ designRequest = 0 }: { designRequest?: number }) {
               }`}
             >
               <button onClick={() => setActiveId(l.id)}>
-                {l.name} <span className="text-zinc-600">({l.elementCount ?? 0})</span>
+                {l.name} <span className="text-lattice-muted">({l.elementCount ?? 0})</span>
               </button>
               <button onClick={() => deleteLayout(l.id)} aria-label="Delete layout">
                 <Trash2 className="h-3 w-3 text-red-400" />
@@ -621,7 +621,7 @@ function PhotoOverlay() {
               }`}
             >
               <button onClick={() => setActiveId(o.id)}>
-                {o.name} <span className="text-zinc-600">({o.placementCount ?? 0})</span>
+                {o.name} <span className="text-lattice-muted">({o.placementCount ?? 0})</span>
               </button>
               <button onClick={() => deleteOverlay(o.id)} aria-label="Delete overlay">
                 <Trash2 className="h-3 w-3 text-red-400" />
@@ -674,7 +674,7 @@ function PhotoOverlay() {
                   />
                 ) : (
                   <span
-                    className="flex items-center justify-center rounded-full border-2 border-emerald-400/60 bg-emerald-600/70 text-[9px] text-white"
+                    className="flex items-center justify-center rounded-full border-2 border-emerald-400/60 bg-emerald-700/70 text-[9px] text-white"
                     style={{
                       width: `${p.scalePct * 0.5}px`,
                       height: `${p.scalePct * 0.5}px`,
@@ -836,7 +836,7 @@ function PlantIdentify() {
             <Image src={preview} alt="Plant" fill className="object-cover" unoptimized />
           </div>
           {busy && (
-            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-zinc-500">
+            <div className="flex flex-1 items-center justify-center rounded-lg border border-dashed border-zinc-800 text-xs text-lattice-muted">
               <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> Analyzing…
             </div>
           )}
@@ -1553,7 +1553,7 @@ function InvoiceTracker() {
       </nav>
 
       {busy && invoices.length === 0 && (
-        <p className="text-[11px] text-zinc-500">Loading invoices…</p>
+        <p className="text-[11px] text-lattice-muted">Loading invoices…</p>
       )}
 
       {!busy && invoices.length === 0 && (
@@ -1587,7 +1587,7 @@ function InvoiceTracker() {
                 <div className="text-right">
                   <div className="font-mono text-sm text-emerald-200">${inv.total.toLocaleString()}</div>
                   {inv.amountPaid > 0 && inv.status !== 'paid' && (
-                    <div className="text-[10px] text-zinc-500">${balanceDue.toLocaleString()} due</div>
+                    <div className="text-[10px] text-lattice-muted">${balanceDue.toLocaleString()} due</div>
                   )}
                 </div>
               </button>
@@ -1604,7 +1604,7 @@ function InvoiceTracker() {
                   <div className="space-y-1">
                     {inv.lineItems.map((li, i) => (
                       <div key={i} className="flex justify-between text-[11px] text-zinc-400">
-                        <span>{li.description} <span className="text-zinc-600">({li.category})</span></span>
+                        <span>{li.description} <span className="text-lattice-muted">({li.category})</span></span>
                         <span className="font-mono text-zinc-300">${li.lineTotal.toFixed(2)}</span>
                       </div>
                     ))}
@@ -1667,7 +1667,7 @@ function InvoiceTracker() {
 
                   {inv.payments.length > 0 && (
                     <div className="space-y-1 border-t border-zinc-800 pt-2">
-                      <p className="text-[10px] uppercase tracking-wider text-zinc-500">Payments</p>
+                      <p className="text-[10px] uppercase tracking-wider text-lattice-muted">Payments</p>
                       {inv.payments.map((p) => (
                         <div key={p.id} className="flex justify-between text-[11px] text-zinc-400">
                           <span className="capitalize">{p.method} · {new Date(p.at).toLocaleDateString()}</span>
@@ -1990,8 +1990,8 @@ function HealthDiary() {
               <span className="font-medium text-white">{e.plant}</span>
               <span className="ml-2 capitalize text-emerald-300">{e.health}</span>
               {e.heightCm ? <span className="ml-2 text-zinc-400">{e.heightCm}cm</span> : null}
-              {e.hasPhoto ? <span className="ml-2 text-zinc-600">📷</span> : null}
-              <span className="ml-2 text-zinc-600">{e.date}</span>
+              {e.hasPhoto ? <span className="ml-2 text-lattice-muted">📷</span> : null}
+              <span className="ml-2 text-lattice-muted">{e.date}</span>
               {e.notes && <p className="mt-0.5 text-[11px] text-zinc-400">{e.notes}</p>}
             </div>
             <button onClick={() => removeEntry(e.id)} aria-label="Delete diary entry">
@@ -2150,7 +2150,7 @@ function InspectionsTab() {
               ))}
             </select>
             {jobs.length === 0 && (
-              <p className="mt-1 text-[10px] text-zinc-500">No jobs on the Jobs tab yet — schedule one there first.</p>
+              <p className="mt-1 text-[10px] text-lattice-muted">No jobs on the Jobs tab yet — schedule one there first.</p>
             )}
           </div>
           <div>
@@ -2503,7 +2503,7 @@ function CertsTab() {
                       <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                     )}
                     <span className="text-xs font-medium text-white">{name}</span>
-                    <span className="text-[10px] text-zinc-500">({certs.length})</span>
+                    <span className="text-[10px] text-lattice-muted">({certs.length})</span>
                   </div>
                   <ul className="mt-1.5 space-y-1">
                     {certs.map((c) => (
@@ -2522,7 +2522,7 @@ function CertsTab() {
                             <span className="text-zinc-200">{c.certType}</span>
                             {certBadge(c)}
                           </div>
-                          <div className="truncate text-zinc-500">
+                          <div className="truncate text-lattice-muted">
                             {c.issuingBody}
                             {c.licenseNumber ? ` · #${c.licenseNumber}` : ''}
                             {c.expiryDate ? ` · exp ${c.expiryDate}` : ' · no expiry on file'}
@@ -2530,7 +2530,7 @@ function CertsTab() {
                         </div>
                         <button
                           onClick={() => remove(c.id)}
-                          className="shrink-0 text-zinc-600 hover:text-rose-400"
+                          className="shrink-0 text-lattice-muted hover:text-rose-400"
                           aria-label={`Remove ${c.certType} certification for ${name}`}
                         >
                           <Trash2 className="h-3 w-3" />

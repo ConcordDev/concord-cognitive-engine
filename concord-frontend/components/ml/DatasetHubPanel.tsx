@@ -80,11 +80,11 @@ export function DatasetHubPanel() {
       <div className="flex items-center gap-2">
         <div className="flex bg-lattice-surface/50 p-1 rounded-lg">
           <button onClick={() => setMode('hub')}
-            className={`px-3 py-1.5 rounded text-sm ${mode === 'hub' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400'}`}>
+            className={`px-3 py-1.5 rounded text-sm ${mode === 'hub' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400'}`}>
             HF Datasets
           </button>
           <button onClick={() => setMode('mine')}
-            className={`px-3 py-1.5 rounded text-sm ${mode === 'mine' ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400'}`}>
+            className={`px-3 py-1.5 rounded text-sm ${mode === 'mine' ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400'}`}>
             My Datasets
           </button>
         </div>

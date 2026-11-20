@@ -161,7 +161,7 @@ export function ResourcePanel({ crisisId }: { crisisId?: string }) {
       )}
 
       {!crisisId && data && data.resources.length > 0 && (
-        <p className="text-[11px] text-zinc-500">
+        <p className="text-[11px] text-lattice-muted">
           Deploy and recall move the totals immediately; with a crisis selected, each movement also logs to that crisis's timeline.
         </p>
       )}

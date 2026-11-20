@@ -83,17 +83,17 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
           {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
         </select>
         <button type="button" onClick={addNote}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Note
         </button>
       </section>
 
       <div className="flex flex-wrap gap-1.5">
         <button type="button" onClick={() => setFilter('')}
-          className={cn('text-[11px] px-2.5 py-1 rounded-lg', filter === '' ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>All</button>
+          className={cn('text-[11px] px-2.5 py-1 rounded-lg', filter === '' ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>All</button>
         {KINDS.map((k) => (
           <button key={k} type="button" onClick={() => setFilter(k)}
-            className={cn('text-[11px] px-2.5 py-1 rounded-lg capitalize', filter === k ? 'bg-amber-600 text-white' : 'bg-zinc-800 text-zinc-300')}>{k}</button>
+            className={cn('text-[11px] px-2.5 py-1 rounded-lg capitalize', filter === k ? 'bg-amber-700 text-white' : 'bg-zinc-800 text-zinc-300')}>{k}</button>
         ))}
       </div>
 
@@ -109,7 +109,7 @@ export function CwResearchPanel({ projectId }: { projectId: string }) {
                   className="flex-1 text-left text-xs font-medium text-zinc-100">{n.title}
                   <span className={cn('ml-2 text-[9px] uppercase', KIND_COLOR[n.kind])}>{n.kind}</span>
                 </button>
-                <button aria-label="Delete" type="button" onClick={() => del(n.id)} className="text-zinc-600 hover:text-rose-400">
+                <button aria-label="Delete" type="button" onClick={() => del(n.id)} className="text-lattice-muted hover:text-rose-400">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

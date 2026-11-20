@@ -106,7 +106,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
           <input placeholder="Email" value={appForm.email} onChange={(e) => setAppForm({ ...appForm, email: e.target.value })}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addApplicant}
-            className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add</button>
+            className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Add</button>
         </div>
 
         {applicants.length === 0 ? (
@@ -150,7 +150,7 @@ export function HrRecruitingPanel({ onChange }: { onChange: () => void }) {
         <input placeholder="Department" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={postJob}
-          className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg">
+          className="flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Post
         </button>
       </div>

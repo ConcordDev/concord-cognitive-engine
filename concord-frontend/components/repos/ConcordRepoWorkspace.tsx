@@ -227,7 +227,7 @@ export function ConcordRepoWorkspace() {
           <button
             onClick={createRepo}
             disabled={busy === 'create-repo' || !!repoNameProblem}
-            className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-800 disabled:opacity-50"
           >
             {busy === 'create-repo' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             New repo
@@ -239,7 +239,7 @@ export function ConcordRepoWorkspace() {
       </header>
 
       {!activeRepo && (
-        <p className="-mt-2 text-[10px] text-zinc-500">
+        <p className="-mt-2 text-[10px] text-lattice-muted">
           New repos are seeded with a starter tree — README.md, package.json and src/ — so there is something real to edit from the first minute. It is scaffolding, disclosed as such: make it yours.
         </p>
       )}
@@ -299,7 +299,7 @@ export function ConcordRepoWorkspace() {
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs">
             <button onClick={() => setActiveRepo(null)} className="text-cyan-400 hover:underline">← All repos</button>
-            <span className="text-zinc-600">/</span>
+            <span className="text-lattice-muted">/</span>
             <span className="font-mono text-white">{activeRepo.name}</span>
           </div>
 
@@ -495,8 +495,8 @@ function CodeTab({ repoId, branch, onBranchChange }: {
         {branchInfo && !branchInfo.isDefault && branchInfo.ahead != null && (
           <span className="text-[10px] text-zinc-400">↑{branchInfo.ahead} ahead · ↓{branchInfo.behind ?? 0} behind the default branch</span>
         )}
-        <span className="text-[10px] text-zinc-500">Commits go to this branch and no other.</span>
-        <span className="ml-auto text-[10px] text-zinc-500">
+        <span className="text-[10px] text-lattice-muted">Commits go to this branch and no other.</span>
+        <span className="ml-auto text-[10px] text-lattice-muted">
           {branches.find((b) => b.name === branch)?.commits ?? '—'} commits on this branch
         </span>
       </div>
@@ -515,9 +515,9 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                 placeholder="src/new-file.ts"
                 className="w-full min-w-0 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 font-mono text-[10px] text-white"
               />
-              <button onClick={startNewFile} disabled={!newPath.trim()} className="shrink-0 rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">New</button>
+              <button onClick={startNewFile} disabled={!newPath.trim()} className="shrink-0 rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">New</button>
             </div>
-            <p className="mt-1 text-[9px] text-zinc-600">Opens an editor; your first Commit creates the file on {branch}.</p>
+            <p className="mt-1 text-[9px] text-lattice-muted">Opens an editor; your first Commit creates the file on {branch}.</p>
           </div>
         </div>
         <div className="col-span-8 rounded-lg border border-zinc-800 bg-zinc-950">
@@ -540,7 +540,7 @@ function CodeTab({ repoId, branch, onBranchChange }: {
                         placeholder="commit message"
                         className="rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white"
                       />
-                      <button onClick={saveFile} disabled={busy} className="rounded bg-green-600 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
+                      <button onClick={saveFile} disabled={busy} className="rounded bg-green-700 px-2 py-0.5 text-[10px] text-white disabled:opacity-50">
                         {busy ? 'Committing…' : confirmEmptyArmed ? 'Commit (confirm empty)' : 'Commit'}
                       </button>
                       <button onClick={() => { setEditing(false); setDraft(file.content); setConfirmEmptyArmed(false); }} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
@@ -673,7 +673,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <h3 className="text-xs font-semibold text-white">Branches</h3>
             <div className="flex gap-1">
               <input value={newBranch} onChange={(e) => setNewBranch(e.target.value)} placeholder="branch" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white" />
-              <button onClick={createBranch} disabled={busy === 'branch'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
+              <button onClick={createBranch} disabled={busy === 'branch'} className="rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
           {branches.map((b) => (
@@ -684,7 +684,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
                 {b.protected && <span className="rounded bg-amber-500/15 px-1 text-[8px] text-amber-300">protected</span>}
               </span>
               <span className="flex items-center gap-2">
-                <span className="text-zinc-600">{b.commits} commits · {b.head}{!b.isDefault && b.ahead != null ? ` · ↑${b.ahead} ahead · ↓${b.behind ?? 0} behind` : ''}</span>
+                <span className="text-lattice-muted">{b.commits} commits · {b.head}{!b.isDefault && b.ahead != null ? ` · ↑${b.ahead} ahead · ↓${b.behind ?? 0} behind` : ''}</span>
                 <button onClick={() => onCheckout(b.name)} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-zinc-300 hover:bg-zinc-800">Open in Code</button>
                 {!b.isDefault && (
                   <button onClick={() => deleteBranch(b.name)} disabled={busy === `del-branch-${b.name}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Delete</button>
@@ -698,7 +698,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <h3 className="text-xs font-semibold text-white">Tags</h3>
             <div className="flex gap-1">
               <input value={newTag} onChange={(e) => setNewTag(e.target.value)} placeholder="v1.0.0" className="w-24 rounded border border-zinc-800 bg-zinc-900 px-1.5 py-0.5 text-[10px] text-white" />
-              <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
+              <button onClick={createTag} disabled={busy === 'tag'} className="rounded bg-green-700 px-1.5 py-0.5 text-[10px] text-white disabled:opacity-50">+</button>
             </div>
           </div>
           {tagNote && (
@@ -711,7 +711,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <div key={t.name} className="flex items-center gap-1.5 border-t border-zinc-800/60 py-1 text-[11px]">
               <Tag className="h-3 w-3 text-zinc-400" />
               <span className="font-mono text-zinc-200">{t.name}</span>
-              <span className="flex-1 text-zinc-600">{t.commit}</span>
+              <span className="flex-1 text-lattice-muted">{t.commit}</span>
               <button onClick={() => deleteTag(t.name)} disabled={busy === `del-tag-${t.name}`} className="rounded border border-zinc-700 px-1.5 py-0.5 text-[9px] text-rose-300 hover:bg-rose-500/10 disabled:opacity-50">Delete</button>
             </div>
           ))}
@@ -728,9 +728,9 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <div className="max-h-44 overflow-auto">
               {[...nodes].reverse().map((n) => (
                 <button key={n.sha} onClick={() => openCommit(n.sha)} className="flex w-full items-center gap-2 border-t border-zinc-800/40 py-1 text-left text-[11px] first:border-0 hover:bg-zinc-900">
-                  <span className="font-mono text-zinc-500">{n.sha.slice(0, 7)}</span>
+                  <span className="font-mono text-lattice-muted">{n.sha.slice(0, 7)}</span>
                   <span className="flex-1 truncate text-zinc-200">{n.message}</span>
-                  <span className="font-mono text-[10px] text-zinc-500">{n.branch}</span>
+                  <span className="font-mono text-[10px] text-lattice-muted">{n.branch}</span>
                   <span className="text-[10px]"><span className="text-green-400">+{n.additions}</span> <span className="text-rose-400">−{n.deletions}</span></span>
                 </button>
               ))}
@@ -742,7 +742,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-[11px] font-semibold text-white">{commitDetail.commit.message}</p>
-                <p className="text-[10px] text-zinc-500">{commitDetail.commit.sha} · {commitDetail.commit.branch} · {commitDetail.commit.author}</p>
+                <p className="text-[10px] text-lattice-muted">{commitDetail.commit.sha} · {commitDetail.commit.branch} · {commitDetail.commit.author}</p>
               </div>
               <button onClick={() => setCommitDetail(null)} className="text-[10px] text-zinc-400 hover:text-white">close</button>
             </div>
@@ -757,7 +757,7 @@ function BranchesTab({ repoId, onCheckout }: { repoId: string; onCheckout: (name
                 {commitDetail.diff.files.map((f) => (
                   <div key={f.path} className="rounded border border-zinc-800">
                     <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">
-                      {f.path} <span className="text-zinc-500">{f.status}</span> <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
+                      {f.path} <span className="text-lattice-muted">{f.status}</span> <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
                     </div>
                     <pre className="max-h-40 overflow-auto p-2 text-[10px] leading-4">
                       {f.hunks.map((h, i) => (
@@ -832,20 +832,20 @@ function IssuesTab({ repoId }: { repoId: string }) {
             <h3 className="text-sm font-semibold text-white">#{detail.number} {detail.title}</h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">opened by {detail.author}</p>
           </div>
-          <button onClick={toggleState} disabled={busy === 'state'} className={`rounded px-2 py-1 text-[10px] ${detail.state === 'open' ? 'bg-purple-600' : 'bg-green-600'} text-white disabled:opacity-50`}>
+          <button onClick={toggleState} disabled={busy === 'state'} className={`rounded px-2 py-1 text-[10px] ${detail.state === 'open' ? 'bg-purple-600' : 'bg-green-700'} text-white disabled:opacity-50`}>
             {detail.state === 'open' ? 'Close issue' : 'Reopen'}
           </button>
         </div>
         {detail.body && <p className="mt-2 rounded border border-zinc-800 bg-zinc-900 p-2 text-[11px] text-zinc-300">{detail.body}</p>}
         {detail.linkedPulls && detail.linkedPulls.length > 0 && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
-            <span className="text-zinc-500">Linked pull requests:</span>
+            <span className="text-lattice-muted">Linked pull requests:</span>
             {detail.linkedPulls.map((p) => (
               <span key={p.number} className={`rounded border px-1.5 py-0.5 ${p.state === 'merged' ? 'border-purple-500/40 text-purple-300' : 'border-zinc-700 text-zinc-300'}`}>
                 #{p.number} {p.title} · {p.state}
               </span>
             ))}
-            <span className="text-zinc-600">Merging a linked pull request closes this issue.</span>
+            <span className="text-lattice-muted">Merging a linked pull request closes this issue.</span>
           </div>
         )}
         <div className="mt-3 space-y-2">
@@ -858,7 +858,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
         </div>
         <div className="mt-3 flex gap-2">
           <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Add a comment…" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-          <button onClick={addComment} disabled={busy === 'comment' || !comment.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Comment</button>
+          <button onClick={addComment} disabled={busy === 'comment' || !comment.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Comment</button>
         </div>
       </div>
     );
@@ -872,15 +872,15 @@ function IssuesTab({ repoId }: { repoId: string }) {
         <div className="flex flex-col gap-2 sm:flex-row">
           <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Issue title" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
           <input value={newBody} onChange={(e) => setNewBody(e.target.value)} placeholder="Description (optional)" className="flex-1 rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
-          <button onClick={createIssue} disabled={busy === 'create' || !newTitle.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create</button>
+          <button onClick={createIssue} disabled={busy === 'create' || !newTitle.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create</button>
         </div>
         {!newTitle.trim() && busy !== 'create' && (
-          <p role="note" className="mt-1.5 text-[10px] text-zinc-500">Give the issue a title — Create unlocks once it has one.</p>
+          <p role="note" className="mt-1.5 text-[10px] text-lattice-muted">Give the issue a title — Create unlocks once it has one.</p>
         )}
       </div>
       <div className="flex gap-1">
         {(['all', 'open', 'closed'] as const).map((s) => (
-          <button key={s} onClick={() => setStateFilter(s)} className={`rounded px-2 py-0.5 text-[10px] ${stateFilter === s ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{s}</button>
+          <button key={s} onClick={() => setStateFilter(s)} className={`rounded px-2 py-0.5 text-[10px] ${stateFilter === s ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-400'}`}>{s}</button>
         ))}
       </div>
       <div className="rounded-lg border border-zinc-800 bg-zinc-950">
@@ -889,7 +889,7 @@ function IssuesTab({ repoId }: { repoId: string }) {
           <button key={i.number} onClick={() => openDetail(i.number)} className="flex w-full items-center gap-2 border-b border-zinc-800/60 px-3 py-2 text-left text-[11px] last:border-0 hover:bg-zinc-900">
             {i.state === 'open' ? <AlertCircle className="h-3.5 w-3.5 text-green-500" /> : <CheckCircle className="h-3.5 w-3.5 text-purple-500" />}
             <span className="flex-1 text-zinc-200">{i.title}</span>
-            <span className="text-zinc-600">#{i.number} · {i.comments} comments</span>
+            <span className="text-lattice-muted">#{i.number} · {i.comments} comments</span>
           </button>
         ))}
       </div>
@@ -1023,7 +1023,7 @@ function PullsTab({ repoId }: { repoId: string }) {
               #{detail.pull.number} {detail.pull.title}
               {/* S10: the merged state gets a visual identity, not a lowercase word (F14). */}
               {detail.pull.state === 'merged' && <span className="rounded-full bg-purple-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Merged</span>}
-              {detail.pull.state === 'open' && <span className="rounded-full bg-green-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Open</span>}
+              {detail.pull.state === 'open' && <span className="rounded-full bg-green-700 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Open</span>}
               {detail.pull.state === 'closed' && <span className="rounded-full bg-zinc-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white">Closed</span>}
             </h3>
             <p className="mt-0.5 text-[10px] text-zinc-400">
@@ -1052,7 +1052,7 @@ function PullsTab({ repoId }: { repoId: string }) {
           </div>
         </div>
         {detail.pull.state === 'open' && (
-          <p className="mt-1.5 text-[10px] text-zinc-500">
+          <p className="mt-1.5 text-[10px] text-lattice-muted">
             {conflicts.length > 0
               ? 'Merge is blocked by the conflicting lines below.'
               : detail.changesRequested > 0
@@ -1085,19 +1085,19 @@ function PullsTab({ repoId }: { repoId: string }) {
         )}
         {/* Linked issues (S10) */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[10px]">
-          <span className="text-zinc-500">Linked issues:</span>
+          <span className="text-lattice-muted">Linked issues:</span>
           {(detail.pull.linkedIssues || []).map((n) => {
             const iss = openIssues.find((i) => i.number === n);
             return (
               <span key={n} className="flex items-center gap-1 rounded border border-zinc-700 px-1.5 py-0.5 text-zinc-300">
                 #{n}{iss ? ` ${iss.title}` : ''}
                 {detail.pull.state === 'open' && (
-                  <button onClick={() => setIssueLink(n, true)} disabled={busy === 'link'} className="text-zinc-500 hover:text-rose-300" title="Unlink">×</button>
+                  <button onClick={() => setIssueLink(n, true)} disabled={busy === 'link'} className="text-lattice-muted hover:text-rose-300" title="Unlink">×</button>
                 )}
               </span>
             );
           })}
-          {(detail.pull.linkedIssues || []).length === 0 && <span className="text-zinc-600">none — link one and merging this PR will close it</span>}
+          {(detail.pull.linkedIssues || []).length === 0 && <span className="text-lattice-muted">none — link one and merging this PR will close it</span>}
           {detail.pull.state === 'open' && (
             <span className="ml-1 flex items-center gap-1">
               <select value={linkIssue} onChange={(e) => setLinkIssue(e.target.value)} className="rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[10px] text-white">
@@ -1126,7 +1126,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             {(detail.diff?.files || []).map((f) => (
               <div key={f.path} className="rounded border border-zinc-800 bg-[#0d1117]">
                 <div className="border-b border-zinc-800 px-2 py-1 font-mono text-[10px] text-cyan-300">
-                  {f.path} {f.status && <span className="text-zinc-500">{f.status}</span>} <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
+                  {f.path} {f.status && <span className="text-lattice-muted">{f.status}</span>} <span className="text-green-400">+{f.additions}</span> <span className="text-rose-400">−{f.deletions}</span>
                 </div>
                 <div className="max-h-56 overflow-auto p-2 font-mono text-[10px] leading-4">
                   {f.hunks.map((h, i) => (
@@ -1159,13 +1159,13 @@ function PullsTab({ repoId }: { repoId: string }) {
                             placeholder={`Comment on ${f.path}:${lineDraft.line}…`}
                             className="flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-white"
                           />
-                          <button onClick={postLineComment} disabled={busy === 'line-comment' || !lineBody.trim()} className="rounded bg-cyan-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Post</button>
+                          <button onClick={postLineComment} disabled={busy === 'line-comment' || !lineBody.trim()} className="rounded bg-cyan-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Post</button>
                           <button onClick={() => setLineDraft(null)} className="text-[10px] text-zinc-400 hover:text-white">Cancel</button>
                         </div>
                       )}
                     </div>
                   ))}
-                  {f.hunksTruncated && <div className="text-zinc-600">… diff truncated at 200 lines for this file; the counts above are complete.</div>}
+                  {f.hunksTruncated && <div className="text-lattice-muted">… diff truncated at 200 lines for this file; the counts above are complete.</div>}
                 </div>
               </div>
             ))}
@@ -1200,7 +1200,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             </div>
             <input value={reviewBody} onChange={(e) => setReviewBody(e.target.value)} placeholder="Review summary (optional)…" className="w-full rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-white" />
             <div className="flex gap-2">
-              <button onClick={() => submitReview('approve')} disabled={busy === 'review'} className="rounded bg-green-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Approve</button>
+              <button onClick={() => submitReview('approve')} disabled={busy === 'review'} className="rounded bg-green-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Approve</button>
               <button onClick={() => submitReview('request-changes')} disabled={busy === 'review'} className="rounded bg-rose-600 px-2 py-1 text-[10px] text-white disabled:opacity-50">Request changes</button>
               <button onClick={() => submitReview('comment')} disabled={busy === 'review'} className="rounded bg-zinc-700 px-2 py-1 text-[10px] text-white disabled:opacity-50">Comment as review</button>
             </div>
@@ -1225,7 +1225,7 @@ function PullsTab({ repoId }: { repoId: string }) {
             <option value="">head branch…</option>
             {branches.map((b) => <option key={b} value={b}>{b}</option>)}
           </select>
-          <button onClick={createPull} disabled={busy === 'create'} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create PR</button>
+          <button onClick={createPull} disabled={busy === 'create'} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">Create PR</button>
         </div>
         {err && <p className="mt-1.5 text-[10px] text-rose-400">{err}</p>}
       </div>
@@ -1236,9 +1236,9 @@ function PullsTab({ repoId }: { repoId: string }) {
             <GitPullRequest className={`h-3.5 w-3.5 ${p.state === 'merged' ? 'text-purple-500' : p.state === 'open' ? 'text-green-500' : 'text-zinc-400'}`} />
             <span className="flex-1 text-zinc-200">{p.title}</span>
             {p.state === 'merged' && <span className="rounded-full bg-purple-600 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Merged</span>}
-            {p.state === 'open' && <span className="rounded-full bg-green-600/80 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Open</span>}
-            <span className="font-mono text-zinc-600">{p.head}→{p.base}</span>
-            <span className="text-zinc-600">#{p.number} · {p.reviews} reviews</span>
+            {p.state === 'open' && <span className="rounded-full bg-green-700/80 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wider text-white">Open</span>}
+            <span className="font-mono text-lattice-muted">{p.head}→{p.base}</span>
+            <span className="text-lattice-muted">#{p.number} · {p.reviews} reviews</span>
           </button>
         ))}
       </div>
@@ -1277,7 +1277,7 @@ function ActionsTab({ repoId }: { repoId: string }) {
       <ErrorBanner err={err} />
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white">Workflow runs</h3>
-        <button onClick={triggerRun} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={triggerRun} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Run checks
         </button>
       </div>
@@ -1289,8 +1289,8 @@ function ActionsTab({ repoId }: { repoId: string }) {
               ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
               : <X className="h-3.5 w-3.5 text-rose-500" />}
             <span className="flex-1 text-zinc-200">{r.workflow} #{r.number}</span>
-            <span className="font-mono text-zinc-600">{r.branch}</span>
-            <span className="text-zinc-600">{r.durationMs >= 1000 ? `${(r.durationMs / 1000).toFixed(1)}s` : `${Math.round(r.durationMs)}ms`}</span>
+            <span className="font-mono text-lattice-muted">{r.branch}</span>
+            <span className="text-lattice-muted">{r.durationMs >= 1000 ? `${(r.durationMs / 1000).toFixed(1)}s` : `${Math.round(r.durationMs)}ms`}</span>
           </button>
         ))}
       </div>
@@ -1362,12 +1362,12 @@ function SecurityTab({ repoId }: { repoId: string }) {
       <ErrorBanner err={err} />
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold text-white">Security overview</h3>
-        <button onClick={scan} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={scan} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Shield className="h-3.5 w-3.5" />} Run scan
         </button>
       </div>
       {scanned && scannedAt && (
-        <p className="text-[10px] text-zinc-500">Last scan {new Date(scannedAt).toLocaleString()} — results are kept on the repo; run a new scan to refresh them.</p>
+        <p className="text-[10px] text-lattice-muted">Last scan {new Date(scannedAt).toLocaleString()} — results are kept on the repo; run a new scan to refresh them.</p>
       )}
       {scanned && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -1380,7 +1380,7 @@ function SecurityTab({ repoId }: { repoId: string }) {
         </div>
       )}
       {scanned && (
-        <p className="text-[10px] text-zinc-500">
+        <p className="text-[10px] text-lattice-muted">
           {/* S8: provenance, named — every dependency alert below carries its advisory ID. */}
           Dependency alerts are queried live from <span className="text-zinc-300">{depSource === 'osv.dev' ? 'OSV.dev' : depSource || 'the vulnerability database'}</span> against this repo&apos;s package.json at scan time
           {depUnreachable && <span className="text-amber-300"> — the database was unreachable for this scan, so dependency results are incomplete; code scanning below is unaffected</span>}.
@@ -1475,7 +1475,7 @@ function InsightsTab({ repoId }: { repoId: string }) {
           {/* E-RP-1: staged on this panel's own verified numbers — it
               shows only while the contributor count is exactly one. */}
           {data.contributors.length === 1 && (
-            <p className="mt-2 font-serif text-[11px] italic text-zinc-500">
+            <p className="mt-2 font-serif text-[11px] italic text-lattice-muted">
               A one-person codebase. Every line is yours — for better or worse.
             </p>
           )}
@@ -1551,9 +1551,9 @@ function SettingsTab({ repo, onUpdated, onDeleted, onNotice }: {
         <label className="flex items-center gap-2 text-[11px] text-zinc-300">
           <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
           Private — visible only in your account
-          <span className="text-[10px] text-zinc-500">(sharing with other accounts rides Concord&apos;s platform access grants, not a per-repo switch)</span>
+          <span className="text-[10px] text-lattice-muted">(sharing with other accounts rides Concord&apos;s platform access grants, not a per-repo switch)</span>
         </label>
-        <button onClick={save} disabled={busy === 'save' || !name.trim()} className="rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={save} disabled={busy === 'save' || !name.trim()} className="rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy === 'save' ? 'Saving…' : 'Save changes'}
         </button>
       </div>
@@ -1768,7 +1768,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
           <h3 className="text-xs font-semibold text-white">Static analysis</h3>
           <p className="text-[10px] text-zinc-400">Complexity, commit patterns and dependency health — computed live from this repo&apos;s real files, commits and package.json.</p>
         </div>
-        <button onClick={runAnalysis} disabled={busy} className="flex items-center gap-1 rounded bg-green-600 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
+        <button onClick={runAnalysis} disabled={busy} className="flex items-center gap-1 rounded bg-green-700 px-2.5 py-1 text-[11px] text-white disabled:opacity-50">
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />} Run analysis
         </button>
       </div>
@@ -1872,7 +1872,7 @@ function AnalysisTab({ repoId }: { repoId: string }) {
                 {deps.vulnerabilities.unreachable ? (
                   <p className="text-[10px] text-amber-400">Vulnerability check: OSV.dev could not be reached at audit time — the counts are unknown, not zero.</p>
                 ) : deps.vulnerabilities.checked ? (
-                  <p className="text-[10px] text-zinc-500">Vulnerability data: OSV.dev, queried live at audit time — the same source the Security tab scans with.</p>
+                  <p className="text-[10px] text-lattice-muted">Vulnerability data: OSV.dev, queried live at audit time — the same source the Security tab scans with.</p>
                 ) : null}
                 {deps.dependencyList && deps.dependencyList.length > 0 && (
                   <div>
@@ -1880,9 +1880,9 @@ function AnalysisTab({ repoId }: { repoId: string }) {
                       <div key={d.name} className="flex items-center justify-between border-t border-zinc-800/60 py-1 text-[11px] first:border-0">
                         <span className="truncate font-mono text-zinc-200">{d.name}@{d.version}</span>
                         {d.vulnerabilities === null ? (
-                          <span className="shrink-0 text-zinc-500">vulnerabilities unknown</span>
+                          <span className="shrink-0 text-lattice-muted">vulnerabilities unknown</span>
                         ) : d.vulnerabilities === 0 ? (
-                          <span className="shrink-0 text-zinc-500">no known advisories</span>
+                          <span className="shrink-0 text-lattice-muted">no known advisories</span>
                         ) : (
                           <span className="shrink-0 text-rose-300">{d.vulnerabilities} advisor{d.vulnerabilities === 1 ? 'y' : 'ies'}: {d.advisories.join(', ')}</span>
                         )}

@@ -985,8 +985,8 @@ function MetricCard({
 }) {
   const colorMap = {
     blue: 'text-neon-blue border-neon-blue/20 bg-neon-blue/5',
-    purple: 'text-neon-purple border-neon-purple/20 bg-neon-purple/5',
-    pink: 'text-neon-pink border-neon-pink/20 bg-neon-pink/5',
+    purple: 'text-neon-purple-bright border-neon-purple/20 bg-neon-purple/5',
+    pink: 'text-neon-pink-bright border-neon-pink/20 bg-neon-pink/5',
     green: 'text-neon-green border-neon-green/20 bg-neon-green/5',
   };
   return (

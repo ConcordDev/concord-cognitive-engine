@@ -264,7 +264,7 @@ export function PodcastListeningHub() {
                     <li key={sh.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl overflow-hidden">
                       <div className="flex items-center gap-2 px-3 py-2.5">
                         <button type="button" onClick={() => openShow(sh.id)} className="flex items-center gap-2 min-w-0 text-left flex-1">
-                          <ChevronRight className={cn('w-4 h-4 text-zinc-600 transition-transform shrink-0', openShowId === sh.id && 'rotate-90')} />
+                          <ChevronRight className={cn('w-4 h-4 text-lattice-muted transition-transform shrink-0', openShowId === sh.id && 'rotate-90')} />
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-zinc-100 truncate">{sh.title}</p>
                             <p className="text-[10px] text-zinc-400 truncate">
@@ -426,7 +426,7 @@ export function PodcastListeningHub() {
                 <p className="text-[11px] text-zinc-400">Auto-download the newest episodes of chosen shows.</p>
                 <button
                   type="button" onClick={runRules} disabled={busy === 'runRules' || rules.length === 0}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-lg"
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 text-white rounded-lg"
                 >
                   {busy === 'runRules' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <DownloadCloud className="w-3.5 h-3.5" />}
                   Run rules now

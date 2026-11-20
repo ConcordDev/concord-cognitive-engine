@@ -120,7 +120,7 @@ export function BrawlMatchmakingQueue() {
               <button
                 onClick={join}
                 disabled={pending}
-                className="w-full rounded bg-rose-500/40 px-3 py-1.5 text-xs text-rose-50 hover:bg-rose-500/60 disabled:opacity-50"
+                className="w-full rounded bg-rose-600/40 px-3 py-1.5 text-xs text-rose-50 hover:bg-rose-600/60 disabled:opacity-50"
               >
                 {pending ? <Loader2 className="inline animate-spin" size={12} /> : 'Join queue'}
               </button>

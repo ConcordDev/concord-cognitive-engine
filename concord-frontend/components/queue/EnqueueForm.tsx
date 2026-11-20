@@ -62,7 +62,7 @@ export function EnqueueForm({
           onKeyDown={(e) => e.key === 'Enter' && submit()}
           placeholder="Job name"
           aria-label="Job name"
-          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-zinc-600"
+          className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-lattice-muted"
         />
         <select
           value={queue}
@@ -83,7 +83,7 @@ export function EnqueueForm({
             onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder="Name your own queue (e.g. sandbox)"
             aria-label="New queue name"
-            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-zinc-600"
+            className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-sm text-white placeholder:text-lattice-muted"
           />
         )}
         <select
@@ -115,7 +115,7 @@ export function EnqueueForm({
           />
         </div>
       </div>
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-lattice-muted">
         Queues are yours alone: the built-in names (ingest, autocrawl, terminal) are your private copies,
         not the shared system queues, and a job you enqueue here never mixes with system work or anyone else&apos;s jobs.
       </p>
@@ -134,10 +134,10 @@ export function EnqueueForm({
               word anywhere — the reason now sits beside it while the
               name is blank (the worldmodel-003 pattern). */}
           {!name.trim() && (
-            <span role="note" className="text-xs text-zinc-500">Give the job a name to enqueue it.</span>
+            <span role="note" className="text-xs text-lattice-muted">Give the job a name to enqueue it.</span>
           )}
           {queue === '__new__' && !effectiveQueue && (
-            <span role="note" className="text-xs text-zinc-500">Name the new queue to enqueue into it.</span>
+            <span role="note" className="text-xs text-lattice-muted">Name the new queue to enqueue into it.</span>
           )}
           <button
             onClick={submit}

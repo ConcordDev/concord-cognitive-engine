@@ -91,7 +91,7 @@ export function VisiblePassPredictor() {
         <button
           onClick={locate}
           disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg"
         >
           {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
           Use my location
@@ -136,7 +136,7 @@ export function VisiblePassPredictor() {
                 </p>
                 <p className="text-[10px] text-zinc-400">start</p>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-zinc-600 shrink-0" />
+              <ArrowUpRight className="w-4 h-4 text-lattice-muted shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-zinc-300">
                   Peak {fmtTime(p.peakUtc)} · {Math.round(p.durationSeconds / 60)} min visible

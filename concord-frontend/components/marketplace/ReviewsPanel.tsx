@@ -56,7 +56,7 @@ function Stars({ value, onPick }: { value: number; onPick?: (n: number) => void 
           <Star
             className={cn(
               'w-3.5 h-3.5',
-              n <= value ? 'fill-amber-400 text-amber-400' : 'text-gray-600',
+              n <= value ? 'fill-amber-400 text-amber-400' : 'text-lattice-muted',
             )}
           />
         </button>

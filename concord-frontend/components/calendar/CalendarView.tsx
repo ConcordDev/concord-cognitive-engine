@@ -265,7 +265,7 @@ export function CalendarView({
       <div className="px-4 py-2 border-b border-lattice-border">
         <input value={eventQuery} onChange={(e) => setEventQuery(e.target.value)}
           placeholder="Search events by title" aria-label="Search events"
-          className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-500" />
+          className="w-full bg-lattice-surface border border-lattice-border rounded-lg px-3 py-2 text-sm text-white placeholder:text-lattice-muted" />
         {eventQuery.trim() && (
           <div className="mt-2 space-y-1">
             {eventMatches.length === 0 ? (

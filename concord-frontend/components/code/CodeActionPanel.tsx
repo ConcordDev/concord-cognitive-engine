@@ -257,9 +257,9 @@ export function CodeActionPanel() {
     { id: 'snapshot',   label: snapshotId      ? 'Snapshotted' : 'Commit',     desc: snapshotId      ? `id ${snapshotId.slice(0, 8)}…`      : 'commit-snapshot versioned',                  icon: GitCommit, accent: '#eab308', handler: actSnapshot },
     { id: 'snippet',    label: savedSnippetId  ? 'Snippet saved' : 'Save snippet', desc: savedSnippetId  ? `id ${savedSnippetId.slice(0, 8)}…`  : 'snippets-save named stash',              icon: Save,      accent: '#f97316', handler: actSnippet },
     { id: 'mint',       label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private review DTU',                         icon: Sparkles,  accent: '#3b82f6', handler: actMint },
-    { id: 'dm',         label: 'DM reviewer', desc: 'Send code + analysis to reviewer',   icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',         label: 'DM reviewer', desc: 'Send code + analysis to reviewer',   icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',    label: publishedDtuId ? 'Published' : 'Publish gist',  desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public gist DTU + federation',              icon: Globe,     accent: '#15803d', handler: actPublish },
-    { id: 'agent',      label: 'Refactor',    desc: 'Agent: 3 highest-leverage refactors', icon: Wand2,       accent: '#a855f7', handler: actAgent },
+    { id: 'agent',      label: 'Refactor',    desc: 'Agent: 3 highest-leverage refactors', icon: Wand2,       accent: '#c084fc', handler: actAgent },
   ];
 
   return (
@@ -340,7 +340,7 @@ export function CodeActionPanel() {
           <div className="text-[10px] uppercase tracking-wider text-zinc-400 font-semibold mb-1">Results — kept per action</div>
           <ul className="space-y-0.5">
             {keptActivity.map(a => (
-              <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-zinc-500 font-mono mr-1.5">{a.id}</span>{a.text}</li>
+              <li key={a.id} className="text-[11px] text-zinc-300"><span className="text-lattice-muted font-mono mr-1.5">{a.id}</span>{a.text}</li>
             ))}
           </ul>
         </div>

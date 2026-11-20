@@ -38,7 +38,7 @@ export function ConnectionStrip({ onRefreshExtra }: { onRefreshExtra?: () => voi
   if (!isDbAdmin) {
     // Honest, quiet state: nothing was read, so no status cards (they would claim "Disconnected"/"in-memory").
     return (
-      <p className="text-xs text-zinc-500" data-testid="db-status-admin-only">
+      <p className="text-xs text-lattice-muted" data-testid="db-status-admin-only">
         Storage, PostgreSQL and cache status are visible to workspace admins.
       </p>
     );

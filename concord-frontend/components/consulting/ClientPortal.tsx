@@ -177,7 +177,7 @@ export function ClientPortal({ engagements }: { engagements: EngagementOption[] 
               <button onClick={() => setRespondFor(null)} className="px-3 py-1.5 text-xs rounded bg-zinc-800 text-zinc-300 inline-flex items-center gap-1">
                 <X className="w-3 h-3" />Cancel
               </button>
-              <button onClick={respond} className="px-3 py-1.5 text-xs rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold inline-flex items-center gap-1">
+              <button onClick={respond} className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-semibold inline-flex items-center gap-1">
                 <Check className="w-3 h-3" />Record
               </button>
             </div>

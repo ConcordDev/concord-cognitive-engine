@@ -447,7 +447,7 @@ export default function PhotosLensPage() {
           className={`flex min-h-[22rem] flex-col items-center rounded-2xl border border-white/10 bg-zinc-950 px-6 ${phase === 'ready' && frames.length > 0 ? 'justify-start py-6' : 'justify-center py-16'}`}
         >
           {phase === 'loading' && (
-            <p data-testid="photos-loading" role="status" aria-busy="true" className="text-[14px] text-zinc-500">
+            <p data-testid="photos-loading" role="status" aria-busy="true" className="text-[14px] text-lattice-muted">
               Opening the frame.
             </p>
           )}
@@ -460,7 +460,7 @@ export default function PhotosLensPage() {
             </div>
           )}
           {phase === 'ready' && frames.length === 0 && (
-            <p data-testid="photos-empty" className="text-[14px] text-zinc-500">No frame yet.</p>
+            <p data-testid="photos-empty" className="text-[14px] text-lattice-muted">No frame yet.</p>
           )}
           {phase === 'ready' && frames.length > 0 && (
             <div className="w-full self-stretch">
@@ -495,7 +495,7 @@ export default function PhotosLensPage() {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search captions"
                   aria-label="Search captions"
-                  className="w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-zinc-600"
+                  className="w-48 rounded-full border border-white/10 bg-black/40 px-3 py-1 text-[13px] text-zinc-100 placeholder:text-lattice-muted"
                 />
               </div>
 
@@ -503,9 +503,9 @@ export default function PhotosLensPage() {
                 <div data-testid="photos-albums" className="mb-6">
                   <CreateAlbumForm onCreate={createAlbum} />
                   {albums === null ? (
-                    <p role="status" className="text-[13px] text-zinc-500">Loading albums.</p>
+                    <p role="status" className="text-[13px] text-lattice-muted">Loading albums.</p>
                   ) : albums.length === 0 ? (
-                    <p className="text-[13px] text-zinc-500">No albums yet. Create one, then add photos from any view.</p>
+                    <p className="text-[13px] text-lattice-muted">No albums yet. Create one, then add photos from any view.</p>
                   ) : (
                     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                       {albums.map((album) => (
@@ -515,10 +515,10 @@ export default function PhotosLensPage() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={`/api/photos/${album.cover_photo_id}/image`} alt="" className="aspect-square w-full object-cover" />
                             ) : (
-                              <div className="flex aspect-square w-full items-center justify-center text-[12px] text-zinc-600">Empty</div>
+                              <div className="flex aspect-square w-full items-center justify-center text-[12px] text-lattice-muted">Empty</div>
                             )}
                             <span className="block px-3 pt-2 text-[14px] text-zinc-100">{album.name}</span>
-                            <span className="block px-3 pb-2 text-[12px] text-zinc-500">{album.count} {album.count === 1 ? 'photo' : 'photos'}</span>
+                            <span className="block px-3 pb-2 text-[12px] text-lattice-muted">{album.count} {album.count === 1 ? 'photo' : 'photos'}</span>
                           </button>
                           <StickyDeleteConfirm
                             onConfirm={() => void deleteAlbum(album)}
@@ -538,12 +538,12 @@ export default function PhotosLensPage() {
                 <div className="mb-4 flex items-center gap-3 text-[13px]">
                   <button type="button" onClick={() => setOpenAlbum(null)} className="text-zinc-400 underline">All albums</button>
                   <span className="text-zinc-100">{openAlbum.album.name}</span>
-                  <span className="text-zinc-500">{openAlbum.ids.length} {openAlbum.ids.length === 1 ? 'photo' : 'photos'}</span>
+                  <span className="text-lattice-muted">{openAlbum.ids.length} {openAlbum.ids.length === 1 ? 'photo' : 'photos'}</span>
                 </div>
               )}
 
               {(view !== 'albums' || openAlbum) && visible.length === 0 && (
-                <p className="py-10 text-center text-[14px] text-zinc-500">
+                <p className="py-10 text-center text-[14px] text-lattice-muted">
                   {query.trim() ? 'No captions match.' : view === 'favorites' ? 'No favorites yet. Star a photo to keep it here.' : 'This album is empty. Add photos from All.'}
                 </p>
               )}
@@ -551,7 +551,7 @@ export default function PhotosLensPage() {
               <ul data-testid="photos-list" className="w-full space-y-6">
                 {groups.map((group) => (
                   <li key={group.label}>
-                    <h2 className="mb-2 text-[12px] uppercase tracking-wider text-zinc-500">{group.label}</h2>
+                    <h2 className="mb-2 text-[12px] uppercase tracking-wider text-lattice-muted">{group.label}</h2>
                     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                       {group.rows.map((frame) => {
                         const name = frame.caption || 'Untitled';
@@ -599,7 +599,7 @@ export default function PhotosLensPage() {
                               </>
                             )}
                             {frame.dtu_id ? (
-                              <p className="mt-1 truncate text-[11px] text-zinc-500">
+                              <p className="mt-1 truncate text-[11px] text-lattice-muted">
                                 DTU minted &middot; royalty active &middot;{' '}
                                 <code className="text-zinc-400">{frame.dtu_id}</code>
                               </p>
@@ -648,7 +648,7 @@ export default function PhotosLensPage() {
                               )}
                               {deleteConfirmId === frame.id ? (
                                 <span className="inline-flex items-center gap-2">
-                                  <span className="text-zinc-500">Delete &ldquo;{name}&rdquo;?</span>
+                                  <span className="text-lattice-muted">Delete &ldquo;{name}&rdquo;?</span>
                                   <button
                                     type="button"
                                     onClick={() => void remove(frame.id)}
@@ -671,7 +671,7 @@ export default function PhotosLensPage() {
                                   type="button"
                                   onClick={() => setDeleteConfirmId(frame.id)}
                                   aria-label={`Delete photo ${name}`}
-                                  className="text-zinc-500 underline"
+                                  className="text-lattice-muted underline"
                                 >
                                   Delete
                                 </button>
@@ -680,9 +680,9 @@ export default function PhotosLensPage() {
                             {albumMenuFor === frame.id && (
                               <div role="menu" aria-label="Albums" className="absolute left-2 right-2 top-full z-20 mt-1 rounded-lg border border-white/10 bg-zinc-900 p-1 text-[13px] shadow-lg">
                                 {albums === null ? (
-                                  <p role="status" className="px-2 py-1 text-zinc-500">Loading albums.</p>
+                                  <p role="status" className="px-2 py-1 text-lattice-muted">Loading albums.</p>
                                 ) : albums.length === 0 ? (
-                                  <p className="px-2 py-1 text-zinc-500">No albums. Create one in Albums.</p>
+                                  <p className="px-2 py-1 text-lattice-muted">No albums. Create one in Albums.</p>
                                 ) : albums.map((album) => (
                                   <button
                                     key={album.id}
@@ -761,7 +761,7 @@ function CreateAlbumForm({ onCreate }: { onCreate: (name: string) => Promise<boo
       <button type="submit" disabled={!name.trim()} className="rounded-lg bg-zinc-100 px-3 py-1.5 text-[13px] text-black disabled:opacity-40">
         Create album
       </button>
-      {touched && !name.trim() && <span className="self-center text-[11px] text-zinc-500">Name the album to create it.</span>}
+      {touched && !name.trim() && <span className="self-center text-[11px] text-lattice-muted">Name the album to create it.</span>}
     </form>
   );
 }

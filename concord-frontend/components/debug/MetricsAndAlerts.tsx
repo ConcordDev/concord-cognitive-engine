@@ -485,7 +485,7 @@ export function MetricsAndAlerts() {
           <button
             onClick={editingId ? saveRule : createRule}
             disabled={busy || !ruleForm.name.trim() || (ruleForm.kind === 'metric' && !ruleForm.metric.trim())}
-            className="px-3 py-1.5 text-xs rounded bg-neon-purple/15 border border-neon-purple/30 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-50 flex items-center justify-center gap-1 md:col-span-6"
+            className="px-3 py-1.5 text-xs rounded bg-neon-purple/15 border border-neon-purple/30 text-neon-purple-bright hover:bg-neon-purple/25 disabled:opacity-50 flex items-center justify-center gap-1 md:col-span-6"
           >
             <Plus className="w-3 h-3" /> {editingId ? 'Save changes' : 'Create Alert Rule'}
           </button>

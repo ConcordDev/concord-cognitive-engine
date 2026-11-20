@@ -238,7 +238,7 @@ export function AdvisoryActionMenu({ advisory, onClose }: { advisory: AdvisoryLi
 
   const panes: { id: PaneId; label: string; icon: React.ComponentType<{ className?: string }>; accent: string }[] = [
     { id: 'incident',   label: 'Incident',    icon: Sparkles,    accent: '#06b6d4' },
-    { id: 'escalate',   label: 'Escalate',    icon: Send,        accent: '#ec4899' },
+    { id: 'escalate',   label: 'Escalate',    icon: Send,        accent: '#f472b6' },
     { id: 'patch',      label: 'Patch plan',  icon: FileText,    accent: '#8b5cf6' },
     { id: 'postmortem', label: 'Post-mortem', icon: Globe,       accent: '#22c55e' },
     { id: 'agent',      label: 'Exposure',    icon: Wand2,       accent: '#eab308' },

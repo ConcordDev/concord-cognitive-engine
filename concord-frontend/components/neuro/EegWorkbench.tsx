@@ -440,7 +440,7 @@ export function EegWorkbench() {
           <span className="flex items-center gap-1">
             <input value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)} aria-label="New recording name" maxLength={120}
               className={cn(inputCls, 'w-auto min-w-[180px]')} />
-            <button type="button" onClick={() => doRename(activeId)} disabled={!!busy} className="rounded-md bg-emerald-600 px-2 py-1.5 text-white hover:bg-emerald-500 disabled:opacity-40">Save</button>
+            <button type="button" onClick={() => doRename(activeId)} disabled={!!busy} className="rounded-md bg-emerald-700 px-2 py-1.5 text-white hover:bg-emerald-600 disabled:opacity-40">Save</button>
             <button type="button" onClick={() => setRenameDraft(null)} className="rounded-md bg-zinc-800 px-2 py-1.5 text-zinc-300">Cancel</button>
           </span>
         )}

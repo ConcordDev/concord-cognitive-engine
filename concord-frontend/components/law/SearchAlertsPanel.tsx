@@ -130,7 +130,7 @@ export function SearchAlertsPanel() {
           <Plus className="w-3 h-3" />Save a search
         </button>
       </div>
-      <p className="text-[10px] text-gray-500 mb-3">
+      <p className="text-[10px] text-lattice-muted mb-3">
         Checked on demand only — click &quot;Check now&quot; on an alert to re-run its search. There is no
         automatic background checking and no push/email notification; nothing arrives on its own.
       </p>
@@ -226,14 +226,14 @@ export function SearchAlertsPanel() {
                   </button>
                   <button
                     onClick={() => void remove(a.id)}
-                    className="p-1 rounded text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 shrink-0"
+                    className="p-1 rounded text-lattice-muted hover:text-rose-400 hover:bg-rose-500/10 shrink-0"
                     title="Remove alert"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <div className="mt-1 pl-5 text-[9px] text-gray-500">
+                <div className="mt-1 pl-5 text-[9px] text-lattice-muted">
                   {a.neverChecked
                     ? 'Never checked yet.'
                     : `Last checked ${a.hoursSinceLastCheck === 0 ? 'just now' : `${a.hoursSinceLastCheck}h ago`} · ${a.lastCheckTotalResults ?? 0} result${a.lastCheckTotalResults === 1 ? '' : 's'} on file`}
@@ -261,7 +261,7 @@ export function SearchAlertsPanel() {
                             </li>
                           ))}
                           {result.newResults.length > 5 && (
-                            <li className="text-gray-500">…and {result.newResults.length - 5} more.</li>
+                            <li className="text-lattice-muted">…and {result.newResults.length - 5} more.</li>
                           )}
                         </ul>
                       </>

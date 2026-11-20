@@ -140,7 +140,7 @@ export function ArtistryNotifications() {
                   <button
                     onClick={() => markRead(n.id)}
                     aria-label="Mark read"
-                    className="w-5 h-5 rounded-full bg-neon-pink/20 hover:bg-neon-pink/40 text-neon-pink flex items-center justify-center shrink-0"
+                    className="w-5 h-5 rounded-full bg-neon-pink/20 hover:bg-neon-pink/40 text-neon-pink-bright flex items-center justify-center shrink-0"
                   >
                     <Check className="w-3 h-3" />
                   </button>

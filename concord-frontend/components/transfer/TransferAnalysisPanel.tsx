@@ -159,7 +159,7 @@ export function TransferAnalysisPanel() {
             { key: 'migration', label: 'Migration Plan', icon: Workflow },
           ] as const).map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${tab === t.key ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white'}`}>
+              className={`flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors ${tab === t.key ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white'}`}>
               <t.icon className="w-3.5 h-3.5" /> {t.label}
             </button>
           ))}

@@ -204,7 +204,7 @@ export function RoyaltyFlowCard({ topCited = [] }: RoyaltyFlowCardProps) {
                       <span className="w-20 shrink-0 text-right text-emerald-300 font-mono">
                         +{h.amount.toFixed(2)} CC
                       </span>
-                      <span className="w-20 shrink-0 text-right text-gray-500 font-mono">
+                      <span className="w-20 shrink-0 text-right text-lattice-muted font-mono">
                         {h.createdAt.slice(0, 10)}
                       </span>
                     </li>
@@ -218,7 +218,7 @@ export function RoyaltyFlowCard({ topCited = [] }: RoyaltyFlowCardProps) {
             <div>
               <h3 className="text-[11px] text-gray-400 uppercase tracking-wider mb-1.5 inline-flex items-center gap-1">
                 <GitBranch className="w-3 h-3" /> Real ancestor chain
-                {hops.length === 0 && <span className="normal-case text-gray-500">— no sales of this DTU yet</span>}
+                {hops.length === 0 && <span className="normal-case text-lattice-muted">— no sales of this DTU yet</span>}
               </h3>
               <ol className="space-y-1">
                 {lineage.map((a) => (
@@ -231,7 +231,7 @@ export function RoyaltyFlowCard({ topCited = [] }: RoyaltyFlowCardProps) {
                   </li>
                 ))}
               </ol>
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-[10px] text-lattice-muted mt-1">
                 This is the real citation lineage (same chain the royalty payout engine
                 itself walks) — it shows who would earn what if this DTU sells, even
                 before any sale has happened.

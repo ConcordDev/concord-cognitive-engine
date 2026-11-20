@@ -94,8 +94,8 @@ export function EnergyUsagePanel({ onChange }: { onChange: () => void }) {
           <ResponsiveContainer width="100%" height={150}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#71717a' }} interval="preserveStartEnd" minTickGap={30} />
-              <YAxis tick={{ fontSize: 9, fill: '#71717a' }} width={30} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: '#a1a1aa' }} interval="preserveStartEnd" minTickGap={30} />
+              <YAxis tick={{ fontSize: 9, fill: '#a1a1aa' }} width={30} />
               <Tooltip contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, fontSize: 11 }} />
               <Bar dataKey="kwh" fill="#a3e635" radius={[2, 2, 0, 0]} />
             </BarChart>

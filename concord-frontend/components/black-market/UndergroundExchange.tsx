@@ -634,7 +634,7 @@ export function UndergroundExchange() {
                           <button
                             onClick={() => void acceptHaggle(a)}
                             disabled={busy === `haggle-accept-${a.id}`}
-                            className="mt-1 rounded bg-emerald-600/80 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                            className="mt-1 rounded bg-emerald-700/80 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
                           >
                             Accept deal at {hag.agreedPrice} sparks
                           </button>
@@ -964,7 +964,7 @@ export function UndergroundExchange() {
                         if (w) void saveWatchEdit(w);
                       }}
                       disabled={busy === `edit-watch-${editWatchId}`}
-                      className="rounded bg-teal-600/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
+                      className="rounded bg-teal-700/80 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
                     >
                       Save
                     </button>

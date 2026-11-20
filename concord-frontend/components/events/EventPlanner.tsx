@@ -189,7 +189,7 @@ export function EventPlanner() {
               {active.tasks.map(t => (
                 <div key={t.id} className="group flex items-center gap-2 text-xs py-0.5">
                   <button onClick={() => toggleTask(t.id)}
-                    className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0', t.done ? 'bg-emerald-600 text-white' : 'border border-zinc-600')}>
+                    className={cn('w-4 h-4 rounded flex items-center justify-center shrink-0', t.done ? 'bg-emerald-700 text-white' : 'border border-zinc-600')}>
                     {t.done && <Check className="w-3 h-3" />}
                   </button>
                   <span className={cn('flex-1', t.done ? 'text-zinc-400 line-through' : 'text-zinc-200')}>{t.title}</span>

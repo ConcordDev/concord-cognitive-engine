@@ -94,7 +94,7 @@ export function SnapshotModal({ onClose, onRecorded }: { onClose: () => void; on
           type="button"
           onClick={submit}
           disabled={busy}
-          className="mt-4 w-full py-2.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+          className="mt-4 w-full py-2.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {busy ? 'Recording…' : 'Record snapshot'}

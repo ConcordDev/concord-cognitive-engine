@@ -79,7 +79,7 @@ export function TradePanel() {
         <span className="text-sm font-semibold text-gray-200">Limit orders</span>
         <span className="text-[10px] text-gray-400">{open.length} open</span>
         <button type="button" onClick={checkFills} disabled={checking || open.length === 0}
-          className="ml-auto px-2.5 py-1 text-[11px] rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+          className="ml-auto px-2.5 py-1 text-[11px] rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           {checking ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}Check fills
         </button>
       </header>
@@ -97,7 +97,7 @@ export function TradePanel() {
         <input value={form.limitPriceUsd} onChange={(e) => setForm({ ...form, limitPriceUsd: e.target.value })}
           inputMode="decimal" placeholder="limit $" className="px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
         <button type="button" onClick={create}
-          className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 inline-flex items-center justify-center gap-1">
+          className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 inline-flex items-center justify-center gap-1">
           <Plus className="w-3 h-3" />Place
         </button>
       </div>
@@ -281,7 +281,7 @@ export function PerformanceCard() {
         <TrendingUp className="w-4 h-4 text-blue-400" />
         <span className="text-sm font-semibold text-gray-200">Performance</span>
         <button type="button" onClick={capture} disabled={capturing}
-          className="ml-auto px-2.5 py-1 text-[11px] rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
+          className="ml-auto px-2.5 py-1 text-[11px] rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center gap-1">
           {capturing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}Capture snapshot
         </button>
       </header>
@@ -390,7 +390,7 @@ export function WalletsPanel() {
             {WALLET_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
           <button type="button" onClick={addWallet}
-            className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
+            className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
             <Plus className="w-3 h-3" />Add
           </button>
         </div>
@@ -456,7 +456,7 @@ export function WalletsPanel() {
               inputMode="decimal" placeholder="network fee $ (optional)"
               className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white" />
             <button type="button" onClick={send}
-              className="px-3 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
+              className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 inline-flex items-center gap-1">
               <Check className="w-3 h-3" />Send
             </button>
           </div>

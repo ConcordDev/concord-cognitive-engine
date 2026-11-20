@@ -163,7 +163,7 @@ export function WalletActionPanel() {
     { id: 'budget' as ActionId, label: 'Budget', desc: 'budgetCheck on track?', icon: AlertCircle, accent: '#f97316', handler: actBudget },
     { id: 'trend' as ActionId, label: 'Trend', desc: 'spendingTrend direction', icon: TrendingUp, accent: '#8b5cf6', handler: actTrend },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private wallet DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send snapshot to advisor', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send snapshot to advisor', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized spending insight DTU', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Rebalance', desc: 'Agent: single rebalance move', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

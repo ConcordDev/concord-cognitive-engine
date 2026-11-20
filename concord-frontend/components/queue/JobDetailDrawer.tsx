@@ -162,7 +162,7 @@ export function JobDetailDrawer({
                       {e.kind}
                     </span>
                     <span className="flex-1 text-zinc-300">{e.message}</span>
-                    <span className="text-zinc-600">{new Date(e.at).toLocaleTimeString()}</span>
+                    <span className="text-lattice-muted">{new Date(e.at).toLocaleTimeString()}</span>
                   </div>
                 ))
             )}

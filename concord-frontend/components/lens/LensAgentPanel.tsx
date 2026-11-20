@@ -137,7 +137,7 @@ function providerBadge(provider: string | undefined, model: string | undefined):
   const labels: Record<string, string> = { anthropic: 'Claude', openai: 'GPT', xai: 'Grok', google: 'Gemini' };
   const colors: Record<string, string> = {
     anthropic: 'bg-orange-600/85 text-orange-50',
-    openai: 'bg-emerald-600/85 text-emerald-50',
+    openai: 'bg-emerald-700/85 text-emerald-50',
     xai: 'bg-zinc-700 text-zinc-100',
     google: 'bg-blue-600/85 text-blue-50',
   };

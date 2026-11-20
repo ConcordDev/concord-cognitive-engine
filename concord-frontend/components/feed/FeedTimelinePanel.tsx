@@ -199,7 +199,7 @@ function ReleaseCard({ release }: { release: ReleaseAttachment }) {
         </div>
         <div className="flex-1 p-3 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-neon-pink bg-neon-pink/10 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neon-pink-bright bg-neon-pink/10 px-2 py-0.5 rounded-full">
               New Release
             </span>
           </div>
@@ -924,7 +924,7 @@ export function FeedTimelinePanel({
                   </button>
                   <button
                     onClick={() => handleComposeHint('Link DTU')}
-                    className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple"
+                    className="p-2 rounded-full hover:bg-neon-purple/10 transition-colors text-neon-purple-bright"
                     title="Link DTU"
                   >
                     <Tag className="w-5 h-5" />

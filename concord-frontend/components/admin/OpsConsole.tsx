@@ -675,7 +675,7 @@ function TenantPanel() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-xs font-mono text-zinc-100 truncate">{t.userId}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/15 text-neon-purple">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/15 text-neon-purple-bright">
                     {t.role}
                   </span>
                   {t.suspended && (

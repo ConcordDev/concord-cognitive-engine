@@ -201,7 +201,7 @@ export function SpatialDiagnostics() {
             onClick={() => setTool(t.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm',
-              tool === t.id ? 'bg-neon-purple/20 text-neon-purple' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
+              tool === t.id ? 'bg-neon-purple/20 text-neon-purple-bright' : 'text-gray-400 hover:text-white hover:bg-lattice-elevated',
             )}
           >
             <t.icon className="w-4 h-4" /> {t.label}

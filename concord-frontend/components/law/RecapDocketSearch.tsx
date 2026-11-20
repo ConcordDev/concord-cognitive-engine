@@ -112,7 +112,7 @@ function DocumentRow({ doc }: { doc: RecapDocument }) {
     <div className="flex items-center justify-between gap-2 rounded border border-white/5 bg-black/20 px-2 py-1.5">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-xs text-gray-200">
-          <FileText className="h-3 w-3 shrink-0 text-gray-500" />
+          <FileText className="h-3 w-3 shrink-0 text-lattice-muted" />
           <span className="truncate">
             {doc.documentNumber != null && <span className="mr-1 font-mono text-gray-400">#{doc.documentNumber}{doc.attachmentNumber ? `-${doc.attachmentNumber}` : ''}</span>}
             {doc.description || 'Untitled filing'}
@@ -165,7 +165,7 @@ function DocketCard({ hit }: { hit: DocketHit }) {
             {hit.dateFiled && (
               <span className="flex items-center gap-1"><Calendar className="h-2.5 w-2.5" />filed {hit.dateFiled}</span>
             )}
-            {hit.dateTerminated && <span className="text-zinc-500">terminated {hit.dateTerminated}</span>}
+            {hit.dateTerminated && <span className="text-lattice-muted">terminated {hit.dateTerminated}</span>}
             {hit.assignedTo && <span>Judge: {hit.assignedTo}</span>}
             {hit.suitNature && (
               <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-zinc-400">{hit.suitNature}</span>
@@ -178,7 +178,7 @@ function DocketCard({ hit }: { hit: DocketHit }) {
                 <DocumentRow key={doc.id ?? i} doc={doc} />
               ))}
               {docsFeedback.status === 'dispatched' && (
-                <p className="flex items-center gap-1.5 text-[10px] text-zinc-500"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Loading full filing list…</p>
+                <p className="flex items-center gap-1.5 text-[10px] text-lattice-muted"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Loading full filing list…</p>
               )}
               {docsFeedback.status === 'error' && (
                 <p className="text-[10px] text-rose-400">{docsFeedback.error}</p>
@@ -374,7 +374,7 @@ export function RecapDocketSearch() {
           {result.results.map((hit) => (
             <DocketCard key={hit.docketId ?? `${hit.caseName}-${hit.docketNumber}`} hit={hit} />
           ))}
-          <p className="text-[10px] text-zinc-500">{result.disclosure}</p>
+          <p className="text-[10px] text-lattice-muted">{result.disclosure}</p>
         </div>
       )}
     </div>

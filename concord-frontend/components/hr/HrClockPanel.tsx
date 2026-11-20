@@ -77,7 +77,7 @@ export function HrClockPanel() {
         <input placeholder="Shift note (optional)" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}
           className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
         <button type="button" onClick={clockIn}
-          className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">
+          className="flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg px-2 py-1.5">
           <LogIn className="w-3.5 h-3.5" /> Clock in
         </button>
       </div>

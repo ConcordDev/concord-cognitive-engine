@@ -506,7 +506,7 @@ export function MoodTracker() {
       {/* Streak header */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="panel p-4 flex items-center gap-3">
-          <Flame className={`w-7 h-7 ${streak > 0 ? 'text-orange-400' : 'text-gray-600'}`} />
+          <Flame className={`w-7 h-7 ${streak > 0 ? 'text-orange-400' : 'text-lattice-muted'}`} />
           <div>
             <p className="text-2xl font-bold font-mono">{streak}</p>
             <p className="text-xs text-gray-400">day streak</p>
@@ -548,7 +548,7 @@ export function MoodTracker() {
             onClick={() => setSubTab(t.id)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
               subTab === t.id
-                ? 'bg-neon-pink/15 text-neon-pink border border-neon-pink/30'
+                ? 'bg-neon-pink/15 text-neon-pink-bright border border-neon-pink/30'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
             }`}
           >
@@ -656,7 +656,7 @@ export function MoodTracker() {
                     }
                     className={`text-xs px-2 py-1 rounded-lg border text-left max-w-xs ${
                       selectedPrompt?.id === p.id
-                        ? 'border-neon-purple bg-neon-purple/10 text-neon-purple'
+                        ? 'border-neon-purple bg-neon-purple/10 text-neon-purple-bright'
                         : 'border-gray-700/50 text-gray-400 hover:border-gray-500'
                     }`}
                   >
@@ -716,7 +716,7 @@ export function MoodTracker() {
                           aria-label={`Set mood to ${p.label}`}
                           className={`text-xs px-2 py-1 rounded-lg border ${
                             editMood === p.value
-                              ? 'border-neon-purple bg-neon-purple/10 text-neon-purple'
+                              ? 'border-neon-purple bg-neon-purple/10 text-neon-purple-bright'
                               : 'border-gray-700/50 text-gray-400 hover:border-gray-500'
                           }`}
                         >
@@ -1130,7 +1130,7 @@ export function MoodTracker() {
               Customizable Mood Scale
             </h3>
             {isCustomScale && (
-              <span className="text-xs bg-neon-purple/15 text-neon-purple px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-neon-purple/15 text-neon-purple-bright px-2 py-0.5 rounded-full">
                 Custom
               </span>
             )}

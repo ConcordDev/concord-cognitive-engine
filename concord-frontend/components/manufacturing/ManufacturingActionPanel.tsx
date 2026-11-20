@@ -175,7 +175,7 @@ export function ManufacturingActionPanel() {
     { id: 'safe' as ActionId, label: 'Safety', desc: 'OSHA TRIR', icon: ShieldAlert, accent: '#ef4444', handler: actSafe },
     { id: 'sched' as ActionId, label: 'Schedule', desc: 'scheduleOptimize', icon: Calendar, accent: '#06b6d4', handler: actSched },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private shift DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shift brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shift brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anon OEE benchmark', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Lever', desc: 'Agent: top OEE lever', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

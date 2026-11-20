@@ -178,7 +178,7 @@ export function PactCard({ pact, onChanged }: PactCardProps) {
 
       {pact.status === 'revoked' && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/5 pt-2">
-          <span className="text-[11px] text-zinc-500">This pact is revoked and closed.</span>
+          <span className="text-[11px] text-lattice-muted">This pact is revoked and closed.</span>
           <StickyDeleteConfirm
             disabled={busy}
             onConfirm={() => run('pact-remove', { pactId: pact.id }, 'Pact removed.')}

@@ -118,7 +118,7 @@ export function DrawingsPanel({ designId, drawings, model3d, assembly = null, wo
             )}
           </div>
           {modelError && <p role="alert" className="text-xs text-rose-300">Model not loaded: {modelError}</p>}
-          <p className="text-[11px] leading-relaxed text-slate-500">
+          <p className="text-[11px] leading-relaxed text-slate-400">
             {model3d.triangles != null && <span className="text-slate-400">{model3d.triangles.toLocaleString()} triangles · </span>}
             {model3d.source}
           </p>

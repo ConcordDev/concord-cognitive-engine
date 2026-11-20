@@ -24,11 +24,11 @@ export function UnbuiltEnginePanel({ engine }: { engine: FrontierEngineDef }) {
     <div className="space-y-8">
       <section className="border-l-2 border-l-slate-600 pl-4 py-3" aria-label="Panel not built yet">
         <div className="flex items-baseline gap-2 mb-2">
-          <span className={cn(ds.monoXs, 'text-gray-500 select-none')}>—</span>
+          <span className={cn(ds.monoXs, 'text-lattice-muted select-none')}>—</span>
           <h3 className={cn(ds.heading3, 'text-sm')}>Panel not built yet</h3>
         </div>
         <div className="flex items-start gap-3 rounded-lg border border-lattice-border bg-lattice-surface p-4">
-          <Wrench className="w-5 h-5 mt-0.5 shrink-0 text-gray-500" aria-hidden="true" />
+          <Wrench className="w-5 h-5 mt-0.5 shrink-0 text-lattice-muted" aria-hidden="true" />
           <div className="space-y-2">
             <p className={cn(ds.textBody)}>
               <strong>{engine.name}</strong> ({engine.wave}) is a real backend engine —

@@ -44,25 +44,25 @@ export function ProjectsPanel() {
               <div key={c.id} className="bg-lattice-surface border border-lattice-border rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm font-semibold text-gray-100">{c.name}</span>
-                  <span className="text-[10px] text-gray-500">{c.engine}</span>
+                  <span className="text-[10px] text-lattice-muted">{c.engine}</span>
                   <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded ${c.readOnly ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
                     {c.readOnly ? 'read-only' : 'writable'}
                   </span>
                 </div>
                 {mine.length === 0 ? (
-                  <p className="text-[11px] text-gray-500">No datasets in this project yet.</p>
+                  <p className="text-[11px] text-lattice-muted">No datasets in this project yet.</p>
                 ) : (
                   <div className="space-y-1">
                     {mine.map((t) => (
                       <p key={t.datasetId} className="text-[11px] text-gray-300 flex items-center gap-2">
                         <span className="font-mono font-medium">{t.name}</span>
-                        <span className="text-gray-500">{t.columns.length} columns · {t.rowCount} rows · {formatBytes(t.sizeBytes || 0)}</span>
+                        <span className="text-lattice-muted">{t.columns.length} columns · {t.rowCount} rows · {formatBytes(t.sizeBytes || 0)}</span>
                       </p>
                     ))}
                   </div>
                 )}
-                <p className="text-[10px] text-gray-500 mt-2">{mine.length} dataset(s) · {rows} row(s) total</p>
-                {bytes > 0 && <p className="text-[10px] text-gray-600">{formatBytes(bytes)} of row data</p>}
+                <p className="text-[10px] text-lattice-muted mt-2">{mine.length} dataset(s) · {rows} row(s) total</p>
+                {bytes > 0 && <p className="text-[10px] text-lattice-muted">{formatBytes(bytes)} of row data</p>}
               </div>
             );
           })}

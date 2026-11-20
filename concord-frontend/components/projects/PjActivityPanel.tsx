@@ -99,7 +99,7 @@ export function PjActivityPanel({ projectId }: { projectId: string }) {
                     {r.meta?.issuesDone}/{r.meta?.issuesTotal} issues · {r.meta?.pointsDone}/{r.meta?.pointsTotal} points
                     {(r.meta?.carriedOver || 0) > 0 && <> · {r.meta?.carriedOver} carried over</>}
                   </p>
-                  <p className="text-[10px] text-gray-500 tabular-nums">{new Date(r.at).toLocaleString()}</p>
+                  <p className="text-[10px] text-lattice-muted tabular-nums">{new Date(r.at).toLocaleString()}</p>
                 </div>
                 <span aria-hidden="true" className="shrink-0 border-2 border-emerald-500/70 text-emerald-300 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider -rotate-6">
                   {r.meta?.settledInFull ? 'Settled in full' : 'Settled'}
@@ -116,7 +116,7 @@ export function PjActivityPanel({ projectId }: { projectId: string }) {
               <ul className="space-y-1">
                 {g.events.map((e) => (
                   <li key={e.id} className="flex items-baseline gap-2 text-[11px] text-gray-400">
-                    <span className="text-gray-500 tabular-nums shrink-0">{new Date(e.at).toLocaleString()}</span>
+                    <span className="text-lattice-muted tabular-nums shrink-0">{new Date(e.at).toLocaleString()}</span>
                     <span className="text-gray-300">{e.action}</span>
                     {e.detail && <span className="truncate">{e.detail}</span>}
                   </li>

@@ -240,7 +240,7 @@ export function ArticleDetailModal({ onMutated }: { onMutated?: () => void } = {
             </button>
             <button type="button" disabled={busy === 'save'} onClick={toggleSave}
               className={cn('flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium disabled:opacity-40',
-                article.saved ? 'bg-amber-600 text-white hover:bg-amber-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
+                article.saved ? 'bg-amber-700 text-white hover:bg-amber-500' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
               <Bookmark className={cn('h-3.5 w-3.5', article.saved && 'fill-current')} /> {article.saved ? 'Saved' : 'Save'}
             </button>
             <button type="button" disabled={busy === 'more'} onClick={() => react('more')}

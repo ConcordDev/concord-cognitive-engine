@@ -258,7 +258,7 @@ export function FoundryWorldsPanel() {
                     ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     : 'Unpublish'}
                 </button>
-                <span className="text-[10px] text-slate-500">Unpublish to delete</span>
+                <span className="text-[10px] text-slate-400">Unpublish to delete</span>
               </>
             )}
             <StickyDeleteConfirm

@@ -243,7 +243,7 @@ export function ActivityActionPanel() {
     { id: 'risk',    label: 'Injury risk',   desc: 'Load + recovery factors',                     icon: AlertTriangle, accent: '#ef4444', handler: actRisk },
     { id: 'team',    label: 'Team',          desc: 'Roster analysis (paste players)',             icon: Users,         accent: '#8b5cf6', handler: actTeam },
     { id: 'mint',    label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private snapshot DTU',                       icon: Sparkles, accent: '#3b82f6', handler: actMint,    disabled: !!mintedDtuId },
-    { id: 'dm',      label: 'DM coach',      desc: 'Snapshot + risk + trend to coach user',       icon: Send,          accent: '#ec4899', handler: actDm },
+    { id: 'dm',      label: 'DM coach',      desc: 'Snapshot + risk + trend to coach user',       icon: Send,          accent: '#f472b6', handler: actDm },
     { id: 'publish', label: publishedDtuId ? 'Published' : 'Publish report', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public race report + federation',           icon: Globe,    accent: '#15803d', handler: actPublish, disabled: !!publishedDtuId },
     { id: 'agent',   label: 'Race plan',     desc: 'Agent drafts race-day plan',                  icon: Wand2,         accent: '#eab308', handler: actAgent },
   ];

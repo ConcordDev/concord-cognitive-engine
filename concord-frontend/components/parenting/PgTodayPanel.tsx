@@ -104,7 +104,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => logDiaper('wet')}
-            className="px-2.5 py-1.5 text-xs bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Wet diaper</button>
+            className="px-2.5 py-1.5 text-xs bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Wet diaper</button>
           <button type="button" onClick={() => logDiaper('dirty')}
             className="px-2.5 py-1.5 text-xs bg-amber-700 hover:bg-amber-600 text-white rounded-lg">Dirty diaper</button>
           <button type="button" onClick={() => logDiaper('mixed')}
@@ -114,7 +114,7 @@ export function PgTodayPanel({ childId }: { childId: string }) {
           <input placeholder="Medicine name" value={medName} onChange={(e) => setMedName(e.target.value)}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={logMed}
-            className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Log medicine</button>
+            className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Log medicine</button>
         </div>
       </section>
 

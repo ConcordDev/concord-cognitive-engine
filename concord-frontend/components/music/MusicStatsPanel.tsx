@@ -187,7 +187,7 @@ export function MusicStatsPanel({ onChange }: { onChange: () => void }) {
           <input value={followName} onChange={(e) => setFollowName(e.target.value)} placeholder="Follow an artist…"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={follow}
-            className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Follow</button>
+            className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Follow</button>
         </div>
         {artists.length > 0 && (
           <div className="flex flex-wrap gap-1.5">

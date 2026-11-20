@@ -809,7 +809,7 @@ export function CryptoWalletWorkspace() {
                   title={`${tab.label} (${tab.keys})`}
                   className={cn(
                     'inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-1.5 text-[14px] transition-colors',
-                    on ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200',
+                    on ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200',
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -840,9 +840,9 @@ export function CryptoWalletWorkspace() {
                 </div>
                 {chains.length === 0 ? (
                   <div className="text-center py-8">
-                    <Coins className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                    <Coins className="w-12 h-12 mx-auto mb-3 text-lattice-muted" />
                     <p className="text-gray-400">No chains configured.</p>
-                    <p className="text-sm text-gray-600 mt-1">Add a chain to start tracking your portfolio.</p>
+                    <p className="text-sm text-lattice-muted mt-1">Add a chain to start tracking your portfolio.</p>
                     <button
                       onClick={() => setShowAddChain(true)}
                       className="mt-3 btn-neon green text-sm"
@@ -918,7 +918,7 @@ export function CryptoWalletWorkspace() {
                       <button
                         onClick={handleSpend}
                         disabled={transacting || !selectedChainData || (selectedChainData?.balance ?? 0) < 5}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-neon-pink/20 text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-neon-pink/20 text-neon-pink-bright border border-neon-pink/30 hover:bg-neon-pink/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <ArrowUpRight className="w-4 h-4" />
                         Spend 5 {selectedChainData?.symbol || 'CC'}
@@ -1043,9 +1043,9 @@ export function CryptoWalletWorkspace() {
                 </h2>
                 {filteredTransactions.length === 0 ? (
                   <div className="text-center py-8">
-                    <ArrowRightLeft className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                    <ArrowRightLeft className="w-12 h-12 mx-auto mb-3 text-lattice-muted" />
                     <p className="text-gray-400">No transactions found.</p>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-lattice-muted mt-1">
                       {txFilter !== 'all' ? 'Try changing the filter or ' : ''}Start by earning some tokens.
                     </p>
                   </div>
@@ -1102,9 +1102,9 @@ export function CryptoWalletWorkspace() {
 
               {wallets.length === 0 ? (
                 <div className="panel p-8 text-center">
-                  <Wallet className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+                  <Wallet className="w-12 h-12 mx-auto mb-3 text-lattice-muted" />
                   <p className="text-gray-400">No wallets configured.</p>
-                  <p className="text-sm text-gray-600 mt-1">Add a wallet to manage your addresses.</p>
+                  <p className="text-sm text-lattice-muted mt-1">Add a wallet to manage your addresses.</p>
                   <button
                     onClick={() => setShowAddWallet(true)}
                     className="mt-3 btn-neon green text-sm"
@@ -1186,7 +1186,7 @@ export function CryptoWalletWorkspace() {
                           </button>
                           <button
                             onClick={() => handleDeleteWallet(wallet.id)}
-                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink hover:bg-neon-pink/10'}`}
+                            className={`p-2 transition-colors rounded-lg ${confirmDeleteWalletId === wallet.id ? 'text-rose-200 bg-rose-500/25' : 'text-gray-400 hover:text-neon-pink-bright hover:bg-neon-pink/10'}`}
                             type="button"
                             aria-label={confirmDeleteWalletId === wallet.id ? 'Confirm remove wallet' : 'Remove wallet'}
                             title={confirmDeleteWalletId === wallet.id ? 'Click again to confirm removal' : 'Remove wallet'}

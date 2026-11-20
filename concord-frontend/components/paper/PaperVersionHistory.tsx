@@ -105,7 +105,7 @@ export function PaperVersionHistory({ paperId, currentContent }: { paperId: stri
           placeholder="Label (optional) — e.g. 'After reviewer feedback'"
           className="flex-1 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-[11px] text-zinc-200" />
         <button onClick={saveSnapshot} disabled={saving || !currentContent.trim()}
-          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">
+          className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold disabled:opacity-40">
           {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}Save snapshot
         </button>
       </div>

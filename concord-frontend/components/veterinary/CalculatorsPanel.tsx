@@ -305,7 +305,7 @@ function WeightCalc({ chart }: { chart: { patients: ChartPatient[]; loadError: s
         <button
           onClick={run}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-1 rounded bg-emerald-600 px-2 py-1.5 text-xs text-white hover:bg-emerald-500 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1 rounded bg-emerald-700 px-2 py-1.5 text-xs text-white hover:bg-emerald-600 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Scale className="h-3 w-3" />}
           Check
@@ -472,7 +472,7 @@ function CostCalc() {
         <button
           onClick={run}
           disabled={busy}
-          className="flex w-full items-center justify-center gap-1 rounded bg-amber-600 px-2 py-1.5 text-xs text-white hover:bg-amber-500 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-1 rounded bg-amber-700 px-2 py-1.5 text-xs text-white hover:bg-amber-500 disabled:opacity-50"
         >
           {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Calculator className="h-3 w-3" />}
           Estimate

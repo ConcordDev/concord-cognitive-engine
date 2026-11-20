@@ -171,7 +171,7 @@ export default function AnomaliesPage() {
           <button
             onClick={() => fetchWorld(worldId)}
             disabled={!worldId || loading}
-            className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-500 text-sm disabled:opacity-50"
+            className="px-4 py-2 bg-cyan-700 text-white rounded hover:bg-cyan-500 text-sm disabled:opacity-50"
           >
             {loading ? 'Loading…' : 'Load'}
           </button>

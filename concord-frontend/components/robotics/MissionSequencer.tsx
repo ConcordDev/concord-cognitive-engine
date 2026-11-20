@@ -17,7 +17,7 @@ const STEP_ICON: Record<string, typeof Circle> = {
 };
 const STEP_COLOR: Record<string, string> = {
   pending: 'text-gray-400', complete: 'text-green-400', failed: 'text-red-400',
-  aborted: 'text-gray-600', running: 'text-neon-cyan',
+  aborted: 'text-lattice-muted', running: 'text-neon-cyan',
 };
 const MISSION_COLOR: Record<string, string> = {
   queued: 'text-yellow-400', running: 'text-neon-cyan', complete: 'text-green-400', failed: 'text-red-400',

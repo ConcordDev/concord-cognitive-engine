@@ -229,9 +229,9 @@ export function FinanceActionPanel() {
     { id: 'mc',       label: 'Retire MC',  desc: 'Retirement projection, 10,000 simulated paths', icon: Briefcase,   accent: '#8b5cf6', handler: actMc },
     { id: 'subs',     label: 'Subs',       desc: 'Find recurring subscriptions',                icon: DollarSign,  accent: '#f97316', handler: actSubs },
     { id: 'mint',     label: mintedDtuId      ? 'Saved'     : 'Mint',         desc: mintedDtuId      ? `DTU ${mintedDtuId.slice(0, 8)}…`     : 'Private finance DTU',                       icon: Sparkles,    accent: '#3b82f6', handler: actMint },
-    { id: 'dm',       label: 'DM',         desc: 'Send finance summary',                        icon: Send,        accent: '#ec4899', handler: actDm },
+    { id: 'dm',       label: 'DM',         desc: 'Send finance summary',                        icon: Send,        accent: '#f472b6', handler: actDm },
     { id: 'publish',  label: publishedDtuId ? 'Published' : 'Publish MC',    desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Anonymized retirement scenario DTU',           icon: Globe,       accent: '#15803d', handler: actPublish, disabled: !mcResult },
-    { id: 'agent',    label: 'Top move',   desc: 'Agent: highest-leverage move this month',     icon: Wand2,       accent: '#a855f7', handler: actAgent },
+    { id: 'agent',    label: 'Top move',   desc: 'Agent: highest-leverage move this month',     icon: Wand2,       accent: '#c084fc', handler: actAgent },
   ];
 
   return (

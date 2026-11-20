@@ -18,7 +18,7 @@ export function WatchlistPanel() {
         <div className="text-center py-16 text-gray-400">
           <Star className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="font-medium text-gray-400 mb-1">Watchlist empty</p>
-          <p className="text-sm text-gray-600 mb-5">
+          <p className="text-sm text-lattice-muted mb-5">
             Star any listing in Browse to save it here. Watchlist persists locally on this device.
           </p>
           <button onClick={() => m.setTab('browse')} className="btn-neon purple text-sm">

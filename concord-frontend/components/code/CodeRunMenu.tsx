@@ -125,7 +125,7 @@ export function CodeRunMenu({ facts, platform = 'x' }: Props) {
               type="button"
               onClick={() => void save()}
               disabled={busy !== null}
-              className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
+              className="rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
             >
               {busy === 'save' ? 'Saving…' : 'Save run as DTU'}
             </button>

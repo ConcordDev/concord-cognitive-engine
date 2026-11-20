@@ -610,7 +610,7 @@ export function SessionPlayerPanel({ practiceTick = 0, preset = null, onPresetEx
                 {[
                   { id: 'log' as ActionId,     label: logged ? 'Logged' : 'Log',       icon: Clock,    accent: '#06b6d4', desc: logged ? 'This session is in your record' : 'Append to your sessions',           handler: actLog,     disabled: logged },
                   { id: 'mint' as ActionId,    label: mintedDtuId ? 'Saved' : 'Mint',     icon: Sparkles, accent: '#8b5cf6', desc: mintedDtuId ? `DTU ${mintedDtuId.slice(0, 8)}…` : 'Private session DTU + journal', handler: actMint, disabled: !!mintedDtuId },
-                  { id: 'dm' as ActionId,      label: 'Share streak', icon: Send,    accent: '#ec4899', desc: 'DM streak to a buddy',              handler: actDm,      disabled: !streak },
+                  { id: 'dm' as ActionId,      label: 'Share streak', icon: Send,    accent: '#f472b6', desc: 'DM streak to a buddy',              handler: actDm,      disabled: !streak },
                   { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish milestone', icon: Globe, accent: '#22c55e', desc: publishedDtuId ? `DTU ${publishedDtuId.slice(0, 8)}…` : 'Public milestone DTU', handler: actPublish, disabled: !!publishedDtuId },
                   { id: 'agent' as ActionId,   label: 'Micro-practice', icon: Wand2, accent: '#eab308', desc: 'Agent: a 2-line practice for the next 4h', handler: actAgent,   disabled: false },
                 ].map(a => {

@@ -154,7 +154,7 @@ export function EvolutionPanel({ onChanged }: { onChanged: () => void }) {
                 <button
                   onClick={() => applyPromotion('promote')}
                   disabled={busy}
-                  className="px-3 py-1 text-[11px] bg-emerald-600 hover:bg-emerald-500 rounded text-white"
+                  className="px-3 py-1 text-[11px] bg-emerald-700 hover:bg-emerald-600 rounded text-white"
                 >
                   Apply promote
                 </button>

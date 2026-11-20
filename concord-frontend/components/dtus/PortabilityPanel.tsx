@@ -305,7 +305,7 @@ export function PortabilityPanel() {
         <button
           onClick={runImport}
           disabled={!validation?.ok || importing}
-          className="mt-3 flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40"
+          className="mt-3 flex items-center gap-1.5 rounded-lg bg-neon-purple/20 px-3 py-1.5 text-xs text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40"
         >
           {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileJson className="h-3.5 w-3.5" />}
           Import validated envelope

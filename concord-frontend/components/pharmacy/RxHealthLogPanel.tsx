@@ -139,7 +139,7 @@ export function RxHealthLogPanel() {
                 className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             )}
             <button type="button" onClick={logMeasurement}
-              className="flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
+              className="flex items-center justify-center gap-1 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
               <Plus className="w-3.5 h-3.5" /> Log
             </button>
           </div>
@@ -159,7 +159,7 @@ export function RxHealthLogPanel() {
           <input placeholder="Symptoms (comma-separated)" value={jForm.symptoms} onChange={(e) => setJForm({ ...jForm, symptoms: e.target.value })}
             className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addJournal}
-            className="flex items-center justify-center gap-1 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>

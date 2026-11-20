@@ -199,7 +199,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
             <Pill className="w-3.5 h-3.5 text-amber-400" /> Medications
           </h3>
           <button type="button" onClick={() => setShowAdd((v) => !v)}
-            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Add
           </button>
         </div>
@@ -228,7 +228,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
             <input placeholder="Refills left" inputMode="numeric" value={form.refillsRemaining} onChange={(e) => setForm({ ...form, refillsRemaining: e.target.value })}
               className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
             <button type="button" onClick={addMed}
-              className="col-span-3 bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save medication</button>
+              className="col-span-3 bg-amber-700 hover:bg-amber-500 text-white text-xs font-medium rounded-lg px-2 py-1.5">Save medication</button>
           </div>
         )}
 
@@ -287,7 +287,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                         className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
                       <div className="flex gap-1.5">
                         <button type="button" onClick={() => saveEdit(m.id)}
-                          className="flex-1 bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-medium rounded-lg px-2 py-1">Save</button>
+                          className="flex-1 bg-amber-700 hover:bg-amber-500 text-white text-[11px] font-medium rounded-lg px-2 py-1">Save</button>
                         <button type="button" onClick={() => setEditFor(null)}
                           className="px-2 py-1 text-[11px] text-zinc-400 hover:text-zinc-200">Cancel</button>
                       </div>
@@ -338,7 +338,7 @@ export function RxMedicationsPanel({ onChange }: { onChange: () => void }) {
                       <input value={schedTimes} onChange={(e) => setSchedTimes(e.target.value)} placeholder="08:00, 20:00"
                         className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
                       <button type="button" onClick={() => setSchedule(m.id)}
-                        className="px-2.5 py-1 text-[11px] bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Save</button>
+                        className="px-2.5 py-1 text-[11px] bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Save</button>
                     </div>
                   ) : (
                     <button type="button" onClick={() => { setSchedFor(m.id); setSchedTimes('08:00, 20:00'); }}

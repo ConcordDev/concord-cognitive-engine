@@ -356,7 +356,7 @@ function VaultPanel({ refreshKey, onAsk }: { refreshKey: number; onAsk: Props['o
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search your DTUs"
           aria-label="Search your DTUs"
-          className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none"
         />
       </label>
       <ListState items={items} error={error} empty={query ? 'No DTUs match.' : 'Your vault is empty. Keep a study as a DTU to start it.'} />
@@ -403,7 +403,7 @@ function NewDesignPicker({ onOpenShowcase }: { onOpenShowcase?: (id: ShowcaseId,
     <div>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className={`${itemCls} flex items-center gap-3 text-slate-200 hover:bg-white/5`}>
         <Sparkles className="h-4 w-4 text-slate-400" aria-hidden /> New design / Gallery
-        {open ? <ChevronDown className="ml-auto h-3.5 w-3.5 text-slate-500" aria-hidden /> : <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-500" aria-hidden />}
+        {open ? <ChevronDown className="ml-auto h-3.5 w-3.5 text-slate-400" aria-hidden /> : <ChevronRight className="ml-auto h-3.5 w-3.5 text-slate-400" aria-hidden />}
       </button>
       {open && (
         <ul aria-label="New design and gallery" className="mb-1 ml-7 border-l border-white/5 pl-1">
@@ -490,7 +490,7 @@ export function WorkspaceNav(props: Props) {
             maxLength={80}
             placeholder="Workspace name"
             aria-label="Workspace name"
-            className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-400/50 focus:outline-none"
+            className="w-full rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-sm text-slate-100 placeholder:text-slate-400 focus:border-sky-400/50 focus:outline-none"
           />
           {createError && <p className="mt-1 text-[11px] text-rose-300">{createError}</p>}
           <div className="mt-1.5 flex gap-2">

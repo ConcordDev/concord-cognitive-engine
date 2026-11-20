@@ -238,7 +238,7 @@ function IndicatorPicker({
               className="block w-full rounded px-2 py-1 text-left text-[11px] text-zinc-300 hover:bg-cyan-500/10 hover:text-cyan-200"
             >
               <span className="font-mono text-cyan-400">{m.code}</span> — {m.name}
-              {m.topics[0] && <span className="ml-1 text-zinc-600">· {m.topics[0]}</span>}
+              {m.topics[0] && <span className="ml-1 text-lattice-muted">· {m.topics[0]}</span>}
             </button>
           ))}
         </div>
@@ -418,10 +418,10 @@ function ChartView({ aliases, country, indicator, onCountryChange, onIndicatorCh
         {/* FIX-society-008: neither transform applies to the population
             series itself — per-capita divides it by itself (a flat 1)
             and a price deflator on a headcount is meaningless. */}
-        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-lattice-muted' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
           <input type="checkbox" checked={perCapita && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setPerCapita(e.target.checked)} /> per-capita
         </label>
-        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-zinc-600' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
+        <label className={`flex items-center gap-1 ${indicator === 'population' ? 'text-lattice-muted' : 'text-zinc-400'}`} title={indicator === 'population' ? 'Not applicable to the population series' : undefined}>
           <input type="checkbox" checked={inflationAdjust && indicator !== 'population'} disabled={indicator === 'population'} onChange={(e) => setInflationAdjust(e.target.checked)} /> inflation-adjusted (USD 2024)
         </label>
         <button onClick={run} disabled={loading}
@@ -586,8 +586,8 @@ function BubbleView({ aliases }: { aliases: Record<string, string> }) {
                 </g>
               );
             })}
-            <text x={340} y={350} textAnchor="middle" fontSize={10} fill="#71717a">{data.xIndicator} →</text>
-            <text x={14} y={170} textAnchor="middle" fontSize={10} fill="#71717a" transform="rotate(-90 14 170)">{data.yIndicator} →</text>
+            <text x={340} y={350} textAnchor="middle" fontSize={10} fill="#a1a1aa">{data.xIndicator} →</text>
+            <text x={14} y={170} textAnchor="middle" fontSize={10} fill="#a1a1aa" transform="rotate(-90 14 170)">{data.yIndicator} →</text>
           </svg>
           <p className="mt-1 text-center text-[10px] text-zinc-400">
             {frame.bubbles.length} countries · bubble area ∝ population · {data.frameCount} frames {data.startYear}–{data.endYear}
@@ -782,7 +782,7 @@ function RankingsView({ aliases, indicator, onIndicatorChange }: {
                 <span className="w-28 text-right font-mono text-cyan-300">
                   {r.value.toLocaleString(undefined, { maximumFractionDigits: 1 })}
                 </span>
-                <span className="w-10 text-right text-zinc-600">{r.year}</span>
+                <span className="w-10 text-right text-lattice-muted">{r.year}</span>
               </div>
             ))}
           </div>

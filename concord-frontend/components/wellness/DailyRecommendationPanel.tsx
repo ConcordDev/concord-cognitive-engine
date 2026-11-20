@@ -53,7 +53,7 @@ export function DailyRecommendationPanel() {
     return () => window.removeEventListener(WELLNESS_CHANGED, onChange);
   }, [refresh]);
 
-  const colour = rec ? BAND_COLOUR[rec.band] : '#71717a';
+  const colour = rec ? BAND_COLOUR[rec.band] : '#a1a1aa';
 
   return (
     <div className="rounded-lg border border-emerald-500/20 bg-zinc-950/60 p-3 space-y-3">

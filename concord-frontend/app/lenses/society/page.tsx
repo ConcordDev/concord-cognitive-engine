@@ -197,7 +197,7 @@ function SectionCulture({ data, loading }: { data?: { traditions?: Array<{ id: s
               <span className="font-mono text-teal-300">{t.id}</span>
               {t.type && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-teal-300">{t.type}</span>}
               {t.adherence != null && <span className="text-zinc-400">{(t.adherence * 100).toFixed(0)}% adherence</span>}
-              <span className="ml-auto text-[10px] text-zinc-500">{t.status}</span>
+              <span className="ml-auto text-[10px] text-lattice-muted">{t.status}</span>
             </li>
           ))}
         </ul>
@@ -246,12 +246,12 @@ function SectionAutonomy({ data, loading }: { data?: { totalRefusals?: number; a
         <Stat label="Active dissents" value={data?.activeDissents ?? 0} />
         <Stat label="Sovereign overrides" value={data?.sovereignOverrides ?? 0} />
       </div>
-      <p className="mt-4 text-xs text-zinc-500">
+      <p className="mt-4 text-xs text-lattice-muted">
         NPCs file refusals when asked to do something against their declared rights; dissents when they object to a council decision; sovereign overrides bypass the rights gate with explicit justification.
       </p>
 
       <h3 className="mt-6 mb-2 text-sm font-semibold text-zinc-100">Author a new agent</h3>
-      <p className="mb-3 text-xs text-zinc-500">
+      <p className="mb-3 text-xs text-lattice-muted">
         Author a custom NPC agent — declare its archetype, rights, refusal triggers, and starting beliefs. The agent joins the world's NPC roster and is governed by the same autonomy substrate above.
       </p>
       <AgentBuilder />
@@ -271,7 +271,7 @@ function SectionConflict({ data, loading }: { data?: { disputes?: Array<{ id: st
             <li key={x.id} className="flex items-center gap-3 rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
               <span className="font-mono text-teal-300">{x.id}</span>
               <span className="font-mono text-zinc-100">{x.partyA}</span>
-              <span className="text-zinc-500">vs</span>
+              <span className="text-lattice-muted">vs</span>
               <span className="font-mono text-zinc-100">{x.partyB}</span>
               <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{x.status}</span>
             </li>
@@ -293,10 +293,10 @@ function SectionTeaching({ data, loading }: { data?: { metrics: Record<string, u
           {m.map(x => (
             <li key={x.id} className="flex items-center gap-3 rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
               <span className="font-mono text-teal-300">{x.mentorId}</span>
-              <span className="text-zinc-500">→</span>
+              <span className="text-lattice-muted">→</span>
               <span className="font-mono text-teal-300">{x.studentId}</span>
               {x.domain && <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px]">{x.domain}</span>}
-              <span className="ml-auto text-[10px] text-zinc-500">{x.status}</span>
+              <span className="ml-auto text-[10px] text-lattice-muted">{x.status}</span>
             </li>
           ))}
         </ul>
@@ -333,12 +333,12 @@ function SectionPersona({ data, loading }: { data?: { personas?: Array<{ id: str
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-zinc-100">
-      <div className="mb-1 text-[11px] uppercase tracking-wider text-zinc-500">{label}</div>
+      <div className="mb-1 text-[11px] uppercase tracking-wider text-lattice-muted">{label}</div>
       <div className="font-mono text-xl font-semibold">{value}</div>
     </div>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="rounded border border-white/10 bg-white/[0.03] px-4 py-6 text-center text-xs text-zinc-500">{children}</p>;
+  return <p className="rounded border border-white/10 bg-white/[0.03] px-4 py-6 text-center text-xs text-lattice-muted">{children}</p>;
 }

@@ -176,7 +176,7 @@ export function FeedHealthDashboard({ className }: FeedHealthDashboardProps) {
             onClick={() => setFilter(f)}
             className={cn(
               'px-3 py-1 rounded-md text-xs font-medium transition',
-              filter === f ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              filter === f ? 'bg-cyan-700 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
             )}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}

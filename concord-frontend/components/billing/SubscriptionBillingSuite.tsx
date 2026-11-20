@@ -679,7 +679,7 @@ function CouponsPanel({ onError }: { onError: (e: string) => void }) {
                 <span className="text-zinc-400">{c.kind === 'percent' ? `${c.value}% off` : money(c.value)} · {c.duration}</span>
                 <span className="text-zinc-400">
                   {c.redemptions} / {c.maxRedemptions ?? '∞'} used
-                  <span className={`ml-2 ${c.active ? 'text-emerald-400' : 'text-zinc-600'}`}>{c.active ? 'active' : 'inactive'}</span>
+                  <span className={`ml-2 ${c.active ? 'text-emerald-400' : 'text-lattice-muted'}`}>{c.active ? 'active' : 'inactive'}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <button onClick={() => toggleCoupon(c)} className="text-[10px] text-zinc-400 hover:text-cyan-300">{c.active ? 'deactivate' : 'activate'}</button>
@@ -831,7 +831,7 @@ function DunningPanel({ onError }: { onError: (e: string) => void }) {
             {(d.schedule || []).map((a: MacroJSON) => (
               <div key={a.attempt} className="flex items-center justify-between rounded bg-zinc-950 px-2.5 py-1 text-[11px]">
                 <span className="text-zinc-400">Attempt {a.attempt} · {a.emailTemplate}</span>
-                <span className="text-zinc-600">{new Date(a.scheduledFor).toLocaleDateString()}</span>
+                <span className="text-lattice-muted">{new Date(a.scheduledFor).toLocaleDateString()}</span>
                 <span className={`${a.status === 'succeeded' ? 'text-emerald-400' : a.status === 'failed' ? 'text-red-400' : 'text-zinc-400'}`}>{a.status}</span>
               </div>
             ))}

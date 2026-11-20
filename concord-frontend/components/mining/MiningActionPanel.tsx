@@ -145,7 +145,7 @@ export function MiningActionPanel() {
     { id: 'safety' as ActionId, label: 'Safety', desc: 'safetyMetrics TRIR/LTIR', icon: ShieldAlert, accent: '#eab308', handler: actSafety },
     { id: 'resource' as ActionId, label: 'Resource', desc: 'resourceEstimate $ value', icon: Calculator, accent: '#06b6d4', handler: actResource },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private site DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to ops manager', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send brief to ops manager', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Anonymized safety + federation', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Improve', desc: 'Agent: top operational move', icon: Wand2, accent: '#f97316', handler: actAgent },
   ];

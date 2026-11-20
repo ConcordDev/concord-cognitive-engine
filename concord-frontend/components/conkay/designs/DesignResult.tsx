@@ -106,9 +106,9 @@ export function DesignDetails({ d }: { d: DesignSnapshot }) {
           {d.repairs && d.repairs.length > 0 && (
             <section className={PANEL} aria-label="Design repairs">
               <h2 className="text-sm font-semibold">Repairs the loop made</h2>
-              <p className="mt-1 text-[11px] text-slate-500">Design parameters changed to clear a failing check; requirements were not changed.</p>
+              <p className="mt-1 text-[11px] text-slate-400">Design parameters changed to clear a failing check; requirements were not changed.</p>
               <ul className="mt-2 space-y-1 text-xs text-slate-300">
-                {d.repairs.map((r, i) => <li key={i}><span className="text-slate-500">{r.variable}:</span> {r.before} → {r.after}{r.result ? <span className="text-slate-500"> ({r.result})</span> : null}</li>)}
+                {d.repairs.map((r, i) => <li key={i}><span className="text-slate-400">{r.variable}:</span> {r.before} → {r.after}{r.result ? <span className="text-slate-400"> ({r.result})</span> : null}</li>)}
               </ul>
             </section>
           )}
@@ -129,7 +129,7 @@ export function DesignDetails({ d }: { d: DesignSnapshot }) {
               </ul>
             </section>
           )}
-          <p className="px-1 font-mono text-[10px] text-slate-600" title={d.snapshotSha256}>snapshot {d.snapshotSha256.slice(0, 16)}… · {d.pipeline}</p>
+          <p className="px-1 font-mono text-[10px] text-slate-400" title={d.snapshotSha256}>snapshot {d.snapshotSha256.slice(0, 16)}… · {d.pipeline}</p>
         </aside>
       </div>
     </>

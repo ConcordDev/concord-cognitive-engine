@@ -118,7 +118,7 @@ export function HrPerformancePanel() {
             {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} star{n > 1 ? 's' : ''}</option>)}
           </select>
           <button type="button" onClick={addReview}
-            className="flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Review
           </button>
           <input placeholder="Summary" value={reviewForm.summary} onChange={(e) => setReviewForm({ ...reviewForm, summary: e.target.value })}
@@ -154,7 +154,7 @@ export function HrPerformancePanel() {
           <input value={goalTitle} onChange={(e) => setGoalTitle(e.target.value)} placeholder="Add a goal…"
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addGoal}
-            className="px-2.5 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg">Add</button>
+            className="px-2.5 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">Add</button>
         </div>
         {goals.length === 0 ? (
           <p className="text-[11px] text-zinc-400 italic">No goals.</p>

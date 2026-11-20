@@ -70,7 +70,7 @@ export function SharedDebateView({ shareToken, onExit }: { shareToken: string; o
         <p className="text-sm text-gray-400">{error}</p>
         <button
           onClick={onExit}
-          className="px-3 py-1.5 text-xs rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold"
+          className="px-3 py-1.5 text-xs rounded bg-cyan-700 hover:bg-cyan-500 text-white font-semibold"
         >
           Back to debates
         </button>

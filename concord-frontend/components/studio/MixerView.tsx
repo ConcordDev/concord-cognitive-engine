@@ -160,7 +160,7 @@ function ChannelStrip({
             key={fx.id}
             className={cn(
               'px-1 py-0.5 rounded text-[8px] truncate cursor-pointer flex items-center gap-0.5 group/fx',
-              fx.enabled ? 'bg-neon-purple/20 text-neon-purple' : 'bg-white/5 text-gray-600'
+              fx.enabled ? 'bg-neon-purple/20 text-neon-purple-bright' : 'bg-white/5 text-gray-600'
             )}
             onClick={e => { e.stopPropagation(); onToggleEffect(fx.id); }} role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace}>
             <span className="flex-1 truncate">{fx.name}</span>

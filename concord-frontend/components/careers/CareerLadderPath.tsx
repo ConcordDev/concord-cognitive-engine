@@ -48,7 +48,7 @@ export function CareerLadderPath({ ladder, currentTier, gatedTiers }: CareerLadd
           const y = 16 + i * ROW_H;
           const locked = t.tier > currentTier || gatedTiers.includes(t.tier);
           const isCurrent = t.tier === currentTier;
-          const color = locked ? '#52525b' : isCurrent ? '#fbbf24' : '#34d399';
+          const color = locked ? '#a1a1aa' : isCurrent ? '#fbbf24' : '#34d399';
           return (
             <g key={t.tier}>
               <title>{`Tier ${t.tier}: ${t.title} — promotes at ${t.skillGate * 10} XP, ${t.wageBase} sparks/shift${locked ? ' (locked)' : ''}`}</title>

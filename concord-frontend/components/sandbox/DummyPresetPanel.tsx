@@ -142,7 +142,7 @@ export function DummyPresetPanel({ onApply }: { onApply: (c: AppliedDummyConfig)
 
       <button
         onClick={apply}
-        className="mb-2 w-full rounded bg-amber-600 px-2 py-1 font-semibold text-amber-50 hover:bg-amber-500"
+        className="mb-2 w-full rounded bg-amber-700 px-2 py-1 font-semibold text-amber-50 hover:bg-amber-500"
       >
         Apply to arena
       </button>

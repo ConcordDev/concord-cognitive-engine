@@ -500,7 +500,7 @@ export function ContentPublisher({
                           <button
                             onClick={handleMarketplace}
                             disabled={publishing}
-                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-neon-purple/20 text-neon-purple hover:bg-neon-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-neon-purple/20 text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                           >
                             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Store className="w-4 h-4" />}
                             Publish to Marketplace

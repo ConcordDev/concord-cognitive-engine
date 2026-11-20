@@ -169,7 +169,7 @@ export function SportsCareerPanel() {
           <Loader2 className="w-3 h-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> Loading leagues…
         </div>
       ) : leagues.length === 0 ? (
-        <p className="text-gray-500 text-xs">
+        <p className="text-lattice-muted text-xs">
           No leagues have been founded in this world yet. Leagues are founded by the world, not by players —
           when the first one opens, its teams, tryouts, and your sports career appear here.
         </p>
@@ -186,7 +186,7 @@ export function SportsCareerPanel() {
               ))}
             </select>
             {teams.length === 0 ? (
-              <p className="text-gray-500 text-xs mt-2">No teams in {league?.name || 'this league'} yet.</p>
+              <p className="text-lattice-muted text-xs mt-2">No teams in {league?.name || 'this league'} yet.</p>
             ) : (
               <ul className="space-y-1 text-xs mt-2">
                 {teams.map((t) => (
@@ -218,7 +218,7 @@ export function SportsCareerPanel() {
                 aria-label="Request a tryout for the selected league"
                 className="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded bg-amber-600 hover:bg-amber-500 transition-colors text-black text-xs font-medium disabled:opacity-50"
               ><Flag className="w-3 h-3" aria-hidden="true" /> {busy === 'tryout' ? 'Trying out…' : 'Request tryout'}</button>
-              {!user?.id && <p className="text-gray-500 text-xs mt-1">Sign in to try out.</p>}
+              {!user?.id && <p className="text-lattice-muted text-xs mt-1">Sign in to try out.</p>}
               {tryoutNote && <p role="status" aria-live="polite" className="text-xs text-gray-300 mt-2">{tryoutNote}</p>}
             </div>
           </div>
@@ -231,22 +231,22 @@ export function SportsCareerPanel() {
               {SPORT_KINDS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             {!user?.id ? (
-              <p className="text-gray-500 text-xs mt-2">Sign in to start your {sport} career.</p>
+              <p className="text-lattice-muted text-xs mt-2">Sign in to start your {sport} career.</p>
             ) : !career ? (
-              <p className="text-gray-500 text-xs mt-2">Loading your {sport} career…</p>
+              <p className="text-lattice-muted text-xs mt-2">Loading your {sport} career…</p>
             ) : (
               <div className="text-xs text-gray-300 space-y-1.5 mt-2">
                 <p className="flex items-center gap-1.5">
                   <Medal className="w-3.5 h-3.5 text-amber-300" aria-hidden="true" />
                   Stage: <span className="text-amber-200 capitalize">{stageLabel(career.stage)}</span>
-                  {career.retired_at ? <span className="text-gray-500">· retired</span> : null}
+                  {career.retired_at ? <span className="text-lattice-muted">· retired</span> : null}
                 </p>
                 <p className="tabular-nums">
                   {career.matches_played} matches · {career.total_score} total points · {career.mvp_awards} MVPs ·
                   tryouts {career.tryouts_passed}/{career.tryouts_attempted} passed
                 </p>
                 {nextStage && nextThreshold && !career.retired_at && (
-                  <p className="text-gray-500">
+                  <p className="text-lattice-muted">
                     {stageLabel(nextStage)} opens at {nextThreshold.matches} matches · {nextThreshold.total} total points · {nextThreshold.mvp} MVPs.
                   </p>
                 )}
@@ -255,7 +255,7 @@ export function SportsCareerPanel() {
                     <button
                       onClick={() => void advance()} disabled={busy === 'advance'}
                       aria-label="Advance to the next career stage"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/70 hover:bg-emerald-600 text-emerald-50 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-700/70 hover:bg-emerald-700 text-emerald-50 disabled:opacity-50"
                     >Advance stage</button>
                     <button
                       onClick={() => void retire()} disabled={busy === 'retire'}

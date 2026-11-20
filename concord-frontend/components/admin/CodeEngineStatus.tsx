@@ -242,7 +242,7 @@ function CodeEngineStatus({ className, apiBase = '' }: CodeEngineStatusProps) {
             <button
               onClick={triggerCompression}
               disabled={compressing}
-              className="flex items-center gap-2 px-3 py-1.5 bg-neon-purple/10 border border-neon-purple/30 text-neon-purple rounded-lg text-sm hover:bg-neon-purple/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-1.5 bg-neon-purple/10 border border-neon-purple/30 text-neon-purple-bright rounded-lg text-sm hover:bg-neon-purple/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {compressing ? (
                 <>
@@ -448,7 +448,7 @@ function StatCard({
 }) {
   const colors = {
     cyan: 'text-neon-cyan bg-neon-cyan/10',
-    purple: 'text-neon-purple bg-neon-purple/10',
+    purple: 'text-neon-purple-bright bg-neon-purple/10',
     green: 'text-green-400 bg-green-400/10',
     yellow: 'text-yellow-400 bg-yellow-400/10',
   };

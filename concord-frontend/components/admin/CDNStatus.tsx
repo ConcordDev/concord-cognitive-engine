@@ -407,7 +407,7 @@ function CDNStatus({ className }: CDNStatusProps) {
             <button
               onClick={handleTestUrl}
               disabled={!testUrlHash.trim()}
-              className="px-3 py-1.5 bg-neon-purple/20 border border-neon-purple/30 rounded text-sm text-neon-purple hover:bg-neon-purple/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+              className="px-3 py-1.5 bg-neon-purple/20 border border-neon-purple/30 rounded text-sm text-neon-purple-bright hover:bg-neon-purple/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               Generate
@@ -442,7 +442,7 @@ function StatCard({
 }) {
   const colors = {
     cyan: 'text-neon-cyan bg-neon-cyan/10',
-    purple: 'text-neon-purple bg-neon-purple/10',
+    purple: 'text-neon-purple-bright bg-neon-purple/10',
     green: 'text-green-400 bg-green-400/10',
     yellow: 'text-yellow-400 bg-yellow-400/10',
   };

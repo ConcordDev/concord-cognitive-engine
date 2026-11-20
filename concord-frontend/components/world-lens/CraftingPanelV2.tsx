@@ -171,7 +171,7 @@ export default function CraftingPanelV2({ worldId: _worldId, onClose }: Crafting
                     type="button"
                     onClick={() => handleCraft(recipe)}
                     disabled={crafting === recipe.id || !canCraft}
-                    className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed rounded text-white text-xs"
+                    className="px-3 py-1 bg-amber-700 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed rounded text-white text-xs"
                     title={!canCraft ? `Missing: ${(recipe.missing ?? []).map(m => `${m.required - m.have}× ${m.name}`).join(', ')}` : undefined}
                   >
                     {crafting === recipe.id ? 'Crafting...' : canCraft ? 'Craft' : 'Need more'}

@@ -115,7 +115,7 @@ export function ContractEsign({ contractId, onSigned }: { contractId: string; on
             <div key={c.certificateId} className="text-[10px] text-gray-400 flex items-center gap-1.5 py-0.5">
               <span className={cn('w-1.5 h-1.5 rounded-full', c.valid ? 'bg-neon-green' : 'bg-rose-400')} />
               <span className="text-white">{c.party}</span>
-              <span className="text-gray-600">{new Date(c.signedAt).toLocaleString()}</span>
+              <span className="text-lattice-muted">{new Date(c.signedAt).toLocaleString()}</span>
               {!c.documentUnchangedSinceSigning && <span className="text-rose-400">document changed</span>}
               {!c.signatureValid && <span className="text-rose-400">signature invalid</span>}
             </div>

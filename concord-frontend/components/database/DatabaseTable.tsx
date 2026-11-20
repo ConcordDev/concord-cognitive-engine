@@ -242,7 +242,7 @@ export function DatabaseTable({
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               placeholder="Filter..."
-              className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-lattice-muted focus:outline-none"
             />
           </div>
         </div>
@@ -351,7 +351,7 @@ export function DatabaseTable({
                         value={(newRowData[col.name] as string) || ''}
                         onChange={(e) => setNewRowData(prev => ({ ...prev, [col.name]: e.target.value }))}
                         placeholder={col.name}
-                        className="w-full px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-neon-cyan"
+                        className="w-full px-2 py-1 bg-lattice-surface border border-lattice-border rounded text-sm text-white placeholder:text-lattice-muted focus:outline-none focus:border-neon-cyan"
                       />
                     </td>
                   ))}
@@ -370,7 +370,7 @@ export function DatabaseTable({
 
           {filteredAndSortedRows.length === 0 && !showNewRow && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Table className="w-10 h-10 text-gray-600 mb-3" />
+              <Table className="w-10 h-10 text-lattice-muted mb-3" />
               <p className="text-gray-400">No rows yet</p>
               <button
                 onClick={() => setShowNewRow(true)}

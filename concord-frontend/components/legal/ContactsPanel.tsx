@@ -102,7 +102,7 @@ export function ContactsPanel() {
             placeholder="Search name, organization, or case number across all matters + contacts…"
             className="flex-1 px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
           />
-          <button type="submit" className="px-3 py-1.5 text-xs rounded bg-rose-500 text-white font-bold hover:bg-rose-400">Run check</button>
+          <button type="submit" className="px-3 py-1.5 text-xs rounded bg-rose-600 text-white font-bold hover:bg-rose-400">Run check</button>
         </form>
         {conflicts && (
           <div className="mt-2 text-xs">

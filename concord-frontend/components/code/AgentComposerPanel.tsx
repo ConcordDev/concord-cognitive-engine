@@ -179,7 +179,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
           rows={3}
           className="w-full px-2 py-1.5 text-xs bg-lattice-deep border border-lattice-border rounded text-white"
         />
-        <button onClick={start} disabled={busy || !prompt.trim()} className="w-full px-2 py-1.5 text-xs rounded bg-blue-500 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
+        <button onClick={start} disabled={busy || !prompt.trim()} className="w-full px-2 py-1.5 text-xs rounded bg-blue-600 text-white font-bold hover:bg-blue-400 disabled:opacity-40 inline-flex items-center justify-center gap-1">
           {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}Compose
         </button>
       </div>
@@ -227,7 +227,7 @@ export function AgentComposerPanel({ projectId }: { projectId: string | null }) 
                 {t.status === 'completed' && t.changeReceipts && t.changeReceipts.length > 0 ? (
                   <div className="mt-1 text-[10px] text-gray-400">
                     <div>Files changed (verified against the task-start record): {t.changeReceipts.map(c => c.path).join(', ')}</div>
-                    <div className="font-mono text-[9px] text-gray-500">
+                    <div className="font-mono text-[9px] text-lattice-muted">
                       {t.changeReceipts.map(c => `${c.path}: ${c.before ?? 'new'} → ${c.after ?? 'deleted'}`).join(' · ')}
                     </div>
                   </div>

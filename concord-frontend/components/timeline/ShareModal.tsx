@@ -85,7 +85,7 @@ export function ShareModal({ post, onClose }: { post: FeedPost; onClose: () => v
           placeholder="Say something about this…"
           rows={3}
           autoFocus
-          className="w-full bg-[#3a3b3c] rounded-lg p-3 text-sm text-white placeholder-gray-500 outline-none resize-none focus:ring-1 focus:ring-blue-500"
+          className="w-full bg-[#3a3b3c] rounded-lg p-3 text-sm text-white placeholder:text-lattice-muted outline-none resize-none focus:ring-1 focus:ring-blue-500"
         />
 
         {/* Quoted original */}

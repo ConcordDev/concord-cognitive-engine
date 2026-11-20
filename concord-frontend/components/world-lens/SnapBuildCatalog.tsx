@@ -337,7 +337,7 @@ function TemplatePreview({
       <div className="space-y-2 pt-1">
         <button
           onClick={handlePlace}
-          className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+          className="w-full py-2 rounded-lg bg-cyan-700 hover:bg-cyan-500 text-white text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
         >
           <Package className="w-3.5 h-3.5" /> Place in District
         </button>

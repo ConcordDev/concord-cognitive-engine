@@ -313,7 +313,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
           </button>
         );
       })}
-      <p className="mt-4 px-3 text-[11px] uppercase tracking-wider text-zinc-500">Labels</p>
+      <p className="mt-4 px-3 text-[11px] uppercase tracking-wider text-lattice-muted">Labels</p>
       {userLabels.map((l) => (
         <button key={l.id} type="button" onClick={() => openFolder(l.id)} aria-current={folder === l.id ? 'page' : undefined}
           className={cn('flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-left text-[13px] transition-colors', folder === l.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200')}>
@@ -325,16 +325,16 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
           onKeyDown={(e) => { if (e.key === 'Enter') void createLabel(); if (e.key === 'Escape') setNewLabel(null); }} onBlur={() => void createLabel()}
           className="mx-2 rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-[12px] text-zinc-100 focus:border-teal-400/50 focus:outline-none" />
       ) : connected !== false && (
-        <button type="button" onClick={() => setNewLabel('')} className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-left text-[12px] text-zinc-500 transition-colors hover:text-zinc-200">
+        <button type="button" onClick={() => setNewLabel('')} className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-left text-[12px] text-lattice-muted transition-colors hover:text-zinc-200">
           <Plus className="h-3.5 w-3.5" /> New label
         </button>
       )}
-      <p className="mt-4 px-3 text-[11px] uppercase tracking-wider text-zinc-500">In Concord</p>
+      <p className="mt-4 px-3 text-[11px] uppercase tracking-wider text-lattice-muted">In Concord</p>
       <button type="button" onClick={() => openFolder('CONCORD')} aria-current={isConcord ? 'page' : undefined}
         className={cn('flex items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition-colors', isConcord ? 'bg-white/10 text-zinc-50' : 'text-zinc-400 hover:bg-white/5 hover:text-zinc-200')}>
         <Gamepad2 className="h-4 w-4" /> Player mail
       </button>
-      {me && <p className="mt-4 truncate px-3 text-[11px] text-zinc-500" title={me}>{me}</p>}
+      {me && <p className="mt-4 truncate px-3 text-[11px] text-lattice-muted" title={me}>{me}</p>}
     </nav>
   );
 
@@ -347,7 +347,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
         className="mt-2 rounded-full bg-teal-400 px-5 py-2 text-sm font-medium text-black transition-colors hover:bg-teal-300">
         Connect Gmail
       </button>
-      <button type="button" onClick={() => openFolder('CONCORD')} className="text-[12px] text-zinc-500 hover:text-zinc-200">Or open your Concord player mail</button>
+      <button type="button" onClick={() => openFolder('CONCORD')} className="text-[12px] text-lattice-muted hover:text-zinc-200">Or open your Concord player mail</button>
     </div>
   );
 
@@ -382,7 +382,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
             </button>
           )}
           {!isDrafts && (
-            <div className="ml-auto flex items-center gap-1 text-[12px] text-zinc-500">
+            <div className="ml-auto flex items-center gap-1 text-[12px] text-lattice-muted">
               <span className="hidden sm:inline">{threads.length ? `${pageIdx * 25 + 1}–${pageIdx * 25 + threads.length}${estimate > threads.length ? ` of ~${estimate}` : ''}` : ''}</span>
               <button type="button" aria-label="Newer" disabled={pageIdx === 0} onClick={() => setPageIdx((i) => Math.max(0, i - 1))} className={tool}><ChevronLeft className="h-4 w-4" /></button>
               <button type="button" aria-label="Older" disabled={!nextToken} onClick={() => { setPages((p) => { const n = p.slice(0, pageIdx + 1); n.push(nextToken || undefined); return n; }); setPageIdx((i) => i + 1); }} className={tool}><ChevronRight className="h-4 w-4" /></button>
@@ -399,42 +399,42 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
             </div>
           )}
           {isDrafts ? (
-            !loading && drafts.length === 0 ? <p className="p-8 text-center text-sm text-zinc-500">No drafts.</p> : (
+            !loading && drafts.length === 0 ? <p className="p-8 text-center text-sm text-lattice-muted">No drafts.</p> : (
               <ul>
                 {drafts.map((d) => (
                   <li key={d.id}>
                     <button type="button" onClick={() => openDraft(d)} className="flex w-full items-baseline gap-3 border-b border-white/5 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]">
                       <span className="w-40 shrink-0 truncate text-[13px] text-rose-300">Draft{d.message.to ? ` · ${senderName(d.message.to)}` : ''}</span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-300">{d.message.subject} <span className="text-zinc-500">— {d.message.snippet}</span></span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-300">{d.message.subject} <span className="text-lattice-muted">— {d.message.snippet}</span></span>
                     </button>
                   </li>
                 ))}
               </ul>
             )
           ) : !loading && !listError && threads.length === 0 ? (
-            <p className="p-8 text-center text-sm text-zinc-500">{query ? `No conversations match “${query}”.` : `${folderName} is empty.`}</p>
+            <p className="p-8 text-center text-sm text-lattice-muted">{query ? `No conversations match “${query}”.` : `${folderName} is empty.`}</p>
           ) : (
             <ul aria-label={`${folderName} conversations`}>
               {threads.map((t, i) => (
                 <li key={t.id} className={cn('group flex items-center gap-2 border-b border-white/5 px-2 transition-colors', openId === t.id ? 'bg-teal-400/[0.07]' : i === cursor ? 'bg-white/[0.04]' : 'hover:bg-white/[0.03]')}>
                   <input type="checkbox" aria-label={`Select ${t.subject}`} checked={selected.has(t.id)} onChange={() => setSelected((s) => { const n = new Set(s); if (n.has(t.id)) n.delete(t.id); else n.add(t.id); return n; })} className="ml-2 accent-teal-400" />
                   <button type="button" aria-label={t.starred ? 'Unstar' : 'Star'} onClick={() => void applyAction([t.id], t.starred ? 'unstar' : 'star')} className="p-1">
-                    <Star className={cn('h-4 w-4', t.starred ? 'fill-amber-400 text-amber-400' : 'text-zinc-600 hover:text-zinc-300')} />
+                    <Star className={cn('h-4 w-4', t.starred ? 'fill-amber-400 text-amber-400' : 'text-lattice-muted hover:text-zinc-300')} />
                   </button>
                   <button type="button" onClick={() => { setCursor(i); openThread(t); }} className="flex min-w-0 flex-1 items-baseline gap-3 py-3 pr-2 text-left">
                     <span className={cn('w-36 shrink-0 truncate text-[13px] sm:w-44', t.unread ? 'font-semibold text-zinc-50' : 'text-zinc-400')}>
                       {folder === 'SENT' ? `To: ${t.participants.slice(-1)[0] || ''}` : t.participants.slice(-3).join(', ')}
-                      {t.messageCount > 1 && <span className="ml-1 text-[11px] font-normal text-zinc-500">{t.messageCount}</span>}
+                      {t.messageCount > 1 && <span className="ml-1 text-[11px] font-normal text-lattice-muted">{t.messageCount}</span>}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[13px]">
                       <span className={t.unread ? 'font-semibold text-zinc-100' : 'text-zinc-300'}>{t.subject}</span>
-                      <span className="text-zinc-500"> — {t.snippet}</span>
+                      <span className="text-lattice-muted"> — {t.snippet}</span>
                     </span>
-                    <span className={cn('shrink-0 text-[11px]', t.unread ? 'font-semibold text-zinc-200' : 'text-zinc-500')}>{fmtListDate(t.lastInternalDate, t.lastDate)}</span>
+                    <span className={cn('shrink-0 text-[11px]', t.unread ? 'font-semibold text-zinc-200' : 'text-lattice-muted')}>{fmtListDate(t.lastInternalDate, t.lastDate)}</span>
                   </button>
                   <span className="hidden shrink-0 items-center gap-0.5 pr-2 group-hover:flex">
-                    <button type="button" aria-label="Archive" onClick={() => void applyAction([t.id], 'archive')} className="rounded p-1 text-zinc-500 hover:text-zinc-100"><Archive className="h-3.5 w-3.5" /></button>
-                    <button type="button" aria-label="Delete" onClick={() => void applyAction([t.id], 'trash')} className="rounded p-1 text-zinc-500 hover:text-zinc-100"><Trash2 className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Archive" onClick={() => void applyAction([t.id], 'archive')} className="rounded p-1 text-lattice-muted hover:text-zinc-100"><Archive className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label="Delete" onClick={() => void applyAction([t.id], 'trash')} className="rounded p-1 text-lattice-muted hover:text-zinc-100"><Trash2 className="h-3.5 w-3.5" /></button>
                   </span>
                 </li>
               ))}
@@ -463,11 +463,11 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
     <div className="flex flex-col gap-3">
       {!isConcord && connected !== false && (
         <form onSubmit={(e) => { e.preventDefault(); runSearch(); }} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 focus-within:border-teal-400/40">
-          <Search className="h-4 w-4 text-zinc-500" />
+          <Search className="h-4 w-4 text-lattice-muted" />
           <input ref={searchRef} aria-label="Search mail" value={searchDraft} onChange={(e) => setSearchDraft(e.target.value)}
-            placeholder="Search mail — from:ana has:attachment after:2026/01/01" className="min-w-0 flex-1 bg-transparent text-[14px] text-zinc-100 placeholder:text-zinc-500 focus:outline-none" />
-          {query && <button type="button" aria-label="Clear search" onClick={() => { setSearchDraft(''); setQuery(''); }} className="text-zinc-500 hover:text-zinc-200"><X className="h-4 w-4" /></button>}
-          <kbd aria-hidden="true" className="hidden rounded border border-white/10 px-1.5 text-[10px] text-zinc-500 sm:inline">/</kbd>
+            placeholder="Search mail — from:ana has:attachment after:2026/01/01" className="min-w-0 flex-1 bg-transparent text-[14px] text-zinc-100 placeholder:text-lattice-muted focus:outline-none" />
+          {query && <button type="button" aria-label="Clear search" onClick={() => { setSearchDraft(''); setQuery(''); }} className="text-lattice-muted hover:text-zinc-200"><X className="h-4 w-4" /></button>}
+          <kbd aria-hidden="true" className="hidden rounded border border-white/10 px-1.5 text-[10px] text-lattice-muted sm:inline">/</kbd>
         </form>
       )}
       <div className="grid min-h-[34rem] gap-3 md:grid-cols-[13rem_minmax(0,1fr)]" style={{ height: 'calc(100vh - 17rem)' }}>
@@ -475,7 +475,7 @@ export function MailClient({ composeSignal = 0 }: { composeSignal?: number }) {
         <div className="flex min-h-0 min-w-0 flex-col gap-2">
           <div className="no-scrollbar flex gap-1 overflow-x-auto md:hidden">
             {[...SYSTEM_FOLDERS.slice(0, 5), { id: 'CONCORD', label: 'Player mail' }].map((f) => (
-              <button key={f.id} type="button" onClick={() => openFolder(f.id)} className={cn('shrink-0 rounded-full px-3 py-1 text-[12px]', folder === f.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500')}>{f.label}</button>
+              <button key={f.id} type="button" onClick={() => openFolder(f.id)} className={cn('shrink-0 rounded-full px-3 py-1 text-[12px]', folder === f.id ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted')}>{f.label}</button>
             ))}
           </div>
           <div className="min-h-0 flex-1">{main}</div>
@@ -531,10 +531,10 @@ export function ConcordMailbox({ composeSignal = 0 }: { composeSignal?: number }
         <div role="tablist" aria-label="Mail folders" className="flex gap-1">
           {CONCORD_TABS.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} onClick={() => { if (t.id === 'compose') setComposeSeed(null); setTab(t.id); }}
-              className={cn('rounded-full px-3 py-1 text-[12px] transition-colors', tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-zinc-500 hover:text-zinc-200')}>{t.label}</button>
+              className={cn('rounded-full px-3 py-1 text-[12px] transition-colors', tab === t.id ? 'bg-white/10 text-zinc-50' : 'text-lattice-muted hover:text-zinc-200')}>{t.label}</button>
           ))}
         </div>
-        <span className="ml-auto text-[11px] text-zinc-500">Player-to-player mail with items, CC and cash on delivery</span>
+        <span className="ml-auto text-[11px] text-lattice-muted">Player-to-player mail with items, CC and cash on delivery</span>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'compose' && <ComposeMailPanel onSent={() => setTab('sent')} seed={composeSeed} />}

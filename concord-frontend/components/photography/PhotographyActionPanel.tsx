@@ -149,9 +149,9 @@ export function PhotographyActionPanel() {
     { id: 'exp' as ActionId, label: 'Exposure', desc: 'EV → shutter speed', icon: Sliders, accent: '#f59e0b', handler: actExp },
     { id: 'comp' as ActionId, label: 'Composition', desc: 'rule scoring', icon: Frame, accent: '#22c55e', handler: actComp },
     { id: 'gear' as ActionId, label: 'Gear', desc: 'lens + light reco', icon: Camera, accent: '#06b6d4', handler: actGear },
-    { id: 'print' as ActionId, label: 'Print size', desc: 'DPI → inches', icon: Eye, accent: '#a855f7', handler: actPrint },
+    { id: 'print' as ActionId, label: 'Print size', desc: 'DPI → inches', icon: Eye, accent: '#c084fc', handler: actPrint },
     { id: 'mint' as ActionId, label: mintedDtuId ? 'Saved' : 'Mint', desc: mintedDtuId ? `${mintedDtuId.slice(0, 8)}…` : 'Private shoot DTU', icon: Sparkles, accent: '#3b82f6', handler: actMint },
-    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shoot brief', icon: Send, accent: '#ec4899', handler: actDm },
+    { id: 'dm' as ActionId, label: 'DM', desc: 'Send shoot brief', icon: Send, accent: '#f472b6', handler: actDm },
     { id: 'publish' as ActionId, label: publishedDtuId ? 'Published' : 'Publish', desc: publishedDtuId ? `${publishedDtuId.slice(0, 8)}…` : 'Public template', icon: Globe, accent: '#15803d', handler: actPublish },
     { id: 'agent' as ActionId, label: 'Direction', desc: 'Agent: creative + fix', icon: Wand2, accent: '#eab308', handler: actAgent },
   ];

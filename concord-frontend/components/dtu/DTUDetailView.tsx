@@ -68,8 +68,8 @@ interface DTUDetailViewProps {
 
 const tierConfig: Record<string, { icon: typeof Zap; color: string; label: string; bg: string }> = {
   regular: { icon: Zap, color: 'text-neon-blue', label: 'Regular DTU', bg: 'bg-neon-blue/10' },
-  mega: { icon: Crown, color: 'text-neon-purple', label: 'Mega DTU', bg: 'bg-neon-purple/10' },
-  hyper: { icon: Zap, color: 'text-neon-pink', label: 'Hyper DTU', bg: 'bg-neon-pink/10' },
+  mega: { icon: Crown, color: 'text-neon-purple-bright', label: 'Mega DTU', bg: 'bg-neon-purple/10' },
+  hyper: { icon: Zap, color: 'text-neon-pink-bright', label: 'Hyper DTU', bg: 'bg-neon-pink/10' },
   shadow: { icon: Ghost, color: 'text-gray-400', label: 'Shadow DTU', bg: 'bg-gray-500/10' },
   archive: { icon: FileType, color: 'text-gray-400', label: 'Archived DTU', bg: 'bg-gray-600/10' },
 };
@@ -112,8 +112,8 @@ const DTU_SOURCE_STYLES: Record<string, { bg: string }> = {
   autogen: { bg: 'bg-green-500/10 text-green-400' },
   dream: { bg: 'bg-purple-500/10 text-purple-400' },
   teaching: { bg: 'bg-yellow-500/10 text-yellow-400' },
-  entity_autonomy: { bg: 'bg-neon-purple/10 text-neon-purple' },
-  emergent: { bg: 'bg-neon-purple/10 text-neon-purple' },
+  entity_autonomy: { bg: 'bg-neon-purple/10 text-neon-purple-bright' },
+  emergent: { bg: 'bg-neon-purple/10 text-neon-purple-bright' },
   evolution: { bg: 'bg-pink-500/10 text-pink-400' },
   hlr: { bg: 'bg-orange-500/10 text-orange-400' },
   hypothesis: { bg: 'bg-amber-500/10 text-amber-400' },
@@ -128,7 +128,7 @@ const DTU_SOURCE_STYLES: Record<string, { bg: string }> = {
   breakthrough_cluster: { bg: 'bg-lime-500/10 text-lime-400' },
   invoice: { bg: 'bg-emerald-500/10 text-emerald-400' },
   tax_summary: { bg: 'bg-emerald-500/10 text-emerald-400' },
-  forge: { bg: 'bg-neon-pink/10 text-neon-pink' },
+  forge: { bg: 'bg-neon-pink/10 text-neon-pink-bright' },
   seed: { bg: 'bg-gray-500/10 text-gray-400' },
   federation: { bg: 'bg-cyan-500/10 text-cyan-400' },
 };
@@ -466,7 +466,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
             )}
             <button
               onClick={handleShareUrl}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-purple/10 text-neon-purple hover:bg-neon-purple/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-neon-purple/10 text-neon-purple-bright hover:bg-neon-purple/20 transition-colors"
               title="Copy public share URL"
             >
               <Share2 className="w-3.5 h-3.5" />
@@ -743,7 +743,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                           <FileType className="w-4 h-4" />
                         )}
                         Artifact Preview
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple uppercase">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-neon-purple/10 text-neon-purple-bright uppercase">
                           {primaryType.replace(/_/g, ' ')}
                         </span>
                       </h3>
@@ -852,7 +852,7 @@ function DTUDetailView({ dtuId, onClose, onNavigate }: DTUDetailViewProps) {
                   {(!dtu.meta?.scope || dtu.meta?.scope === 'local') && !showPromote && (
                     <button
                       onClick={() => setShowPromote(true)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-neon-purple/10 text-neon-purple border border-neon-purple/30 hover:bg-neon-purple/20 transition-colors"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-neon-purple/10 text-neon-purple-bright border border-neon-purple/30 hover:bg-neon-purple/20 transition-colors"
                     >
                       <ArrowUpCircle className="w-4 h-4" />
                       Push to Marketplace

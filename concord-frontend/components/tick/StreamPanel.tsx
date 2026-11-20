@@ -69,7 +69,7 @@ export function StreamPanel() {
             </div>
             <div className="flex justify-between text-xs text-gray-400 mt-2">
               <span>Oldest</span>
-              <span className="text-gray-600">
+              <span className="text-lattice-muted">
                 {isLive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-neon-green mr-1 animate-pulse" />}
                 {tickHistory.length} events
               </span>

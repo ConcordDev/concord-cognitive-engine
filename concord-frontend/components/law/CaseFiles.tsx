@@ -517,7 +517,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                         </div>
                       </div>
                       {(judge || outcome !== 'pending') && (
-                        <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                        <p className="text-[10px] text-lattice-muted flex items-center gap-1">
                           <Gavel className="w-3 h-3" />
                           {judge ? `Presiding: ${judge}` : 'No judge recorded'}
                           {item.data?.closedAt && <span> · closed {new Date(item.data.closedAt).toLocaleDateString()}</span>}
@@ -537,7 +537,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                                 <span className="flex items-center gap-1.5 min-w-0">
                                   <FileText className="w-3 h-3 text-neon-purple shrink-0" />
                                   <span className="truncate text-white">{d.title}</span>
-                                  <span className="text-[9px] text-gray-500 shrink-0">v{d.version}</span>
+                                  <span className="text-[9px] text-lattice-muted shrink-0">v{d.version}</span>
                                 </span>
                                 <span className="text-[9px] px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-400 shrink-0 capitalize">{d.status}</span>
                               </div>
@@ -549,12 +549,12 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                                   <span className="truncate text-white">{c.source}</span>
                                   <span className="truncate text-gray-400">— {c.text}</span>
                                 </span>
-                                <span className="text-[9px] text-gray-500 shrink-0">{Math.round(c.relevance * 100)}%</span>
+                                <span className="text-[9px] text-lattice-muted shrink-0">{Math.round(c.relevance * 100)}%</span>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-[11px] text-gray-500">No drafts or citations logged for this case yet.</p>
+                          <p className="text-[11px] text-lattice-muted">No drafts or citations logged for this case yet.</p>
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -577,7 +577,7 @@ export function CaseFiles({ onCasesChange }: { onCasesChange?: (cases: CaseFileS
                                 onClick={() => addDraft(item)}
                                 disabled={!draftTitle.trim() || lawActionBusy === 'draft'}
                                 aria-label="Add draft"
-                                className="px-1.5 rounded bg-neon-purple/15 text-neon-purple hover:bg-neon-purple/25 disabled:opacity-40 shrink-0"
+                                className="px-1.5 rounded bg-neon-purple/15 text-neon-purple-bright hover:bg-neon-purple/25 disabled:opacity-40 shrink-0"
                               >
                                 {lawActionBusy === 'draft' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
                               </button>

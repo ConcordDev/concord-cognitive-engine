@@ -125,7 +125,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
           <input placeholder="Character arc" value={form.arc} onChange={(e) => setForm({ ...form, arc: e.target.value })}
             className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
           <button type="button" onClick={addCharacter}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Character
           </button>
         </div>
@@ -154,7 +154,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                     className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={saveEdit}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">
                       <Check className="w-3.5 h-3.5" /> Save
                     </button>
                     <button type="button" onClick={cancelEdit}
@@ -172,10 +172,10 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                       <span className="text-sm font-semibold text-zinc-100">{c.name}</span>
                       <span className={cn('ml-2 text-[10px] uppercase', ROLE_COLOR[c.role])}>{c.role}</span>
                     </button>
-                    <button aria-label="Edit character" type="button" onClick={() => startEdit(c)} className="text-zinc-600 hover:text-zinc-300">
+                    <button aria-label="Edit character" type="button" onClick={() => startEdit(c)} className="text-lattice-muted hover:text-zinc-300">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button aria-label="Delete" type="button" onClick={() => delCharacter(c.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delCharacter(c.id)} className="text-lattice-muted hover:text-rose-400">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -213,7 +213,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
               {characters.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <button type="button" onClick={addRelation}
-              className="px-3 py-1.5 text-xs font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg">Relate</button>
+              className="px-3 py-1.5 text-xs font-medium bg-amber-700 hover:bg-amber-500 text-white rounded-lg">Relate</button>
           </div>
           {relationships.length > 0 && (
             <ul className="space-y-1">
@@ -224,7 +224,7 @@ export function CwCharactersPanel({ projectId, onChange }: { projectId: string; 
                   <span className="text-zinc-200 flex-1">{r.toName}</span>
                   <button aria-label="Delete" type="button"
                     onClick={() => lensRun('creative-writing', 'character-unrelate', { id: r.id }).then(refresh)}
-                    className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    className="text-lattice-muted hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
                 </li>
               ))}
             </ul>

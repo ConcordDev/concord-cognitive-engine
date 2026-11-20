@@ -121,7 +121,7 @@ export function ScheduleAnalyzer() {
   if (eventCount === 0) {
     return (
       <div className="rounded-xl border border-dashed border-lattice-border bg-lattice-deep p-8 text-center">
-        <CalendarX className="mx-auto h-8 w-8 text-gray-600" />
+        <CalendarX className="mx-auto h-8 w-8 text-lattice-muted" />
         <div className="mt-3 text-sm text-gray-300">Your calendar is empty.</div>
         <div className="mt-1 text-xs text-gray-400">Add an event with the lens's "New event" button above — this panel then checks it for conflicts and finds free slots in your work day.</div>
       </div>
