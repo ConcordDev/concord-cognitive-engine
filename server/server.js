@@ -8656,6 +8656,9 @@ function authMiddleware(req, res, next) {
     "/api/detective/open", "/api/detective/crime",
     // Phase BE1 — photos public feed.
     "/api/photos/world",
+    // The Darkroom — a published photo release's watermarked proof (and, when
+    // free, its download). Each route checks the release itself (lib/darkroom/releases.js).
+    "/api/photos/releases",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -15494,7 +15497,7 @@ async function runMacro(domain, name, input, ctx) {
     "move-builder": new Set(["compose", "catalog", "list", "get"]),
     // Photos — only the public world gallery feed is world-visible; mine/get/share
     // are per-user / owner-gated and intentionally NOT listed.
-    photos: new Set(["world"]),
+    photos: new Set(["world", "release-list", "release-get"]),
     // Society — World Bank open-data reads (anonymous-safe; the handlers require
     // no auth). The per-user saved-chart macros (wb-save-chart/wb-list-charts/
     // wb-load-chart) are intentionally NOT listed — they self-scope by actor.
@@ -15958,7 +15961,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
     // "/api/evo-asset" — see Gate 1's matching addition + comment.
     "/api/evo-asset",
-    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
+    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world", "/api/photos/releases",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
     // "/api/settings" restored — see Gate 1's matching correction comment.
