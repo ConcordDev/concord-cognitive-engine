@@ -133,6 +133,12 @@ def _type_in_field(s):
     name = (m.group("q") or m.group("u") or "").strip()
     if not name or not (m.group("q") or m.group("noun") or name[:1].isupper()):
         return None
+    if re.search(r"(?i)\b(?:and|then)\b\s*\S+\s+(?:in|into|to)\s+\S", name):
+        # A second field clause is riding inside the name: 'Type -2 in Width and -3 in Depth'
+        # parses with the name 'Width and -3 in Depth'. A compound two-field instruction is
+        # not split into typed writes on a guess — refuse the parse, the step stays unmapped
+        # (fail closed; GB-1560 item 4 ruling, 2026-11-19).
+        return None
     if len(m.group("v").strip()) > 80:
         return None
     return name, _fill_literal(m.group("v"))
@@ -192,6 +198,11 @@ def map_step(raw, lens_slug=None):
         if lit is not None:
             out["literal"] = lit
         return out
+    if tf:
+        # The form WAS recognised and deferred to writevocab — say so. Falling through to
+        # "no recognised action verb" misclassifies the step and would send the ticket to
+        # NEEDS_HUMAN with a false reason (GB-1560 item 4 ruling, 2026-11-19).
+        return dict(base, reason="deferred-to-writevocab: value-spec type-in-field form (rides the segment path as type_value)")
     m = re.match(r"(?i)^(?:then\s+)?(?:click|tap|select|choose|activate|toggle|expand|focus|check)\s+(?:on\s+)?(?:the\s+)?(?:" + _QNAME + r"|(?P<rest>.+))$", s)
     if m:
         name = (m.group("q") or "").strip() or _name_from(m, m.group("rest") or "")

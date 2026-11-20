@@ -79,8 +79,11 @@ def test_mapping():
     check("open tab maps", r["mapped"] and r["action"] == "open_tab" and r["name"] == "Analytics", r)
     r = m("Press Escape")
     check("press key maps", r["mapped"] and r["action"] == "press" and r["key"] == "Escape", r)
+    r = m("Type hello into the Search field")
+    check("fill maps (prose form)", r["mapped"] and r["action"] == "fill" and r["name"] == "Search", r)
     r = m("Type 'hello' into the Search field")
-    check("fill maps", r["mapped"] and r["action"] == "fill" and r["name"] == "Search", r)
+    check("value-spec form defers to writevocab, named honestly (not 'no recognised action verb')",
+          not r["mapped"] and "writevocab" in (r.get("reason") or ""), r)
     r = m("Observe selection state and whether controls enable")
     check("observe maps (no-op)", r["mapped"] and r["action"] == "observe", r)
     r = m("Reload the page")
@@ -130,8 +133,12 @@ def test_not_executed_is_human():
     r = repro.run_repro(T(["Type 'abc' into the Search field"], "Search is visible"), d, lens_slug="demo", allow_fill=False)
     check("fill refused on a read-only (write-skip/admin) lens", r["verdict"] == "NEEDS_HUMAN" and not any(c[0] == "type" for c in d.calls), r["notes"])
     d = FakeDriver(controls=[{"name": "Search", "role": "textbox", "enabled": True}], texts=["Search"])
-    r = repro.run_repro(T(["Type 'abc' into the Search field"], "Search is visible"), d, lens_slug="demo", allow_fill=True)
+    r = repro.run_repro(T(["Type hello into the Search field"], "Search is visible"), d, lens_slug="demo", allow_fill=True)
     check("fill allowed on a normal lens (own labelled value, no submit)", r["verdict"] == "FIXED" and ("type", "Search") in d.calls, r)
+    d = FakeDriver(controls=[{"name": "Search", "role": "textbox", "enabled": True}], texts=["Search"])
+    r = repro.run_repro(T(["Type 'abc' into the Search field"], "Search is visible"), d, lens_slug="demo", allow_fill=True)
+    check("value-spec step is a write step: refused without --allow-write, never silently filled with a different value",
+          r["verdict"] == "NEEDS_HUMAN" and not any(c[0] == "type" for c in d.calls), r)
 
 
 def test_expected_must_be_checkable():
