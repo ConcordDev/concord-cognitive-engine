@@ -16,9 +16,11 @@
  * mafft + iqtree + samtools + bwa + roadrunner + cobrapy +
  * vina + opensim (SXE-28), openmc + geant4 (SXE-30),
  * modflow + swmm + openquake + specfem + climlab + aermod +
- * epanet + proj (SXE-35). Later engine programmes append
- * their imports here; engines/index.js imports this module
- * exactly once.
+ * epanet + proj (SXE-35); batch 3: openems + nec2c (SXE-17),
+ * pyroomacoustics + bempp-cl (SXE-34), pandapower + pypsa +
+ * opendss (SXE-19), lammps + gromacs + openmm (SXE-27).
+ * Later engine programmes append their imports here;
+ * engines/index.js imports this module exactly once.
  */
 import "./mpi.js";
 import "./fenicsx.js";
@@ -73,3 +75,13 @@ import "./climlab.js";
 import "./aermod.js";
 import "./epanet.js";
 import "./proj.js";
+import "./openems.js";
+import "./nec2c.js";
+import "./pyroomacoustics.js";
+import "./bempp-cl.js";
+import "./pandapower.js";
+import "./pypsa.js";
+import "./opendss.js";
+import "./lammps.js";
+import "./gromacs.js";
+import "./openmm.js";
