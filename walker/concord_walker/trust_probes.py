@@ -219,6 +219,19 @@ def attempt_verdict(status, body, owner_changed):
     return "UNVERIFIED"
 
 
+def broadcast_verdict(frames_seen, marker_seen):
+    """The private-broadcast leg's verdict (W5b). LEAK: the run's private
+    fixture marker arrived in the foreign context's socket frames. CLEAN:
+    frames flowed and none carried the marker. NO_FRAMES: no socket
+    traffic was observed at all — inconclusive, named as such, never a
+    pass (the lens may simply have no live socket on this view)."""
+    if marker_seen:
+        return "LEAK"
+    if frames_seen:
+        return "CLEAN"
+    return "NO_FRAMES"
+
+
 def leg_plan(kind, *, write_calls, actor_fields=0, created_objects=0):
     """Should a trust leg run, and if not, why not — a skipped leg is a
     reported state with a named reason, never a silent absence."""
@@ -245,11 +258,14 @@ def _leg_block(rows):
             "rows": rows}
 
 
-def trust_block(mutation_rows=None, spoof_rows=None, mutation_skip=None, spoof_skip=None):
+def trust_block(mutation_rows=None, spoof_rows=None, mutation_skip=None, spoof_skip=None,
+                broadcast=None, broadcast_skip=None):
     """The per-lens trust block written into the walk result, next to the
-    isolation block. Status: RAN when both legs ran, PARTIAL when one did,
-    SKIPPED with the reasons otherwise; verdict FAIL when any attempt
-    landed, PASS when every run leg refused or tolerated."""
+    isolation block. Status: RAN when every leg ran, PARTIAL when some
+    did, SKIPPED with the reasons otherwise; verdict FAIL when any attempt
+    landed or the broadcast leg leaked, PASS when every run leg refused,
+    tolerated, or stayed clean. `broadcast` (W5b) is the private-broadcast
+    leg's outcome: {"verdict": LEAK|CLEAN|NO_FRAMES, "frames": n}."""
     block = {"status": "SKIPPED", "checks": 0, "findings": 0, "legs": {}}
     ran = []
     for name, rows, skip in (("mutation", mutation_rows, mutation_skip),
@@ -262,7 +278,16 @@ def trust_block(mutation_rows=None, spoof_rows=None, mutation_skip=None, spoof_s
             block["findings"] += leg["landed"]
         elif skip:
             block["legs"][name] = {"skip": skip}
-    if len(ran) == 2:
+    if broadcast is not None:
+        ran.append("broadcast")
+        block["legs"]["broadcast"] = broadcast
+        block["checks"] += 1
+        if broadcast.get("verdict") == "LEAK":
+            block["findings"] += 1
+    elif broadcast_skip:
+        block["legs"]["broadcast"] = {"skip": broadcast_skip}
+    total = 3 if (broadcast is not None or broadcast_skip) else 2
+    if len(ran) == total:
         block["status"] = "RAN"
     elif ran:
         block["status"] = "PARTIAL"

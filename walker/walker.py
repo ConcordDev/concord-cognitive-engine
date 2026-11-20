@@ -844,6 +844,29 @@ def cmd_merge_shards(args, cfg, log):
         log("merge-shards: %d conflict(s); contested ids are EXCLUDED from the merged ledger and listed in merge-report.json" % len(report["conflicts"]))
 
 
+def cmd_owner_scan(args, cfg, log):
+    """ULW v3 W5b (GB-1576): the offline ownership + broadcast code scan.
+    Walks a server tree and writes the ranked file:line candidate list
+    (JSONL) — id lookups with no owner check, and private events reaching
+    global emits / global logs. A census for human confirmation, never a
+    verdict."""
+    from concord_walker.ownerscan import scan_tree
+    root = args.from_repo
+    server = os.path.join(root, "server")
+    if os.path.isdir(server):
+        root = server
+    rows = scan_tree(root)
+    out = args.out or os.path.join(cfg["_walker_dir"], "analysis", "owner-scan.jsonl")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    kinds = {}
+    for r in rows:
+        kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+    log("owner-scan: %d candidate(s) %s over %s -> %s" % (len(rows), kinds, root, out))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config")
@@ -930,6 +953,9 @@ def main():
     p.add_argument("--repo", help="Concord repo checkout for git show at the walk build (component/code-scan/backend sections stay empty without one)")
     p.add_argument("--out", help="output dir (default: <run-dir>/dossiers)")
     p.add_argument("--misses", help="W1 redesign_misses.jsonl (default: walker/analysis/redesign_misses.jsonl when present)")
+    p = sub.add_parser("owner-scan", help="ULW v3 W5b: offline ownership + private-broadcast code scan over a server tree (ranked file:line candidates, JSONL)")
+    p.add_argument("--from-repo", required=True, help="repo checkout (or its server/ dir) to scan")
+    p.add_argument("--out", help="ranked list path (default: walker/analysis/owner-scan.jsonl)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     if getattr(args, "base_url", None):
@@ -953,6 +979,8 @@ def main():
         cmd_merge_shards(args, cfg, log)
     elif args.cmd == "dossier":
         cmd_dossier(args, cfg, log)
+    elif args.cmd == "owner-scan":
+        cmd_owner_scan(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":
