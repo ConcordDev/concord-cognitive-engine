@@ -379,7 +379,20 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
     };
   }
 
-  let ir = clean.ir || clean.design?.ir || null;
+  // SC-00: solve.direct mode — typed inputs instead of a Design IR. The
+  // boundary validates (SC-04 refusal) and builds the minimal IR, then the
+  // normal pipeline (compile → open → settle → signing) runs unchanged.
+  let directIr = null;
+  if (!clean.ir && !clean.design?.ir && !clean.designId && clean.inputs) {
+    const { validateDirectInputs, buildDirectIR } = await import("./conkay/solve-direct.js");
+    const v = validateDirectInputs(clean.inputs);
+    if (!v.ok) {
+      return { ok: false, reason: "invalid_input", error: v.error, field: v.field, actor_id: imp.actorId, audited: true };
+    }
+    directIr = buildDirectIR(clean.inputs);
+  }
+
+  let ir = clean.ir || clean.design?.ir || directIr || null;
   if (!ir && clean.designId) {
     if (!db) return { ok: false, reason: "no_database", error: "designId requires db" };
     const row = db.prepare("SELECT * FROM conkay_designs WHERE id = ?").get(String(clean.designId));
@@ -393,7 +406,7 @@ export async function conkaySolveMcp(db, args = {}, STATE = null, callCtx = null
     }
   }
   if (!ir || typeof ir !== "object") {
-    return { ok: false, reason: "invalid_input", error: "provide ir (Design IR) or designId" };
+    return { ok: false, reason: "invalid_input", error: "provide ir (Design IR), designId, or inputs (solve.direct typed inputs)" };
   }
 
   if (clean.dry_run === true || clean.preview === true) {
