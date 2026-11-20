@@ -58,6 +58,8 @@ import {
 import { isQuietLensAction, lensActivityLabel, lensActivityObject } from "./lib/lens-activity-labels.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { shelfOf as _skyShelfOf } from "./lib/dtu-shelf.js";
+import { buildSky as _buildSky, route as _skyRoute, magnitude as _skyMagnitude, SPECTRAL as _SKY_SPECTRAL } from "./lib/star-chart.js";
 import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
@@ -15598,7 +15600,7 @@ async function runMacro(domain, name, input, ctx) {
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
-    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
+    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search", "sky", "star", "route"]),
     // events.list/recent/log/paginated read the process-wide STATE.logs ring
     // (other sessions' chat). Not a public read — handlers require an actor
     // and return only that caller's rows. See lib/log-access.js.
@@ -49823,14 +49825,27 @@ function _graphVisibleEdge(e, viewerId) {
   return _graphCanSeeId(e.source, viewerId) && _graphCanSeeId(e.target, viewerId);
 }
 
+// A DTU's lineage comes in two shapes: dtu.create with `parents` writes
+// { parents: [...] }, with `lineage: [...]` it keeps the bare array of
+// parent refs (ids or { id }). Both are real lineage; the index used to
+// read only the first, so every array-form child was missing its edge.
+function _lineageParentsOf(d) {
+  const l = d?.lineage;
+  const raw = Array.isArray(l) ? l : (Array.isArray(l?.parents) ? l.parents : []);
+  return raw.map((p) => (typeof p === "string" ? p : p?.id)).filter((p) => typeof p === "string" && p);
+}
+function _lineageChildrenOf(d) {
+  const l = d?.lineage;
+  return !Array.isArray(l) && Array.isArray(l?.children) ? l.children.filter((c) => typeof c === "string" && c) : [];
+}
+
 function rebuildGraphIndex() {
   GRAPH_INDEX.nodes.clear();
   GRAPH_INDEX.edges.clear();
   for (const [id, dtu] of STATE.dtus.entries()) {
     GRAPH_INDEX.nodes.set(id, { id, title: dtu.title, tier: dtu.tier, tags: dtu.tags || [], lineageDepth: 0 });
-    const lineage = dtu.lineage || {};
-    for (const parentId of (lineage.parents || [])) { GRAPH_INDEX.edges.set(`${parentId}->${id}`, { id: `${parentId}->${id}`, source: parentId, target: id, type: "parent" }); }
-    for (const childId of (lineage.children || [])) { GRAPH_INDEX.edges.set(`${id}->${childId}`, { id: `${id}->${childId}`, source: id, target: childId, type: "child" }); }
+    for (const parentId of _lineageParentsOf(dtu)) { GRAPH_INDEX.edges.set(`${parentId}->${id}`, { id: `${parentId}->${id}`, source: parentId, target: id, type: "parent" }); }
+    for (const childId of _lineageChildrenOf(dtu)) { GRAPH_INDEX.edges.set(`${id}->${childId}`, { id: `${id}->${childId}`, source: id, target: childId, type: "child" }); }
     for (const tag of (dtu.tags || [])) {
       const tagNodeId = `tag:${tag}`;
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
@@ -49843,7 +49858,7 @@ function rebuildGraphIndex() {
     for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
-  const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
+  const roots = Array.from(STATE.dtus.values()).filter(d => !_lineageParentsOf(d).length || d.tier === "core");
   const visited = new Set();
   const queue = roots.map(r => ({ id: r.id, depth: 0 }));
   while (queue.length > 0) {
@@ -49853,7 +49868,7 @@ function rebuildGraphIndex() {
     const node = GRAPH_INDEX.nodes.get(id);
     if (node) node.lineageDepth = depth;
     const dtu = STATE.dtus.get(id);
-    for (const childId of (dtu?.lineage?.children || [])) { if (!visited.has(childId)) queue.push({ id: childId, depth: depth + 1 }); }
+    for (const childId of _lineageChildrenOf(dtu)) { if (!visited.has(childId)) queue.push({ id: childId, depth: depth + 1 }); }
   }
   GRAPH_INDEX.dirty = false;
 }
@@ -50023,6 +50038,125 @@ app.get("/api/graph/search", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e), results: [] });
   }
+});
+
+// ── The star chart (Graph lens) ──────────────────────────────────────────
+// The lattice as a sky: lib/star-chart.js does the astronomy (magnitude from
+// real links + citations, class from the shelf, constellations by modularity,
+// a stable seeded layout). These read the same privacy-filtered
+// GRAPH_INDEX as the force graph; personal records and system rows never
+// chart. A sky is cached briefly per viewer and index version.
+const _SKY_CACHE = new Map();
+function _skyCitations() {
+  const counts = new Map();
+  try {
+    const db = STATE.db || globalThis._concordDB;
+    if (db?.prepare) for (const r of db.prepare("SELECT dtu_id, citation_count FROM dtu_citations WHERE citation_count > 0").all()) counts.set(r.dtu_id, Number(r.citation_count) || 0);
+  } catch { /* table optional: no citations recorded */ }
+  return counts;
+}
+function _skyGraph(ctx) {
+  _ensureGraphIndex();
+  const viewer = _graphViewer(ctx);
+  const cites = _skyCitations();
+  return {
+    viewer,
+    nodes: GRAPH_INDEX.nodes,
+    edges: [...GRAPH_INDEX.edges.values()].filter((e) => _graphVisibleEdge(e, viewer)),
+    dtu: (id) => STATE.dtus.get(id) || null,
+    canSee: (id) => _graphCanSeeId(id, viewer) && !!STATE.dtus.get(id),
+    shelfOf: (d) => _skyShelfOf(d).shelf,
+    citations: (id) => cites.get(id) || 0,
+  };
+}
+function _skyMaps(userId) {
+  const maps = userId ? (STATE.graphLens?.maps?.get?.(userId) || []) : [];
+  return Array.isArray(maps) ? maps : [];
+}
+register("graph", "sky", (ctx, input = {}) => {
+  try {
+    const include = Array.isArray(input.include) ? input.include.map(String).filter((x) => /^[A-Za-z0-9_:.-]{1,120}$/.test(x)).slice(0, 200) : [];
+    const limit = Math.max(20, Math.min(1500, Math.round(Number(input.limit) || 400)));
+    const viewer = _graphViewer(ctx);
+    _ensureGraphIndex();
+    const key = `${viewer || "anon"}|${GRAPH_INDEX.builtVersion}|${limit}|${include.join(",")}`;
+    const hit = _SKY_CACHE.get(key);
+    if (hit && Date.now() - hit.at < 30_000 && !GRAPH_INDEX.dirty) return { ok: true, ...hit.sky, cached: true };
+    const sky = _buildSky(_skyGraph(ctx), { limit, include });
+    _SKY_CACHE.set(key, { at: Date.now(), sky });
+    if (_SKY_CACHE.size > 200) _SKY_CACHE.delete(_SKY_CACHE.keys().next().value);
+    return { ok: true, ...sky, classes: _SKY_SPECTRAL };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+register("graph", "route", (ctx, input = {}) => {
+  try {
+    const from = String(input.from || ""); const to = String(input.to || "");
+    if (!from || !to) return { ok: false, error: "choose two stars" };
+    const g = _skyGraph(ctx);
+    const r = _skyRoute(g, from, to, Math.max(1, Math.min(10, Math.round(Number(input.maxHops) || 8))));
+    if (!r.ok) return r;
+    const named = (id) => ({ id, title: String(STATE.dtus.get(id)?.title || "Untitled").slice(0, 120) });
+    return { ...r, stops: r.path ? r.path.map(named) : [] };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+// One star's catalogue card: what it is, how bright and why, where it came
+// from (lineage — the old Genome view), what it's linked to, and which of
+// your own charts it's in.
+register("graph", "star", (ctx, input = {}) => {
+  try {
+    const id = String(input.id || "");
+    const g = _skyGraph(ctx);
+    const dtu = g.dtu(id);
+    if (!dtu || !g.canSee(id)) return { ok: false, error: "star not found" };
+    const shelf = _skyShelfOf(dtu).shelf;
+    const linked = new Map();
+    const relations = [];
+    for (const e of g.edges) {
+      if (e.type === "tagged" || e.source === e.target) continue;
+      if (e.source !== id && e.target !== id) continue;
+      const other = e.source === id ? e.target : e.source;
+      if (!g.canSee(other)) continue;
+      linked.set(other, true);
+      if (relations.length < 40) relations.push({ id: other, title: String(STATE.dtus.get(other)?.title || "Untitled").slice(0, 120), type: e.type, direction: e.source === id ? "out" : "in" });
+    }
+    const vis = (ids) => (Array.isArray(ids) ? ids : []).filter((x) => g.canSee(x)).slice(0, 12).map((x) => ({ id: x, title: String(STATE.dtus.get(x)?.title || "Untitled").slice(0, 120) }));
+    const parents = vis(_lineageParentsOf(dtu));
+    const children = vis([..._lineageChildrenOf(dtu), ...[...linked.keys()].filter((o) => _lineageParentsOf(STATE.dtus.get(o)).includes(id))].filter((v, i, a) => a.indexOf(v) === i));
+    const citations = g.citations(id);
+    const owner = dtu.author || dtu.ownerId || dtu.userId || dtu.createdBy || null;
+    let ownerName = null;
+    try { ownerName = owner ? (STATE.db?.prepare?.("SELECT username FROM users WHERE id = ?").get(String(owner))?.username || null) : null; } catch { ownerName = null; }
+    const charts = _skyMaps(g.viewer).filter((m) => (m.nodes || []).some((n) => n.dtuId === id)).map((m) => ({ id: m.id, title: m.title }));
+    const sp = _SKY_SPECTRAL[shelf] || null;
+    return {
+      ok: true,
+      star: {
+        id, title: String(dtu.title || "Untitled").slice(0, 200), shelf, spectral: sp?.letter || null, colour: sp?.colour || null,
+        charted: !!sp, magnitude: _skyMagnitude(linked.size, citations), links: linked.size, citations,
+        tier: dtu.tier || null, createdAt: dtu.createdAt || null, tags: (dtu.tags || []).slice(0, 10),
+        summary: String(dtu.human?.summary || dtu.cretiHuman || "").slice(0, 600),
+        owner: ownerName, isMine: !!g.viewer && owner === g.viewer,
+        parents, children, relations, charts,
+      },
+    };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+// Your own constellations: each of your maps, drawn between the stars its
+// nodes stand for (the DTUs they link to). Lines from a map stay yours —
+// they are drawn from the map, never written into anyone else's star.
+register("graph", "my-constellations", (ctx) => {
+  try {
+    const g = _skyGraph(ctx);
+    if (!g.viewer) return { ok: true, constellations: [] };
+    const out = [];
+    for (const m of _skyMaps(g.viewer)) {
+      const byNode = new Map((m.nodes || []).filter((n) => n.dtuId && g.canSee(n.dtuId)).map((n) => [n.id, n.dtuId]));
+      const stars = [...new Set(byNode.values())];
+      const lines = (m.edges || []).map((e) => [byNode.get(e.from), byNode.get(e.to)]).filter(([a, b]) => a && b && a !== b);
+      out.push({ id: m.id, title: m.title, stars, lines, nodes: (m.nodes || []).length });
+    }
+    return { ok: true, constellations: out };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 app.get("/api/graph/force", async (req, res) => {
