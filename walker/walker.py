@@ -82,6 +82,11 @@ def pick_lenses(inv, args):
         lenses = [by[s] for s in want]
     if getattr(args, "category", None):
         lenses = [l for l in lenses if l.get("category") == args.category]
+    if getattr(args, "shard", None):
+        from concord_walker.shard import parse_shard, partition
+        si, sn = parse_shard(args.shard)
+        mine = set(partition([l["slug"] for l in inv], sn)[si])
+        lenses = [l for l in lenses if l["slug"] in mine]
     if getattr(args, "start_from", None):
         slugs = [l["slug"] for l in lenses]
         lenses = lenses[slugs.index(args.start_from):]
@@ -139,8 +144,23 @@ def cmd_walk(args, cfg, log):
     lenses = pick_lenses(inv, args)
     all_slugs = [l["slug"] for l in inv]
     dry = args.dry_run or args.no_auth
+    # ULW v3 W3: sharding — per-shard run id (hence run dir), account pair,
+    # lock and ledger. Unsharded runs are untouched.
+    shard = None
+    reader_key = "t1"
+    if getattr(args, "shard", None):
+        from concord_walker.shard import parse_shard, shard_accounts, shard_run_id, shard_lock_name
+        shard = parse_shard(args.shard)
+        reader_key, writer_key = shard_accounts(cfg, shard[0])
+        if writer_key:
+            cfg = dict(cfg, write_account=writer_key)
     rid = getattr(args, "resume", None) or run_id()
+    if shard and not getattr(args, "resume", None):
+        rid = shard_run_id(rid, shard[0], shard[1])
     rec = RunRecorder(cfg, rid, dry=dry)
+    if shard:
+        log("shard %d of %d: run %s, %d lens(es), reader=%s writer=%s, ledger in run dir" % (
+            shard[0], shard[1], rid, len(lenses), reader_key, cfg.get("write_account")))
     log.path = os.path.join(rec.run_dir, "walker.log")
     # Replay (replay-original-tickets): the sweep sits ON TOP of the original lens-walk tickets. A live
     # sweep loads the same pinned fold reverify --from-repo reads, and replays every OPEN /
@@ -174,9 +194,9 @@ def cmd_walk(args, cfg, log):
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
     if premap and "sweep" not in phases:
         phases = phases + ["sweep"]
-    if not args.no_auth and not has_session(cfg, "t1"):
-        raise SystemExit("no saved session for %s (auth/t1.json). Run: walker.py login --account t1 --headed  "
-                         "(or use --no-auth for a signed-out smoke)" % cfg["accounts"]["t1"]["username"])
+    if not args.no_auth and not has_session(cfg, reader_key):
+        raise SystemExit("no saved session for %s (auth/%s.json). Run: walker.py login --account %s --headed  "
+                         "(or use --no-auth for a signed-out smoke)" % (cfg["accounts"][reader_key]["username"], reader_key, reader_key))
     manifest = Manifest(rec.run_dir, rid, len(lenses))
     done_before = manifest.walked_slugs() if getattr(args, "resume", None) else set()
     if done_before:
@@ -221,9 +241,11 @@ def cmd_walk(args, cfg, log):
         else:
             log("replay verdicts will NOT be written: --expect-sha %r is missing/not a hex sha (replay still runs, dry)" % (expect,))
         from concord_walker.ledger import WalkerLedger
-        ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"), "walker.jsonl"),
-                              dry=dry or live is None, expect_sha=expect)
-    with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
+        ledger_path = (os.path.join(rec.run_dir, "ledger.jsonl") if shard else
+                       os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"), "walker.jsonl"))
+        ledger = WalkerLedger(ledger_path, dry=dry or live is None, expect_sha=expect)
+    lock_name = shard_lock_name(shard[0], shard[1]) if shard else "run.lock"
+    with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], lock_name)), sync_playwright() as pw:
         def launch():
             return pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         browser = launch()
@@ -245,7 +267,7 @@ def cmd_walk(args, cfg, log):
                     log("memory stayed low; stopping run before %s" % slug)
                     abort = (slug, "memory stayed low")
                     break
-                acct, admin, lphases = (None if args.no_auth else "t1"), False, phases
+                acct, admin, lphases = (None if args.no_auth else reader_key), False, phases
                 gate = False
                 if slug in cfg["admin_lenses"]:
                     if args.admin and has_session(cfg, "admin") and not args.no_auth:
@@ -760,6 +782,31 @@ def cmd_merge_runs(args, cfg, log):
             % (len(report["conflicts"]), args.out, args.report))
 
 
+def cmd_merge_shards(args, cfg, log):
+    """ULW v3 W3: fold shard run dirs into one manifest + one ledger
+    (walker.jsonl + walk-manifest.json + merge-report.json under --out).
+    Lens overlap across shards is reported and blocks activation."""
+    from concord_walker.shard import merge_shards
+    runs = []
+    for item in (args.runs or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if not os.path.isdir(item):
+            cand = os.path.join(cfg.get("runs_dir") or os.path.join(cfg["_walker_dir"], "runs"), item)
+            if os.path.isdir(cand):
+                item = cand
+        runs.append(item)
+    if len(runs) < 2:
+        raise SystemExit("merge-shards needs at least two shard run dirs (or run ids under runs_dir)")
+    report = merge_shards(runs, args.out)
+    log("merge-shards: %s -> %s" % (report["stats"], args.out))
+    if report["lens_overlap"]:
+        log("merge-shards: LENS OVERLAP %s — the shard partition was not disjoint; activation blocked" % report["lens_overlap"])
+    if report["conflicts"]:
+        log("merge-shards: %d conflict(s); contested ids are EXCLUDED from the merged ledger and listed in merge-report.json" % len(report["conflicts"]))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config")
@@ -790,6 +837,7 @@ def main():
         p.add_argument("--deploy-sha", help="replay: the pinned sha the fold is read at (with --from-repo)")
         p.add_argument("--no-replay", action="store_true", help="sweep WITHOUT replaying the original lens-walk tickets (logged loudly; every ticket gets a 'replay disabled' coverage row)")
         p.add_argument("--auto-resume", type=int, default=2, help="browser crash relaunches per run (each retries the crashed lens once; default 2)")
+        p.add_argument("--shard", help="ULW v3 W3: walk shard i of N ('i/N', 0-based i) of the inventory's stable partition; per-shard run dir, run lock, ledger and account pair (cfg shard_accounts). Merge afterwards with merge-shards")
 
     p = sub.add_parser("sweep", help="walk every lens in inventory.json (or a filtered subset)")
     walk_opts(p)
@@ -819,6 +867,9 @@ def main():
     p.add_argument("--fix-commit", action="append", help="MST-W0-01: TICKET=SHA (repeatable): say whether the live build contains that fix commit")
     p.add_argument("--containment-repo", help="MST-W0-01: git checkout used for merge-base --is-ancestor (defaults to --from-repo); without one the answer is 'unknown'")
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("merge-shards", help="ULW v3 W3: fold shard run dirs into one manifest + one ledger (per-shard ledger.jsonl + walk-manifest.json)")
+    p.add_argument("--runs", required=True, help="comma list of shard run dirs (or run ids under runs_dir)")
+    p.add_argument("--out", required=True, help="output dir for walker.jsonl + walk-manifest.json + merge-report.json")
     p = sub.add_parser("merge-runs", help="ULW C14: merge two walker instances' record files by ticket ID, with a conflict report (machinery only)")
     p.add_argument("--a", required=True, help="first instance's records file (walker.jsonl / human.jsonl union schema)")
     p.add_argument("--b", required=True, help="second instance's records file")
@@ -855,6 +906,8 @@ def main():
             cmd_reverify(args, cfg, log)
     elif args.cmd == "merge-runs":
         cmd_merge_runs(args, cfg, log)
+    elif args.cmd == "merge-shards":
+        cmd_merge_shards(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":
