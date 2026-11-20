@@ -725,8 +725,27 @@ class LensWalk:
             m_plan = {"run": False, "reason": m_plan["reason"] if not m_plan["run"] else "no mutation attempts derivable from the recorded calls"}
         if not s_attempts:
             s_plan = {"run": False, "reason": s_plan["reason"] if not s_plan["run"] else "no spoof attempts derivable from the recorded calls"}
-        if not (m_plan["run"] or s_plan["run"]):
-            self.result["trust"] = _tp.trust_block(None, None, m_plan["reason"], s_plan["reason"])
+        # W5b: the private-broadcast leg's inputs — a live labelled fixture
+        # (the private object) and a recorded owner write that can carry the
+        # run's marker in a string field.
+        b_label = None
+        for f in (self.rec.fixtures or {}).values():
+            if f.get("lens") == self.slug and f.get("state") not in ("deleted", "never_created"):
+                b_label = f.get("label")
+        b_candidates = []
+        for r in own_writes:
+            obj = _tp.body_obj(r.get("post"))
+            if obj and any(isinstance(v, str) and v for v in obj.values()):
+                b_candidates.append(r)
+        if not b_label:
+            b_skip = "no live labelled fixture for this lens in this run"
+        elif not b_candidates:
+            b_skip = "no recorded owner write can carry the marker"
+        else:
+            b_skip = None
+        if not (m_plan["run"] or s_plan["run"] or b_skip is None):
+            self.result["trust"] = _tp.trust_block(None, None, m_plan["reason"], s_plan["reason"],
+                                                   broadcast_skip=b_skip)
             return
         vp = self.cfg["viewport_desktop"]
         base_host = urlsplit(self.cfg["base_url"]).netloc
@@ -830,10 +849,15 @@ class LensWalk:
                         variant_attempts.append(va)
                 if variant_attempts and not self.over_budget():
                     s_rows += run_attempts(variant_attempts[:cap], "spoof")
+            b_outcome = None
+            if b_skip is None and not self.over_budget():
+                b_outcome, b_skip = self._broadcast_leg(owner, observer, octx, b_label, b_candidates)
             self.result["trust"] = _tp.trust_block(
-                m_rows, s_rows,
+                m_rows if m_plan["run"] else None,
+                s_rows if s_plan["run"] else None,
                 None if m_plan["run"] else m_plan["reason"],
-                None if s_plan["run"] else s_plan["reason"])
+                None if s_plan["run"] else s_plan["reason"],
+                broadcast=b_outcome, broadcast_skip=b_skip)
             tb = self.result["trust"]
             self.log("  trust probes %s: %d attempt(s), %d landed (mutation %s / spoof %s)" % (
                 self.slug, tb["checks"], tb["findings"],
@@ -1094,6 +1118,67 @@ class LensWalk:
         db = self.result["durability"]
         self.log("  durability %s: %d probe(s), %d failed, %d unverified (wait %ss)" % (
             self.slug, db["probes"], db["failed"], db["unverified"], wait_s))
+    def _broadcast_leg(self, owner, observer, octx, label, candidates):
+        """W5b private-broadcast leg: the foreign context listens on this
+        lens's socket while the owner performs a private write on its own
+        labelled fixture carrying the run's unique marker. The marker in
+        the foreign frames is a LEAK. Returns (outcome, skip_reason)."""
+        from . import trust_probes as _tp
+        from .privacy_checks import FrameCapture, SOCKET_WINDOW_S
+        act_row = candidates[0]
+        obj = dict(_tp.body_obj(act_row.get("post")) or {})
+        marker = "%s-bc-%s" % (label, str(self.rec.rid)[-6:])
+        for k, v in obj.items():
+            if isinstance(v, str) and v:
+                obj[k] = marker
+                break
+        ctx2 = None
+        try:
+            ctx2 = new_context(self.b, self.cfg, observer, self.vp)
+            try:
+                assert_account(ctx2, self.cfg, observer, "broadcast leg", self.log)
+            except Exception:
+                return None, "observer guard failed for the broadcast leg"
+            page = ctx2.new_page()
+            page.goto(self.url, wait_until="load", timeout=45000)
+            cap = FrameCapture(ctx2.new_cdp_session(page))
+            try:
+                octx.request.fetch(act_row["url"], method=act_row["method"],
+                                   data=json.dumps(obj),
+                                   headers={"content-type": "application/json"},
+                                   timeout=15000)
+            except Exception:
+                return None, "the owner's marker act failed to fire"
+            frame = cap.wait_for(needle=marker, timeout=SOCKET_WINDOW_S)
+            verdict = _tp.broadcast_verdict(len(cap.frames), bool(frame))
+            if verdict == "LEAK":
+                cid = self.net._cid_at(act_row.get("t")) if act_row.get("t") is not None else None
+                sid = (self.net.meta.get(cid) or {}).get("sid") if cid else None
+                if cid:
+                    self.net.annotate(cid, ownership=[
+                        "%s broadcast %s %s -> marker in foreign frames (W5b private-broadcast)" % (
+                            observer, act_row["method"], act_row["path"])])
+                self._premap_finding("ownership", cid, sid,
+                                     "Private broadcast leak: this lens pushed the owner's private "
+                                     "fixture content to a foreign account's socket (W5b)",
+                                     ["the run's fixture marker arrived in the foreign context's "
+                                      "websocket frames after a private owner write"], severity="high")
+            try:
+                octx.request.fetch(act_row["url"], method=act_row["method"],
+                                   data=act_row.get("post"),
+                                   headers={"content-type": "application/json"},
+                                   timeout=15000)
+            except Exception:
+                pass
+            return {"verdict": verdict, "frames": len(cap.frames)}, None
+        except Exception:
+            return None, "broadcast leg errored before a verdict"
+        finally:
+            if ctx2 is not None:
+                try:
+                    ctx2.close()
+                except Exception:
+                    pass
 
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
