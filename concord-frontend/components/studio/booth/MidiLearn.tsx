@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
 import type { DAWProject } from '@/lib/daw/types';
 import { isSavedProject, studio, type MidiMap } from './boothApi';
-import { defaultRange, MASTER_TARGET, parseCc, parseTarget, targetLabel, trackTarget, valueFor, type TargetKind } from './midiLearn';
+import { defaultRange, MASTER_TARGET, parseCc, parseTarget, targetLabel, trackTarget, valueFor, type TargetKind } from './midiLearnCore';
 
 type Access = 'off' | 'asking' | 'ready' | 'unsupported' | 'denied';
 

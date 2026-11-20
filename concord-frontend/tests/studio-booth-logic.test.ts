@@ -3,7 +3,7 @@
 // worked by hand in the comments.
 import { describe, it, expect } from 'vitest';
 import { dbfsToVu, vuAngle, vuStep, tunerAngle, VU_TAU_SEC } from '@/components/studio/booth/vu';
-import { parseCc, parseTarget, valueFor, targetLabel, trackTarget, defaultRange, MASTER_TARGET } from '@/components/studio/booth/midiLearn';
+import { parseCc, parseTarget, valueFor, targetLabel, trackTarget, defaultRange, MASTER_TARGET } from '@/components/studio/booth/midiLearnCore';
 import { chainToUnits, unitsToChain } from '@/components/studio/booth/chains';
 import { swingFromGroove, grooveForSwing } from '@/components/studio/booth/grooves';
 import { roomFromKey, parseRoom, ROOMS } from '@/components/studio/booth/rooms';

@@ -22,7 +22,7 @@ export function Saleroom({ onOpen, showcase, onShowcase, refreshKey, searchRef }
   showcase: Showcase | null;
   onShowcase: () => void;
   refreshKey: number;
-  searchRef: React.RefObject<HTMLInputElement | null>;
+  searchRef: React.RefObject<HTMLInputElement>;
 }) {
   const [f, setF] = useState<Filters>(EMPTY_FILTERS);
   const [q, setQ] = useState('');

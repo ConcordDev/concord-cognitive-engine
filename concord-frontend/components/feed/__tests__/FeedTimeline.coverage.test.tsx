@@ -12,7 +12,7 @@ const lensRunMock = vi.fn();
 const apiGet = vi.fn();
 const apiPost = vi.fn();
 const refetch = vi.fn();
-const collabJoin = vi.fn(async () => ({ data: { ok: true } }));
+const collabJoin = vi.fn(async (..._a: unknown[]) => ({ data: { ok: true } }));
 const fetchNext = vi.fn();
 const POSTS = [
   { id: 'p1', type: 'text', author: { id: 'u2', name: 'Bo', handle: 'bo', gradient: 'from-a to-b', verified: true }, content: 'Hello #world from the feed', createdAt: new Date(Date.now() - 120000).toISOString(), likes: 4, comments: 2, reposts: 1, shares: 0, views: 40, liked: false, reposted: false, bookmarked: false, tags: ['world'], dtuId: 'dtu1', dtuSource: 'feed', linkedDTUs: [{ dtuId: 'd9', title: 'Linked', type: 'regular' }], taggedProducts: [{ listingId: 'l1', title: 'Guitar', price: 120, sellerId: 'u2' }] },
