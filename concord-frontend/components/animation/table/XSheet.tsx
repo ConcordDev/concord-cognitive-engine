@@ -19,7 +19,7 @@ interface SyncTrack { id: string; name: string; startFrame: number; endFrame: nu
 type Field = 'action' | 'dialogue' | 'camera';
 
 export function XSheet({ animId, rev, playhead, openDrawing, onOpenDrawing, onChanged }: {
-  animId: string; rev: number; playhead: number | null; openDrawing: number;
+  animId: string; rev: number | string; playhead: number | null; openDrawing: number;
   onOpenDrawing: (drawingIndex: number) => void; onChanged: () => void;
 }) {
   const [sheet, setSheet] = useState<Sheet | null>(null);

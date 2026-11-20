@@ -127,7 +127,7 @@ export async function exportAnimation(
     gif.finish();
     report({ stage: 'finishing', done: 1, total: 1 });
     const bytes = gif.bytes();
-    return { ...base, blob: new Blob([bytes], { type: 'image/gif' }), ext: 'gif', mime: 'image/gif', withSound: false, codec: 'gif' };
+    return { ...base, blob: new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'image/gif' }), ext: 'gif', mime: 'image/gif', withSound: false, codec: 'gif' };
   }
 
   if (format === 'png-zip') {
@@ -140,7 +140,7 @@ export async function exportAnimation(
     seq.forEach((d, i) => { files[`frame_${String(i + 1).padStart(4, '0')}.png`] = pngs[d]; });
     report({ stage: 'finishing', done: 1, total: 1 });
     const zipped = zipSync(files, { level: 0 });
-    return { ...base, blob: new Blob([zipped], { type: 'application/zip' }), ext: 'zip', mime: 'application/zip', withSound: false, codec: 'png' };
+    return { ...base, blob: new Blob([zipped as Uint8Array<ArrayBuffer>], { type: 'application/zip' }), ext: 'zip', mime: 'application/zip', withSound: false, codec: 'png' };
   }
 
   // ── video ──

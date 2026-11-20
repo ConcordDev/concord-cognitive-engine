@@ -566,7 +566,7 @@ export function AnimStudio({ animId, onExit, onOpenScreening }: { animId: string
     if (playing) setPlaying(false);
     const cv = canvasRef.current;
     if (cv && anim) {
-      renderFrame(0, false);
+      renderFrame(0, 0); // the poster frame, with no onion skins
       const scale = Math.min(1, 360 / cv.width);
       const tc = document.createElement('canvas');
       tc.width = Math.round(cv.width * scale);
