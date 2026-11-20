@@ -156,7 +156,7 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-[var(--fo-muted,#a1a1aa)]"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (loadError) {
@@ -165,68 +165,68 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
 
   return (
     <div className="space-y-4">
-      {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {error && <div className="text-xs text-[var(--fo-bad,#fb7185)] bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {/* New scene */}
-      <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+      <section className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl p-3 space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <select value={form.intExt} onChange={(e) => setForm({ ...form, intExt: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
             {INT_EXT.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <input placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <select value={form.timeOfDay} onChange={(e) => setForm({ ...form, timeOfDay: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
             {TIME_OF_DAY.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
           <input placeholder="Page 1/8ths" inputMode="numeric" value={form.pageEighths}
             onChange={(e) => setForm({ ...form, pageEighths: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
         </div>
         <div className="flex items-center gap-2">
           <input placeholder="Scene description (optional)" value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <button type="button" onClick={addScene}
-            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">
+            className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Add scene
           </button>
         </div>
       </section>
 
       {/* Script revisions — collaborative draft tracking */}
-      <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
-          <History className="w-3.5 h-3.5 text-fuchsia-400" /> Script revisions
-          <span className="text-zinc-400 font-normal">· {revisions.length} drafts</span>
+      <section className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl p-3 space-y-2">
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)]">
+          <History className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Script revisions
+          <span className="text-[var(--fo-muted,#a1a1aa)] font-normal">· {revisions.length} drafts</span>
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <input placeholder="Revision label" value={revForm.label}
             onChange={(e) => setRevForm({ ...revForm, label: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <select value={revForm.color} onChange={(e) => setRevForm({ ...revForm, color: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100 capitalize">
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)] capitalize">
             {REVISION_COLORS.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <input placeholder="Author" value={revForm.author}
             onChange={(e) => setRevForm({ ...revForm, author: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <button type="button" onClick={addRevision}
-            className="flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Revision
           </button>
         </div>
         {revisions.length > 0 && (
           <ul className="space-y-1.5">
             {revisions.map((rev) => (
-              <li key={rev.id} className="bg-zinc-950/60 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+              <li key={rev.id} className="bg-[var(--fo-paper-2,rgba(9,9,11,0.6))] border border-[var(--fo-rule,#27272a)] rounded-lg px-2.5 py-1.5">
                 <div className="flex items-center gap-2">
-                  <span className={cn('w-3 h-3 rounded-full border border-zinc-600', REV_SWATCH[rev.color] || 'bg-zinc-500')} />
-                  <span className="text-xs font-semibold text-zinc-100">{rev.label}</span>
-                  <span className="text-[10px] text-zinc-400 capitalize">{rev.color} pages · {rev.author}</span>
-                  <span className="text-[10px] text-zinc-400 ml-auto">{rev.lockedPages.length} locked</span>
-                  <button aria-label="Delete" type="button" onClick={() => delRevision(rev.id)} className="text-zinc-600 hover:text-rose-400">
+                  <span className={cn('w-3 h-3 rounded-full border border-[var(--fo-rule-2,#52525b)]', REV_SWATCH[rev.color] || 'bg-zinc-500')} />
+                  <span className="text-xs font-semibold text-[var(--fo-ink,#f4f4f5)]">{rev.label}</span>
+                  <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)] capitalize">{rev.color} pages · {rev.author}</span>
+                  <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)] ml-auto">{rev.lockedPages.length} locked</span>
+                  <button aria-label="Delete" type="button" onClick={() => delRevision(rev.id)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -240,9 +240,9 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                   <div className="flex items-center gap-1">
                     <input placeholder="page #" value={lockPage[rev.id] || ''}
                       onChange={(e) => setLockPage((p) => ({ ...p, [rev.id]: e.target.value }))}
-                      className="w-16 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[10px] text-zinc-100" />
+                      className="w-16 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-0.5 text-[10px] text-[var(--fo-ink,#f4f4f5)]" />
                     <button type="button" onClick={() => toggleLock(rev.id, lockPage[rev.id] || '')}
-                      className="flex items-center gap-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-1.5 py-0.5 rounded">
+                      className="flex items-center gap-0.5 text-[10px] bg-[var(--fo-paper-2,#27272a)] hover:bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink,#e4e4e7)] px-1.5 py-0.5 rounded">
                       <Unlock className="w-2.5 h-2.5" /> lock/unlock
                     </button>
                   </div>
@@ -255,25 +255,25 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
 
       {/* Scenes */}
       <section>
-        <h3 className="text-xs font-semibold text-zinc-300 mb-2">
-          Scenes <span className="text-zinc-400 font-normal">· {scenes.length} · {totalPages} pages</span>
+        <h3 className="text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+          Scenes <span className="text-[var(--fo-muted,#a1a1aa)] font-normal">· {scenes.length} · {totalPages} pages</span>
         </h3>
         {scenes.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No scenes yet. Add your first slugline above.</p>
+          <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic py-6 text-center">No scenes yet. Add your first slugline above.</p>
         ) : (
           <ul className="space-y-2">
             {scenes.map((sc) => (
-              <li key={sc.id} className="bg-zinc-900/70 border border-zinc-800 rounded-xl">
+              <li key={sc.id} className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl">
                 <div className="flex items-start gap-2 p-3">
-                  <span className="text-[10px] font-mono text-fuchsia-400 mt-0.5">{sc.number}</span>
+                  <span className="text-[10px] font-mono text-[var(--fo-tape,#e879f9)] mt-0.5">{sc.number}</span>
                   {sc.revisionColor && (
-                    <span className={cn('w-2.5 h-2.5 rounded-full border border-zinc-600 mt-1 shrink-0', REV_SWATCH[sc.revisionColor] || 'bg-zinc-500')}
+                    <span className={cn('w-2.5 h-2.5 rounded-full border border-[var(--fo-rule-2,#52525b)] mt-1 shrink-0', REV_SWATCH[sc.revisionColor] || 'bg-zinc-500')}
                       title={`${sc.revisionColor} revision`} />
                   )}
                   <button type="button" onClick={() => setExpanded(expanded === sc.id ? null : sc.id)}
                     className="flex-1 text-left min-w-0">
-                    <p className="text-sm font-semibold text-zinc-100">{sc.slugline}</p>
-                    {sc.description && <p className="text-[11px] text-zinc-400 line-clamp-1">{sc.description}</p>}
+                    <p className="text-sm font-semibold text-[var(--fo-ink,#f4f4f5)]">{sc.slugline}</p>
+                    {sc.description && <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] line-clamp-1">{sc.description}</p>}
                     <div className="flex flex-wrap gap-1 mt-1">
                       {sc.breakdownElements.map((e) => (
                         <span key={e.id} className={cn('text-[9px] text-white px-1.5 py-0.5 rounded', CAT_COLOR[e.category] || 'bg-zinc-600')}>
@@ -283,41 +283,41 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                     </div>
                   </button>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-zinc-400">{sc.pageEighths}/8 pg</span>
+                    <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{sc.pageEighths}/8 pg</span>
                     {sc.shootDayNumber != null && (
-                      <span className="text-[10px] text-emerald-400">Day {sc.shootDayNumber}</span>
+                      <span className="text-[10px] text-[var(--fo-good,#34d399)]">Day {sc.shootDayNumber}</span>
                     )}
-                    <button aria-label="Edit scene" type="button" onClick={() => { startEditScene(sc); setExpanded(sc.id); }} className="text-zinc-600 hover:text-fuchsia-400">
+                    <button aria-label="Edit scene" type="button" onClick={() => { startEditScene(sc); setExpanded(sc.id); }} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-tape,#e879f9)]">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-zinc-600 hover:text-rose-400">
+                    <button aria-label="Delete" type="button" onClick={() => delScene(sc.id)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
                 {expanded === sc.id && (
-                  <div className="px-3 pb-3 border-t border-zinc-800 pt-2.5">
+                  <div className="px-3 pb-3 border-t border-[var(--fo-rule,#27272a)] pt-2.5">
                     {editingScene === sc.id && (
-                      <div className="mb-3 bg-zinc-950/60 border border-zinc-800 rounded-lg p-2.5 space-y-2">
+                      <div className="mb-3 bg-[var(--fo-paper-2,rgba(9,9,11,0.6))] border border-[var(--fo-rule,#27272a)] rounded-lg p-2.5 space-y-2">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           <select value={editSceneForm.intExt} onChange={(e) => setEditSceneForm({ ...editSceneForm, intExt: e.target.value })}
-                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
                             {INT_EXT.map((x) => <option key={x} value={x}>{x}</option>)}
                           </select>
                           <input placeholder="Location" value={editSceneForm.location} onChange={(e) => setEditSceneForm({ ...editSceneForm, location: e.target.value })}
-                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
                           <select value={editSceneForm.timeOfDay} onChange={(e) => setEditSceneForm({ ...editSceneForm, timeOfDay: e.target.value })}
-                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+                            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
                             {TIME_OF_DAY.map((x) => <option key={x} value={x}>{x}</option>)}
                           </select>
                           <input placeholder="Page 1/8ths" inputMode="numeric" value={editSceneForm.pageEighths}
                             onChange={(e) => setEditSceneForm({ ...editSceneForm, pageEighths: e.target.value })}
-                            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
                         </div>
                         <div className="flex items-center gap-2">
                           <input placeholder="Description" value={editSceneForm.description}
                             onChange={(e) => setEditSceneForm({ ...editSceneForm, description: e.target.value })}
-                            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+                            className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
                           <button type="button" onClick={() => saveEditScene(sc.id)}
                             className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg">
                             <Check className="w-3.5 h-3.5" /> Save
@@ -327,27 +327,27 @@ export function FsScriptPanel({ projectId, onChange }: { projectId: string; onCh
                     )}
                     {revisions.length > 0 && (
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[11px] font-semibold text-zinc-400">Revision:</span>
+                        <span className="text-[11px] font-semibold text-[var(--fo-muted,#a1a1aa)]">Revision:</span>
                         <select value={sc.revisionId || ''}
                           onChange={(e) => tagSceneRevision(sc.id, e.target.value)}
-                          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100">
+                          className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]">
                           <option value="">Unrevised</option>
                           {revisions.map((rev) => <option key={rev.id} value={rev.id}>{rev.label} ({rev.color})</option>)}
                         </select>
                       </div>
                     )}
-                    <p className="flex items-center gap-1 text-[11px] font-semibold text-zinc-400 mb-1.5">
+                    <p className="flex items-center gap-1 text-[11px] font-semibold text-[var(--fo-muted,#a1a1aa)] mb-1.5">
                       <Tag className="w-3 h-3" /> Script breakdown
                     </p>
                     <div className="flex items-center gap-2 mb-2">
                       <select value={tag.category} onChange={(e) => setTag({ ...tag, category: e.target.value })}
-                        className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100 capitalize">
+                        className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)] capitalize">
                         {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace(/_/g, ' ')}</option>)}
                       </select>
                       <input placeholder="Element name" value={tag.name} onChange={(e) => setTag({ ...tag, name: e.target.value })}
-                        className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1 text-[11px] text-zinc-100" />
+                        className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]" />
                       <button type="button" onClick={() => addTag(sc.id)}
-                        className="px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">Tag</button>
+                        className="px-2.5 py-1 text-[11px] bg-[var(--fo-paper-2,#27272a)] hover:bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink,#e4e4e7)] rounded-lg">Tag</button>
                     </div>
                     {sc.breakdownElements.length > 0 && (
                       <ul className="flex flex-wrap gap-1">

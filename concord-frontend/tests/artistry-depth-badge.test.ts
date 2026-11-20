@@ -6,8 +6,9 @@
 // artistry_studies rows across restarts), and the lens's panels call
 // them (projectList, collectionList, personalizedFeed, notifications).
 // The manifest and the registry now declare REAL_WORKSPACE and the chip
-// reads "Workspace". A still-simulated sibling (animation) is the
-// control.
+// reads "Workspace". A still-simulated sibling (careers) is the
+// control. (Animation was the control until the Light Table: it is the
+// animator's own persisted drawings and releases, so it is a workspace too.)
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -31,10 +32,15 @@ describe('Artistry manifest honesty (FIX-artistry-003)', () => {
     expect(src).toMatch(/artistry:\s*\{\s*tier: TIER\.REAL_WORKSPACE, liveFromSubstrate: true/);
   });
 
-  it('control: a still-simulated sibling keeps its declaration (animation)', () => {
-    const a = getLensManifest('animation');
+  it('control: a still-simulated sibling keeps its declaration (careers)', () => {
+    const a = getLensManifest('careers');
     expect(a?.dataTier).toBe('SIM_GRADE_A');
-    const badge = renderHook(() => useDepthBadge('animation')).result.current;
+    const badge = renderHook(() => useDepthBadge('careers')).result.current;
     expect(badge?.label).toBe('Simulated');
+  });
+
+  it('animation is the animator\'s own workspace, not Simulated', () => {
+    expect(getLensManifest('animation')?.dataTier).toBe('REAL_WORKSPACE');
+    expect(renderHook(() => useDepthBadge('animation')).result.current?.label).toBe('Workspace');
   });
 });

@@ -2,8 +2,112 @@
 // Domain actions for board/kanban management: workflow analysis, card prioritization, burndown forecasting.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { displayName } from "../lib/media-release-shop.js";
 export default function registerBoardActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
+
+  // ── Shared boards: who may do what (the Cork Wall, 2026-11-20) ──────
+  // A board lives in its owner's list. Collaborators are real: a viewer can
+  // open it and comment, an editor can change cards and columns, an admin
+  // can also manage people, labels and automations; only the owner deletes
+  // it. Every board action declares the role it needs; one wrapper checks
+  // it, says plainly when the role falls short, records who did what on the
+  // board's activity, and sends the change live to everyone on the board.
+  const ROLE_RANK = { viewer: 1, editor: 2, admin: 3, owner: 4 };
+  const NEED = {
+    "board-detail": "view", "card-detail": "view", "card-calendar": "view", "automation-list": "view",
+    "label-list": "view", "collaborator-list": "view", "custom-field-list": "view", "card-template-list": "view",
+    "board-presence": "view", "board-activity": "view", "card-comment-add": "view", "card-comment-update": "view", "card-comment-delete": "view",
+    "board-update": "admin", "collaborator-add": "admin", "collaborator-remove": "admin",
+    "automation-add": "admin", "automation-delete": "admin", "automation-toggle": "admin",
+    "board-delete": "owner",
+    "column-add": "edit", "column-delete": "edit", "column-update": "edit", "column-archive": "edit", "column-restore": "edit",
+    "card-create": "edit", "card-move": "edit", "card-move-auto": "edit", "card-update": "edit", "card-checklist-toggle": "edit",
+    "card-delete": "edit", "card-archive": "edit", "card-restore": "edit", "card-attachment-add": "edit", "card-attachment-delete": "edit",
+    "card-set-cover": "edit", "label-create": "edit", "label-delete": "edit", "label-update": "edit",
+    "custom-field-add": "edit", "custom-field-delete": "edit", "custom-field-update": "edit", "card-set-field": "edit",
+    "card-template-create": "edit", "card-template-delete": "edit", "card-create-from-template": "edit",
+  };
+  let ACTING = null; // the person whose action is running (handlers are synchronous)
+  const nameOf = (userId) => (userId && userId !== "anon" ? displayName(userId) || "someone" : "someone");
+  function locateBoard(s, boardId) {
+    if (!s || !boardId) return null;
+    for (const [ownerId, arr] of s.boards) {
+      const b = arr.find((x) => x.id === boardId);
+      if (b) { if (!b.ownerId) b.ownerId = ownerId; return b; }
+    }
+    return null;
+  }
+  function roleOn(board, userId) {
+    if (!board || !userId || userId === "anon") return null;
+    if (board.ownerId === userId) return "owner";
+    const c = (board.collaborators || []).find((x) => x.userId === userId);
+    return c ? c.role : null;
+  }
+  const RANK_OF_NEED = { view: 1, edit: 2, admin: 3, owner: 4 };
+  const membersOf = (board) => [board.ownerId, ...(board.collaborators || []).map((c) => c.userId)].filter(Boolean);
+  function emitBoard(board, event, payload, alsoTo = []) {
+    try {
+      const fn = globalThis._concordRealtimeEmit || globalThis.realtimeEmit;
+      if (typeof fn !== "function") return;
+      for (const uid of new Set([...membersOf(board), ...alsoTo])) fn(event, { boardId: board.id, ...payload }, { userId: uid });
+    } catch { /* live updates are best-effort; the board itself is saved */ }
+  }
+  const ACT_WORDS = {
+    "card-create": "added", "card-move": "moved", "card-move-auto": "moved", "card-update": "edited", "card-checklist-toggle": "ticked an item on",
+    "card-delete": "deleted", "card-archive": "archived", "card-restore": "restored", "card-comment-add": "commented on",
+    "card-attachment-add": "attached a file to", "card-set-cover": "set the cover of", "card-set-field": "set a field on",
+    "card-create-from-template": "added from a template", "column-add": "added a column", "column-update": "renamed a column",
+    "column-delete": "deleted a column", "column-archive": "archived a column", "column-restore": "restored a column",
+    "board-update": "renamed the board", "collaborator-add": "shared the board", "collaborator-remove": "removed someone from the board",
+    "automation-add": "added an automation", "automation-delete": "removed an automation", "automation-toggle": "switched an automation",
+    "label-create": "added a label", "label-update": "edited a label", "label-delete": "deleted a label",
+  };
+  {
+    const inner = registerLensAction;
+    registerLensAction = function boardAccess(domain, name, handler, ...rest) {
+      const need = NEED[name];
+      if (domain !== "board" || !need || typeof handler !== "function") return inner(domain, name, handler, ...rest);
+      return inner(domain, name, (ctx, a, params = {}) => {
+        const s = getBoardState();
+        const bid = params?.boardId ?? params?.id;
+        const me = bdActor(ctx);
+        let board = null;
+        if (s && bid != null) {
+          board = locateBoard(s, String(bid));
+          if (!board) return { ok: false, error: "board not found" };
+          const role = roleOn(board, me);
+          // Leaving a board you were invited to needs no admin.
+          const leaving = name === "collaborator-remove" && role && role !== "owner" && params?.userId === me;
+          if (!role) return { ok: false, error: "board not found" };
+          if (!leaving && ROLE_RANK[role] < RANK_OF_NEED[need]) {
+            return { ok: false, error: need === "edit" ? "you can look at this board, but not change it" : need === "owner" ? "only the board's owner can do that" : "only the board's owner or an admin can do that" };
+          }
+        }
+        ACTING = { userId: me };
+        let r;
+        try { r = handler({ ...(ctx || {}), __bdNeed: name === "collaborator-remove" ? "view" : need }, a, params); }
+        finally { ACTING = null; }
+        if (board && need !== "view" || name === "card-comment-add") {
+          if (r && r.ok && board) {
+            const cardId = params?.cardId || r?.result?.card?.id || null;
+            const card = cardId ? (board.cards || []).find((c) => c.id === cardId) : null;
+            const col = name.startsWith("card-move") && card ? board.columns.find((c) => c.id === card.columnId) : null;
+            const entry = { id: bdId("bact"), at: bdNow(), by: me, byName: nameOf(me), action: name, words: ACT_WORDS[name] || name, cardId, cardTitle: card ? card.title : null, toColumn: col ? col.name : null };
+            if (name !== "board-delete") {
+              if (!Array.isArray(board.activity)) board.activity = [];
+              board.activity.unshift(entry);
+              if (board.activity.length > 300) board.activity.length = 300;
+              saveBoard();
+            }
+            emitBoard(board, name === "board-delete" ? "board:removed" : "board:changed", { action: name, cardId, by: { id: me, name: entry.byName }, words: entry.words, cardTitle: entry.cardTitle, toColumn: entry.toColumn },
+              name === "collaborator-remove" && r?.result?.removed ? [r.result.removed] : []);
+          }
+        }
+        return r;
+      }, ...rest);
+    };
+  }
   /**
    * workflowAnalysis
    * Analyze kanban board flow — compute cycle time, lead time, throughput,
@@ -517,6 +621,9 @@ export default function registerBoardActions(registerLensAction) {
         { id: bdId("col"), name: "Done" },
       ],
       cards: [],
+      ownerId: bdActor(ctx),
+      collaborators: [],
+      activity: [],
       createdAt: bdNow(),
     };
     bdList(s, bdActor(ctx)).push(board);
@@ -527,8 +634,11 @@ export default function registerBoardActions(registerLensAction) {
   registerLensAction("board", "board-list", (ctx, _a, _params = {}) => {
   try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const boards = bdList(s, bdActor(ctx)).map((b) => ({
-      id: b.id, name: b.name, columnCount: b.columns.length, cardCount: b.cards.length, createdAt: b.createdAt,
+    const me = bdActor(ctx);
+    const boards = boardsFor(s, me).map((b) => ({
+      id: b.id, name: b.name, columnCount: b.columns.length, cardCount: b.cards.filter((c) => !c.archived).length, createdAt: b.createdAt,
+      role: roleOn(b, me), owner: { id: b.ownerId, name: nameOf(b.ownerId) }, shared: (b.collaborators || []).length > 0,
+      background: b.background || null,
     }));
     return { ok: true, result: { boards, count: boards.length } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -537,9 +647,10 @@ export default function registerBoardActions(registerLensAction) {
   registerLensAction("board", "board-detail", (ctx, _a, params = {}) => {
   try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const board = bdList(s, bdActor(ctx)).find((b) => b.id === params.id);
+    const board = findBoard(s, ctx, params.id);
     if (!board) return { ok: false, error: "board not found" };
-    return { ok: true, result: { board } };
+    const me = bdActor(ctx);
+    return { ok: true, result: { board: { ...board, activity: undefined, viewers: undefined }, role: roleOn(board, me), members: membersView(board), me } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -548,7 +659,8 @@ export default function registerBoardActions(registerLensAction) {
     const arr = bdList(s, bdActor(ctx));
     const i = arr.findIndex((b) => b.id === params.id);
     if (i < 0) return { ok: false, error: "board not found" };
-    arr.splice(i, 1);
+    const gone = arr.splice(i, 1)[0];
+    emitBoard(gone, "board:removed", { action: "board-delete", by: { id: bdActor(ctx), name: nameOf(bdActor(ctx)) } });
     saveBoard();
     return { ok: true, result: { deleted: params.id } };
   });
@@ -556,8 +668,9 @@ export default function registerBoardActions(registerLensAction) {
   // Rename / redescribe a board (Trello: boards are renameable in place).
   registerLensAction("board", "board-update", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const board = bdList(s, bdActor(ctx)).find((b) => b.id === params.id);
+    const board = findBoard(s, ctx, params.id);
     if (!board) return { ok: false, error: "board not found" };
+    if (params.background !== undefined) board.background = ["cork", "dark", "pale"].includes(params.background) ? params.background : null;
     if (params.name != null) {
       const name = bdClean(params.name, 120);
       if (!name) return { ok: false, error: "board name required" };
@@ -569,7 +682,36 @@ export default function registerBoardActions(registerLensAction) {
   });
 
   function findBoard(s, ctx, boardId) {
-    return bdList(s, bdActor(ctx)).find((b) => b.id === boardId);
+    const b = locateBoard(s, String(boardId ?? ""));
+    if (!b) return undefined;
+    const role = roleOn(b, bdActor(ctx));
+    const need = ctx?.__bdNeed || "edit";
+    if (!role || ROLE_RANK[role] < RANK_OF_NEED[need]) return undefined;
+    return b;
+  }
+  /** Every board this person can open: their own, then the ones shared with them. */
+  function boardsFor(s, userId) {
+    const own = bdList(s, userId).map((b) => { if (!b.ownerId) b.ownerId = userId; return b; });
+    const shared = [];
+    for (const [ownerId, arr] of s.boards) {
+      if (ownerId === userId) continue;
+      for (const b of arr) { if (!b.ownerId) b.ownerId = ownerId; if ((b.collaborators || []).some((c) => c.userId === userId)) shared.push(b); }
+    }
+    return [...own, ...shared];
+  }
+  function membersView(board) {
+    return [{ userId: board.ownerId, name: nameOf(board.ownerId), role: "owner" },
+      ...(board.collaborators || []).map((c) => ({ userId: c.userId, name: nameOf(c.userId), role: c.role, id: c.id, addedAt: c.addedAt }))];
+  }
+  /** An assignee must be on the board: a member's id or username. null clears it. */
+  function resolveMember(board, v) {
+    if (v == null || v === "") return { ok: true, userId: null };
+    const raw = String(v).trim().slice(0, 80);
+    const members = membersOf(board);
+    if (members.includes(raw)) return { ok: true, userId: raw };
+    const byName = members.find((m) => (nameOf(m) || "").toLowerCase() === raw.toLowerCase());
+    if (byName) return { ok: true, userId: byName };
+    return { ok: false, error: `${raw} isn't on this board; share it with them first` };
   }
 
   registerLensAction("board", "column-add", (ctx, _a, params = {}) => {
@@ -656,25 +798,35 @@ export default function registerBoardActions(registerLensAction) {
     if (!column) return { ok: false, error: "board has no columns" };
     const title = bdClean(params.title, 240);
     if (!title) return { ok: false, error: "card title required" };
+    const who = resolveMember(board, params.assignee);
+    if (!who.ok) return { ok: false, error: who.error };
+    const due = cleanDue(params.dueDate);
+    if (due === false) return { ok: false, error: "dueDate must be a date like 2026-11-30" };
     const card = {
       id: bdId("crd"),
       columnId: column.id,
       title,
       description: bdClean(params.description, 4000),
       labels: Array.isArray(params.labels) ? params.labels.map((l) => bdClean(l, 30)).filter(Boolean).slice(0, 6) : [],
-      dueDate: bdClean(params.dueDate, 30) || null,
-      assignee: bdClean(params.assignee, 80) || null,
+      dueDate: due,
+      assignee: who.userId,
       checklist: [],
       position: board.cards.filter((c) => c.columnId === column.id).length,
+      createdBy: bdActor(ctx),
+      transitions: [{ columnId: column.id, at: bdNow() }],
       createdAt: bdNow(),
     };
     board.cards.push(card);
     pushActivity(card, "created the card");
+    const applied = runAutomations(board, card, "card-created-in-column", column.id);
     saveBoard();
-    return { ok: true, result: { card } };
+    return { ok: true, result: { card, automationsApplied: applied.map((a) => a.id), automations: applied } };
   });
 
-  registerLensAction("board", "card-move", (ctx, _a, params = {}) => {
+  registerLensAction("board", "card-move", (ctx, _a, params = {}) => moveCard(ctx, params));
+
+  /** The one move: reorder, record the column change, then run the board's automations. */
+  function moveCard(ctx, params) {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
@@ -682,16 +834,24 @@ export default function registerBoardActions(registerLensAction) {
     if (!card) return { ok: false, error: "card not found" };
     const target = board.columns.find((c) => c.id === params.toColumnId);
     if (!target) return { ok: false, error: "target column not found" };
+    if (target.archived) return { ok: false, error: "that column is archived" };
+    const from = card.columnId;
     card.columnId = target.id;
-    if (params.position != null) card.position = Math.max(0, Math.round(Number(params.position)));
-    else card.position = board.cards.filter((c) => c.columnId === target.id && c.id !== card.id).length;
-    // renumber the target column's cards
-    board.cards.filter((c) => c.columnId === target.id).sort((a, b) => a.position - b.position)
-      .forEach((c, i) => { c.position = i; });
-    pushActivity(card, `moved to ${target.name}`);
+    const others = board.cards.filter((c) => c.columnId === target.id && c.id !== card.id && !c.archived).sort((a, b) => a.position - b.position);
+    const at = params.position == null ? others.length : Math.max(0, Math.min(others.length, Math.round(Number(params.position) || 0)));
+    others.splice(at, 0, card);
+    others.forEach((c, i) => { c.position = i; });
+    if (from !== target.id) {
+      board.cards.filter((c) => c.columnId === from && !c.archived).sort((a, b) => a.position - b.position).forEach((c, i) => { c.position = i; });
+      if (!Array.isArray(card.transitions)) card.transitions = [];
+      card.transitions.push({ columnId: target.id, at: bdNow() });
+      if (card.transitions.length > 100) card.transitions.splice(0, card.transitions.length - 100);
+      pushActivity(card, `moved to ${target.name}`);
+    }
+    const applied = from !== target.id ? runAutomations(board, card, "card-moved-to-column", target.id) : [];
     saveBoard();
-    return { ok: true, result: { cardId: card.id, columnId: card.columnId } };
-  });
+    return { ok: true, result: { cardId: card.id, columnId: card.columnId, position: card.position, automationsApplied: applied.map((a) => a.id), automations: applied } };
+  }
 
   registerLensAction("board", "card-update", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -702,8 +862,16 @@ export default function registerBoardActions(registerLensAction) {
     if (params.title != null) card.title = bdClean(params.title, 240) || card.title;
     if (params.description != null) card.description = bdClean(params.description, 4000);
     if (Array.isArray(params.labels)) card.labels = params.labels.map((l) => bdClean(l, 30)).filter(Boolean).slice(0, 6);
-    if (params.dueDate !== undefined) card.dueDate = bdClean(params.dueDate, 30) || null;
-    if (params.assignee !== undefined) card.assignee = bdClean(params.assignee, 80) || null;
+    if (params.dueDate !== undefined) {
+      const due = cleanDue(params.dueDate);
+      if (due === false) return { ok: false, error: "dueDate must be a date like 2026-11-30" };
+      card.dueDate = due;
+    }
+    if (params.assignee !== undefined) {
+      const who = resolveMember(board, params.assignee);
+      if (!who.ok) return { ok: false, error: who.error };
+      card.assignee = who.userId;
+    }
     if (params.addChecklistItem) {
       card.checklist.push({ id: bdId("ci"), text: bdClean(params.addChecklistItem, 200), done: false });
     }
@@ -721,8 +889,10 @@ export default function registerBoardActions(registerLensAction) {
     const item = card.checklist.find((i) => i.id === params.itemId);
     if (!item) return { ok: false, error: "checklist item not found" };
     item.done = !item.done;
+    const complete = card.checklist.length > 0 && card.checklist.every((i) => i.done);
+    const applied = item.done && complete ? runAutomations(board, card, "checklist-completed", card.columnId) : [];
     saveBoard();
-    return { ok: true, result: { itemId: item.id, done: item.done } };
+    return { ok: true, result: { itemId: item.id, done: item.done, checklistComplete: complete, columnId: card.columnId, automationsApplied: applied.map((a) => a.id), automations: applied } };
   });
 
   registerLensAction("board", "card-delete", (ctx, _a, params = {}) => {
@@ -767,7 +937,7 @@ export default function registerBoardActions(registerLensAction) {
   registerLensAction("board", "board-dashboard", (ctx, _a, _params = {}) => {
   try {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
-    const boards = bdList(s, bdActor(ctx));
+    const boards = boardsFor(s, bdActor(ctx));
     const allCards = boards.flatMap((b) => b.cards);
     const now = Date.now();
     return {
@@ -791,7 +961,7 @@ export default function registerBoardActions(registerLensAction) {
   }
   function pushActivity(card, action) {
     if (!Array.isArray(card.activity)) card.activity = [];
-    card.activity.unshift({ id: bdId("act"), action: bdClean(action, 240), at: bdNow() });
+    card.activity.unshift({ id: bdId("act"), action: bdClean(action, 240), at: bdNow(), by: ACTING?.userId || null, byName: ACTING ? nameOf(ACTING.userId) : null });
     if (card.activity.length > 200) card.activity.length = 200;
   }
 
@@ -805,7 +975,7 @@ export default function registerBoardActions(registerLensAction) {
     const text = bdClean(params.text, 2000);
     if (!text) return { ok: false, error: "comment text required" };
     if (!Array.isArray(card.comments)) card.comments = [];
-    const comment = { id: bdId("cmt"), author: bdActor(ctx), text, at: bdNow() };
+    const comment = { id: bdId("cmt"), author: bdActor(ctx), authorName: nameOf(bdActor(ctx)), text, at: bdNow() };
     card.comments.push(comment);
     pushActivity(card, "added a comment");
     saveBoard();
@@ -962,8 +1132,45 @@ export default function registerBoardActions(registerLensAction) {
   // ── Board automation rules ─────────────────────────────────────────
   // Trigger: card-moved-to-column. Actions: check-all-checklist,
   // set-due-clear, add-label, set-assignee.
-  const AUTO_TRIGGERS = new Set(["card-moved-to-column"]);
-  const AUTO_ACTIONS = new Set(["check-all-checklist", "clear-due", "add-label", "set-assignee"]);
+  // Automations: "when <trigger> in <column>, do <action>". They run inside
+  // the same move / create / checklist call that triggered them (one pass;
+  // a rule that moves a card does not set off further rules).
+  const AUTO_TRIGGERS = new Set(["card-moved-to-column", "card-created-in-column", "checklist-completed"]);
+  const AUTO_ACTIONS = new Set(["check-all-checklist", "clear-due", "add-label", "set-assignee", "set-due-in-days", "move-to-column"]);
+  function cleanDue(v) {
+    if (v == null || v === "") return null;
+    const t = String(v).trim().slice(0, 30);
+    if (!/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/.test(t) || !Number.isFinite(Date.parse(t))) return false;
+    return t;
+  }
+  function runAutomations(board, card, trigger, columnId) {
+    const applied = [];
+    for (const rule of Array.isArray(board.automations) ? board.automations : []) {
+      if (!rule.enabled || rule.trigger !== trigger || rule.columnId !== columnId) continue;
+      if (rule.action === "check-all-checklist") { for (const item of card.checklist || []) item.done = true; }
+      else if (rule.action === "clear-due") card.dueDate = null;
+      else if (rule.action === "add-label" && rule.value) {
+        if (!Array.isArray(card.labels)) card.labels = [];
+        if (!card.labels.includes(rule.value) && card.labels.length < 6) card.labels.push(rule.value);
+      } else if (rule.action === "set-assignee" && rule.value) {
+        if (membersOf(board).includes(rule.value)) card.assignee = rule.value; else continue;
+      } else if (rule.action === "set-due-in-days") {
+        const d = new Date(Date.now() + Number(rule.value) * 86400000);
+        card.dueDate = d.toISOString().slice(0, 10);
+      } else if (rule.action === "move-to-column") {
+        const to = board.columns.find((c) => c.id === rule.value && !c.archived);
+        if (!to || to.id === card.columnId) continue;
+        card.columnId = to.id;
+        card.position = board.cards.filter((c) => c.columnId === to.id && c.id !== card.id && !c.archived).length;
+        if (!Array.isArray(card.transitions)) card.transitions = [];
+        card.transitions.push({ columnId: to.id, at: bdNow() });
+      } else continue;
+      applied.push({ id: rule.id, action: rule.action });
+      pushActivity(card, `automation: ${AUTO_WORDS[rule.action] || rule.action}`);
+    }
+    return applied;
+  }
+  const AUTO_WORDS = { "check-all-checklist": "ticked the whole checklist", "clear-due": "cleared the due date", "add-label": "added a label", "set-assignee": "assigned it", "set-due-in-days": "set a due date", "move-to-column": "moved it" };
 
   registerLensAction("board", "automation-add", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
@@ -975,14 +1182,24 @@ export default function registerBoardActions(registerLensAction) {
     if (!AUTO_ACTIONS.has(action)) return { ok: false, error: "unknown action" };
     const columnId = bdClean(params.columnId, 64);
     if (!board.columns.find((c) => c.id === columnId)) return { ok: false, error: "trigger column not found" };
+    let value = bdClean(params.value, 120) || null;
+    if (action === "add-label" && !value) return { ok: false, error: "choose the label to add" };
+    if (action === "set-assignee") { const who = resolveMember(board, value); if (!who.ok || !who.userId) return { ok: false, error: who.error || "choose who to assign" }; value = who.userId; }
+    if (action === "set-due-in-days") { const n = Number(value); if (!Number.isInteger(n) || n < 0 || n > 365) return { ok: false, error: "set-due-in-days takes 0 to 365 days" }; value = String(n); }
+    if (action === "move-to-column") {
+      if (!board.columns.find((c) => c.id === value && !c.archived)) return { ok: false, error: "choose the column to move it to" };
+      if (trigger === "card-moved-to-column" && value === columnId) return { ok: false, error: "a card moved into a column can't be moved into the same column" };
+    }
     if (!Array.isArray(board.automations)) board.automations = [];
+    if (board.automations.length >= 50) return { ok: false, error: "a board can have 50 automations" };
     const rule = {
       id: bdId("auto"),
       trigger,
       columnId,
       action,
-      value: bdClean(params.value, 120) || null,
+      value,
       enabled: true,
+      createdBy: bdActor(ctx),
       createdAt: bdNow(),
     };
     board.automations.push(rule);
@@ -1010,43 +1227,19 @@ export default function registerBoardActions(registerLensAction) {
   });
 
   // card-move-auto: move a card and apply matching automation rules
-  registerLensAction("board", "card-move-auto", (ctx, _a, params = {}) => {
-  try {
+  // Kept for older callers: every move runs the automations now.
+  registerLensAction("board", "card-move-auto", (ctx, _a, params = {}) => moveCard(ctx, params));
+
+  registerLensAction("board", "automation-toggle", (ctx, _a, params = {}) => {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
-    const card = findCard(board, params.cardId);
-    if (!card) return { ok: false, error: "card not found" };
-    const target = board.columns.find((c) => c.id === params.toColumnId);
-    if (!target) return { ok: false, error: "target column not found" };
-    card.columnId = target.id;
-    if (params.position != null) card.position = Math.max(0, Math.round(Number(params.position)));
-    else card.position = board.cards.filter((c) => c.columnId === target.id && c.id !== card.id).length;
-    board.cards.filter((c) => c.columnId === target.id).sort((a, b) => a.position - b.position)
-      .forEach((c, i) => { c.position = i; });
-    pushActivity(card, `moved to ${target.name}`);
-    // apply automations
-    const applied = [];
-    const rules = Array.isArray(board.automations) ? board.automations : [];
-    for (const rule of rules) {
-      if (!rule.enabled || rule.trigger !== "card-moved-to-column" || rule.columnId !== target.id) continue;
-      if (rule.action === "check-all-checklist") {
-        for (const item of card.checklist || []) item.done = true;
-      } else if (rule.action === "clear-due") {
-        card.dueDate = null;
-      } else if (rule.action === "add-label" && rule.value) {
-        if (!Array.isArray(card.labels)) card.labels = [];
-        if (!card.labels.includes(rule.value) && card.labels.length < 6) card.labels.push(rule.value);
-      } else if (rule.action === "set-assignee" && rule.value) {
-        card.assignee = rule.value;
-      }
-      applied.push(rule.id);
-      pushActivity(card, `automation: ${rule.action}`);
-    }
+    const rule = (board.automations || []).find((r) => r.id === params.ruleId);
+    if (!rule) return { ok: false, error: "automation not found" };
+    rule.enabled = params.enabled === undefined ? !rule.enabled : !!params.enabled;
     saveBoard();
-    return { ok: true, result: { cardId: card.id, columnId: card.columnId, automationsApplied: applied } };
-    } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
-});
+    return { ok: true, result: { rule } };
+  });
 
   // ── Label management ───────────────────────────────────────────────
   const LABEL_COLORS = new Set([
@@ -1129,20 +1322,33 @@ export default function registerBoardActions(registerLensAction) {
     const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const board = findBoard(s, ctx, params.boardId);
     if (!board) return { ok: false, error: "board not found" };
-    const userId = bdClean(params.userId, 80);
-    if (!userId) return { ok: false, error: "userId required" };
     const role = COLLAB_ROLES.has(params.role) ? params.role : "viewer";
+    const me = bdActor(ctx);
+    // Only the owner hands out admin.
+    if (role === "admin" && board.ownerId !== me) return { ok: false, error: "only the board's owner can make someone an admin" };
+    const handle = bdClean(params.username ?? params.userId, 80).replace(/^@/, "");
+    if (!handle) return { ok: false, error: "username required" };
+    let user = null;
+    try {
+      const db = globalThis._concordSTATE?.db;
+      user = db?.prepare?.("SELECT id, username FROM users WHERE lower(username) = lower(?) OR id = ? LIMIT 1").get(handle, handle) || null;
+    } catch { user = null; }
+    if (!user) return { ok: false, error: `no one is called ${handle}` };
+    if (user.id === board.ownerId) return { ok: false, error: "that's the board's owner" };
     if (!Array.isArray(board.collaborators)) board.collaborators = [];
-    const existing = board.collaborators.find((c) => c.userId === userId);
+    const existing = board.collaborators.find((c) => c.userId === user.id);
     if (existing) {
+      if (existing.role === "admin" && board.ownerId !== me) return { ok: false, error: "only the board's owner can change an admin" };
       existing.role = role;
       saveBoard();
-      return { ok: true, result: { collaborator: existing, updated: true } };
+      return { ok: true, result: { collaborator: { ...existing, name: user.username }, updated: true, members: membersView(board) } };
     }
-    const collaborator = { id: bdId("clb"), userId, role, addedAt: bdNow() };
+    if (board.collaborators.length >= 50) return { ok: false, error: "a board can be shared with 50 people" };
+    const collaborator = { id: bdId("clb"), userId: user.id, role, addedAt: bdNow(), addedBy: me };
     board.collaborators.push(collaborator);
     saveBoard();
-    return { ok: true, result: { collaborator } };
+    emitBoard(board, "board:shared", { action: "collaborator-add", by: { id: me, name: nameOf(me) }, role }, [user.id]);
+    return { ok: true, result: { collaborator: { ...collaborator, name: user.username }, members: membersView(board) } };
   });
 
   registerLensAction("board", "collaborator-list", (ctx, _a, params = {}) => {
@@ -1153,8 +1359,10 @@ export default function registerBoardActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        owner: bdActor(ctx),
+        owner: board.ownerId,
         collaborators: Array.isArray(board.collaborators) ? board.collaborators : [],
+        members: membersView(board),
+        role: roleOn(board, bdActor(ctx)),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -1167,9 +1375,16 @@ export default function registerBoardActions(registerLensAction) {
     if (!Array.isArray(board.collaborators)) board.collaborators = [];
     const i = board.collaborators.findIndex((c) => c.id === params.collaboratorId || c.userId === params.userId);
     if (i < 0) return { ok: false, error: "collaborator not found" };
+    const me = bdActor(ctx);
+    const target = board.collaborators[i];
+    const myRole = roleOn(board, me);
+    if (target.userId !== me && myRole !== "owner" && myRole !== "admin") return { ok: false, error: "only the board's owner or an admin can do that" };
+    if (target.role === "admin" && target.userId !== me && myRole !== "owner") return { ok: false, error: "only the board's owner can remove an admin" };
     const removed = board.collaborators.splice(i, 1)[0];
+    // Their cards stay; they're simply no longer assigned.
+    for (const c of board.cards) if (c.assignee === removed.userId) c.assignee = null;
     saveBoard();
-    return { ok: true, result: { removed: removed.userId } };
+    return { ok: true, result: { removed: removed.userId, left: removed.userId === me } };
   });
 
   // ── Power-ups / custom fields on cards ─────────────────────────────
@@ -1358,7 +1573,7 @@ export default function registerBoardActions(registerLensAction) {
     const now = Date.now();
     const horizon = now + withinHours * 3600 * 1000;
     const reminders = [];
-    for (const board of bdList(s, bdActor(ctx))) {
+    for (const board of boardsFor(s, bdActor(ctx))) {
       for (const card of board.cards) {
         if (card.archived || !card.dueDate) continue;
         const t = new Date(card.dueDate).getTime();
@@ -1382,5 +1597,112 @@ export default function registerBoardActions(registerLensAction) {
         withinHours,
       },
     };
+  });
+
+  // ── Who's here, what happened, what's mine ─────────────────────────
+
+  /** "I'm looking at this board": returns everyone seen in the last 45 s. */
+  registerLensAction("board", "board-presence", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const me = bdActor(ctx), now = Date.now();
+    if (!(board.viewers instanceof Map)) Object.defineProperty(board, "viewers", { value: new Map(), enumerable: false, writable: true });
+    board.viewers.set(me, now);
+    const here = [...board.viewers].filter(([uid, t]) => now - t < 45_000 && roleOn(board, uid)).map(([uid]) => ({ userId: uid, name: nameOf(uid), you: uid === me }));
+    return { ok: true, result: { here } };
+  });
+
+  registerLensAction("board", "board-activity", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const board = findBoard(s, ctx, params.boardId);
+    if (!board) return { ok: false, error: "board not found" };
+    const limit = Math.max(1, Math.min(300, Number(params.limit) || 60));
+    return { ok: true, result: { activity: (board.activity || []).slice(0, limit) } };
+  });
+
+  /**
+   * My tasks: across every board you can open, the cards assigned to you
+   * (and the unassigned ones you made), grouped by when they're due. A card
+   * in a board's last column counts as done.
+   */
+  registerLensAction("board", "my-tasks", (ctx, _a, params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const me = bdActor(ctx);
+    if (!me || me === "anon") return { ok: false, error: "sign in to see your tasks" };
+    const includeDone = !!params.includeDone;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = 86400000, t0 = today.getTime();
+    const tasks = [];
+    for (const board of boardsFor(s, me)) {
+      const live = board.columns.filter((c) => !c.archived);
+      const last = live[live.length - 1];
+      for (const card of board.cards) {
+        if (card.archived) continue;
+        const mine = card.assignee === me || (!card.assignee && card.createdBy === me);
+        if (!mine) continue;
+        const col = board.columns.find((c) => c.id === card.columnId);
+        const done = !!last && card.columnId === last.id && live.length > 1;
+        if (done && !includeDone) continue;
+        const due = card.dueDate ? Date.parse(card.dueDate) : NaN;
+        const bucket = done ? "done" : !Number.isFinite(due) ? "later" : due < t0 ? "overdue" : due < t0 + day ? "today" : due < t0 + 7 * day ? "week" : "later";
+        tasks.push({
+          boardId: board.id, boardName: board.name, cardId: card.id, title: card.title, columnId: card.columnId, columnName: col ? col.name : null,
+          dueDate: card.dueDate || null, labels: card.labels || [], assignedToMe: card.assignee === me, done, bucket,
+          checklist: { done: (card.checklist || []).filter((i) => i.done).length, total: (card.checklist || []).length },
+        });
+      }
+    }
+    const order = { overdue: 0, today: 1, week: 2, later: 3, done: 4 };
+    tasks.sort((a, b) => order[a.bucket] - order[b.bucket] || String(a.dueDate || "9999").localeCompare(String(b.dueDate || "9999")));
+    const counts = Object.fromEntries(Object.keys(order).map((k) => [k, tasks.filter((t) => t.bucket === k).length]));
+    const legacy = legacyTasks(me).length;
+    return { ok: true, result: { tasks, counts, legacyTasks: legacy } };
+  });
+
+  // The old personal task list kept each task as a lens artifact of its own.
+  function legacyTasks(userId) {
+    const arts = globalThis._concordSTATE?.lensArtifacts;
+    if (!arts || typeof arts.values !== "function") return [];
+    const out = [];
+    for (const a of arts.values()) {
+      if (!a || a.domain !== "board" || (a.type && a.type !== "task")) continue;
+      if ((a.ownerId || a.createdBy) !== userId) continue;
+      if (a.data?.importedTo) continue;
+      out.push(a);
+    }
+    return out;
+  }
+  const LEGACY_COLUMNS = [["backlog", "Backlog"], ["todo", "To do"], ["in_progress", "In progress"], ["in_review", "In review"], ["testing", "Testing"], ["done", "Done"]];
+
+  /** Bring the old personal tasks onto a real board, once. */
+  registerLensAction("board", "import-tasks", (ctx, _a, _params = {}) => {
+    const s = getBoardState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const me = bdActor(ctx);
+    if (!me || me === "anon") return { ok: false, error: "sign in to import your tasks" };
+    const old = legacyTasks(me);
+    if (!old.length) return { ok: false, error: "there are no older tasks to bring in" };
+    const used = new Set(old.map((a) => a.data?.status || "backlog"));
+    const cols = LEGACY_COLUMNS.filter(([id]) => used.has(id) || id === "todo" || id === "done").map(([key, name]) => ({ key, id: bdId("col"), name }));
+    const board = { id: bdId("bd"), name: "My tasks", columns: cols.map(({ id, name }) => ({ id, name })), cards: [], ownerId: me, collaborators: [], activity: [], createdAt: bdNow() };
+    const colFor = (status) => (cols.find((c) => c.key === status) || cols.find((c) => c.key === "todo")).id;
+    for (const a of old) {
+      const d = a.data || {};
+      const columnId = colFor(d.status || "backlog");
+      const due = cleanDue(d.dueDate);
+      const labels = [d.priority && d.priority !== "medium" ? `${d.priority} priority` : null, d.label || null, ...(Array.isArray(d.tags) ? d.tags : [])].filter(Boolean).map((l) => bdClean(l, 30)).slice(0, 6);
+      board.cards.push({
+        id: bdId("crd"), columnId, title: bdClean(d.title || a.title || "Untitled", 240), description: bdClean(d.description, 4000), labels,
+        dueDate: due || null, assignee: null, createdBy: me,
+        checklist: (Array.isArray(d.subtasks) ? d.subtasks : []).slice(0, 100).map((t) => ({ id: bdId("ci"), text: bdClean(t?.title || t?.text, 200), done: !!(t?.done || t?.completed) })).filter((i) => i.text),
+        comments: (Array.isArray(d.comments) ? d.comments : []).slice(0, 100).map((c) => ({ id: bdId("cmt"), author: me, authorName: nameOf(me), text: bdClean(c?.text || c?.content, 2000), at: c?.timestamp || bdNow() })).filter((c) => c.text),
+        position: board.cards.filter((c) => c.columnId === columnId).length,
+        transitions: [{ columnId, at: bdNow() }], createdAt: a.createdAt || bdNow(), activity: [{ id: bdId("act"), action: "brought in from your old task list", at: bdNow(), by: me, byName: nameOf(me) }],
+      });
+      a.data = { ...(a.data || {}), importedTo: board.id };
+    }
+    bdList(s, me).push(board);
+    saveBoard();
+    return { ok: true, result: { boardId: board.id, imported: board.cards.length, columns: board.columns.map((c) => c.name) } };
   });
 }

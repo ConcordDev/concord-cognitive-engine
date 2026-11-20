@@ -390,7 +390,7 @@ export function GraphParityPanel() {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Workflow className="w-4 h-4 text-cyan-400" />
+        <Workflow className="w-4 h-4 text-[var(--sk-gold-2,#a5f3fc)]" />
         <h3 className="text-sm font-bold text-zinc-100">Graph Toolkit</h3>
       </div>
 
@@ -410,7 +410,7 @@ export function GraphParityPanel() {
             <option key={m.id} value={m.id}>{m.title} ({m.nodeCount} nodes)</option>
           ))}
         </select>
-        <button onClick={() => void refreshMaps()} className="p-1 text-zinc-400 hover:text-cyan-300" title="Reload maps">
+        <button onClick={() => void refreshMaps()} className="p-1 text-zinc-400 hover:text-[var(--sk-gold-2,#a5f3fc)]" title="Reload maps">
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -433,7 +433,7 @@ export function GraphParityPanel() {
               className={cn(
                 'flex items-center gap-1 px-2 py-1 text-[11px] rounded-lg border transition-colors',
                 tab === t.id
-                  ? 'bg-cyan-600/15 border-cyan-700/50 text-cyan-200'
+                  ? 'bg-[rgba(216,183,102,0.14)] border-[rgba(216,183,102,0.35)] text-[var(--sk-gold-2,#a5f3fc)]'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:border-zinc-700',
               )}
             >
@@ -444,13 +444,13 @@ export function GraphParityPanel() {
       </div>
 
       {notice && (
-        <div className="mb-2 text-[11px] text-cyan-300 bg-cyan-950/40 border border-cyan-900/40 rounded px-2 py-1">
+        <div className="mb-2 text-[11px] text-[var(--sk-gold-2,#a5f3fc)] bg-[rgba(216,183,102,0.14)] border border-[rgba(216,183,102,0.35)] rounded px-2 py-1">
           {notice}
         </div>
       )}
 
       <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3 min-h-[160px]">
-        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400 mb-2" />}
+        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--sk-gold-2,#a5f3fc)] mb-2" />}
 
         {/* ── Local graph ── */}
         {tab === 'local' && (
@@ -484,11 +484,11 @@ export function GraphParityPanel() {
                       <div key={n.id} className="flex items-center gap-2 text-xs">
                         <span className={cn(
                           'inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-mono',
-                          n.hops === 0 ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-400',
+                          n.hops === 0 ? 'bg-[var(--sk-gold,#0e7490)] text-[#1a1405]' : 'bg-zinc-800 text-zinc-400',
                         )}>
                           {n.hops}
                         </span>
-                        <span className={cn(n.central ? 'text-violet-200 font-semibold' : 'text-zinc-200')}>{n.label}</span>
+                        <span className={cn(n.central ? 'text-[var(--sk-gold-2,#a5f3fc)] font-semibold' : 'text-zinc-200')}>{n.label}</span>
                       </div>
                     ))}
                 </div>
@@ -518,7 +518,7 @@ export function GraphParityPanel() {
                 Central nodes only
               </label>
               <button onClick={saveFilter} disabled={!filterName.trim()}
-                className="ml-auto flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="ml-auto flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]">
                 <Plus className="w-3 h-3" /> Save filter
               </button>
             </div>
@@ -534,7 +534,7 @@ export function GraphParityPanel() {
                       f.query.minDegree != null && `deg≥${f.query.minDegree}`].filter(Boolean).join(' · ') || 'all nodes'}
                   </span>
                   <button onClick={() => applyFilter(f.id)} disabled={!mapId}
-                    className="ml-auto text-cyan-400 hover:text-cyan-200 disabled:opacity-40">Apply</button>
+                    className="ml-auto text-[var(--sk-gold-2,#a5f3fc)] hover:text-[var(--sk-gold-2,#a5f3fc)] disabled:opacity-40">Apply</button>
                   <button aria-label="Delete" onClick={() => deleteFilter(f.id)} className="text-rose-400 hover:text-rose-300">
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -546,7 +546,7 @@ export function GraphParityPanel() {
                 {filterMatch.ids.length} match(es):{' '}
                 {filterMatch.ids.length === 0
                   ? <span className="text-zinc-400">none</span>
-                  : filterMatch.ids.map((id) => <span key={id} className="text-cyan-300">{labelOf(id)} </span>)}
+                  : filterMatch.ids.map((id) => <span key={id} className="text-[var(--sk-gold-2,#a5f3fc)]">{labelOf(id)} </span>)}
               </div>
             )}
           </div>
@@ -565,7 +565,7 @@ export function GraphParityPanel() {
               <input value={rTag} onChange={(e) => setRTag(e.target.value)} placeholder="Tag match"
                 className="w-24 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               <button onClick={addRule} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]">
                 <Plus className="w-3 h-3" /> Add
               </button>
             </div>
@@ -616,8 +616,8 @@ export function GraphParityPanel() {
                 </div>
                 {tlSnapshot && (
                   <div className="flex gap-4 text-xs">
-                    <span className="text-cyan-300">{tlSnapshot.nodeCount} nodes</span>
-                    <span className="text-violet-300">{tlSnapshot.edgeCount} edges</span>
+                    <span className="text-[var(--sk-gold-2,#a5f3fc)]">{tlSnapshot.nodeCount} nodes</span>
+                    <span className="text-[var(--sk-gold-2,#a5f3fc)]">{tlSnapshot.edgeCount} edges</span>
                     <span className="text-zinc-400">grown to this point</span>
                   </div>
                 )}
@@ -643,7 +643,7 @@ export function GraphParityPanel() {
                 <option value="circular">Circular</option>
               </select>
               <button onClick={runLayout} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]">
                 <LayoutGrid className="w-3 h-3" /> Compute layout
               </button>
             </div>
@@ -692,14 +692,14 @@ export function GraphParityPanel() {
               </button>
             </div>
             <button onClick={syncToDtu} disabled={!syncNode || !nodes.find((n) => n.id === syncNode)?.dtuId}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+              className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]">
               <RefreshCw className="w-3 h-3" /> Push node edits to DTU
             </button>
             <p className="text-[11px] text-zinc-400">
               Linking a node to a DTU lets graph-side label/notes edits flow back into the knowledge substrate.
             </p>
             {syncNode && nodes.find((n) => n.id === syncNode)?.syncedAt && (
-              <p className="text-[11px] text-cyan-300">
+              <p className="text-[11px] text-[var(--sk-gold-2,#a5f3fc)]">
                 Last synced: {new Date(nodes.find((n) => n.id === syncNode)!.syncedAt!).toLocaleString()}
               </p>
             )}
@@ -742,7 +742,7 @@ export function GraphParityPanel() {
               <button
                 onClick={requestMerge}
                 disabled={!mapId || !mergeSource || !mergeTarget || mergeSource === mergeTarget}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]"
+                className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]"
               >
                 <GitMerge className="w-3 h-3" /> Merge
               </button>
@@ -768,7 +768,7 @@ export function GraphParityPanel() {
             {mergeResult && (
               <div className="text-[11px] text-zinc-300 border-t border-zinc-800 pt-1.5">
                 Merged &ldquo;{mergeResult.removedLabel}&rdquo; into{' '}
-                <span className="text-cyan-300">{mergeResult.keptLabel}</span> —{' '}
+                <span className="text-[var(--sk-gold-2,#a5f3fc)]">{mergeResult.keptLabel}</span> —{' '}
                 {mergeResult.edgesRepointed} edge(s) re-pointed
                 {mergeResult.duplicateEdgesRemoved > 0 && `, ${mergeResult.duplicateEdgesRemoved} duplicate(s) removed`}
                 {mergeResult.selfLoopsDropped > 0 && `, ${mergeResult.selfLoopsDropped} self-loop(s) dropped`}.
@@ -797,7 +797,7 @@ export function GraphParityPanel() {
               <input value={exPanY} onChange={(e) => setExPanY(e.target.value)} type="number"
                 className="w-14 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-1 text-xs text-zinc-200" />
               <button onClick={runExport} disabled={!mapId}
-                className="flex items-center gap-1 px-2 py-1 rounded bg-cyan-700 hover:bg-cyan-500 disabled:opacity-40 text-white text-[11px]">
+                className="flex items-center gap-1 px-2 py-1 rounded bg-[var(--sk-gold,#0e7490)] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-40 text-[#1a1405] text-[11px]">
                 <Download className="w-3 h-3" /> Export
               </button>
             </div>

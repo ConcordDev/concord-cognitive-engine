@@ -1,0 +1,101 @@
+/* The Production Office — the Film Studios lens.
+   A working film office: call-sheet paper on a dark slate wall, the
+   clapperboard's black-and-white stripes, gaffer-tape red for the one action,
+   and the stripboard's real industry colours carrying meaning (a scene's strip
+   colour IS its INT/EXT and DAY/NIGHT). Screening rooms go dark. */
+
+.fo {
+  --fo-wall: #1c1d1f;
+  --fo-wall-2: #26282b;
+  --fo-paper: #f5f2e8;
+  --fo-paper-2: #ebe6d6;
+  --fo-ink: #1b1b1b;
+  --fo-ink-2: #3d3a35;
+  --fo-muted: #6f6a60;
+  --fo-faint: #9b9588;
+  --fo-rule: #d8d1bf;
+  --fo-rule-2: #bfb6a0;
+  --fo-tape: #d63a2f;
+  --fo-tape-ink: #ffffff;
+  --fo-good: #2f6e3b;
+  --fo-bad: #b3261e;
+  /* stripboard (industry convention) */
+  --fo-strip-int-day: #ffffff;
+  --fo-strip-ext-day: #fff19a;
+  --fo-strip-int-night: #a9c6ff;
+  --fo-strip-ext-night: #a8e3a1;
+  --fo-strip-dawn: #ffc9de;
+  --fo-strip-day-break: #1b1b1b;
+  --fo-input: #fffdf6;
+  --fo-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 12px 28px -16px rgba(0, 0, 0, 0.45);
+  background: var(--fo-wall);
+  color: var(--fo-ink);
+  font-family: var(--fo-font-sans), system-ui, sans-serif;
+}
+.fo ::selection { background: rgba(214, 58, 47, 0.25); }
+.fo-slate { font-family: var(--fo-font-slate), Impact, sans-serif; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.fo-type { font-family: var(--fo-font-type), 'Courier New', monospace; }
+.fo-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fo-muted); }
+
+/* clapperboard stripes */
+.fo-clap { height: 14px; background: repeating-linear-gradient(-45deg, var(--fo-ink) 0 14px, var(--fo-paper) 14px 28px); border-radius: 4px 4px 0 0; }
+.fo-wall-head { color: var(--fo-paper); }
+.fo-sheet { background: var(--fo-paper); color: var(--fo-ink); border-radius: 6px; box-shadow: var(--fo-shadow); }
+.fo-sheet-2 { background: var(--fo-paper-2); }
+
+/* rooms (doors along the corridor) */
+.fo-door { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; font-family: var(--fo-font-slate); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; color: #bdb8ac; border-radius: 6px 6px 0 0; white-space: nowrap; }
+.fo-door:hover { color: var(--fo-paper); }
+.fo-door[aria-selected='true'] { color: var(--fo-ink); background: var(--fo-paper); }
+.fo-door[aria-selected='true']::before { content: ''; position: absolute; left: 10px; right: 10px; top: 0; height: 3px; background: var(--fo-tape); border-radius: 0 0 3px 3px; }
+
+/* controls */
+.fo-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1.5px solid var(--fo-ink); border-radius: 4px; background: transparent; color: var(--fo-ink); font-size: 13px; font-weight: 700; transition: background 120ms, color 120ms, transform 80ms; }
+.fo-btn:hover:not(:disabled) { background: var(--fo-ink); color: var(--fo-paper); }
+.fo-btn:active:not(:disabled) { transform: translateY(1px); }
+.fo-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.fo-btn-tape { background: var(--fo-tape); border-color: var(--fo-tape); color: var(--fo-tape-ink); }
+.fo-btn-tape:hover:not(:disabled) { background: #b72d23; border-color: #b72d23; color: #fff; }
+.fo-btn-quiet { border-color: transparent; }
+.fo-btn-quiet:hover:not(:disabled) { background: var(--fo-paper-2); color: var(--fo-ink); }
+.fo-dark .fo-btn { border-color: #e9e4d6; color: #e9e4d6; }
+.fo-dark .fo-btn:hover:not(:disabled) { background: #e9e4d6; color: #141414; }
+.fo-btn:focus-visible, .fo-door:focus-visible, .fo-strip:focus-visible { outline: 2px solid var(--fo-tape); outline-offset: 2px; }
+@media (pointer: coarse) { .fo-btn { min-height: 44px; } }
+.fo-input { width: 100%; min-height: 38px; padding: 6px 10px; border: 1.5px solid var(--fo-rule-2); border-radius: 4px; background: #fffdf6; color: var(--fo-ink); font-size: 14px; }
+.fo-input:focus { outline: none; border-color: var(--fo-ink); }
+.fo-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; border: 1.5px solid var(--fo-rule-2); font-size: 12px; font-weight: 600; color: var(--fo-ink-2); }
+.fo-chip[aria-pressed='true'] { background: var(--fo-ink); color: var(--fo-paper); border-color: var(--fo-ink); }
+
+/* a stripboard strip: colour = INT/EXT + time of day */
+.fo-strip { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 10px; border: 1px solid rgba(0, 0, 0, 0.18); border-radius: 3px; background: var(--strip, #fff); color: #141414; font-size: 13px; text-align: left; }
+.fo-strip[aria-pressed='true'] { box-shadow: inset 4px 0 0 var(--fo-tape); }
+.fo-strip .fo-strip-no { font-family: var(--fo-font-slate); font-size: 18px; text-align: center; }
+
+/* the screening room: the cut and the films play in the dark */
+.fo-dark { background: #0d0d0e; color: #e9e4d6; border-radius: 8px; }
+.fo-screen { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 4px; overflow: hidden; }
+.fo-screen video { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.fo-screen .fo-slug { position: absolute; left: 10px; top: 8px; font-family: var(--fo-font-type); font-size: 12px; color: rgba(255, 255, 255, 0.75); text-shadow: 0 1px 2px #000; }
+.fo-tc { font-family: var(--fo-font-type); font-variant-numeric: tabular-nums; }
+.fo-track { position: relative; height: 34px; border-radius: 3px; background: #1d1e21; overflow: hidden; }
+.fo-track .fo-clip { position: absolute; top: 3px; bottom: 3px; border-radius: 2px; background: #3b4a63; color: #eef; font-size: 10.5px; padding: 2px 5px; overflow: hidden; white-space: nowrap; border: 1px solid rgba(255, 255, 255, 0.15); }
+.fo-track .fo-clip[data-live='true'] { background: #5d7bb0; }
+.fo-track .fo-clip[data-empty='true'] { background: repeating-linear-gradient(45deg, #2a2b2f 0 6px, #232427 6px 12px); color: #9a9a9a; }
+.fo-track .fo-head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--fo-tape); }
+.fo-note-pin { position: absolute; top: -2px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #ffd23f; border: 2px solid #0d0d0e; }
+
+/* one-sheets (posters) in the cinema */
+.fo-onesheet { position: relative; aspect-ratio: 27 / 40; border-radius: 4px; overflow: hidden; background: #2b2c30; box-shadow: var(--fo-shadow); }
+.fo-onesheet img { width: 100%; height: 100%; object-fit: cover; }
+.fo-onesheet .fo-onesheet-title { position: absolute; inset: auto 0 0 0; padding: 30px 10px 10px; background: linear-gradient(to top, rgba(0, 0, 0, 0.85), transparent); color: #fff; }
+
+.fo-error { border-left: 3px solid var(--fo-bad); padding: 6px 10px; background: #fff3f0; color: var(--fo-bad); font-size: 13px; border-radius: 0 4px 4px 0; }
+.fo-ok { border-left: 3px solid var(--fo-good); padding: 6px 10px; background: #eef6ec; color: var(--fo-good); font-size: 13px; border-radius: 0 4px 4px 0; }
+.fo-dark .fo-error { background: rgba(214, 58, 47, 0.12); color: #ffb4ab; }
+.fo-dark .fo-ok { background: rgba(91, 227, 165, 0.1); color: #b7f0d2; }
+.fo-skeleton { border-radius: 6px; background: linear-gradient(90deg, var(--fo-paper-2), #f9f6ee, var(--fo-paper-2)); background-size: 200% 100%; animation: fo-shimmer 1.4s ease-in-out infinite; }
+@keyframes fo-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.fo-rise { animation: fo-rise 180ms ease-out; }
+@keyframes fo-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fo-skeleton, .fo-rise { animation: none; } }

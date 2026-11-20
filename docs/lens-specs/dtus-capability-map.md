@@ -1,5 +1,13 @@
 # DTUs Lens — Capability Map (Frontend Rebuild Program, Wave 3)
 
+> **2026-11-20: The Binder redesign.** The DTUs lens is now one app (`components/dtus/binder/`): every DTU is a card filed on a shelf; open a card to flip it, design it, edit its words, check its claims, publish it, build on it, or fuse it with another.
+> - **Shelves (`server/lib/dtu-shelf.js`):** works, specs & designs, documents, knowledge are shown by default; data, records (personal context: chat memory, conversations, mood, till records), parts (uploaded audio behind a release, covers, product photos, passes) and system (error reports, internal consolidations, quarantined rows) are only shown when filtered in, and the binder says how many are hidden. Before this the browser mixed error reports and chat memory with music and specs. Specs come from a declared domain only (a word-guessed domain put every explanation of a structure on specs), and made things (apps, code, blueprints, recipes) are specs, not knowledge.
+> - **Publish gate (`server/lib/dtu-publish-gate.js`), on every publish path** (`publishDTU`, which `/api/dtus/:id/publish` and the Binder use, and `marketplace.list`): knowledge needs a current receipt from the verification gate (`lib/verify-gate`) made against its present text (body hash); refuted or pending blocks; an empirical claim also needs a declared outside source (`card-sources`); personal context and system rows are never published. Publishing ran no check before.
+> - **New macros (`server/domains/dtus-binder.js`, domain `dtus`):** `shelf-facets`, `shelf-browse`, `card-get`, `card-design`, `card-sources`, `card-connections` (explainable: linked, shared source, shared terms weighted by rarity; a cross-shelf pair is a fusion candidate), `card-fuse` and `card-remix` (new card with lineage to its sources; private or personal cards refused), `card-check`, `card-publish`, `card-unpublish`. Published cards appear in the library even when the DTU's federation tier is still "local".
+> - **Removed (superseded):** `components/dtus/BrowserPanel.tsx` (the old vault list; its create and delete live in the Binder). The workbench (lineage, citation graph, compare/merge, bulk, layers, portability, saved views), trending and ops probes are in the Tools drawer, unchanged.
+> - Pinned in `server/tests/depth/dtus-binder-behavior.test.js` and `concord-frontend/tests/dtus-binder.test.tsx`.
+
+
 > Derived, not asserted. Every macro below was enumerated by reading
 > `server/domains/dtus.js` (938 lines) and grepping the frontend page +
 > every component under `concord-frontend/components/dtus/`. Reproduce:

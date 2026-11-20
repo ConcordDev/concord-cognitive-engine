@@ -43,6 +43,10 @@ const nextConfig = {
   },
   // Tree-shake heavy icon libraries and UI packages
   experimental: {
+    // Raw uploads (films, episodes) pass through this proxy as the request
+    // body; Next's default 10 MB cut truncated them and the backend hung up.
+    // Matches the backend's raw cap (CONCORD_MEDIA_UPLOAD_MAX_BYTES, 200 MB).
+    proxyClientMaxBodySize: '200mb',
     useTypeScriptCli: true,
     optimizePackageImports: [
       'lucide-react',

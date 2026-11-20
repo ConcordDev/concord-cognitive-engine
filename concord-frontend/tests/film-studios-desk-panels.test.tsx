@@ -49,7 +49,10 @@ describe('film studios production desk (FIX-film-studios-002)', () => {
     expect(screen.getByTestId('film-desk-tab-schedule')).toBeTruthy();
     expect(screen.getByTestId('film-desk-tab-budget')).toBeTruthy();
     expect(screen.getByTestId('film-desk-tab-edit')).toBeTruthy();
-    expect(screen.getByTestId('film-desk-tab-media')).toBeTruthy();
+    expect(screen.getByTestId('film-desk-tab-screening')).toBeTruthy();
+    expect(screen.getByTestId('film-desk-tab-release')).toBeTruthy();
+    // the media bin now lives in the cutting room
+    expect(screen.queryByTestId('film-desk-tab-media')).toBeNull();
     // switching to Shots mounts the shots panel, which reads the
     // production's scenes and (with a scene active) its shot list
     fireEvent.click(screen.getByTestId('film-desk-tab-shots'));

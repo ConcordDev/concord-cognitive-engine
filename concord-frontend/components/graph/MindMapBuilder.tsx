@@ -91,7 +91,7 @@ function NodePropsEditor({ mapId, node, onSaved }: {
       ))}
       <div className="flex items-center gap-1.5">
         <button type="button" onClick={() => setRows((p) => [...p, { key: '', kind: 'string', value: '' }])} className="text-[11px] text-zinc-400 hover:text-zinc-200">+ Add property</button>
-        <button type="button" onClick={() => void save()} className="px-2 py-0.5 rounded bg-violet-600 text-[11px] text-white hover:bg-violet-500">Save properties</button>
+        <button type="button" onClick={() => void save()} className="px-2 py-0.5 rounded bg-[var(--sk-gold,#7c3aed)] text-[11px] text-[#1a1405] hover:bg-[var(--sk-gold-2,#06b6d4)]">Save properties</button>
         {error && <span role="alert" className="text-[11px] text-rose-400">{error}</span>}
       </div>
     </div>
@@ -126,8 +126,8 @@ function NodeBranch({ node, depth, mapId, kidsOf, branchText, onBranchText, onAd
   return (
     <div className={cn(depth > 0 && 'ml-4 pl-3 border-l border-zinc-800')}>
       <div className="group flex items-center gap-1.5 py-0.5">
-        <span className={cn('w-1.5 h-1.5 rounded-full', node.central ? 'bg-violet-400' : 'bg-zinc-500')} />
-        <span className={cn('text-xs', node.central ? 'font-bold text-violet-200' : 'text-zinc-200')}>{node.label}</span>
+        <span className={cn('w-1.5 h-1.5 rounded-full', node.central ? 'bg-[var(--sk-gold,#a78bfa)]' : 'bg-zinc-500')} />
+        <span className={cn('text-xs', node.central ? 'font-bold text-[var(--sk-gold-2,#a5f3fc)]' : 'text-zinc-200')}>{node.label}</span>
         {node.props && Object.keys(node.props).length > 0 && (
           <span className="text-[10px] text-zinc-500">{Object.keys(node.props).length} propert{Object.keys(node.props).length === 1 ? 'y' : 'ies'}</span>
         )}
@@ -153,7 +153,7 @@ function NodeBranch({ node, depth, mapId, kidsOf, branchText, onBranchText, onAd
         <input value={branchText[node.id] || ''} onChange={e => onBranchText(node.id, e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') onAddBranch(node.id); }}
           placeholder="+ branch" className="w-32 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
-        <button aria-label="Branch" onClick={() => onAddBranch(node.id)} className="text-zinc-600 hover:text-violet-300"><GitBranch className="w-3 h-3" /></button>
+        <button aria-label="Branch" onClick={() => onAddBranch(node.id)} className="text-zinc-600 hover:text-[var(--sk-gold-2,#a5f3fc)]"><GitBranch className="w-3 h-3" /></button>
       </div>
     </div>
   );
@@ -389,7 +389,7 @@ export function MindMapBuilder() {
   return (
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Workflow className="w-4 h-4 text-violet-400" />
+        <Workflow className="w-4 h-4 text-[var(--sk-gold-2,#a5f3fc)]" />
         <h3 className="text-sm font-bold text-zinc-100">Mind Map Builder</h3>
         {dashboard && (
           <span className="ml-auto text-[10px] text-zinc-500">{dashboard.maps} map{dashboard.maps === 1 ? '' : 's'} · {dashboard.totalNodes} nodes · {dashboard.totalEdges} edges</span>
@@ -401,7 +401,7 @@ export function MindMapBuilder() {
         {maps.map(m => (
           <span key={m.id} className="group inline-flex items-center gap-1">
             <button onClick={() => open(m.id)}
-              className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === m.id ? 'bg-violet-600/15 border-violet-700/50 text-violet-200' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
+              className={cn('px-2.5 py-1 text-xs rounded-lg border', active?.id === m.id ? 'bg-[rgba(216,183,102,0.14)] border-[rgba(216,183,102,0.35)] text-[var(--sk-gold-2,#a5f3fc)]' : 'bg-zinc-900/60 border-zinc-800 text-zinc-300 hover:border-zinc-700')}>
               {m.title} <span className="text-zinc-600">{m.nodeCount}</span>
             </button>
             <button aria-label="Delete" onClick={() => deleteMap(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400"><Trash2 className="w-3 h-3" /></button>
@@ -409,7 +409,7 @@ export function MindMapBuilder() {
         ))}
         <input value={newMap} onChange={e => setNewMap(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void createMap(); }}
           placeholder="New map" className="w-28 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200" />
-        <button aria-label="Add" onClick={createMap} className="px-2 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 text-white"><Plus className="w-3.5 h-3.5" /></button>
+        <button aria-label="Add" onClick={createMap} className="px-2 py-1 rounded-lg bg-[var(--sk-gold,#7c3aed)] hover:bg-[var(--sk-gold-2,#06b6d4)] text-[#1a1405]"><Plus className="w-3.5 h-3.5" /></button>
       </div>
 
       {active ? (
@@ -419,7 +419,7 @@ export function MindMapBuilder() {
               <span>{metrics.nodeCount} nodes</span>
               <span>{metrics.edgeCount} edges</span>
               <span>avg degree {metrics.avgDegree}</span>
-              {metrics.mostConnected && <span>hub: <strong className="text-violet-300">{metrics.mostConnected.label}</strong> ({metrics.mostConnected.degree})</span>}
+              {metrics.mostConnected && <span>hub: <strong className="text-[var(--sk-gold-2,#a5f3fc)]">{metrics.mostConnected.label}</strong> ({metrics.mostConnected.degree})</span>}
             </div>
           )}
           {active.description && <p className="mb-2 text-[11px] text-zinc-500">{active.description}</p>}
@@ -449,7 +449,7 @@ export function MindMapBuilder() {
               <textarea value={mapDesc} onChange={(e) => setMapDesc(e.target.value)} aria-label="Map description" rows={2}
                 placeholder="What is this map about?" className="w-full bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200" />
               <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => void saveMapEdit()} className="px-2 py-0.5 rounded bg-violet-600 text-[11px] text-white hover:bg-violet-500">Save</button>
+                <button type="button" onClick={() => void saveMapEdit()} className="px-2 py-0.5 rounded bg-[var(--sk-gold,#7c3aed)] text-[11px] text-[#1a1405] hover:bg-[var(--sk-gold-2,#06b6d4)]">Save</button>
                 <button type="button" onClick={() => setEditMapOpen(false)} className="px-2 py-0.5 rounded bg-zinc-800 text-[11px] text-zinc-300">Cancel</button>
                 {mapEditError && <span role="alert" className="text-[11px] text-rose-400">{mapEditError}</span>}
               </div>
@@ -475,7 +475,7 @@ export function MindMapBuilder() {
                     className="w-36 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
                 )}
                 <button type="button" onClick={() => void runImport()} disabled={!importText.trim()}
-                  className="px-2 py-0.5 rounded bg-violet-600 text-[11px] text-white hover:bg-violet-500 disabled:opacity-30">
+                  className="px-2 py-0.5 rounded bg-[var(--sk-gold,#7c3aed)] text-[11px] text-[#1a1405] hover:bg-[var(--sk-gold-2,#06b6d4)] disabled:opacity-30">
                   Import
                 </button>
               </div>
@@ -549,7 +549,7 @@ export function MindMapBuilder() {
                             aria-label="Link label" placeholder="label" className="w-20 bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[11px] text-zinc-200" />
                           <input value={draft.type} onChange={(ev) => setEdgeEdit((p) => ({ ...p, [e.id]: { ...draft, type: ev.target.value } }))}
                             aria-label="Link type" placeholder="type" className="w-16 bg-zinc-950 border border-zinc-800 rounded px-1 py-0.5 text-[11px] text-zinc-200" />
-                          <button type="button" onClick={() => void saveEdgeEdit(e.id)} className="text-violet-300 hover:text-violet-200">Save</button>
+                          <button type="button" onClick={() => void saveEdgeEdit(e.id)} className="text-[var(--sk-gold-2,#a5f3fc)] hover:text-[var(--sk-gold-2,#a5f3fc)]">Save</button>
                           <button type="button" onClick={() => setEdgeEdit((p) => { const n = { ...p }; delete n[e.id]; return n; })} className="text-zinc-500">Cancel</button>
                         </>
                       ) : (
@@ -574,7 +574,7 @@ export function MindMapBuilder() {
               </select>
               <input value={linkLabel} onChange={e => setLinkLabel(e.target.value)} placeholder="label (optional)" className="w-24 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
               <input value={linkType} onChange={e => setLinkType(e.target.value)} placeholder="type (optional)" aria-label="Link type" className="w-20 bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-[11px] text-zinc-300" />
-              <button onClick={addCrossLink} disabled={!linkFrom || !linkTo} className="text-zinc-600 hover:text-violet-300 disabled:opacity-30" aria-label="Add cross-link"><Plus className="w-3.5 h-3.5" aria-hidden="true" /></button>
+              <button onClick={addCrossLink} disabled={!linkFrom || !linkTo} className="text-zinc-600 hover:text-[var(--sk-gold-2,#a5f3fc)] disabled:opacity-30" aria-label="Add cross-link"><Plus className="w-3.5 h-3.5" aria-hidden="true" /></button>
             </div>
             {linkError && <p className="mt-1 text-[10px] text-rose-400">{linkError}</p>}
           </div>
@@ -594,7 +594,7 @@ export function MindMapBuilder() {
                 <option value="">To…</option>
                 {active.nodes.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
               </select>
-              <button type="button" onClick={() => void findPath()} disabled={!pathFrom || !pathTo || pathBusy} className="px-2 py-0.5 rounded bg-violet-600/30 text-[11px] text-violet-200 transition-colors hover:bg-violet-600/50 disabled:opacity-30">
+              <button type="button" onClick={() => void findPath()} disabled={!pathFrom || !pathTo || pathBusy} className="px-2 py-0.5 rounded bg-[rgba(216,183,102,0.14)] text-[11px] text-[var(--sk-gold-2,#a5f3fc)] transition-colors hover:bg-[rgba(216,183,102,0.3)] disabled:opacity-30">
                 {pathBusy ? 'Searching…' : 'Find path'}
               </button>
             </div>
@@ -603,7 +603,7 @@ export function MindMapBuilder() {
                 {pathResult.path.map((id, i) => (
                   <li key={`${id}-${i}`} className="flex items-center gap-1">
                     {i > 0 && <span className="text-zinc-600">→</span>}
-                    <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-200">{active.nodes.find(n => n.id === id)?.label || id}</span>
+                    <span className="rounded bg-[rgba(216,183,102,0.14)] px-1.5 py-0.5 text-[var(--sk-gold-2,#a5f3fc)]">{active.nodes.find(n => n.id === id)?.label || id}</span>
                   </li>
                 ))}
                 <li className="text-zinc-500">· {pathResult.path.length - 1} step{pathResult.path.length === 2 ? '' : 's'}</li>

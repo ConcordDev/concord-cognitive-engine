@@ -144,7 +144,7 @@ describe('AnimStudio — cross-operation undo/redo', () => {
     await screen.findByText('Undo Test');
 
     // Add a frame — a real structural edit.
-    fireEvent.click(getButtonByLabel(/^frame$/i));
+    fireEvent.click(getButtonByLabel(/^new drawing$/i));
     await waitFor(() => expect(lensRunMock.mock.calls.some((c) => c[1] === 'frame-add')).toBe(true));
 
     // Now Undo should call the cross-operation primitive, not the stroke one.

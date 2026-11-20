@@ -115,3 +115,16 @@ in the lens, no dead button walls. Of the 7 originally unsurfaced:
   `FsDistributionPanel.tsx`, `FsReviewPanel.tsx`, `FsShotsPanel.tsx`,
   `FsScreenplayPanel.tsx`, `FsWatchPartyPanel.tsx`) or `page.tsx` — no gap
   found in any of them after checking their macro coverage.
+
+## 2026-11-20 — The Production Office redesign
+
+The lens is now one app, `components/film-studios/office/Office.tsx` (page.tsx re-exports it), following `docs/LENS_REDESIGN_PLAYBOOK.md`. What changed:
+
+- **Real footage.** Uploads go up as the request body (`POST /api/media/upload-raw`) and become footage through `media-register {platformMediaId}`, keeping the file's real duration and frames. The Next proxy's default 10 MB body cut (which truncated every larger film) is raised to the backend's 200 MB raw cap (`next.config.js` `proxyClientMaxBodySize`), and nginx gets a matching `location = /api/media/upload-raw` (the general 25M limit stays for JSON).
+- **A cut you can watch.** `cut-list` now gives each clip its stream, kind, source in-point and timeline seconds; the program monitor plays V1 clip by clip and marks clips with no footage.
+- **Review on real picture.** Versions point at an uploaded export or a sequence; notes carry the exact timecode and jump the picture there.
+- **Screenings.** Codes are `FILM-` + 8 hex characters; `party-join` joins by code; `party-sync` is host-only; chat authors are the signed-in person, never a typed name. A version screening lets its guests stream the host's private cut while it runs (`screeningUserIds` on the media, removed when the party is deleted).
+- **Release and sell.** `film-release-create/list/get/buy/update/withdraw/party` (`server/domains/film-releases.js`): free or priced in CC through the marketplace (95% to the filmmaker), preview 15–90 s enforced by the stream, a poster from an uploaded image. `canAccessMediaDTU` now honours licences, so a buyer keeps a film after it is withdrawn.
+- **Folded / removed.** `FsReviewPanel` and `FsWatchPartyPanel` are replaced by the Screening room; `FilmDeskPanel` and `FilmStudioSection` (never mounted) are deleted. `FilmStackFeed` (video.stackexchange.com Q&A) is mounted in the Cutting room as "Craft questions". `FsMediaPanel` (now in the Cutting room) and `FsProductionPanel` (now on The board) are restyled to the office.
+- **Tests.** `server/tests/depth/film-releases-behavior.test.js` (footage, cut playback fields, versions, parties incl. stream access at the access rule, priced/free releases, money); `concord-frontend/tests/film-studios-office.test.tsx` (14 tests across the rooms and cinema).
+- **Browser drive (real files, three people).** The monitor played the 12 s clip then switched to the 8 s clip at the 5 s cut. A note pinned at 00:00:21:12. A guest joined by code and stayed within 0.2 s of the host, with no controls; the guest's own `party-sync` was refused. A 3 CC film sold: the fan went 10 → 7 and the maker 0 → 2.85. Non-buyers got 3.4 MB of the 17 MB file, and the player stopped at exactly 30.0 s; the buyer got all 17 MB. A stranger was refused from the buyer's screening. No sideways scroll at phone width.
