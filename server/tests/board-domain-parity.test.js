@@ -21,7 +21,10 @@ before(() => {
 });
 
 beforeEach(() => {
-  globalThis._concordSTATE = { dtus: new Map() };
+  // Sharing is real: a collaborator is someone with an account (looked up by username).
+  const USERS = [{ id: "user_a", username: "user_a" }, { id: "user_b", username: "user_b" }];
+  const db = { prepare: () => ({ get: (a, b) => USERS.find((u) => u.username.toLowerCase() === String(a).toLowerCase() || u.id === b) || undefined }) };
+  globalThis._concordSTATE = { dtus: new Map(), db };
   globalThis._concordSaveStateDebounced = () => {};
 });
 
@@ -333,11 +336,14 @@ describe("board — automation clear-due + set-assignee", () => {
     const col = board.columns[1].id;
     call("automation-add", ctxA, {
       boardId: board.id, trigger: "card-moved-to-column", columnId: col,
-      action: "set-assignee", value: "Maya",
+      action: "set-assignee", value: "user_a", // someone on the board (the owner)
     });
     call("card-move-auto", ctxA, { boardId: board.id, cardId: card.id, toColumnId: col });
     const detail = call("card-detail", ctxA, { boardId: board.id, cardId: card.id }).result.card;
-    assert.equal(detail.assignee, "Maya");
+    assert.equal(detail.assignee, "user_a");
+    // A name that isn't on the board is refused up front, not silently stored.
+    const bad = call("automation-add", ctxA, { boardId: board.id, trigger: "card-moved-to-column", columnId: col, action: "set-assignee", value: "Maya" });
+    assert.match(bad.error, /isn't on this board/);
   });
 });
 

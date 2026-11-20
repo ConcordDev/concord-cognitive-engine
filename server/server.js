@@ -10937,7 +10937,11 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
   // history. Best-effort; failures silently swallow so emit path stays
   // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
   try {
-    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event)) {
+    // Only broadcast events belong on the shared timeline. An event sent to
+    // one user, one org or one session is private to them (a shared board's
+    // card titles, a trade request, a mail) and the timeline is readable by
+    // anyone, so those never land there.
+    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event) && !userId && !orgId && !sessionId) {
       const tdb = STATE?.db || globalThis._concordDB;
       if (tdb) {
         _timelineRecordFn(tdb, event, payload || {}, {

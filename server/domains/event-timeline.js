@@ -611,6 +611,9 @@ export default function registerEventTimelineMacros(register, deps) {
     const uid = userIdOf(ctx);
     const views = savedViewsMap().get(uid) || [];
     return views.map((v) => ({
+      // The view's own id lets the export dedupe it against the generic
+      // STATE leg, which reads the same eventTimelineLens bag.
+      id: v.id,
       type: "saved_view",
       title: v.name,
       content: [
