@@ -11,7 +11,7 @@ import { lensRun, depthCtx, load } from "./_harness.js";
 import { setLedgerBalance } from "../lib/ledger-fund.js";
 import { getBalance } from "../../economy/balances.js";
 import { createMediaDTU, getMediaDTU, getMediaDTUForViewer, canAccessMediaDTU, mediaShareTokenOk } from "../../lib/media-dtu.js";
-import { viewerMayStreamFull, pricedCreateOrCommercial } from "../../lib/media-preview-window.js";
+import { viewerMayStreamFull, pricedCreateOrCommercial, slicePreviewWindow } from "../../lib/media-preview-window.js";
 
 let STATE;
 const run = (a, p, ctx) => lensRun("animation", a, { params: p }, ctx);
@@ -165,6 +165,7 @@ describe("releases", () => {
     assert.deepEqual([rel.title, rel.priceCC, rel.previewSec, rel.runtimeSec, rel.fps, rel.animator.isMe], ["Paper Boat", 2, 5, 24, 12, true]);
     assert.equal(rel.poster, `/api/media/${poster}/stream`);
     assert.equal(media(video).privacy, "public");
+    assert.equal(media(video).previewDuration, 5); // never stretched to a longer floor
     assert.equal(viewerMayStreamFull(STATE, media(video), "lt-fan"), false);
     // the public gallery
     const pub = (await run("anim-release-list", {}, fan)).result.releases.find((x) => x.id === rel.id);
@@ -188,6 +189,18 @@ describe("releases", () => {
     assert.equal(canAccessMediaDTU(STATE, media(video), "lt-other").allowed, false);
     assert.ok(!(await run("anim-release-list", {}, other)).result.releases.some((x) => x.id === rel.id));
     assert.equal((await run("anim-release-list", { owned: true }, fan)).result.releases[0].id, rel.id);
+  });
+
+  it("a piece too short for a preview sells with none: non-buyers get no bytes", async () => {
+    const tiny = upload("lt-maker", "Blink", { mediaType: "video", duration: 0.417 });
+    assert.match((await run("anim-release-create", { animId: anim.id, platformMediaId: tiny, priceCC: 1, previewSec: 3 }, maker)).result.error, /shorter than the animation \(0\.4 s\)/);
+    const r = await run("anim-release-create", { animId: anim.id, platformMediaId: tiny, priceCC: 1, previewSec: 0 }, maker);
+    assert.equal(r.ok, true, r.error);
+    assert.equal(r.result.release.previewSec, 0);
+    assert.equal(r.result.release.runtimeSec, 0.4);
+    assert.equal(media(tiny).previewDuration, 0);
+    assert.equal(slicePreviewWindow(Buffer.alloc(4096, 1), media(tiny)), null); // the stream denies non-buyers
+    assert.match((await run("anim-release-create", { animId: anim.id, platformMediaId: upload("lt-maker", "free blink", { mediaType: "video", duration: 1 }), previewSec: 0 }, maker)).result.error, /previewSec/);
   });
 
   it("a free animation plays in full for everyone, and stays free", async () => {

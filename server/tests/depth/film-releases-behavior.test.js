@@ -134,7 +134,7 @@ describe("releasing a film", () => {
   it("refuses bad releases and writes nothing", async () => {
     for (const [p, re] of [
       [{ priceCC: 0.3 }, /priceCC/], [{ priceCC: 1001 }, /priceCC/], [{ priceCC: "3" }, /priceCC/], [{ priceCC: 2.345 }, /in cents/],
-      [{ previewSec: 5 }, /previewSec/], [{ mediaId: still.id }, /must be a video/],
+      [{ previewSec: 5 }, /previewSec/], [{ previewSec: 0 }, /previewSec must be from 15 to 90$/], [{ mediaId: still.id }, /must be a video/],
       [{ posterMediaId: upload("film-other", "their poster", { mediaType: "image" }) }, /poster must be an image you uploaded/],
       [{ posterMediaId: footage.platformMediaId }, /poster must be an image/],
     ]) {

@@ -73,7 +73,9 @@ describe("mail full build (real migrated DB)", () => {
   it("registers the full surface including the delete and decline verbs", () => {
     // \"decline\" joins with FIX-mail-014; \"draft-get\"/\"draft-save\" (FIX-mail-002)
     // were already on the surface — this pin had gone stale against them.
-    assert.deepEqual(reg.names.sort(), ["claim", "decline", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent"]);
+    // "archive"/"star"/"trash"/"unread" are the mailbox verbs added since
+    // (domains/mail.js); the pin had gone stale against those too.
+    assert.deepEqual(reg.names.sort(), ["archive", "claim", "decline", "delete", "draft-get", "draft-save", "get", "list", "read", "send", "sent", "star", "trash", "unread"]);
   });
 
   it("S2: list/sent/get carry resolved names; an unresolved party carries nulls, never its id", async () => {

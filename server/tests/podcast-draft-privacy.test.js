@@ -74,6 +74,9 @@ describe("audio duration probe", () => {
     assert.ok(parsed > 0.9 && parsed < 1.1, `wav duration ${parsed}`);
     assert.equal(await resolveAudioDurationSec({ buffer: wav, mimeType: "audio/wav", declared: 0 }), 1);
     assert.equal(await resolveAudioDurationSec({ buffer: wav, mimeType: "audio/wav", declared: 42 }), 42);
+    // short clips keep their real length (not rounded to 0 or up a second)
+    assert.equal(await resolveAudioDurationSec({ buffer: wav, mimeType: "audio/wav", declared: 0.4167 }), 0.417);
+    assert.equal(await resolveAudioDurationSec({ buffer: wav, mimeType: "audio/wav", declared: 1.6 }), 1.6);
   });
 
   it("estimates MP3 duration from the first frame bitrate", () => {

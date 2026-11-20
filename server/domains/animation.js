@@ -1502,7 +1502,7 @@ export default function registerAnimationActions(registerLensAction) {
     domain: "animation", prefix: "anim-release", noun: "animation", makerNoun: "animator",
     ownerField: "animatorId", ownerView: "animator",
     dtuType: "animation_release", dtuDomain: "animation", tag: "animation",
-    minPreviewSec: 3,
+    minPreviewSec: 3, allowNoPreview: true,
     home: () => getAnimState(), save: saveAnimState, aid: anAid, makeId: anId, now: anNow,
     resolve(s, userId, params) {
       const anim = findAnim(s, userId, params.animId);

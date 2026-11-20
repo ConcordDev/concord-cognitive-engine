@@ -32,6 +32,11 @@ vi.mock('next/font/google', () => {
     Oswald: face('Oswald'),
     Manrope: face('Manrope'),
     Cutive_Mono: face('Cutive Mono'),
+    // Animation — the Light Table (components/animation/table/tableFonts.ts)
+    Josefin_Sans: face('Josefin Sans'),
+    Figtree: face('Figtree'),
+    Shadows_Into_Light: face('Shadows Into Light'),
+    Red_Hat_Mono: face('Red Hat Mono'),
     // DTUs — the Binder (components/dtus/binder/binderFonts.ts)
     Bricolage_Grotesque: face('Bricolage Grotesque'),
     Outfit: face('Outfit'),

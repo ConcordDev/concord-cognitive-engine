@@ -38,7 +38,7 @@ const TOOLS: { id: ToolId; label: string; icon: typeof Spline; macro: string; bl
 const EASINGS = ['linear', 'ease-in', 'ease-out', 'ease-in-out', 'ease-in-cubic', 'ease-out-cubic', 'bounce-out'];
 
 function fieldClass() {
-  return 'min-h-11 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-500 w-full';
+  return 'min-h-11 bg-[var(--lt-input,#09090b)] border border-[var(--lt-line,#3f3f46)] rounded px-2 py-1 text-xs text-[var(--lt-graphite,#f4f4f5)] placeholder:text-zinc-500 w-full';
 }
 
 // ── Keyframe rows ──────────────────────────────────────────────────────
@@ -73,24 +73,24 @@ function KeyframeTool() {
         ]}
       />
       <div className="flex items-center gap-2">
-        <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+        <label className="flex items-center gap-1.5 text-[11px] text-[var(--lt-muted,#a1a1aa)]">
           fps
           <input type="number" min={1} max={60} value={fps} onChange={(e) => setFps(e.target.value)} className={cn(fieldClass(), 'w-16')} />
         </label>
         <button type="button" onClick={run} disabled={busy || rows.length < 2}
-          className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+          className="px-3 py-1.5 text-xs bg-[var(--lt-red,#0e7490)] hover:bg-[#b42c20] disabled:opacity-50 text-white rounded-lg">
           {busy ? 'Interpolating…' : 'Interpolate'}
         </button>
       </div>
-      {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
-      {r?.message && <p className="text-xs text-zinc-400 italic">{r.message}</p>}
+      {dispatch.status === 'error' && <p className="text-xs text-[var(--lt-bad,#fb7185)]">{dispatch.error}</p>}
+      {r?.message && <p className="text-xs text-[var(--lt-muted,#a1a1aa)] italic">{r.message}</p>}
       {r && r.totalFrames !== undefined && !r.message && (
-        <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
+        <div className="space-y-2 bg-[var(--lt-paper-2,rgba(9,9,11,0.5))] rounded-lg p-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Stat label="Keyframes" value={r.keyframeCount} color="text-cyan-400" />
+            <Stat label="Keyframes" value={r.keyframeCount} color="text-[var(--lt-blue,#22d3ee)]" />
             <Stat label="FPS" value={r.fps} color="text-orange-400" />
             <Stat label="Total frames" value={r.totalFrames} color="text-purple-400" />
-            <Stat label="Duration" value={`${r.durationSeconds}s`} color="text-green-400" />
+            <Stat label="Duration" value={`${r.durationSeconds}s`} color="text-[var(--lt-good,#4ade80)]" />
           </div>
           {r.sampleFrames?.length > 0 && (
             <div className="flex items-end gap-1 h-16">
@@ -142,23 +142,23 @@ function TimingTool() {
         ]}
       />
       <button type="button" onClick={run} disabled={busy || rows.filter((r) => r.name.trim()).length === 0}
-        className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+        className="px-3 py-1.5 text-xs bg-[var(--lt-red,#0e7490)] hover:bg-[#b42c20] disabled:opacity-50 text-white rounded-lg">
         {busy ? 'Analyzing…' : 'Analyze timing'}
       </button>
-      {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
-      {r?.message && <p className="text-xs text-zinc-400 italic">{r.message}</p>}
+      {dispatch.status === 'error' && <p className="text-xs text-[var(--lt-bad,#fb7185)]">{dispatch.error}</p>}
+      {r?.message && <p className="text-xs text-[var(--lt-muted,#a1a1aa)] italic">{r.message}</p>}
       {r && r.totalDuration !== undefined && !r.message && (
-        <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
+        <div className="space-y-2 bg-[var(--lt-paper-2,rgba(9,9,11,0.5))] rounded-lg p-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Total duration" value={`${r.totalDuration}s`} color="text-purple-400" />
-            <Stat label="Total frames" value={r.totalFrames} color="text-cyan-400" />
+            <Stat label="Total frames" value={r.totalFrames} color="text-[var(--lt-blue,#22d3ee)]" />
             <Stat label="Overlaps" value={r.overlappingPairs} color="text-orange-400" />
           </div>
           {r.sequences.map((s, i) => (
-            <div key={i} className="flex items-center gap-3 p-2 bg-zinc-900 rounded text-xs">
-              <span className="text-white font-medium w-24 truncate">{s.name}</span>
-              <span className="text-zinc-400">{s.duration}s</span>
-              <span className="text-zinc-400">delay {s.delay}s</span>
+            <div key={i} className="flex items-center gap-3 p-2 bg-[var(--lt-paper-2,#18181b)] rounded text-xs">
+              <span className="text-[var(--lt-graphite,#fff)] font-medium w-24 truncate">{s.name}</span>
+              <span className="text-[var(--lt-muted,#a1a1aa)]">{s.duration}s</span>
+              <span className="text-[var(--lt-muted,#a1a1aa)]">delay {s.delay}s</span>
               <span className="text-purple-400 ml-auto">{s.easing}</span>
             </div>
           ))}
@@ -186,16 +186,16 @@ function FpsTool() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3 bg-zinc-950/50 rounded-lg p-3">
-        <label className="flex flex-col gap-1 text-[11px] text-zinc-400">
+      <div className="flex flex-wrap items-end gap-3 bg-[var(--lt-paper-2,rgba(9,9,11,0.5))] rounded-lg p-3">
+        <label className="flex flex-col gap-1 text-[11px] text-[var(--lt-muted,#a1a1aa)]">
           Current fps
           <input type="number" min={1} max={240} value={fps} onChange={(e) => setFps(e.target.value)} className={cn(fieldClass(), 'w-20')} />
         </label>
-        <label className="flex flex-col gap-1 text-[11px] text-zinc-400 flex-1 min-w-[160px]">
+        <label className="flex flex-col gap-1 text-[11px] text-[var(--lt-muted,#a1a1aa)] flex-1 min-w-[160px]">
           Scene complexity {complexity}
-          <input type="range" min={0} max={100} value={complexity} onChange={(e) => setComplexity(Number(e.target.value))} className="accent-cyan-500" />
+          <input type="range" min={0} max={100} value={complexity} onChange={(e) => setComplexity(Number(e.target.value))} className="accent-[#d2382a]" />
         </label>
-        <label className="flex flex-col gap-1 text-[11px] text-zinc-400">
+        <label className="flex flex-col gap-1 text-[11px] text-[var(--lt-muted,#a1a1aa)]">
           Target device
           <select value={device} onChange={(e) => setDevice(e.target.value as typeof device)} className={fieldClass()}>
             <option value="mobile">Mobile</option>
@@ -205,25 +205,25 @@ function FpsTool() {
           </select>
         </label>
         <button type="button" onClick={run} disabled={busy}
-          className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+          className="px-3 py-1.5 text-xs bg-[var(--lt-red,#0e7490)] hover:bg-[#b42c20] disabled:opacity-50 text-white rounded-lg">
           {busy ? 'Checking…' : 'Recommend FPS'}
         </button>
       </div>
-      {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
+      {dispatch.status === 'error' && <p className="text-xs text-[var(--lt-bad,#fb7185)]">{dispatch.error}</p>}
       {r && (
-        <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
+        <div className="space-y-2 bg-[var(--lt-paper-2,rgba(9,9,11,0.5))] rounded-lg p-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Stat label="Current" value={r.currentFPS} color="text-zinc-400" />
-            <Stat label="Recommended" value={r.recommendedFPS} color="text-green-400" />
-            <Stat label="Frame time" value={`${r.frameTimeMs}ms`} color="text-cyan-400" />
+            <Stat label="Current" value={r.currentFPS} color="text-[var(--lt-muted,#a1a1aa)]" />
+            <Stat label="Recommended" value={r.recommendedFPS} color="text-[var(--lt-good,#4ade80)]" />
+            <Stat label="Frame time" value={`${r.frameTimeMs}ms`} color="text-[var(--lt-blue,#22d3ee)]" />
             <Stat label="Target" value={r.targetDevice} color="text-orange-400" />
           </div>
-          <div className={cn('flex items-center gap-2 text-xs p-2 rounded', r.withinBudget ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400')}>
+          <div className={cn('flex items-center gap-2 text-xs p-2 rounded', r.withinBudget ? 'bg-green-500/10 text-[var(--lt-good,#4ade80)]' : 'bg-yellow-500/10 text-yellow-400')}>
             {r.withinBudget ? <Sparkles className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
             {r.withinBudget ? 'Within performance budget' : 'Over complexity budget'}
           </div>
           {r.tips.map((tip, i) => (
-            <div key={i} className="text-xs text-zinc-400 flex items-center gap-2"><span className="text-orange-400">-</span> {tip}</div>
+            <div key={i} className="text-xs text-[var(--lt-muted,#a1a1aa)] flex items-center gap-2"><span className="text-orange-400">-</span> {tip}</div>
           ))}
         </div>
       )}
@@ -267,24 +267,24 @@ function StoryboardTool() {
         ]}
       />
       <button type="button" onClick={run} disabled={busy || rows.filter((r) => r.name.trim()).length === 0}
-        className="px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg">
+        className="px-3 py-1.5 text-xs bg-[var(--lt-red,#0e7490)] hover:bg-[#b42c20] disabled:opacity-50 text-white rounded-lg">
         {busy ? 'Sequencing…' : 'Build sequence'}
       </button>
-      {dispatch.status === 'error' && <p className="text-xs text-rose-400">{dispatch.error}</p>}
-      {r?.message && <p className="text-xs text-zinc-400 italic">{r.message}</p>}
+      {dispatch.status === 'error' && <p className="text-xs text-[var(--lt-bad,#fb7185)]">{dispatch.error}</p>}
+      {r?.message && <p className="text-xs text-[var(--lt-muted,#a1a1aa)] italic">{r.message}</p>}
       {r && r.scenes !== undefined && !r.message && (
-        <div className="space-y-2 bg-zinc-950/50 rounded-lg p-3">
+        <div className="space-y-2 bg-[var(--lt-paper-2,rgba(9,9,11,0.5))] rounded-lg p-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <Stat label="Scenes" value={r.sceneCount} color="text-orange-400" />
-            <Stat label="Total" value={`${r.totalDuration}s`} color="text-cyan-400" />
+            <Stat label="Total" value={`${r.totalDuration}s`} color="text-[var(--lt-blue,#22d3ee)]" />
             <Stat label="Avg scene" value={`${r.avgSceneDuration}s`} color="text-purple-400" />
           </div>
           {r.scenes.map((s) => (
-            <div key={s.scene} className="flex items-center gap-3 p-2 bg-zinc-900 rounded text-xs">
+            <div key={s.scene} className="flex items-center gap-3 p-2 bg-[var(--lt-paper-2,#18181b)] rounded text-xs">
               <span className="text-orange-400 font-bold w-6 text-center">{s.scene}</span>
-              <span className="text-white font-medium flex-1 truncate">{s.name}</span>
-              <span className="text-zinc-400">{s.startTime}s</span>
-              <span className="text-zinc-400">{s.duration}s</span>
+              <span className="text-[var(--lt-graphite,#fff)] font-medium flex-1 truncate">{s.name}</span>
+              <span className="text-[var(--lt-muted,#a1a1aa)]">{s.startTime}s</span>
+              <span className="text-[var(--lt-muted,#a1a1aa)]">{s.duration}s</span>
             </div>
           ))}
         </div>
@@ -295,9 +295,9 @@ function StoryboardTool() {
 
 function Stat({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
-    <div className="p-2 bg-zinc-900 rounded text-center">
+    <div className="p-2 bg-[var(--lt-paper-2,#18181b)] rounded text-center">
       <p className={cn('text-sm font-bold', color)}>{value}</p>
-      <p className="text-[10px] text-zinc-400">{label}</p>
+      <p className="text-[10px] text-[var(--lt-muted,#a1a1aa)]">{label}</p>
     </div>
   );
 }
@@ -327,13 +327,13 @@ function RowTable<T extends Record<string, string>>({
             )
           ))}
           <button type="button" aria-label="Remove row" onClick={() => setRows(rows.filter((_, j) => j !== i))}
-            disabled={rows.length <= 1} className="text-zinc-600 hover:text-rose-400 disabled:opacity-30 shrink-0">
+            disabled={rows.length <= 1} className="text-[var(--lt-faint,#52525b)] hover:text-[var(--lt-bad,#fb7185)] disabled:opacity-30 shrink-0">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ))}
       <button type="button" onClick={() => setRows([...rows, newRow()])}
-        className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300">
+        className="flex items-center gap-1 text-[11px] text-[var(--lt-blue,#22d3ee)] hover:text-[var(--lt-blue,#22d3ee)]">
         <Plus className="w-3.5 h-3.5" /> Add row
       </button>
     </div>
@@ -346,22 +346,22 @@ export function AnimationMotionToolkit() {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-zinc-400">
+      <p className="text-xs text-[var(--lt-muted,#a1a1aa)]">
         Standalone motion-planning calculators — separate from your saved animation projects above.
-        Every result is a real <code className="text-zinc-300">animation.{active.macro}</code> macro call
+        Every result is a real <code className="text-[var(--lt-graphite-2,#d4d4d8)]">animation.{active.macro}</code> macro call
         against the rows you enter here, never a client-side estimate.
       </p>
-      <div className="flex flex-wrap gap-1 bg-zinc-900/70 border border-zinc-800 rounded-lg p-1">
+      <div className="flex flex-wrap gap-1 bg-[var(--lt-paper-2,rgba(24,24,27,0.7))] border border-[var(--lt-line-2,#27272a)] rounded-lg p-1">
         {TOOLS.map((t) => (
           <button key={t.id} type="button" onClick={() => setTool(t.id)}
             className={cn('flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] rounded-lg',
-              tool === t.id ? 'bg-cyan-700 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5')}>
+              tool === t.id ? 'bg-[var(--lt-red,#0e7490)] text-white' : 'text-[var(--lt-muted,#a1a1aa)] hover:text-[var(--lt-graphite,#fff)] hover:bg-[var(--lt-paper-2,rgba(255,255,255,0.05))]')}>
             <t.icon className="w-3.5 h-3.5" /> {t.label}
           </button>
         ))}
       </div>
-      <p className="text-[11px] text-zinc-400 italic">{active.blurb}</p>
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+      <p className="text-[11px] text-[var(--lt-muted,#a1a1aa)] italic">{active.blurb}</p>
+      <div className="bg-[var(--lt-paper-2,rgba(24,24,27,0.7))] border border-[var(--lt-line-2,#27272a)] rounded-xl p-3">
         {tool === 'interpolate' && <KeyframeTool />}
         {tool === 'timing' && <TimingTool />}
         {tool === 'fps' && <FpsTool />}

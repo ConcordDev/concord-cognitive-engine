@@ -29,7 +29,7 @@ describe('animation F5 — the card delete confirms first', () => {
 
   it('the confirm is the card delete call site, labelled in place', () => {
     expect(section).toContain('confirmDeleteId === a.id ? (');
-    expect(section).toContain('onClick={() => del(a.id)} className="text-[11px] font-semibold text-rose-300 shrink-0">Delete?</button>');
+    expect(section).toContain('onClick={() => del(a.id)} className="text-[11px] font-semibold text-[var(--lt-bad,#fb7185)] shrink-0">Delete?</button>');
   });
 
   it('a completed delete and opening a card both clear the arm', () => {

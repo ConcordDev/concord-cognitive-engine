@@ -1253,7 +1253,10 @@ export function setMediaSaleTerms(STATE, mediaId, authorId, { streaming = "full"
     { tier: "commercial", enabled: gated, price: gated ? Number(price) : 0, currency: "CC" },
   ];
   dtu.previewStart = 0;
-  dtu.previewDuration = gated ? Math.max(15, Math.min(90, Math.round(Number(previewSec) || 30))) : 0;
+  // The caller validates its own floor (music/film 15 s, animation 3 s); this
+  // never stretches a short preview past what the maker chose.
+  // previewSec 0 means no preview at all: only buyers get any bytes.
+  dtu.previewDuration = gated ? (Number(previewSec) === 0 ? 0 : Math.max(1, Math.min(90, Math.round(Number(previewSec) || 30)))) : 0;
   dtu.privacy = "public";
   dtu.scope = "global";
   dtu.updatedAt = new Date().toISOString();

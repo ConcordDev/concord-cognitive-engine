@@ -1,38 +1,31 @@
 'use client';
 
 /**
- * AnimStudio — a real frame-by-frame animator. Each frame holds vector
- * strokes; onion skinning ghosts adjacent frames; playback cycles the
- * exposure-expanded sequence at the project fps.
+ * The light table: draw a shot frame by frame on a backlit disc, with onion
+ * skins in the animator's blue pencil (drawings before) and red pencil
+ * (drawings after), the X-sheet beside it for timing, and drawers for
+ * layers, the soundtrack, tweens, rigs, paper, pencils, timing charts,
+ * export, publishing and sharing. Strokes are vector and saved on the
+ * server as you draw; playback runs on the clock with the soundtrack.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Loader2, ArrowLeft, Undo2, Redo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff, Music,
-  Wrench, ChevronLeft, ChevronRight, ImageIcon,
-  Pencil,
+  ArrowLeft, Undo2, Redo2, Play, Pause, Plus, Copy, Trash2, Eraser, Layers, Eye, EyeOff,
+  ChevronLeft, ChevronRight, ImageIcon, Pencil, Repeat,
 } from 'lucide-react';
 import { lensRun } from '@/lib/api/client';
-import { cn } from '@/lib/utils';
-import { AnimToolsPanel } from './AnimToolsPanel';
+import { AudioSyncPanel, TweenPanel, CanvasPanel, RigPanel, BrushPanel, SharePanel } from './AnimToolsPanel';
+import { AnimationMotionToolkit } from './AnimationMotionToolkit';
 import { setActiveFrameTarget } from './animReferenceTarget';
+import { drawFrame, drawStroke, filmSequence, visibleStrokes, type Anim as BaseAnim, type Frame, type Stroke } from './table/draw';
+import { XSheet } from './table/XSheet';
+import { ExportDesk } from './table/ExportDesk';
+import { PublishDesk } from './table/PublishDesk';
 
-interface Stroke {
-  tool: string; color: string; size: number; opacity: number; points: number[][];
-  widths?: number[]; pressureSize?: number;
-}
-interface FLayer {
-  id: string; name: string; visible: boolean; opacity: number; strokes: Stroke[];
-  /** 'reference' layers are a rotoscope-style tracing underlay (an imported
-   * image), never paintable — see frame-layer-import-image in
-   * server/domains/animation.js. Legacy layers may have no `type` at all;
-   * treat anything other than 'reference' as paintable. */
-  type?: 'paintable' | 'reference';
-  isReference?: boolean;
-  imageRef?: string;
-}
-interface Frame { id: string; exposure: number; layers: FLayer[]; strokes?: Stroke[] }
-interface AudioTrack { id: string; name: string; url: string | null; startSec: number }
+const ONION_BEFORE = '#2f63d6';
+const ONION_AFTER = '#d2382a';
+
 interface CanvasGuides {
   grid: boolean; gridSize: number; thirds: boolean; safeArea: boolean;
   symmetry: 'none' | 'vertical' | 'horizontal' | 'both';
@@ -41,19 +34,14 @@ interface CustomBrush {
   id: string; name: string; tool: string; size: number; opacity: number;
   color: string; pressureSize: number;
 }
-interface Anim {
-  id: string; title: string; width: number; height: number; fps: number; background: string;
-  frames: Frame[]; audio?: AudioTrack[]; guides?: CanvasGuides;
-}
+type Anim = BaseAnim & { guides?: CanvasGuides };
 
-// Flatten a frame's visible layers (tolerates legacy single-layer frames).
-function visibleStrokes(frame: Frame | undefined): Stroke[] {
-  if (!frame) return [];
-  if (Array.isArray(frame.layers) && frame.layers.length) {
-    return frame.layers.filter((l) => l.visible).flatMap((l) => l.strokes);
-  }
-  return frame.strokes || [];
-}
+type Drawer = 'layers' | 'sound' | 'tween' | 'rig' | 'paper' | 'pencils' | 'timing' | 'export' | 'publish' | 'share';
+const DRAWERS: { id: Drawer; label: string }[] = [
+  { id: 'layers', label: 'Layers' }, { id: 'sound', label: 'Soundtrack' }, { id: 'tween', label: 'In-betweens' },
+  { id: 'rig', label: 'Rig' }, { id: 'paper', label: 'Paper & guides' }, { id: 'pencils', label: 'Pencils' },
+  { id: 'timing', label: 'Timing charts' }, { id: 'export', label: 'Export' }, { id: 'publish', label: 'Publish' }, { id: 'share', label: 'Share link' },
+];
 
 const BRUSHES = [
   { id: 'pencil', name: 'Pencil', tool: 'pencil', size: 4, opacity: 1 },
@@ -61,35 +49,6 @@ const BRUSHES = [
   { id: 'marker', name: 'Marker', tool: 'marker', size: 18, opacity: 0.45 },
   { id: 'eraser', name: 'Eraser', tool: 'eraser', size: 22, opacity: 1 },
 ];
-
-function drawStroke(c: CanvasRenderingContext2D, st: Stroke, alpha = 1) {
-  const pts = st.points;
-  if (!pts.length) return;
-  c.save();
-  c.lineJoin = 'round';
-  c.lineCap = 'round';
-  c.lineWidth = st.size;
-  c.strokeStyle = st.color;
-  c.fillStyle = st.color;
-  c.globalAlpha = st.opacity * alpha;
-  c.globalCompositeOperation = st.tool === 'eraser' && alpha === 1 ? 'destination-out' : 'source-over';
-  if (pts.length === 1) {
-    c.beginPath();
-    c.arc(pts[0][0], pts[0][1], Math.max(0.5, st.size / 2), 0, Math.PI * 2);
-    c.fill();
-  } else {
-    c.beginPath();
-    c.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i][0] + pts[i + 1][0]) / 2;
-      const my = (pts[i][1] + pts[i + 1][1]) / 2;
-      c.quadraticCurveTo(pts[i][0], pts[i][1], mx, my);
-    }
-    c.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
-    c.stroke();
-  }
-  c.restore();
-}
 
 // Draw the onscreen grid / thirds / safe-area / symmetry guides.
 function drawGuides(
@@ -99,7 +58,7 @@ function drawGuides(
   c.save();
   c.globalCompositeOperation = 'source-over';
   if (g.grid && g.gridSize >= 4) {
-    c.strokeStyle = 'rgba(34,211,238,0.18)';
+    c.strokeStyle = 'rgba(47,99,214,0.16)';
     c.lineWidth = 1;
     for (let x = g.gridSize; x < w; x += g.gridSize) {
       c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
@@ -109,7 +68,7 @@ function drawGuides(
     }
   }
   if (g.thirds) {
-    c.strokeStyle = 'rgba(251,146,60,0.45)';
+    c.strokeStyle = 'rgba(210,56,42,0.4)';
     c.lineWidth = 1.2;
     for (const f of [1 / 3, 2 / 3]) {
       c.beginPath(); c.moveTo(w * f, 0); c.lineTo(w * f, h); c.stroke();
@@ -117,37 +76,42 @@ function drawGuides(
     }
   }
   if (g.safeArea) {
-    c.strokeStyle = 'rgba(255,255,255,0.4)';
+    c.strokeStyle = 'rgba(38,40,43,0.35)';
     c.setLineDash([6, 4]);
     c.lineWidth = 1;
     c.strokeRect(w * 0.05, h * 0.05, w * 0.9, h * 0.9);
     c.setLineDash([]);
   }
   if (g.symmetry === 'vertical' || g.symmetry === 'both') {
-    c.strokeStyle = 'rgba(168,85,247,0.5)';
+    c.strokeStyle = 'rgba(47,99,214,0.45)';
     c.lineWidth = 1;
     c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke();
   }
   if (g.symmetry === 'horizontal' || g.symmetry === 'both') {
-    c.strokeStyle = 'rgba(168,85,247,0.5)';
+    c.strokeStyle = 'rgba(47,99,214,0.45)';
     c.lineWidth = 1;
     c.beginPath(); c.moveTo(0, h / 2); c.lineTo(w, h / 2); c.stroke();
   }
   c.restore();
 }
 
-export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => void }) {
+export function AnimStudio({ animId, onExit, onOpenScreening }: { animId: string; onExit: () => void; onOpenScreening?: (releaseId: string) => void }) {
   const [anim, setAnim] = useState<Anim | null>(null);
   const [loading, setLoading] = useState(true);
   const [frameIdx, setFrameIdx] = useState(0);
   const [activeLayer, setActiveLayer] = useState<string>('');
-  const [onion, setOnion] = useState(true);
+  // Onion skin depth: how many drawings either side show through (0 = off).
+  const [onion, setOnion] = useState(2);
+  const [loop, setLoop] = useState(false);
+  const [playhead, setPlayhead] = useState<number | null>(null);
+  const [drawer, setDrawer] = useState<Drawer>('layers');
+  const [render, setRender] = useState<{ mediaId: string; durationSec: number } | null>(null);
+  const [xsRev, setXsRev] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [tool, setTool] = useState('ink');
-  const [color, setColor] = useState('#10242e');
+  const [color, setColor] = useState('#26282b');
   const [size, setSize] = useState(7);
   const [opacity, setOpacity] = useState(1);
-  const [showTools, setShowTools] = useState(false);
   const [customBrushes, setCustomBrushes] = useState<CustomBrush[]>([]);
   // Pressure dynamics for the active brush (how stylus pressure maps to size).
   const [pressureSize, setPressureSize] = useState(0);
@@ -203,7 +167,7 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     return () => { active = false; };
   }, [animId]);
 
-  const renderFrame = useCallback((idx: number, withOnion: boolean) => {
+  const renderFrame = useCallback((idx: number, depth: number) => {
     const cv = canvasRef.current;
     if (!cv || !anim) return;
     const ctx = cv.getContext('2d');
@@ -229,11 +193,14 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
         }
       }
     }
-    if (withOnion && idx > 0) {
-      for (const st of visibleStrokes(anim.frames[idx - 1])) drawStroke(ctx, st, 0.28);
-    }
-    if (withOnion && idx < anim.frames.length - 1) {
-      for (const st of visibleStrokes(anim.frames[idx + 1])) drawStroke(ctx, st, 0.18);
+    // Onion skins in the animator's pencils: drawings before in blue, after
+    // in red, fading with distance.
+    const FADE = [0.34, 0.2, 0.11];
+    for (let k = depth; k >= 1; k--) {
+      const before = anim.frames[idx - k];
+      const after = anim.frames[idx + k];
+      if (before) for (const st of visibleStrokes(before)) drawStroke(ctx, st, FADE[k - 1], ONION_BEFORE);
+      if (after) for (const st of visibleStrokes(after)) drawStroke(ctx, st, FADE[k - 1], ONION_AFTER);
     }
     for (const st of visibleStrokes(anim.frames[idx])) drawStroke(ctx, st, 1);
     // Onscreen grid / guides overlay (non-destructive, drawn last).
@@ -306,22 +273,51 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
     });
   }, [anim, frameIdx]);
 
-  // Playback
+  const loopRef = useRef(loop);
+  loopRef.current = loop;
+  // Playback, locked to the clock: the film frame shown is elapsed time ×
+  // fps, so it stays in step with the soundtrack (which plays from the
+  // animator's own uploaded audio, each track from its start time).
   useEffect(() => {
     if (!playing || !anim) return;
-    const sequence: number[] = [];
-    anim.frames.forEach((f, i) => { for (let k = 0; k < f.exposure; k++) sequence.push(i); });
-    if (!sequence.length) { queueMicrotask(() => setPlaying(false)); return; }
-    playRef.current.pos = 0;
+    const seq = filmSequence(anim.frames);
+    if (!seq.length) { queueMicrotask(() => setPlaying(false)); return; }
+    const fps = Math.max(1, anim.fps || 12);
+    const timers: number[] = [];
+    const players = (anim.audio || []).map((t) => {
+      const src = t.src || (t.mediaId ? `/api/media/${encodeURIComponent(t.mediaId)}/stream` : t.url);
+      if (!src) return null;
+      const a = new Audio(src); a.preload = 'auto';
+      return { a, start: Math.max(0, t.startSec || 0) };
+    }).filter((x): x is { a: HTMLAudioElement; start: number } => !!x);
+    const startSound = () => {
+      for (const { a, start } of players) {
+        a.pause();
+        if (start <= 0) { a.currentTime = 0; void a.play().catch(() => {}); }
+        else timers.push(window.setTimeout(() => { a.currentTime = 0; void a.play().catch(() => {}); }, start * 1000));
+      }
+    };
+    let t0 = performance.now();
+    startSound();
     const timer = window.setInterval(() => {
-      const pos = playRef.current.pos % sequence.length;
-      renderFrame(sequence[pos], false);
-      playRef.current.pos = pos + 1;
-    }, 1000 / anim.fps);
+      let pos = Math.floor(((performance.now() - t0) / 1000) * fps);
+      if (pos >= seq.length) {
+        if (!loopRef.current) { setPlaying(false); return; }
+        t0 = performance.now(); pos = 0;
+        timers.splice(0).forEach((x) => window.clearTimeout(x));
+        startSound();
+      }
+      renderFrame(seq[pos], 0);
+      setPlayhead(pos + 1);
+    }, Math.max(8, 500 / fps));
     playRef.current.timer = timer;
-    return () => { window.clearInterval(timer); };
+    return () => {
+      window.clearInterval(timer);
+      timers.forEach((x) => window.clearTimeout(x));
+      for (const { a } of players) { a.pause(); a.src = ''; }
+      setPlayhead(null);
+    };
   }, [playing, anim, renderFrame]);
-
   const toPoint = (e: React.PointerEvent): number[] => {
     const cv = canvasRef.current!;
     const rect = cv.getBoundingClientRect();
@@ -587,263 +583,203 @@ export function AnimStudio({ animId, onExit }: { animId: string; onExit: () => v
   };
 
   if (loading || !anim) {
-    return <div className="flex items-center justify-center py-12 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="lt-skeleton mx-auto h-[420px] max-w-[760px]" role="status" aria-label="Opening the shot" />;
   }
 
   const frame = anim.frames[frameIdx];
+  const paintable = (frame.layers || []).filter((l) => l.type !== 'reference');
 
   return (
-    <div className="space-y-3">
-      {/* Top bar */}
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={exit}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg">
-          <ArrowLeft className="w-3.5 h-3.5" /> Gallery
-        </button>
+    <div className="space-y-4" data-testid="lt-studio">
+      {/* the shot's bar on the desk */}
+      <div className="lt-on-desk flex flex-wrap items-center gap-2">
+        <button type="button" onClick={exit} className="lt-btn lt-desk-btn !min-h-[32px]"><ArrowLeft className="h-4 w-4" /> All shots</button>
         {renaming != null ? (
           <input aria-label="Animation title" autoFocus value={renaming} onChange={(e) => setRenaming(e.target.value)}
             onBlur={() => void saveTitle()}
             onKeyDown={(e) => { if (e.key === 'Enter') void saveTitle(); if (e.key === 'Escape') setRenaming(null); }}
-            className="flex-1 min-w-0 bg-zinc-900 border border-cyan-700 rounded-lg px-2 py-1 text-sm font-semibold text-zinc-100" />
+            className="lt-input lt-title !w-auto min-w-0 flex-1 !text-[18px]" />
         ) : (
-          <button type="button" onClick={() => setRenaming(anim.title)} title="Rename"
-            className="group flex flex-1 min-w-0 items-center gap-1.5 text-left text-sm font-semibold text-zinc-100">
-            <span className="truncate">{anim.title}</span>
-            <Pencil className="w-3 h-3 shrink-0 text-zinc-500 opacity-0 transition-opacity group-hover:opacity-100" />
+          <button type="button" onClick={() => setRenaming(anim.title)} title="Rename" className="group flex min-w-[55%] flex-1 items-center gap-1.5 text-left sm:min-w-0">
+            <span className="lt-title truncate text-[22px] text-[#fbfaf6]">{anim.title}</span>
+            <Pencil className="h-3.5 w-3.5 shrink-0 text-[#b9b2a6] opacity-0 transition-opacity group-hover:opacity-100" />
           </button>
         )}
-        <button type="button" onClick={() => setOnion(!onion)}
-          className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
-            onion ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300')}>
-          <Layers className="w-3.5 h-3.5" /> Onion
+        <span className="lt-mono text-[12px] text-[#c9c2b5]">
+          {playing && playhead ? `fr ${String(playhead).padStart(3, '0')}` : `drawing ${frameIdx + 1}/${anim.frames.length}`} · {anim.fps} fps{duration ? ` · ${duration.durationSec}s` : ''}
+        </span>
+        <button type="button" onClick={() => setPlaying(!playing)} className="lt-btn lt-btn-red !min-h-[32px]" data-testid="lt-play" aria-label={playing ? 'Stop' : 'Play'}>
+          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{playing ? 'Stop' : 'Play'}
         </button>
-        <button type="button" onClick={() => setPlaying(!playing)}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 text-white rounded-lg">
-          {playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button type="button" onClick={undo} disabled={playing}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
-          <Undo2 className="w-3.5 h-3.5" /> Undo
-        </button>
-        <button type="button" onClick={redo} disabled={playing || !canRedo}
-          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg disabled:opacity-40">
-          <Redo2 className="w-3.5 h-3.5" /> Redo
-        </button>
-        <button type="button" onClick={() => setShowTools((v) => !v)}
-          className={cn('flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-lg',
-            showTools ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
-          <Wrench className="w-3.5 h-3.5" /> Tools
-        </button>
-      </div>
-
-      {/* Canvas */}
-      <div className="bg-[repeating-conic-gradient(#3f3f46_0%_25%,#27272a_0%_50%)] bg-[length:16px_16px] rounded-xl p-2 flex items-center justify-center overflow-hidden">
-        <canvas
-          ref={canvasRef}
-          width={anim.width}
-          height={anim.height}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
-          className={cn('rounded shadow-lg', playing ? 'cursor-default' : 'cursor-crosshair')}
-          style={{ maxWidth: '100%', maxHeight: '52vh', touchAction: 'none' }}
-        />
-      </div>
-
-      {/* FlipaClip / Pencil2D parity tools */}
-      {showTools && <AnimToolsPanel anim={anim} onChange={reloadAnim} />}
-
-      {/* Frame timeline */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-zinc-400">
-            Frame {frameIdx + 1}/{anim.frames.length} · {anim.fps} fps{duration ? ` · ${duration.durationSec}s total` : ''}
-          </span>
-          <label className="flex items-center gap-1 text-[11px] text-zinc-400">
-            Hold
-            <input type="number" min={1} max={60} value={frame.exposure}
-              onChange={(e) => setExposure(Math.max(1, Number(e.target.value) || 1))}
-              className="w-12 bg-zinc-950 border border-zinc-700 rounded px-1.5 py-0.5 text-[11px] text-zinc-100" />
-          </label>
-          <button aria-label="Move frame left" type="button" onClick={() => moveFrame('left')} disabled={frameIdx === 0}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-          <button aria-label="Move frame right" type="button" onClick={() => moveFrame('right')} disabled={frameIdx === anim.frames.length - 1}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center p-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400">
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-          <div className="flex-1" />
-          <button type="button" onClick={() => addFrame(false)}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-cyan-700 hover:bg-cyan-500 text-white rounded">
-            <Plus className="w-3 h-3" /> Frame
-          </button>
-          <button type="button" onClick={() => addFrame(true)}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-            <Copy className="w-3 h-3" /> Duplicate
-          </button>
-          <button type="button" onClick={() => void clearFrame(false)} title="Clear strokes on the active layer of this frame (undoable)"
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-            <Eraser className="w-3 h-3" /> Clear layer
-          </button>
-          <button type="button" onClick={() => void clearFrame(true)} title="Clear strokes on every layer of this frame (undoable)"
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">
-            Clear frame
-          </button>
-          <button aria-label="Delete" type="button" onClick={deleteFrame}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] bg-zinc-800 hover:bg-rose-900 text-zinc-200 rounded">
-            <Trash2 className="w-3 h-3" />
-          </button>
-        </div>
-        <div className="flex gap-1 overflow-x-auto pb-1">
-          {anim.frames.map((f, i) => (
-            <button key={f.id} type="button" onClick={() => { setPlaying(false); setFrameIdx(i); }}
-              className={cn('relative shrink-0 w-12 h-12 rounded border text-[10px] font-mono flex items-center justify-center',
-                i === frameIdx ? 'border-cyan-500 bg-cyan-950/50 text-cyan-200' : 'border-zinc-700 bg-zinc-900 text-zinc-400')}>
-              {i + 1}
-              {f.exposure > 1 && (
-                <span className="absolute bottom-0 right-0 bg-zinc-800 text-zinc-300 text-[8px] px-1 rounded-tl">×{f.exposure}</span>
-              )}
-              {visibleStrokes(f).length > 0 && <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-cyan-500" />}
-            </button>
+        <button type="button" onClick={() => setLoop((v) => !v)} aria-pressed={loop} className="lt-btn lt-desk-btn !min-h-[32px]" title="Loop playback"><Repeat className="h-4 w-4" /></button>
+        <div className="flex items-center gap-1 rounded-md border border-[#6d665b] px-1.5 py-0.5" role="group" aria-label="Onion skins">
+          <Layers className="h-3.5 w-3.5 text-[#b9b2a6]" />
+          {[0, 1, 2, 3].map((n) => (
+            <button key={n} type="button" aria-pressed={onion === n} onClick={() => setOnion(n)} className={`lt-mono h-6 w-6 rounded text-[11px] ${onion === n ? 'bg-[#ece6da] text-[var(--lt-desk)]' : 'text-[#c9c2b5] hover:text-white'}`} title={n ? `${n} drawing${n > 1 ? 's' : ''} either side` : 'Onion skins off'}>{n || 'off'}</button>
           ))}
         </div>
+        <button type="button" onClick={undo} disabled={playing} className="lt-btn lt-desk-btn !min-h-[32px]" aria-label="Undo"><Undo2 className="h-4 w-4" /></button>
+        <button type="button" onClick={redo} disabled={playing || !canRedo} className="lt-btn lt-desk-btn !min-h-[32px]" aria-label="Redo"><Redo2 className="h-4 w-4" /></button>
       </div>
 
-      {/* Brush bar */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-        <div className="flex flex-wrap gap-1.5">
-          {BRUSHES.map((b) => (
-            <button key={b.id} type="button"
-              onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setPressureSize(0); }}
-              className={cn('flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg',
-                tool === b.tool ? 'bg-cyan-700 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700')}>
-              {b.tool === 'eraser' && <Eraser className="w-3 h-3" />}{b.name}
-            </button>
-          ))}
-        </div>
-        {customBrushes.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            <span className="text-[10px] text-zinc-400 self-center">Custom:</span>
-            {customBrushes.map((b) => (
-              <button key={b.id} type="button"
-                onClick={() => {
-                  setTool(b.tool); setSize(b.size); setOpacity(b.opacity);
-                  setColor(b.color); setPressureSize(b.pressureSize);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ background: b.color }} />
-                {b.name}
-              </button>
-            ))}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 space-y-3">
+          {/* the light table: a backlit disc, the peg bar, the drawing on top */}
+          <div className="lt-stage">
+            <div className="lt-disc w-full max-w-[760px]" style={{ aspectRatio: '1 / 0.74', borderRadius: '50% / 50%' }}>
+              <div className="lt-disc-ring" aria-hidden />
+              <div className="flex h-full items-center justify-center">
+                <div className="lt-paperframe" style={{ width: '86%' }}>
+                  <span className="lt-pegbar" aria-hidden><span className="lt-peg" /></span>
+                  <canvas
+                    ref={canvasRef}
+                    width={anim.width}
+                    height={anim.height}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerLeave={onPointerUp}
+                    aria-label={`Drawing ${frameIdx + 1}. Draw with the pointer.`}
+                    data-testid="lt-canvas"
+                    className={playing ? 'cursor-default' : 'cursor-crosshair'}
+                    style={{ display: 'block', width: '100%', height: 'auto', touchAction: 'none' }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Color
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)}
-              className="w-8 h-8 bg-transparent cursor-pointer" />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Size {size}
-            <input type="range" min={1} max={80} value={size} onChange={(e) => setSize(Number(e.target.value))}
-              className="w-24 accent-cyan-500" />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Opacity {Math.round(opacity * 100)}%
-            <input type="range" min={0.05} max={1} step={0.05} value={opacity}
-              onChange={(e) => setOpacity(Number(e.target.value))} className="w-24 accent-cyan-500" />
-          </label>
-          <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-            Pressure {Math.round(pressureSize * 100)}%
-            <input type="range" min={0} max={1} step={0.05} value={pressureSize}
-              onChange={(e) => setPressureSize(Number(e.target.value))} className="w-24 accent-cyan-500" />
-          </label>
+
+          {/* the drawings, in order, each with its hold */}
+          <div className="flex items-center gap-2">
+            <button aria-label="Move drawing earlier" type="button" onClick={() => moveFrame('left')} disabled={frameIdx === 0} className="lt-btn lt-desk-btn !min-h-[30px] !px-2"><ChevronLeft className="h-4 w-4" /></button>
+            <DrawingStrip anim={anim} current={frameIdx} onPick={(i) => { setPlaying(false); setFrameIdx(i); }} />
+            <button aria-label="Move drawing later" type="button" onClick={() => moveFrame('right')} disabled={frameIdx === anim.frames.length - 1} className="lt-btn lt-desk-btn !min-h-[30px] !px-2"><ChevronRight className="h-4 w-4" /></button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => addFrame(false)} className="lt-btn lt-desk-btn !min-h-[32px]" data-testid="lt-new-drawing"><Plus className="h-4 w-4" /> New drawing</button>
+            <button type="button" onClick={() => addFrame(true)} className="lt-btn lt-desk-btn !min-h-[32px]"><Copy className="h-4 w-4" /> Trace a copy</button>
+            <label className="flex items-center gap-1.5 text-[12px] text-[#c9c2b5]">Hold
+              <input type="number" min={1} max={60} value={frame.exposure} onChange={(e) => { void setExposure(Math.max(1, Math.min(60, Number(e.target.value) || 1))).then(() => setXsRev((n) => n + 1)); }} className="lt-input lt-mono !min-h-[30px] !w-14 !py-0" aria-label="Hold this drawing for frames" />
+              <span>frames</span>
+            </label>
+            <span className="flex-1" />
+            <button type="button" onClick={() => void clearFrame(false)} className="lt-btn lt-desk-btn !min-h-[32px]" title="Erase this layer of the drawing (undoable)"><Eraser className="h-4 w-4" /> Clear layer</button>
+            <button type="button" onClick={() => void clearFrame(true)} className="lt-btn lt-desk-btn !min-h-[32px]" title="Erase every layer of the drawing (undoable)">Clear drawing</button>
+            <button aria-label="Delete this drawing" type="button" onClick={deleteFrame} disabled={anim.frames.length <= 1} className="lt-btn lt-desk-btn !min-h-[32px] !px-2"><Trash2 className="h-4 w-4" /></button>
+          </div>
+
+          {/* the pencil cup */}
+          <div className="lt-sheet space-y-2.5 p-3" aria-label="Pencils">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {BRUSHES.map((b) => (
+                <button key={b.id} type="button" aria-pressed={tool === b.tool}
+                  onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setPressureSize(0); }}
+                  className="lt-chip">{b.tool === 'eraser' && <Eraser className="h-3 w-3" />}{b.name}</button>
+              ))}
+              {[['#26282b', 'Graphite'], ['#2f63d6', 'Blue pencil'], ['#d2382a', 'Red pencil'], ['#1d7a4b', 'Green pencil']].map(([c, n]) => (
+                <button key={c} type="button" aria-label={n} aria-pressed={color === c} onClick={() => setColor(c)} className="h-6 w-6 rounded-full border-2" style={{ background: c, borderColor: color === c ? '#d2382a' : 'transparent', boxShadow: '0 0 0 1px rgba(0,0,0,0.2)' }} />
+              ))}
+              {customBrushes.length > 0 && <span className="lt-label ml-2">Saved</span>}
+              {customBrushes.map((b) => (
+                <button key={b.id} type="button" className="lt-chip"
+                  onClick={() => { setTool(b.tool); setSize(b.size); setOpacity(b.opacity); setColor(b.color); setPressureSize(b.pressureSize); }}>
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: b.color }} />{b.name}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-[12px] text-[var(--lt-graphite-2)]">
+              <label className="flex items-center gap-1.5">Colour <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-7 w-8 cursor-pointer bg-transparent" /></label>
+              <label className="flex items-center gap-1.5">Size <span className="lt-mono w-6">{size}</span><input type="range" min={1} max={80} value={size} onChange={(e) => setSize(Number(e.target.value))} className="w-24 accent-[#d2382a]" /></label>
+              <label className="flex items-center gap-1.5">Opacity <span className="lt-mono w-9">{Math.round(opacity * 100)}%</span><input type="range" min={0.05} max={1} step={0.05} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} className="w-24 accent-[#d2382a]" /></label>
+              <label className="flex items-center gap-1.5">Pressure <span className="lt-mono w-9">{Math.round(pressureSize * 100)}%</span><input type="range" min={0} max={1} step={0.05} value={pressureSize} onChange={(e) => setPressureSize(Number(e.target.value))} className="w-24 accent-[#d2382a]" /></label>
+              {paintable.length > 1 && (
+                <label className="flex items-center gap-1.5">Layer
+                  <select className="lt-input !min-h-[28px] !w-auto !py-0" value={activeLayer} onChange={(e) => setActiveLayer(e.target.value)} aria-label="Drawing on layer">
+                    {paintable.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[560px] xl:h-auto xl:max-h-[calc(100vh-180px)]">
+          <XSheet animId={anim.id} rev={`${framesSignature}:${xsRev}`} playhead={playhead} openDrawing={frameIdx}
+            onOpenDrawing={(i) => { setPlaying(false); setFrameIdx(i); }} onChanged={() => { void reloadAnim(); }} />
         </div>
       </div>
 
-      {/* Frame layers */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
-            <Layers className="w-3.5 h-3.5 text-cyan-400" /> Frame {frameIdx + 1} layers
-          </h3>
-          <button aria-label="Add layer" type="button" onClick={addLayer} className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
+      {/* drawers */}
+      <section aria-label="Tools" className="lt-sheet overflow-hidden">
+        <div role="tablist" aria-label="Tool drawers" className="flex gap-0.5 overflow-x-auto border-b border-[#e3dfd5] bg-[var(--lt-paper-2)] px-2">
+          {DRAWERS.map((d) => (
+            <button key={d.id} type="button" role="tab" aria-selected={drawer === d.id} onClick={() => setDrawer(d.id)} data-testid={`lt-drawer-${d.id}`}
+              className={`whitespace-nowrap px-3 py-2 text-[12.5px] font-semibold ${drawer === d.id ? 'border-b-2 border-[var(--lt-red)] text-[var(--lt-graphite)]' : 'text-[var(--lt-muted)] hover:text-[var(--lt-graphite)]'}`}>{d.label}</button>
+          ))}
         </div>
-        <ul className="space-y-1">
-          {[...(frame.layers || [])].reverse().map((l) => {
-            const isRef = l.type === 'reference';
-            return (
-              <li key={l.id}
-                className={cn('flex items-center gap-1.5 rounded px-2 py-1 border',
-                  isRef ? 'border-dashed border-amber-700/60 bg-amber-950/10'
-                    : activeLayer === l.id ? 'border-cyan-600 bg-cyan-950/30' : 'border-zinc-800 bg-zinc-900')}>
-                <button type="button" aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} onClick={() => updateLayer(l.id, { visible: !l.visible })}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-zinc-400 hover:text-zinc-200">
-                  {l.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                </button>
-                {isRef && (
-                  <span title="Tracing reference — not paintable" aria-label="Reference layer"
-                    className="flex items-center gap-0.5 shrink-0 text-[9px] font-semibold uppercase tracking-wide text-amber-400 bg-amber-950/50 border border-amber-800/60 rounded px-1 py-0.5">
-                    <ImageIcon className="w-2.5 h-2.5" /> Ref
-                  </span>
-                )}
-                {isRef ? (
-                  <span className="flex-1 text-left text-[11px] text-amber-200/80 truncate">{l.name}</span>
-                ) : (
-                  <button type="button" onClick={() => setActiveLayer(l.id)}
-                    className="flex-1 text-left text-[11px] text-zinc-200 truncate">{l.name}</button>
-                )}
-                <input type="range" min={0} max={1} step={0.1} value={l.opacity}
-                  aria-label={isRef ? 'Reference opacity' : 'Layer opacity'}
-                  onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })}
-                  className="w-14 accent-cyan-500" />
-                <button aria-label="Delete" type="button" onClick={() => deleteLayer(l.id)} className="text-zinc-600 hover:text-rose-400">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+        <div className="lt-drawer p-4">
+          {drawer === 'layers' && (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="lt-label">Drawing {frameIdx + 1}: layers</h3>
+                <button type="button" onClick={addLayer} aria-label="Add layer" className="lt-btn lt-btn-quiet !min-h-[30px] text-[12px]"><Plus className="h-3.5 w-3.5" /> Layer</button>
+              </div>
+              <ul className="space-y-1">
+                {[...(frame.layers || [])].reverse().map((l) => {
+                  const isRef = l.type === 'reference';
+                  return (
+                    <li key={l.id} className={`flex items-center gap-1.5 rounded border px-2 py-1 ${isRef ? 'border-dashed border-[#c9b98f] bg-[#fbf6e6]' : activeLayer === l.id ? 'border-[var(--lt-red)] bg-white' : 'border-[#e2ded4] bg-[#fffefb]'}`}>
+                      <button type="button" aria-label={l.visible ? `Hide layer ${l.name}` : `Show layer ${l.name}`} onClick={() => updateLayer(l.id, { visible: !l.visible })} className="inline-flex min-h-9 min-w-9 items-center justify-center text-[var(--lt-muted)] hover:text-[var(--lt-graphite)]">
+                        {l.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </button>
+                      {isRef && <span className="flex items-center gap-0.5 rounded bg-[#efe3bf] px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#7a6022]" aria-label="Reference layer"><ImageIcon className="h-2.5 w-2.5" /> Ref</span>}
+                      {isRef ? <span className="flex-1 truncate text-[12px] text-[#7a6022]">{l.name}</span>
+                        : <button type="button" onClick={() => setActiveLayer(l.id)} className="flex-1 truncate text-left text-[12px]">{l.name}</button>}
+                      <input type="range" min={0} max={1} step={0.1} value={l.opacity} aria-label={isRef ? 'Reference opacity' : 'Layer opacity'} onChange={(e) => updateLayer(l.id, { opacity: Number(e.target.value) })} className="w-16 accent-[#d2382a]" />
+                      <button aria-label={`Delete layer ${l.name}`} type="button" onClick={() => deleteLayer(l.id)} className="text-[var(--lt-faint)] hover:text-[var(--lt-red)]"><Trash2 className="h-3.5 w-3.5" /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {drawer === 'sound' && <AudioSyncPanel anim={anim} onChange={() => { void reloadAnim(); setXsRev((n) => n + 1); }} />}
+          {drawer === 'tween' && <TweenPanel anim={anim} onChange={reloadAnim} />}
+          {drawer === 'rig' && <RigPanel anim={anim} onChange={reloadAnim} />}
+          {drawer === 'paper' && <CanvasPanel anim={anim} onChange={reloadAnim} />}
+          {drawer === 'pencils' && <BrushPanel />}
+          {drawer === 'timing' && <AnimationMotionToolkit />}
+          {drawer === 'export' && <ExportDesk anim={anim} onPublish={(mediaId, durationSec) => { setRender({ mediaId, durationSec }); setDrawer('publish'); }} />}
+          {drawer === 'publish' && <PublishDesk anim={anim} mediaId={render?.mediaId || null} runtimeSec={render?.durationSec ?? null} openDrawing={frameIdx} onOpenScreening={onOpenScreening} />}
+          {drawer === 'share' && <SharePanel anim={anim} />}
+        </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* Audio tracks */}
-      <div className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
-            <Music className="w-3.5 h-3.5 text-cyan-400" /> Audio tracks
-          </h3>
-          <button aria-label="Add track" type="button"
-            onClick={async () => {
-              const name = window.prompt('Track name:');
-              if (!name || !name.trim()) return;
-              const url = window.prompt('Audio URL (optional):') || '';
-              const startSec = Number(window.prompt('Start time (seconds):', '0') || '0');
-              await lensRun('animation', 'audio-track-add', { animId: anim.id, name: name.trim(), url, startSec });
-              await reloadAnim();
-            }}
-            className="text-zinc-400 hover:text-cyan-300"><Plus className="w-4 h-4" /></button>
-        </div>
-        {(anim.audio || []).length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic">No audio tracks. Add up to 6 to score the timeline.</p>
-        ) : (
-          <ul className="space-y-1">
-            {(anim.audio || []).map((t) => (
-              <li key={t.id} className="flex items-center gap-2 text-[11px] text-zinc-300 bg-zinc-900 rounded px-2 py-1">
-                <Music className="w-3 h-3 text-zinc-400" />
-                <span className="flex-1">{t.name}</span>
-                <span className="text-zinc-400">@ {t.startSec}s</span>
-                {t.url && <a href={t.url} target="_blank" rel="noopener noreferrer" className="text-cyan-400">open</a>}
-                <button aria-label="Delete" type="button"
-                  onClick={() => lensRun('animation', 'audio-track-remove', { animId: anim.id, id: t.id }).then(reloadAnim)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+/** The drawings in order, as small pages: number, hold, and what's on them. */
+function DrawingStrip({ anim, current, onPick }: { anim: Anim; current: number; onPick: (i: number) => void }) {
+  const refs = useRef<(HTMLCanvasElement | null)[]>([]);
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      anim.frames.forEach((f, i) => {
+        const cv = refs.current[i]; const c = cv?.getContext('2d');
+        if (cv && c) drawFrame(c, f, anim.background, { scale: cv.width / anim.width });
+      });
+    }, 60);
+    return () => window.clearTimeout(id);
+  }, [anim]);
+  const tw = 64; const th = Math.max(24, Math.round((anim.height / anim.width) * tw));
+  return (
+    <div className="lt-strip min-w-0 flex-1" role="list" aria-label="Drawings">
+      {anim.frames.map((f, i) => (
+        <button key={f.id} type="button" role="listitem" className="lt-thumb" aria-pressed={i === current} aria-label={`Drawing ${i + 1}${f.exposure > 1 ? `, held ${f.exposure} frames` : ''}`} onClick={() => onPick(i)}>
+          <canvas ref={(el) => { refs.current[i] = el; }} width={tw * 2} height={th * 2} />
+          <span className="lt-thumb-no">{i + 1}</span>
+          {f.exposure > 1 && <span className="lt-thumb-hold">×{f.exposure}</span>}
+        </button>
+      ))}
     </div>
   );
 }

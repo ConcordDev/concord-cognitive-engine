@@ -97,7 +97,9 @@ export function createReleaseShop(registerLensAction, cfg) {
       return { ok: false, error: `priceCC must be 0 (free) or from 0.5 to ${RELEASE_MAX_PRICE} CC, in cents` };
     }
     const previewSec = params.previewSec == null ? 90 : Math.round(Number(params.previewSec));
-    if (!Number.isFinite(previewSec) || previewSec < (cfg.minPreviewSec ?? 15) || previewSec > 90) return { ok: false, error: `previewSec must be from ${cfg.minPreviewSec ?? 15} to 90` };
+    // 0 = no preview (a priced piece only buyers can watch) — allowed where the lens says so.
+    const noPreview = previewSec === 0 && price > 0 && cfg.allowNoPreview;
+    if (!noPreview && (!Number.isFinite(previewSec) || previewSec < (cfg.minPreviewSec ?? 15) || previewSec > 90)) return { ok: false, error: `previewSec must be from ${cfg.minPreviewSec ?? 15} to 90${cfg.allowNoPreview ? ", or 0 for no preview" : ""}` };
     let posterMediaId = null;
     if (params.posterMediaId) {
       const img = mediaRow(String(params.posterMediaId));
@@ -106,7 +108,7 @@ export function createReleaseShop(registerLensAction, cfg) {
     }
     const runtime = Number(md.duration) || 0;
     // A preview as long as the piece would give it away.
-    if (price > 0 && runtime > 0 && previewSec >= runtime) return { ok: false, error: `the preview must be shorter than the ${noun} (${Math.round(runtime * 10) / 10} s)` };
+    if (price > 0 && !noPreview && runtime > 0 && previewSec >= runtime) return { ok: false, error: `the preview must be shorter than the ${noun} (${Math.round(runtime * 10) / 10} s)` };
     if ([...s.releases.values()].some((r) => r.platformMediaId === md.id && r.status === "published")) return { ok: false, error: "this video is already released" };
     const r = {
       id: cfg.makeId("rel"), ...(src.fields || {}), [ownerField]: userId, title, logline,
