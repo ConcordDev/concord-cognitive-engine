@@ -28,6 +28,10 @@ vi.mock('next/font/google', () => {
     Source_Serif_4: face('Source Serif 4'),
     Instrument_Serif: face('Instrument Serif'),
     Montserrat: face('Montserrat'),
+    // Film Studios — the Production Office (components/film-studios/office/officeFonts.ts)
+    Oswald: face('Oswald'),
+    Manrope: face('Manrope'),
+    Cutive_Mono: face('Cutive Mono'),
     // DTUs — the Binder (components/dtus/binder/binderFonts.ts)
     Bricolage_Grotesque: face('Bricolage Grotesque'),
     Outfit: face('Outfit'),

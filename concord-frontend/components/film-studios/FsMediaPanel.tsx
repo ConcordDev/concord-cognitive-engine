@@ -26,7 +26,7 @@ const QUALITIES = ['full', 'proxy', 'offline'];
 const QUALITY_COLOR: Record<string, string> = {
   full: 'bg-emerald-700 text-emerald-100',
   proxy: 'bg-amber-700 text-amber-100',
-  offline: 'bg-zinc-700 text-zinc-300',
+  offline: 'bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink-2,#d4d4d8)]',
 };
 
 export function FsMediaPanel({ projectId }: { projectId: string }) {
@@ -126,7 +126,7 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-[var(--fo-muted,#a1a1aa)]"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (loadError) {
@@ -135,81 +135,81 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4">
-      {error && <div className="text-xs text-rose-400 bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
+      {error && <div className="text-xs text-[var(--fo-bad,#fb7185)] bg-rose-950/40 border border-rose-900/50 rounded-lg px-3 py-2">{error}</div>}
 
       {/* Register media */}
-      <section className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3 space-y-2">
+      <section className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl p-3 space-y-2">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <input placeholder="Media name / clip ID" value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
             {KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
           </select>
           <input placeholder="Camera (A, B…)" value={form.camera}
             onChange={(e) => setForm({ ...form, camera: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <button type="button" onClick={addMedia}
-            className="flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg">
+            className="flex items-center justify-center gap-1 bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white text-xs font-medium rounded-lg">
             <Plus className="w-3.5 h-3.5" /> Register
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <input placeholder="Source URL (https://…)" value={form.sourceUrl}
             onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
           <input placeholder="Proxy URL (https://…)" value={form.proxyUrl}
             onChange={(e) => setForm({ ...form, proxyUrl: e.target.value })}
-            className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+            className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
         </div>
       </section>
 
       {/* Media bin */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-          <Video className="w-3.5 h-3.5 text-fuchsia-400" /> Media bin
-          <span className="text-zinc-400 font-normal">· {media.length} items · {proxyCount} proxy</span>
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+          <Video className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Media bin
+          <span className="text-[var(--fo-muted,#a1a1aa)] font-normal">· {media.length} items · {proxyCount} proxy</span>
         </h3>
         {media.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic py-6 text-center">No media registered. Add source files to build a multicam edit.</p>
+          <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic py-6 text-center">No media registered. Add source files to build a multicam edit.</p>
         ) : (
           <ul className="space-y-1.5">
             {media.map((m) => (
-              <li key={m.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2 space-y-1.5">
+              <li key={m.id} className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-lg px-3 py-2 space-y-1.5">
                 <div className="flex items-center gap-2">
                 <input type="checkbox" checked={grpPick.includes(m.id)} onChange={() => toggleGrpPick(m.id)}
-                  className="accent-fuchsia-500" aria-label={`Select ${m.name} for multicam group`} />
-                <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  className="accent-[var(--fo-tape,#d946ef)]" aria-label={`Select ${m.name} for multicam group`} />
+                <Film className="w-3.5 h-3.5 text-[var(--fo-muted,#a1a1aa)] shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-zinc-100 truncate">
+                  <p className="text-xs text-[var(--fo-ink,#f4f4f5)] truncate">
                     {m.name}
-                    {m.camera && <span className="text-fuchsia-300"> · CAM {m.camera}</span>}
-                    {m.mcamAngle != null && <span className="text-zinc-400"> · angle {m.mcamAngle}</span>}
+                    {m.camera && <span className="text-[var(--fo-tape,#e879f9)]"> · CAM {m.camera}</span>}
+                    {m.mcamAngle != null && <span className="text-[var(--fo-muted,#a1a1aa)]"> · angle {m.mcamAngle}</span>}
                   </p>
                   {(m.sourceUrl || m.proxyUrl) && (
-                    <p className="text-[10px] text-zinc-400 truncate">
+                    <p className="text-[10px] text-[var(--fo-muted,#a1a1aa)] truncate">
                       {m.proxyUrl ? 'proxy available' : m.sourceUrl ? 'source only' : ''}
                     </p>
                   )}
                 </div>
                 {m.kind === 'image' && m.sourceUrl && (
                   <button type="button" onClick={() => analyzeImage(m)} disabled={analyzing === m.id}
-                    className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-900/40 text-fuchsia-200 hover:bg-fuchsia-900/60 disabled:opacity-40 shrink-0"
+                    className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-[rgba(214,58,47,0.1)] text-[var(--fo-tape,#e879f9)] hover:bg-[rgba(214,58,47,0.16)] disabled:opacity-40 shrink-0"
                     title="Vision-analyze this still (composition, lighting, mood)">
                     {analyzing === m.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} Analyze
                   </button>
                 )}
                 <select value={m.quality} onChange={(e) => setQuality(m.id, e.target.value)}
-                  className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium', QUALITY_COLOR[m.quality] || 'bg-zinc-700 text-zinc-300')}>
+                  className={cn('text-[10px] rounded px-1.5 py-0.5 border-0 font-medium', QUALITY_COLOR[m.quality] || 'bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink-2,#d4d4d8)]')}>
                   {QUALITIES.map((q) => <option key={q} value={q}>{q}</option>)}
                 </select>
-                <button aria-label="Delete" type="button" onClick={() => delMedia(m.id)} className="text-zinc-600 hover:text-rose-400 shrink-0">
+                <button aria-label="Delete" type="button" onClick={() => delMedia(m.id)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)] shrink-0">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 </div>
                 {analysis[m.id] && (
-                  <p className="text-[11px] text-zinc-300 bg-zinc-950/60 border border-zinc-800 rounded p-2 leading-relaxed">
+                  <p className="text-[11px] text-[var(--fo-ink-2,#d4d4d8)] bg-[var(--fo-paper-2,rgba(9,9,11,0.6))] border border-[var(--fo-rule,#27272a)] rounded p-2 leading-relaxed">
                     {analysis[m.id]}
                   </p>
                 )}
@@ -221,35 +221,35 @@ export function FsMediaPanel({ projectId }: { projectId: string }) {
 
       {/* Multicam groups */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-          <Camera className="w-3.5 h-3.5 text-fuchsia-400" /> Multicam angle sets
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+          <Camera className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Multicam angle sets
         </h3>
         <div className="flex items-center gap-2 mb-2">
           <input placeholder="Group name (e.g. Interview)" value={grpName}
             onChange={(e) => setGrpName(e.target.value)}
-            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
-          <span className="text-[10px] text-zinc-400">{grpPick.length} selected</span>
+            className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
+          <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{grpPick.length} selected</span>
           <button type="button" onClick={createGroup} disabled={grpPick.length < 2}
-            className="px-3 py-1.5 text-xs font-medium bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-40 text-white rounded-lg">
+            className="px-3 py-1.5 text-xs font-medium bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] disabled:opacity-40 text-white rounded-lg">
             Group cameras
           </button>
         </div>
         {groups.length === 0 ? (
-          <p className="text-[11px] text-zinc-400 italic py-4 text-center">No multicam groups. Check 2+ media items above to sync angles.</p>
+          <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic py-4 text-center">No multicam groups. Check 2+ media items above to sync angles.</p>
         ) : (
           <ul className="space-y-1.5">
             {groups.map((g) => (
-              <li key={g.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-2">
+              <li key={g.id} className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-lg px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-zinc-100">{g.name}</span>
-                  <span className="text-[10px] text-zinc-400">{g.angleCount} angles</span>
-                  <button aria-label="Delete" type="button" onClick={() => delGroup(g.id)} className="ml-auto text-zinc-600 hover:text-rose-400">
+                  <span className="text-xs font-semibold text-[var(--fo-ink,#f4f4f5)]">{g.name}</span>
+                  <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{g.angleCount} angles</span>
+                  <button aria-label="Delete" type="button" onClick={() => delGroup(g.id)} className="ml-auto text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {g.angles.map((a) => (
-                    <span key={a.id} className="text-[10px] bg-zinc-800 text-zinc-300 px-1.5 py-0.5 rounded">
+                    <span key={a.id} className="text-[10px] bg-[var(--fo-paper-2,#27272a)] text-[var(--fo-ink-2,#d4d4d8)] px-1.5 py-0.5 rounded">
                       A{a.mcamAngle ?? '?'} · {a.name}
                     </span>
                   ))}
