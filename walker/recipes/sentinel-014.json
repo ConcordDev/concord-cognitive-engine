@@ -1,0 +1,28 @@
+{
+  "id": "sentinel-014",
+  "kind": "repro-steps",
+  "title": "Sentinel shield macros admin-gated (SECURITY): shield.firewall / metrics / predictions / threats / sweep refuse non-admin callers with the platform denial; the member surface (status / scan / report) stays member-facing; the denial classifies NO_ACCESS in the walker matcher",
+  "author": "muse-b8",
+  "reviewer": "zuko-desk",
+  "status": "draft",
+  "authored_on": "2026-11-19",
+  "tier": 1,
+  "case_source": "observed",
+  "packet_id": "sentinel@21303b4672:v1",
+  "verified_against": null,
+  "covers": "Hand recipe (kind repro-steps) for sentinel-014, registered by the author of record (muse-b8, named at claim time) under the Item 4 standing approval for recipe-branch DRAFT registrations, from the fixer's supplied content: CHECK-sentinel-014.md in /Users/dutch/.zuko/quality/ (fixer muse-b6). Founder ruling: \"Restrict to admins\" (Ramaj first-hand, main chat 2026-11-19); ruled form per gate-receipt ruling (4): a SECURITY ticket — members blocked from the shield actions WITH A TEST TO PROVE IT, and the matcher NO_ACCESS addition rides in the same ticket; walk 2 covers sentinel as a member lens (ruling (3)). Finding of record: GB-1545 read-only review — the five shield macros read platform-wide state with NO role check; any member could read global shield state and trigger a sweep. Fix of record: commit 406e8fc29 (fixer-local) landed by push-files as b0aa1de5e on branch v1/sentinel-014 (parent 21303b4672, the deployed Gate 2 head) — server/server.js +24/-0, six hunks all inside the CONCORD SHIELD MACROS block (one gate helper requireShieldAdminRole on the platform idiom + one gate line in each of the five handlers), plus the proving suite server/tests/depth/shield-admin-gate-sentinel014.test.js (fixer-authored, section-6-flagged). Matcher leg: walker/selftest/test_sentinel014_no_access.py landed on walker/ultimate-lens-walker @ 0fb324cc2 (pin only; checks.py untouched; neighbour blobs re-read clean by the fixer). What the user sees: a non-admin member keeps the member surface (lens loads; shield.status / scan / report work) but the five platform-wide actions refuse with { ok:false, error:\"Insufficient permissions: admin role required\" } — roles owner/admin/founder only, read from ctx.actor.role; input-carried role claims are ignored. The denial text matches the frontend isForbidden() regex and the walker's NO_ACCESS_TEXT vocabulary (which already carried \"insufficient permission\" per CB-0872; the pin locks this gate to it). Matcher pin re-run by the author of record at the landed walker head 0fb324cc2: 11/11, FAILURES: 0. Neighbour regression on the fixed tree (fixer-run): sentinel-domain-macros + concord-shield + shield-status-security-score 94/94. Provenance: INDEPENDENT — premise and gate behaviour reproduced by execution against the deployed build; the shield block is byte-identical f4f1f77ff..21303b4672, diffed section-for-section. Out of scope, named in the check file: shield.prophet / surgeon / guardian stay member-facing under the ruling's five. The fixer files the dossier FIXED_PENDING_VERIFY on this registration + read-back. Activation stays with the reviewers of record (dutch / zuko-desk); VERIFIED waits on the walk-2 exercise (sentinel covered as a member lens).",
+  "discriminator": "Pre-fix failure transcript (from CHECK-sentinel-014.md, premise by execution 2026-11-19, booted-server runMacro depth harness against the deployed handler code at 21303b4672): callers member (role \"member\"), user (role \"user\"), and role-less (actor with no role) — ALL FIVE macros returned ok:true: threats / firewall / predictions with their success envelopes, metrics with the global metrics object (keys ok / version / initialized / tools / stats / threatFeedSize / firewallRuleCount / predictionCount), and sweep EXECUTED (status \"complete\"). No role check exists on any of the five — the GB-1545 finding reproduces exactly, per-macro, no exceptions. Proving suite on the pristine control (server.js byte-copy at 21303b4672): 5 FAIL / 4 PASS — the four member-blocking legs + the vocabulary leg discriminate; admin-allowed and member-surface legs pass on both trees. On the fixed tree the same suite passes 9/9.",
+  "steps": [
+    "Open the sentinel lens as the member account (t1). Expect: the lens loads (reach PASS) — the member surface is up.",
+    "Read the shield state as the member (shield tab; POST /api/lens/run {domain:\"shield\", action:\"threats\"} and the same for \"firewall\", \"predictions\", \"metrics\"). Expect: every call returns ok:false with error \"Insufficient permissions: admin role required\"; no threat feed, rules, predictions, or metrics data renders.",
+    "Activate the \"Run full sweep\" control as the member. Expect: no sweep executes — no sweep result renders; the macro returns the same denial.",
+    "Repeat step 2 as the member. Expect: the denial is identical (stateless gate; the repeat is the read-back persistence check).",
+    "As the admin account (look-only set), repeat the reads. Expect: ok:true with data — the gate is role-shaped, not a shutdown."
+  ],
+  "adversarial": [
+    "Role-less and anonymous-shaped actors denied on all five.",
+    "Input spoofing: input {role:\"admin\", actor:{role:\"admin\"}} with a member ctx still denied — the gate reads ctx.actor only.",
+    "Member-facing surface intact: member shield.status ok (security score present), shield.scan hash-lookup ok, shield.report NOT met by the admin denial.",
+    "Denied sweep carries no sweep payload (no execution side effect)."
+  ]
+}
