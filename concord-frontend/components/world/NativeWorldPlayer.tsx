@@ -21,20 +21,16 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { getInjectedJwt } from '@/lib/auth-bridge';
 import { UNITY_IFRAME_ID } from '@/lib/conkay/unity-bridge';
 import { buildUnityIframeSearch, showUnityGatewayDevBadge } from '@/lib/unity-iframe-config';
+import { unityPlayerCandidates } from '@/lib/unity-build-url';
 
 type Status =
   | { kind: 'checking' }
   | { kind: 'missing'; reason: string }
   | { kind: 'ready'; src: string };
 
-const ENV_UNITY_URL =
-  process.env.NEXT_PUBLIC_UNITY_WEBGL_URL ||
-  process.env.NEXT_PUBLIC_CONCORDIA_UNITY_URL ||
-  '';
-
-const CANDIDATES = [ENV_UNITY_URL, '/unity-client/index.html'].filter(
-  (u, i, arr) => Boolean(u) && arr.indexOf(u) === i,
-);
+// Shared resolver (lib/unity-build-url): explicit env override, then the
+// configured CDN build (PF-10), then the committed same-origin player.
+const CANDIDATES = unityPlayerCandidates();
 
 async function firstLiveUnitySrc(): Promise<string | null> {
   for (const candidate of CANDIDATES) {

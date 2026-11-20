@@ -12,7 +12,7 @@ import {
   safeUnityRelativePath,
   unityAssetContentType,
   unityAssetIsGzipped,
-  unityPayloadIsGzip,
+  unityPayloadCompression,
   unityPayloadIsLfsPointer,
 } from '@/lib/unity-web-files';
 
@@ -46,8 +46,8 @@ export async function GET(
 
   const body = fs.readFileSync(resolvedFile);
   // A checkout without `git lfs pull` still has the pointer text. Serving it
-  // as JavaScript (and advertising gzip) makes the loader throw
-  // `unityFramework is not defined`. The real export is the gzip blob.
+  // as JavaScript (and advertising an encoding) makes the loader throw
+  // `unityFramework is not defined`. The real export is the compressed blob.
   if (unityPayloadIsLfsPointer(body)) {
     return NextResponse.json(
       { ok: false, reason: 'unity_web_export_not_built' },
@@ -59,7 +59,11 @@ export async function GET(
     'Cache-Control': 'public, max-age=31536000, immutable',
     'X-Frame-Options': 'SAMEORIGIN',
   };
-  if (unityAssetIsGzipped(rel) && unityPayloadIsGzip(body)) headers['Content-Encoding'] = 'gzip';
+  // Name the payload's own compression (PF-10): gzip exports get `gzip`,
+  // Brotli exports get `br`. Before PF-10 only gzip was recognised, so a
+  // Brotli export was served with no Content-Encoding and never decoded.
+  const compression = unityAssetIsGzipped(rel) ? unityPayloadCompression(body) : null;
+  if (compression) headers['Content-Encoding'] = compression === 'gzip' ? 'gzip' : 'br';
 
   return new NextResponse(body, { status: 200, headers });
 }
