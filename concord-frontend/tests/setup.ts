@@ -37,6 +37,11 @@ vi.mock('next/font/google', () => {
     Figtree: face('Figtree'),
     Shadows_Into_Light: face('Shadows Into Light'),
     Red_Hat_Mono: face('Red Hat Mono'),
+    // Photos — the Darkroom (components/photos/darkroom/darkroomFonts.ts)
+    IBM_Plex_Sans_Condensed: face('IBM Plex Sans Condensed'),
+    Hanken_Grotesk: face('Hanken Grotesk'),
+    Chivo_Mono: face('Chivo Mono'),
+    Spectral: face('Spectral'),
     // Graph — the Star Chart (components/graph/sky/skyFonts.ts)
     IM_Fell_English: face('IM Fell English'),
     Sora: face('Sora'),

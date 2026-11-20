@@ -31,7 +31,7 @@ describe('input-lag genus (CB-0452)', () => {
   });
 
   it('photos album + caption forms own their text locally', () => {
-    const src = read('app/lenses/photos/page.tsx');
+    const src = read('components/photos/darkroom/Library.tsx');
     expect(src).toContain('function CreateAlbumForm');
     expect(src).toContain('function CaptionEditForm');
     expect(src).not.toContain('const [newAlbum, setNewAlbum]');

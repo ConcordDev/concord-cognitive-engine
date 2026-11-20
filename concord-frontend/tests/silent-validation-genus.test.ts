@@ -43,7 +43,7 @@ describe('CB-0463 silent-validation genus', () => {
   });
 
   it('FIX-photos-007: a cleared album name explains the disabled Create', () => {
-    const src = read('app/lenses/photos/page.tsx');
+    const src = read('components/photos/darkroom/Library.tsx');
     expect(src).toContain('Name the album to create it.');
   });
 });

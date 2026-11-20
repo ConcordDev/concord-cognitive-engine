@@ -26,7 +26,6 @@ vi.mock('@/hooks/useSmartPolling', () => ({ useSmartPolling: () => {} }));
 
 import { FractalRenderer } from '@/components/fractal/FractalRenderer';
 import { FieldLog } from '@/components/geology/FieldLog';
-import { LightroomCollectionsPanel } from '@/components/photography/LightroomCollectionsPanel';
 import { ComposePanel } from '@/components/poetry/ComposePanel';
 import { FoldersSidebar } from '@/components/saved/FoldersSidebar';
 import { ProjectStudio } from '@/components/artistry/ProjectStudio';
@@ -68,12 +67,6 @@ describe('CB-0496 Part A — governing length limits ride the fields', () => {
   it('geology observation name carries the geoClean cap (120)', async () => {
     wrap(<FieldLog />);
     const input = await screen.findByPlaceholderText('Sample / outcrop name');
-    expect((input as HTMLInputElement).maxLength).toBe(120);
-  });
-
-  it('photography shoot name carries the phclean cap (120)', async () => {
-    wrap(<LightroomCollectionsPanel />);
-    const input = await screen.findByPlaceholderText('Shoot name');
     expect((input as HTMLInputElement).maxLength).toBe(120);
   });
 
