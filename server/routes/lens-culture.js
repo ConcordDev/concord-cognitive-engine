@@ -146,8 +146,14 @@ export default function createLensCultureRouter({ db, requireAuth }) {
 
   // ── One-Tap Purchase ──────────────────────────────────────────────
   // AUTH: prod-write-mw — productionWriteAuthMiddleware (server.js:5808) enforces req.user for all writes in production
+  // SECURITY (2026-11-19): the buyer is the signed-in account, never body.userId —
+  // oneTapPurchase debits the ledger balance of the userId it is given. A body
+  // userId is only honoured with no session at all (AUTH_MODE=public, single-user
+  // local mode); lib/actor-identity.js refuses a mismatched or signed-out claim first.
   router.post("/purchase", (req, res) => {
-    const result = oneTapPurchase(db, req.body || {});
+    const body = req.body || {};
+    const sessionUser = req.user?.id ? String(req.user.id) : null;
+    const result = oneTapPurchase(db, { ...body, userId: sessionUser || body.userId });
     res.status(result.ok ? 200 : 400).json(result);
   });
 

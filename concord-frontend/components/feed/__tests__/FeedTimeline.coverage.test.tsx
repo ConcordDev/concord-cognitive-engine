@@ -12,6 +12,7 @@ const lensRunMock = vi.fn();
 const apiGet = vi.fn();
 const apiPost = vi.fn();
 const refetch = vi.fn();
+const collabJoin = vi.fn(async () => ({ data: { ok: true } }));
 const fetchNext = vi.fn();
 const POSTS = [
   { id: 'p1', type: 'text', author: { id: 'u2', name: 'Bo', handle: 'bo', gradient: 'from-a to-b', verified: true }, content: 'Hello #world from the feed', createdAt: new Date(Date.now() - 120000).toISOString(), likes: 4, comments: 2, reposts: 1, shares: 0, views: 40, liked: false, reposted: false, bookmarked: false, tags: ['world'], dtuId: 'dtu1', dtuSource: 'feed', linkedDTUs: [{ dtuId: 'd9', title: 'Linked', type: 'regular' }], taggedProducts: [{ listingId: 'l1', title: 'Guitar', price: 120, sellerId: 'u2' }] },
@@ -23,7 +24,7 @@ const POSTS = [
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...a: unknown[]) => lensRunMock(...a),
   api: { get: (...a: unknown[]) => apiGet(...a), post: (...a: unknown[]) => apiPost(...a), delete: vi.fn(async () => ({ data: {} })), put: vi.fn(async () => ({ data: {} })) },
-  apiHelpers: { lens: { runDomain: vi.fn(async () => ({ data: { ok: true, result: {} } })), list: vi.fn(async () => ({ data: { artifacts: [], total: 0 } })) } },
+  apiHelpers: { artistry: { collab: { sessions: { join: (...a: unknown[]) => collabJoin(...a) } } }, lens: { runDomain: vi.fn(async () => ({ data: { ok: true, result: {} } })), list: vi.fn(async () => ({ data: { artifacts: [], total: 0 } })) } },
 }));
 vi.mock('@/hooks/useLensCommand', () => ({ useLensCommand: () => {} }));
 vi.mock('@/components/feed/useFeedPosts', () => ({ useFeedPosts: () => ({ feedPosts: POSTS, isLoading: false, isError: false, error: null, refetch, fetchNextPage: fetchNext, hasNextPage: true, isFetchingNextPage: false }) }));
@@ -113,6 +114,19 @@ describe('feed timeline panel', () => {
     await press(/Attach link|Add poll|Tag Product|Link DTU|Attach image|Attach audio/i);
     expect(apiPost.mock.calls.length + fetchNext.mock.calls.length).toBeGreaterThan(0);
     expect(apiGet.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it('joins a collab as the signed-in account (no placeholder userId for the actor guard to refuse)', async () => {
+    collabJoin.mockClear();
+    const { FeedTimelinePanel } = await import('../FeedTimelinePanel');
+    render(<FeedTimelinePanel tab="for-you" />);
+    await settle();
+    expect(await press(/Join/)).toBe(true);
+    await settle();
+    expect(collabJoin).toHaveBeenCalled();
+    for (const [, data] of collabJoin.mock.calls as unknown as [string, Record<string, unknown> | undefined][]) {
+      expect(data?.userId).toBeUndefined();
+    }
   });
 
   it('stays standing when the feed fails to load', async () => {

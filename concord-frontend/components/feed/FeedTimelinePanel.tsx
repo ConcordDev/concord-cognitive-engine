@@ -267,7 +267,9 @@ function CollabCard({ collab }: { collab: CollabAttachment }) {
   const spotsLeft = collab.maxParticipants - collab.participants;
   const joinMutation = useMutation({
     mutationFn: () =>
-      apiHelpers.artistry.collab.sessions.join(collab.sessionName, { userId: 'current-user' }),
+      // The server joins the signed-in account (req.user.id); sending a placeholder
+      // userId made the actor-identity guard refuse it (403 not_your_account).
+      apiHelpers.artistry.collab.sessions.join(collab.sessionName, {}),
     onSuccess: () =>
       useUIStore
         .getState()

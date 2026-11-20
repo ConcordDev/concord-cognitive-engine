@@ -443,7 +443,7 @@ export function ArtMarketDesk({ mode }: { mode: 'gallery' | 'canvas' | 'marketpl
   }, [listingTitle, listingType, listingStyle, listingPrice, listingTags, createListingMutation]);
 
   const purchaseMutation = useMutation({
-    mutationFn: (listingId: string) => apiHelpers.artistry.marketplace.purchase({ buyerId: 'current-user', listingId, listingType: 'art' }),
+    mutationFn: (listingId: string) => apiHelpers.artistry.marketplace.purchase({ listingId, listingType: 'art' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['art-marketplace'] });
       useUIStore.getState().addToast({ type: 'success', message: 'Purchase complete!' });
