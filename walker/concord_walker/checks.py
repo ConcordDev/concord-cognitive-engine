@@ -2,6 +2,7 @@
 interaction is native mouse/keyboard on controls that safety.py allows."""
 import json, os, re, time, csv, io
 from . import safety, colors, readback as _readback  # ULW C26: DevTools read-back evidence rows
+from . import defectclasses  # ULW C35: the frozen defect-class vocabulary of record
 from .cdp import Cdp, wait_until
 from .auth import new_context, assert_account, AccountMismatch, whoami, expected_username, write_account_key
 from .util import control_label, scrub, human_et
@@ -314,15 +315,25 @@ class LensWalk:
             self.log("  screenshot failed", name, type(e).__name__)
             return None
 
-    def finding(self, check, severity, title, steps, expected, actual, evidence, element=None, root_cause=None, area=None):
+    def finding(self, check, severity, title, steps, expected, actual, evidence, element=None, root_cause=None, area=None, defect_class=None):
         ev = [e for e in (evidence or []) if e]
         if not ev:
             # every finding must carry screenshot evidence; refuse silently-evidenced findings
             self.rec.judgment(self.slug, "finding_without_evidence", "Walker saw '%s' but could not capture a screenshot; verify by hand." % title)
             return
+        if defect_class is not None:
+            # ULW C35: a finding may carry only a FROZEN defect class
+            # (defectclasses.py, the vocabulary of record). An unknown,
+            # excluded, or Table-3-candidate tag is refused loudly, in
+            # the same shape as the evidence refusal above — it is never
+            # recorded under a class the frozen vocabulary does not hold.
+            ok, why = defectclasses.validate_defect_class(defect_class)
+            if not ok:
+                self.rec.judgment(self.slug, "finding_with_invalid_defect_class", "Walker saw '%s' but its defect class '%s' is %s under the frozen vocabulary (C35); the finding was refused — tag it with a frozen class, or file the instance for the amendment path." % (title, defect_class, why))
+                return
         f = {"check": check, "lens": self.slug, "severity": severity, "title": title,
              "repro_steps": steps, "expected": expected, "actual": actual, "evidence": ev,
-             "element": element, "root_cause": root_cause,
+             "element": element, "root_cause": root_cause, "defect_class": defect_class,
              "suspected_area": area or "%s/%s" % (self.slug, check), "account": self.cfg["accounts"][self.acct]["username"] if self.acct else None}
         self.findings.append(f)
         self.rec.finding(dict(f, run=self.rec.rid))
