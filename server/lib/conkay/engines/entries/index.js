@@ -18,9 +18,13 @@
  * modflow + swmm + openquake + specfem + climlab + aermod +
  * epanet + proj (SXE-35); batch 3: openems + nec2c (SXE-17),
  * pyroomacoustics + bempp-cl (SXE-34), pandapower + pypsa +
- * opendss (SXE-19), lammps + gromacs + openmm (SXE-27).
- * Later engine programmes append their imports here;
- * engines/index.js imports this module exactly once.
+ * opendss (SXE-19), lammps + gromacs + openmm (SXE-27);
+ * batch 4: rayoptics + tmm + hcipy + poppy + radiance
+ * (SXE-33), rebound + astropy + skyfield + sgp4 + spiceypy +
+ * gmat + orekit (SXE-36), pvlib + openfast + energyplus +
+ * pysam (SXE-37). Later engine programmes append their
+ * imports here; engines/index.js imports this module
+ * exactly once.
  */
 import "./mpi.js";
 import "./fenicsx.js";
@@ -85,3 +89,19 @@ import "./opendss.js";
 import "./lammps.js";
 import "./gromacs.js";
 import "./openmm.js";
+import "./rayoptics.js";
+import "./tmm.js";
+import "./hcipy.js";
+import "./poppy.js";
+import "./radiance.js";
+import "./rebound.js";
+import "./astropy.js";
+import "./skyfield.js";
+import "./sgp4.js";
+import "./spiceypy.js";
+import "./gmat.js";
+import "./orekit.js";
+import "./pvlib.js";
+import "./openfast.js";
+import "./energyplus.js";
+import "./pysam.js";
