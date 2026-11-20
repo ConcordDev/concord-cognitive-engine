@@ -313,6 +313,19 @@ SCAN_PATTERNS = [
     ("upload_via_json_endpoint", "upload",
      re.compile(r"['\"`]/api/media/upload['\"`](?!-raw)"),
      "both"),
+    # GB-1576 W5c: durability risks — state held in a globalThis Map/Set is
+    # lost on restart and invisible to other processes; a debounced save is
+    # lost if the process dies inside the debounce window. Line-level
+    # census (multi-line debounce bodies are a known miss, named in the
+    # W5c premise); the runtime half of W5c is the durability phase.
+    ("globalthis_state", "durability",
+     re.compile(r"\bglobalThis\s*\.\s*[A-Za-z_$][\w$]*\s*=\s*new\s+(?:Map|Set)\b"
+                r"|\bglobalThis\s*\["),
+     "domain"),
+    ("debounced_save", "durability",
+     re.compile(r"(?i)\bdebounce\w*\s*\([^)]*(save|persist|flush|sync|write)"
+                r"|(save|persist|flush)\w*\s*=\s*debounce"),
+     "domain"),
 ]
 
 
@@ -524,6 +537,26 @@ def _score(scan, components, backend, causes, replay, gates):
 
 
 # ------------------------------------------------------------------ assembly
+def _durability_section(rec):
+    """GB-1576 W5c evidence, surfaced from the walk record's durability
+    block (written by the durability phase). NOT_RUN when the phase did
+    not run on this record — named, never silent."""
+    blk = rec.get("durability")
+    if not isinstance(blk, dict):
+        return OrderedDict([("status", "NOT_RUN"), ("verdict", None),
+                            ("probes", 0), ("failed", 0), ("unverified", 0),
+                            ("rows", [])])
+    return OrderedDict([
+        ("status", blk.get("status")),
+        ("verdict", blk.get("verdict")),
+        ("probes", blk.get("probes", 0)),
+        ("failed", blk.get("failed", 0)),
+        ("unverified", blk.get("unverified", 0)),
+        ("reason", blk.get("reason")),
+        ("rows", blk.get("rows", [])),
+    ])
+
+
 def build_dossier(run, slug, tree=None, registry=None, misses=None):
     rec = run.records.get(slug)
     if rec is None:
@@ -547,6 +580,7 @@ def build_dossier(run, slug, tree=None, registry=None, misses=None):
                             ("note", "no repo supplied; code scan not run")])
     causes = _findings_by_cause(rec, slug)
     replay = _replay(run, rec, slug)
+    durability = _durability_section(rec)
     gates = _gates(rec, wiring, scan, run.manifest_by_slug.get(slug))
     score = _score(scan, components, backend, causes, replay, gates)
     return OrderedDict([
@@ -565,6 +599,7 @@ def build_dossier(run, slug, tree=None, registry=None, misses=None):
         ("code_scan", scan),
         ("findings_by_root_cause", causes),
         ("replay", replay),
+        ("durability", durability),
     ])
 
 
@@ -633,6 +668,16 @@ def render_md(d):
             lines.append("- %s: %d" % (v, n))
     else:
         lines.append("None recorded.")
+    dur = d["durability"]
+    lines += ["", "## Durability (GB-1576 W5c)", "",
+              "Status: %s · verdict: %s · probes: %d · failed: %d · unverified: %d" % (
+                  dur["status"], dur.get("verdict"), dur["probes"],
+                  dur["failed"], dur["unverified"])]
+    if dur.get("reason"):
+        lines.append("- reason: %s" % dur["reason"])
+    for r in dur["rows"]:
+        lines.append("- %s -> %s (%s)" % (r.get("write"), r.get("verdict"),
+                                          r.get("reason")))
     lines.append("")
     return "\n".join(lines)
 
@@ -685,6 +730,11 @@ def _index_row(d):
         ("scan_flags", len(d["code_scan"]["flags"])),
         ("orphaned_components", len(d["components"]["orphaned"])),
         ("hidden_actions", len(d["backend_reach"]["hidden_actions"])),
+        ("durability", d["durability"].get("verdict")
+         or d["durability"].get("status")),
+        ("durability_risks", sum(1 for f in d["code_scan"]["flags"]
+                                 if f["class"] == "durability")),
+        ("durability_failed", d["durability"]["failed"]),
     ])
 
 
@@ -705,15 +755,16 @@ def _write_index(out_dir, run_id, rows):
         json.dump(idx, f, indent=1, sort_keys=True)
         f.write("\n")
     md = ["# Dossier index — run %s" % run_id, "", SCORE_FORMULA, "",
-          "| lens | score | polished | stacking | wiring | security | causes | flags | orphans | hidden |",
-          "|---|---|---|---|---|---|---|---|---|---|"]
+          "| lens | score | polished | stacking | wiring | security | causes | flags | orphans | hidden | durability | durab risks |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         g = r["gates"]
-        md.append("| %s | %d | %s | %s | %s | %s | %d | %d | %d | %d |" % (
+        md.append("| %s | %d | %s | %s | %s | %s | %d | %d | %d | %d | %s | %d |" % (
             r["lens"], r["score"], g.get("polished"), g.get("stacking"),
             g.get("wiring"), g.get("security_detector"),
             r["open_root_causes"], r["scan_flags"], r["orphaned_components"],
-            r["hidden_actions"]))
+            r["hidden_actions"], r.get("durability"),
+            r.get("durability_risks", 0)))
     with open(os.path.join(out_dir, "INDEX.md"), "w") as f:
         f.write("\n".join(md) + "\n")
     return idx
