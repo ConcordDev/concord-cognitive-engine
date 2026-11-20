@@ -15,9 +15,10 @@ const read = (rel: string) => fs.readFileSync(path.join(FE, rel), 'utf8');
 
 describe('CB-0463 silent-validation genus', () => {
   it('FIX-board-011: new-board name caps at the handler limit (120) with a counter', () => {
-    const src = read('components/board/BoardWorkspace.tsx');
+    // The new-board field moved into the Cork Wall's board rail.
+    const src = read('components/board/wall/CorkWall.tsx');
     expect(src).toContain('maxLength={120}');
-    expect(src).toContain('{newBoardName.length}/120');
+    expect(src).toContain('{newBoard.length}/120');
   });
 
   it('FIX-events-011: event create name caps at the platform name limit (200)', () => {
