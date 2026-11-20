@@ -153,11 +153,11 @@ class LensWalk:
         # early on their own slice and every phase's spend is stamped on its
         # check row, so a slow early phase's cost is accounted to THAT check
         # instead of silently starving the later ones.
-        self.settle_budget_s = float(self.th.get("settle_budget_s", 60))
+        self.settle_budget_s = float(self.th.get("settle_budget_s", 30))
         self.settle_spent_s = 0.0
         self.settle_capped = False
         self.check_budgets_s = dict(self.th.get("check_budgets_s", {}) or {})
-        self.check_budget_default_s = float(self.th.get("check_budget_s", 90))
+        self.check_budget_default_s = float(self.th.get("check_budget_s", 45))
         self.check_spent_s = {}
         self._phase_t0 = None
         self._phase_name = None
