@@ -662,8 +662,163 @@ class LensWalk:
                 self._close(ctx)
         else:
             probe_skip = pp["reason"] if not pp["run"] else "lens time budget exceeded"
+        # ULW v3 trust probes (GB-1575 scope addition): OWNER-MUTATION +
+        # ACTOR-SPOOF ride the isolation phase as standard legs.
+        if not self.over_budget():
+            self.trust_phase(owner, observer)
         self.result["isolation"] = _iso.packet_block(self.result.get("two_account"),
                                                       probe_row, probe_skip)
+
+    def trust_phase(self, owner, observer):
+        """ULW v3 (GB-1575 scope addition): the trust probes as standard legs
+        of the isolation phase — OWNER-MUTATION (the observer re-issues the
+        owner's recorded object-writes with its own identity correct, plus
+        DELETE attempts on the objects this walk created) and ACTOR-SPOOF
+        (the observer re-issues recorded writes with an actor-shaped field
+        set to the owner's id, plus the route-variant leg). Planning and
+        verdicts live in concord_walker.trust_probes (pure); this method
+        only drives contexts. A landed attempt files an ownership finding
+        through the standing machinery; a landed update/spoof is restored
+        best-effort by re-issuing the owner's original recorded call as the
+        owner. Bodies and ids live only in memory; stored rows keep field
+        names and verdicts only."""
+        from . import trust_probes as _tp
+        from urllib.parse import urlsplit, urlunsplit
+        import json as _json
+        cap = self.th.get("trust_probe_max_calls", 12)
+        calls = list(self.net.replay or [])
+        own_writes = [r for r in calls if (r.get("method") or "") in _tp.WRITE_METHODS
+                      and (r.get("acct") or self.acct) in (owner, self.acct)]
+        actor_hits = sum(len(_tp.actor_fields_in(r.get("post"))) for r in own_writes)
+        m_attempts = _tp.mutation_plan(calls, owner_acct=owner, walk_acct=self.acct, cap=cap)
+        s_attempts = _tp.spoof_plan(calls, owner_acct=owner, walk_acct=self.acct, cap=cap)
+        created = sum(1 for a in m_attempts if a["kind"] == "delete")
+        m_plan = _tp.leg_plan("mutation", write_calls=len(own_writes), created_objects=created)
+        s_plan = _tp.leg_plan("spoof", write_calls=len(own_writes), actor_fields=actor_hits)
+        if not m_attempts:
+            m_plan = {"run": False, "reason": m_plan["reason"] if not m_plan["run"] else "no mutation attempts derivable from the recorded calls"}
+        if not s_attempts:
+            s_plan = {"run": False, "reason": s_plan["reason"] if not s_plan["run"] else "no spoof attempts derivable from the recorded calls"}
+        if not (m_plan["run"] or s_plan["run"]):
+            self.result["trust"] = _tp.trust_block(None, None, m_plan["reason"], s_plan["reason"])
+            return
+        vp = self.cfg["viewport_desktop"]
+        base_host = urlsplit(self.cfg["base_url"]).netloc
+        octx, _opage, _ocdp = self.open(account=owner)
+        fctx = new_context(self.b, self.cfg, observer, vp)
+        try:
+            assert_account(fctx, self.cfg, observer, "trust probes", self.log)
+
+            def owner_read(url):
+                try:
+                    resp = octx.request.get(url, timeout=15000)
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = None
+                    return resp.status, (_json.dumps(body, sort_keys=True, default=str) if body is not None else None)
+                except Exception:
+                    return None, None
+
+            def fire(attempt, post):
+                kw = {"timeout": 15000}
+                if post is not None:
+                    kw["data"] = post
+                    kw["headers"] = {"Content-Type": "application/json"}
+                try:
+                    resp = fctx.request.fetch(attempt["url"], method=attempt["method"], **kw)
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = None
+                    return resp.status, body
+                except Exception:
+                    return None, None
+
+            def restore(attempt):
+                """Best-effort: re-issue the owner's original recorded call as
+                the owner, undoing a landed update/spoof. Deletes cannot be
+                restored (the object was this walk's own creation)."""
+                if attempt["kind"] == "delete" or attempt.get("orig_post") is None:
+                    return "not_restorable"
+                kw = {"timeout": 15000, "data": attempt["orig_post"],
+                      "headers": {"Content-Type": "application/json"}}
+                try:
+                    resp = octx.request.fetch(attempt.get("orig_url") or attempt["url"],
+                                              method=attempt["method"], **kw)
+                    return "restored" if 200 <= resp.status < 300 else "restore_failed_%d" % resp.status
+                except Exception:
+                    return "restore_error"
+
+            def run_attempts(attempts, leg):
+                rows = []
+                for a in attempts:
+                    if urlsplit(a["url"]).netloc != base_host:
+                        continue
+                    post = _tp.strip_actor_fields(a.get("post")) if leg == "mutation" else a.get("post")
+                    before = owner_read(a["url"])
+                    st, body = fire(a, post)
+                    after = owner_read(a["url"])
+                    if a["kind"] == "delete":
+                        changed = (after[0] in (404, 410)) or (before[1] is not None and after[1] != before[1])
+                    elif before[1] is not None and after[1] is not None:
+                        changed = before[1] != after[1]
+                    else:
+                        changed = None
+                    verdict = _tp.attempt_verdict(st, body, changed)
+                    row = {"kind": a["kind"], "method": a["method"], "path": a["path"],
+                           "status": st, "verdict": verdict}
+                    if a.get("field"):
+                        row["field"] = a["field"]
+                    if a.get("variant"):
+                        row["variant"] = True
+                    if verdict == "LANDED":
+                        row["restore"] = restore(a)
+                        cid = self.net._cid_at(a["t"]) if a.get("t") is not None else None
+                        sid = (self.net.meta.get(cid) or {}).get("sid") if cid else None
+                        if cid:
+                            self.net.annotate(cid, ownership=["%s %s %s %s -> %s (trust probe: %s)" % (
+                                observer, leg, a["method"], a["path"], st, a["kind"])])
+                        self._premap_finding("ownership", cid, sid,
+                                             "Second account can %s the first account's object: %s %s -> %s (trust probe %s)" % (
+                                                 "mutate" if leg == "mutation" else "spoof-write to",
+                                                 a["method"], a["path"], st, a["kind"]),
+                                             [self.result.get("initial_evidence")], severity="high")
+                    rows.append(row)
+                return rows
+
+            m_rows = run_attempts(m_attempts, "mutation") if m_plan["run"] else None
+            s_rows = None
+            if s_plan["run"]:
+                s_rows = run_attempts(s_attempts, "spoof")
+                # ACTOR-SPOOF-VARIANTS: each spoof repeats against the route's
+                # case-variant and trailing-slash forms (X-02's bypass shape).
+                variant_attempts = []
+                for a in s_attempts:
+                    for vpath in _tp.variant_paths(a["path"]):
+                        parts = urlsplit(a["url"])
+                        va = dict(a)
+                        va["url"] = urlunsplit((parts.scheme, parts.netloc, vpath, parts.query, ""))
+                        va["path"] = vpath
+                        va["variant"] = True
+                        variant_attempts.append(va)
+                if variant_attempts and not self.over_budget():
+                    s_rows += run_attempts(variant_attempts[:cap], "spoof")
+            self.result["trust"] = _tp.trust_block(
+                m_rows, s_rows,
+                None if m_plan["run"] else m_plan["reason"],
+                None if s_plan["run"] else s_plan["reason"])
+            tb = self.result["trust"]
+            self.log("  trust probes %s: %d attempt(s), %d landed (mutation %s / spoof %s)" % (
+                self.slug, tb["checks"], tb["findings"],
+                (tb["legs"].get("mutation") or {}).get("attempts", tb["legs"].get("mutation", {}).get("skip", "-")),
+                (tb["legs"].get("spoof") or {}).get("attempts", tb["legs"].get("spoof", {}).get("skip", "-"))))
+        finally:
+            try:
+                fctx.close()
+            except Exception:
+                pass
+            self._close(octx)
 
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
