@@ -85,7 +85,8 @@ describe('Affect S-AFF-6 — the session input survives typing (F9)', () => {
     fireEvent.change(input, { target: { value: 'my-session' } });
     // Mid-typing: the input holds the full draft, the session is untouched.
     expect(input.value).toBe('my-session');
-    expect(getByTestId('session-probe').textContent).toBe('default');
+    // FIX-affect-001: the untouched session is empty = the caller's own session, never a shared bucket.
+    expect(getByTestId('session-probe').textContent).toBe('');
     fireEvent.blur(input);
     expect(getByTestId('session-probe').textContent).toBe('my-session');
   });

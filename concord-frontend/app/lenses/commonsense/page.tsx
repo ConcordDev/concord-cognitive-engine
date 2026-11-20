@@ -433,7 +433,7 @@ export default function CommonsenseLensPage() {
           {empty && (
             <div data-testid="cs-empty" className="flex min-h-[16rem] flex-col items-center justify-center gap-2 text-center">
               <p className="text-[15px] text-zinc-300">The thread is empty.</p>
-              <p className="max-w-md text-[14px] text-zinc-500">
+              <p className="max-w-md text-[14px] text-zinc-400">
                 Ask a question below. Then state the obvious answer, in your own words — and note the exception, where the obvious breaks.
                 The thread answers from what you stated: your words, dated. Nothing else answers for you.
               </p>
@@ -584,7 +584,7 @@ export default function CommonsenseLensPage() {
             {answer.answers.map((item) => (
               <div key={item.checkId} className="mt-3">
                 <p className="text-[15px] text-zinc-300">{item.finding}</p>
-                <p className="mt-1 text-[12px] text-zinc-500">
+                <p className="mt-1 text-[12px] text-zinc-400">
                   {item.disputed
                     ? <>You disputed this finding{answerDate(item.statedAt) ? ` — stated by you, ${answerDate(item.statedAt)}` : ''}. It stands contested, not settled.</>
                     : <>You stated the obvious{answerDate(item.statedAt) ? ` on ${answerDate(item.statedAt)}` : ''}.</>}
@@ -596,7 +596,7 @@ export default function CommonsenseLensPage() {
             ))}
           </section>
         ) : null}
-        {answerMiss ? <p data-testid="cs-answer-miss" className="mt-4 text-[13px] text-zinc-500">{answerMiss}</p> : null}
+        {answerMiss ? <p data-testid="cs-answer-miss" className="mt-4 text-[13px] text-zinc-400">{answerMiss}</p> : null}
         {actionError ? <p role="alert" className="mt-4 text-[14px] text-zinc-300">{actionError}</p> : null}
         {savedNote ? <p data-testid="cs-saved" className="mt-4 text-[13px] text-zinc-400">{savedNote}</p> : null}
 

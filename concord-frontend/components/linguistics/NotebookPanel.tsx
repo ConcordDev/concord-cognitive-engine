@@ -530,6 +530,8 @@ export function NotebookPanel({
               )}
               <div className="flex gap-2">
                 <button onClick={handleCreate} disabled={!formTitle.trim()} className="px-3 py-1.5 bg-pink-400/20 text-pink-400 rounded-lg text-sm font-medium hover:bg-pink-400/30 disabled:opacity-50">{editingId ? 'Save changes' : 'Create'}</button>
+                {/* FIX-linguistics-005: the disabled button never said why — a note names the missing field while the title is blank (the same form serves Analyses, Lexicon, Grammars, Corpora and Translations). */}
+                {!formTitle.trim() && <span role="note" className="text-xs text-gray-400 self-center">Title is required.</span>}
                 <button onClick={() => { resetForm(); setShowCreate(false); }} className="text-sm text-gray-400 hover:text-white">Cancel</button>
               </div>
             </div>

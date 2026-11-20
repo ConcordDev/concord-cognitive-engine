@@ -63,7 +63,8 @@ describe('Live stream event delete (F14)', () => {
   it('the row delete calls event-delete with the row id and removes the row', async () => {
     mockRun({ ok: true, result: { deleted: 'ev_1' } });
     await openStream();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete event' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event PR4-qa-event' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete event PR4-qa-event' }));
     await waitFor(() =>
       expect(lensRun).toHaveBeenCalledWith('analytics', 'event-delete', { id: 'ev_1' }));
     await waitFor(() => expect(screen.queryByText('PR4-qa-event')).toBeNull());
@@ -72,7 +73,8 @@ describe('Live stream event delete (F14)', () => {
   it('a macro refusal surfaces verbatim and the row is restored from the server', async () => {
     mockRun({ ok: false, error: 'event not found' });
     await openStream();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete event' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete event PR4-qa-event' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete event PR4-qa-event' }));
     await waitFor(() => expect(screen.getByText('event not found')).toBeTruthy());
     // The re-poll returns the event again — the row is back.
     await waitFor(() => expect(screen.getByText('PR4-qa-event')).toBeTruthy());

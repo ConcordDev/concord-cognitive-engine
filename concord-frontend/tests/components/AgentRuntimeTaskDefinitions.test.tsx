@@ -167,7 +167,9 @@ describe('AgentRuntime — Task Definitions tab', () => {
       deleteTaskDefinition: (input) => { expect(input).toEqual({ id: 'td1' }); return ok({ deleted: true }); },
     }, []);
 
-    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+    // Two-step delete: arm, then confirm.
+    fireEvent.click(screen.getByRole('button', { name: 'Delete task Doomed task' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm delete task Doomed task' }));
 
     await waitFor(() => expect(lensRun).toHaveBeenCalledWith('agents', 'deleteTaskDefinition', { id: 'td1' }));
     expect(await screen.findByText(/No task definitions yet/i)).toBeInTheDocument();

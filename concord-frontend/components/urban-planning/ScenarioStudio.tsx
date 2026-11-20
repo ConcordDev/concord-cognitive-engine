@@ -413,14 +413,14 @@ export function ScenarioStudio({ onDataChanged }: { onDataChanged?: () => void }
                       setEditingScenario(editingScenario === s.id ? null : s.id);
                       setScenarioForm({ name: s.name, description: s.description || '', lotSizeSqFt: String(s.lotSizeSqFt), efficiency: String(s.efficiency) });
                     }}
-                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                     aria-label={`Edit scenario ${s.name}`}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => remove(s.id)}
-                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-600 hover:bg-zinc-800 hover:text-red-400"
+                    className="inline-flex min-h-[24px] min-w-[24px] items-center justify-center rounded p-1 text-zinc-400 hover:bg-zinc-800 hover:text-red-400"
                     aria-label="Delete scenario"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

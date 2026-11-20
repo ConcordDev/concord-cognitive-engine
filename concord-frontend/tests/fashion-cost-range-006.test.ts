@@ -15,17 +15,17 @@ const read = (p) => readFileSync(join(root, p), "utf8");
 describe("fashion cost ceiling — FE (FIX-fashion-006)", () => {
   it("the edit helper carries the ceiling and refuses above it in words", () => {
     const src = read("components/fashion/closet-item-edit.ts");
-    assert.ok(src.includes("CLOSET_COST_MAX = 10_000_000"), "ceiling constant present");
+    assert.ok(src.includes("CLOSET_COST_MAX = 1_000_000"), "ceiling constant present");
     assert.ok(src.includes("cost > CLOSET_COST_MAX"), "ceiling enforced in the helper");
-    assert.ok(src.includes("Cost must be $10,000,000 or less."), "refusal names the bound");
+    assert.ok(src.includes("Cost must be $1,000,000 or less."), "refusal names the bound");
     assert.ok(src.includes("Cost cannot be negative."), "the negative refusal stands");
   });
 
   it("the Add form guards before the call and shows the over-max note; the negative note is byte-identical", () => {
     const src = read("components/fashion/FashionClosetPanel.tsx");
     assert.ok(src.includes("c > CLOSET_COST_MAX"), "add() refuses above the ceiling");
-    assert.ok(src.includes("Cost must be between $0 and $10,000,000."), "add() refusal names the range");
-    assert.ok(src.includes("Cost must be $10,000,000 or less.</span>"), "over-max inline note present");
+    assert.ok(src.includes("Cost must be between $0 and $1,000,000."), "add() refusal names the range");
+    assert.ok(src.includes("Cost must be $1,000,000 or less.</span>"), "over-max inline note present");
     assert.ok(
       src.includes("Number(form.cost) < 0 && <span role=\"note\" className=\"col-span-full text-xs text-rose-300\">Cost can&apos;t be negative.</span>"),
       "haiku's negative note stands byte-identical (numeric-notes-h13 pin)",
@@ -34,7 +34,10 @@ describe("fashion cost ceiling — FE (FIX-fashion-006)", () => {
 
   it("the server names the same ceiling at all three entry paths", () => {
     const src = read("../server/domains/fashion.js");
-    assert.ok(src.includes("MAX_ITEM_COST = 10_000_000"), "server ceiling present");
+    // GB-1539: the server's local cap was retired for the platform money bound (≤ 1,000,000) — the
+    // client ceiling mirrors it, so nothing between the two is accepted client-side then refused server-side.
+    assert.ok(src.includes("checkMoney(\"cost\", v)"), "server consumes the platform money bound");
+    assert.ok(!src.includes("MAX_ITEM_COST = 10_000_000"), "the retired local cap stays retired");
     assert.ok(src.includes("fsCostError(params.cost)"), "item-add / item-update guard");
     assert.ok(src.includes("fsCostError(params.cost != null ? params.cost : entry.price)"), "convert guard on the effective cost");
   });

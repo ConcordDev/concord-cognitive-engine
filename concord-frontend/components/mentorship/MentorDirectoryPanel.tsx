@@ -300,6 +300,18 @@ export function MentorDirectoryPanel() {
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : 'Send request'}
           </button>
+          {/* FIX-mentorship-006: the disabled button never said which
+              fields were missing — name them beside it. */}
+          {!busy && (() => {
+            const missing = [
+              !reqForm.menteeName.trim() ? 'your name' : null,
+              !reqForm.topic.trim() ? 'a topic' : null,
+              !reqForm.message.trim() ? 'a message' : null,
+            ].filter(Boolean) as string[];
+            return missing.length ? (
+              <p role="note" className="text-xs text-zinc-400">Add {missing.join(', ')} to send the request.</p>
+            ) : null;
+          })()}
         </div>
 
         {/* Reviews */}

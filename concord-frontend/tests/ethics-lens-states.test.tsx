@@ -182,6 +182,11 @@ describe('ethics lens (DecisionToolkit / Multi-Framework) — four UX states', (
     await act(async () => {
       fireEvent.click(del);
     });
+    // Delete is two-step: nothing is deleted until the in-row Confirm.
+    expect(lensRunMock).not.toHaveBeenCalledWith('ethics', 'deleteAnalysis', expect.anything());
+    await act(async () => {
+      fireEvent.click(view!.getByRole('button', { name: 'Confirm' }));
+    });
     expect(lensRunMock).toHaveBeenCalledWith('ethics', 'deleteAnalysis', { analysisId: 'mfa-1' });
   });
 

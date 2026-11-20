@@ -160,14 +160,14 @@ export function ThemeClusters({
                 <span className="text-xs font-bold text-neon-purple" title="Aggregate impact">{t.totalImpact}</span>
                 <button
                   onClick={() => { setEditingTheme(editingTheme === t.id ? null : t.id); setThemeForm({ name: t.name, description: t.description || '', color: t.color }); }}
-                  className="text-gray-500 hover:text-gray-200"
+                  className="text-gray-400 hover:text-gray-200"
                   aria-label={`Edit theme ${t.name}`}
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => run('theme-delete', { id: t.id })}
-                  className="text-gray-600 hover:text-red-400"
+                  className="text-gray-400 hover:text-red-400"
                   aria-label="Delete theme"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

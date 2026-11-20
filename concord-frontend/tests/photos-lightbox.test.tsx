@@ -63,6 +63,8 @@ const PHOTO_DETAIL = {
   height: 1080,
   size_bytes: 204800,
   original_filename: 'IMG_0042.heic',
+  // FIX-photos-008: the real format is sniffed server-side from the bytes.
+  format: 'PNG',
 };
 
 function jsonResponse(body: unknown, ok = true, status = 200) {
@@ -121,6 +123,7 @@ describe('photos lens — lightbox (photos.get wiring)', () => {
     // F4 — dimensions, file type + size, and the original filename.
     expect(detail.textContent).toMatch(/1920.*1080/);
     expect(detail.textContent).toMatch(/PNG/);
+    expect(detail.textContent).not.toMatch(/Unknown format/);
     expect(detail.textContent).toMatch(/200\.0 KB/);
     expect(detail.textContent).toMatch(/IMG_0042\.heic/);
 

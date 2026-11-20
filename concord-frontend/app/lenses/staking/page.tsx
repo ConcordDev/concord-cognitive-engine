@@ -122,7 +122,10 @@ export default function StakingPage() {
       );
       bumpRefresh();
     } else {
-      setStatus(r.data?.message || 'That stake was not opened.');
+      // Name the refusal: the server returns { ok:false, error } (e.g. insufficient_balance)
+      // and only sometimes a message — never collapse a named reason into a generic line.
+      const code = typeof r.data?.error === 'string' && r.data.error ? r.data.error.replace(/_/g, ' ') : null;
+      setStatus(r.data?.message || (code ? `Failed: ${code}` : 'That stake was not opened.'));
     }
     window.setTimeout(() => setStatus(null), 5000);
   };

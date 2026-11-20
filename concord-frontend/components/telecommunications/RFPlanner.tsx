@@ -472,7 +472,7 @@ function SitesTab({ towers, run, busy, refreshTowers, flash, onChanged }: {
             type="search" value={siteQuery} onChange={(e) => setSiteQuery(e.target.value)}
             placeholder="Search sites by name, technology, terrain, or status…"
             aria-label="Search sites"
-            className="min-w-48 flex-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-500"
+            className="min-w-48 flex-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-[12px] text-zinc-100 placeholder:text-zinc-400"
           />
           <select
             value={siteSort} onChange={(e) => setSiteSort(e.target.value as typeof siteSort)}

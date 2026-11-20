@@ -455,7 +455,7 @@ function sseResponse(events: Array<Record<string, unknown>>) {
 }
 
 function seedConversations(
-  convs: Array<{ id: string; title: string; lastMessage?: string; messageCount?: number; updatedAt?: string }>,
+  convs: Array<{ id: string; title: string; lastMessage?: string; messageCount?: number; updatedAt?: string; lensContext?: string }>,
 ) {
   window.localStorage.setItem(
     CONV_KEY,
@@ -923,7 +923,9 @@ describe('ChatWorkspacePanel — sending', () => {
   });
 
   it('sends with the selected persona as system prompt and a quoted message prefix', async () => {
-    seedConversations([{ id: 'conv-a', title: 'Alpha' }]);
+    // ?context=law resumes the thread scoped to that lens (resolveAskThread) and opens a
+    // new one when none exists — so the seeded thread carries the law lens context.
+    seedConversations([{ id: 'conv-a', title: 'Alpha', lensContext: 'law' }]);
     window.localStorage.setItem(SESSION_KEY, 'conv-a');
     seedMessages('conv-a', [
       { id: 'm1', role: 'user', content: 'first q', timestamp: '2026-10-01T10:00:00Z' },

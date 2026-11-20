@@ -32,7 +32,7 @@ vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRun(...args),
 }));
 
-import CreativeWritingPage from '@/app/lenses/creative-writing/page';
+import CreativeWritingPage, { buildPageCsv } from '@/app/lenses/creative-writing/page';
 
 function listed(projects: { id: string; title: string; body?: string }[]) {
   return { data: { ok: true, result: { projects, count: projects.length }, error: null } };
@@ -272,8 +272,9 @@ describe('creative writing page', () => {
     fireEvent.click(await view.findByTestId('export-csv-man_1'));
     await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
     const text = await (capturedBlob as unknown as Blob).text();
-    expect(text.split('\n')[0]).toBe('id,title,genre,targetWords,wordCount,createdAt,updatedAt');
-    expect(text.split('\n')[1]).toBe('man_1,Door page,noir,5000,0,1,2');
+    // FIX-creative-writing-007: the CSV carries the manuscript body (empty here — this project has none).
+    expect(text.split('\n')[0]).toBe('id,title,genre,targetWords,wordCount,createdAt,updatedAt,body');
+    expect(text.split('\n')[1]).toBe('man_1,Door page,noir,5000,0,1,2,');
     clickSpy.mockRestore();
   });
 
@@ -289,5 +290,25 @@ describe('creative writing page', () => {
     fireEvent.click(await view.findByTestId('export-json-man_1'));
     expect(await view.findByTestId('creative-writing-export-error')).toHaveTextContent(/project not found/);
     expect(createObjectURL).not.toHaveBeenCalled();
+  });
+});
+
+describe('creative writing CSV export carries the writing (FIX-creative-writing-007)', () => {
+  it('a page with a multiline body exports it as one quoted cell, quotes doubled', () => {
+    const csv = buildPageCsv({
+      project: { id: 'p1', title: 'Door', genre: 'noir', targetWords: 10, createdAt: 1, updatedAt: 2, body: 'He said "no".\nShe left.' },
+      scenes: [], wordCount: 5,
+    } as never);
+    expect(csv.split('\n')[0]).toMatch(/,body$/);
+    expect(csv).toContain('"He said ""no"".\nShe left."');
+  });
+
+  it('scene exports carry each scene body', () => {
+    const csv = buildPageCsv({
+      project: { id: 'p1' },
+      scenes: [{ id: 's1', title: 'Open', chapterId: 'c1', order: 1, wordCount: 3, status: 'draft', body: 'Rain, again.' }],
+    } as never);
+    expect(csv.split('\n')[0]).toBe('id,title,chapterId,order,wordCount,status,body');
+    expect(csv.split('\n')[1]).toBe('s1,Open,c1,1,3,draft,"Rain, again."');
   });
 });

@@ -347,7 +347,7 @@ describe('LiveIndicator', () => {
     expect(view.container.textContent).toMatch(/Disconnected/);
     view.rerender(<QueryClientProvider client={new QueryClient()}><LiveIndicator isLive lastUpdated={new Date().toISOString()} /></QueryClientProvider>);
     await act(async () => { await vi.advanceTimersByTimeAsync(10); });
-    expect(view.container.textContent).toMatch(/LIVE/);
+    expect(view.container.textContent).toMatch(/Connected/);
   });
   it('renders compact forms for each claim', async () => {
     const live = render(<LiveIndicator isLive lastUpdated="2026-03-02T10:00:00Z" compact />);

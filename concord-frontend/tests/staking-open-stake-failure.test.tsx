@@ -56,6 +56,8 @@ describe('staking open_stake failure', () => {
       data: { ok: false, result: { balance: 0, required: 100 }, error: 'insufficient_balance' },
     });
     render(<StakingPage />);
+    // The principal starts blank (nothing is assumed): enter it, then lock.
+    fireEvent.change(screen.getByLabelText('Principal (CC)'), { target: { value: '100' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Lock 100 CC' })[0]);
     const banner = await waitFor(() => screen.getByRole('status'));
     expect(banner).toHaveTextContent('Failed: insufficient balance');

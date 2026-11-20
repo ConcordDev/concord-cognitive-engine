@@ -19,10 +19,13 @@ const read = (p: string) => fs.readFileSync(path.join(process.cwd(), p), 'utf8')
 
 describe('FIX-market-004 — listing title bound', () => {
   const s = read('components/marketplace/ListingsPanel.tsx');
-  it('create and edit titles are capped at 120 with counters', () => {
-    expect(s.match(/maxLength=\{120\}/g)?.length).toBe(2);
-    expect(s).toContain('{draft.title.length} / 120');
-    expect(s).toContain('{editDraft.title.length} / 120');
+  it('create and edit titles are capped at the shared title bound, and the counters name that same bound', () => {
+    // GB-1539: the cap is the shared BOUNDS.TITLE (the server's checkTitle ceiling) —
+    // the visible counter must read the same constant, never a stale literal.
+    expect(s.match(/maxLength=\{BOUNDS\.TITLE\}/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(s).toContain('{draft.title.length} / {BOUNDS.TITLE}');
+    expect(s).toContain('{editDraft.title.length} / {BOUNDS.TITLE}');
+    expect(s).not.toMatch(/title\.length\} \/ 120/);
   });
 });
 

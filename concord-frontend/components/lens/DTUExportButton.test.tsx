@@ -48,7 +48,10 @@ describe('DTUExportButton (Q16)', () => {
     const body = post.mock.calls[0][1] as { data: { source?: string; items?: { title: string }[] } };
     expect(body.data.source).toBe('lens-export');
     expect(body.data.items?.[0].title).toBe('Dentist appointment');
-    expect(addToast).not.toHaveBeenCalled();
+    // A successful export raises one confirmation toast naming the file (paper-012) — and no error.
+    expect(addToast).toHaveBeenCalledTimes(1);
+    expect(addToast.mock.calls[0][0].type).toBe('success');
+    expect(addToast.mock.calls[0][0].message).toMatch(/Exported calendar-\d+\.dtu/);
   });
 
   it('empty data and zero export rows: honest toast, no download', async () => {

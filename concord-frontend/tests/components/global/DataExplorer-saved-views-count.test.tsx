@@ -110,7 +110,11 @@ describe('DataExplorer — Saved Views stat card follows save/delete (FIX-global
     expect(await screen.findByText('Compare: GDP')).toBeTruthy();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Delete view' }));
+      // Two-step delete: arm, then confirm.
+      fireEvent.click(screen.getByRole('button', { name: /^Delete view / }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Confirm delete view / }));
     });
 
     await waitFor(() => expect(screen.getByText('Saved Views stat: 0')).toBeTruthy(), { timeout: 3000 });

@@ -766,7 +766,7 @@ function AlertsTab() {
                   : 'border-red-500/30 bg-red-500/5',
               )}
             >
-              <AlertTriangle className={cn('h-4 w-4 shrink-0', a.acknowledged ? 'text-zinc-600' : 'text-red-400')} />
+              <AlertTriangle className={cn('h-4 w-4 shrink-0', a.acknowledged ? 'text-zinc-400' : 'text-red-400')} />
               <div className="flex-1 min-w-0">
                 <div className="truncate font-medium text-zinc-200">{a.title}</div>
                 <div className="font-mono text-[10px] text-zinc-400">
@@ -936,9 +936,9 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
   if (scored.length < 2) {
     return (
       <div className="rounded-md border border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center">
-        <GitCompare className="mx-auto mb-2 h-5 w-5 text-zinc-500" />
+        <GitCompare className="mx-auto mb-2 h-5 w-5 text-zinc-400" />
         <p className="text-xs font-medium text-zinc-300">No scored DTUs to compare yet</p>
-        <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-zinc-500">
+        <p className="mx-auto mt-1 max-w-sm text-[11px] leading-relaxed text-zinc-400">
           A comparison needs two DTUs with numeric CRETI quality scores.
           {scored.length === 1
             ? ' Only one DTU in this corpus carries them so far.'
@@ -1026,7 +1026,7 @@ function CompareTab({ scored }: { scored: DtuCreti[] }) {
                 <div key={d.dimension} className="flex items-center gap-2 text-[11px]">
                   <span className="w-24 font-mono capitalize text-zinc-400">{d.dimension}</span>
                   <span className="w-12 text-right font-mono text-cyan-300">{(d.a * 100).toFixed(0)}%</span>
-                  <span className="text-zinc-600">vs</span>
+                  <span className="text-zinc-400">vs</span>
                   <span className="w-12 font-mono text-purple-300">{(d.b * 100).toFixed(0)}%</span>
                   <span
                     className={cn(

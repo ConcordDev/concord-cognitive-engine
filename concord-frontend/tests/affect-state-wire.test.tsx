@@ -71,8 +71,15 @@ vi.mock('@/components/affect/LiveAffectStream', () => ({
   LiveAffectStream: () => null,
 }));
 
+// Emit / Reset / Cooldown act on the session in view, and the lens opens on the shared
+// session in view — so they render only for the session's owner or an operator
+// (FIX-affect-002). The emit legs run as a plain member on their own (empty = own)
+// session (FIX-affect-001); the last leg pins the gate on a named foreign session.
+const authUser: { current: { id: string; role: string } | null } = { current: { id: 'm1', role: 'member' } };
+vi.mock('@/hooks/useAuth', () => ({ useAuth: () => ({ user: authUser.current }) }));
+
 import { DimensionsPanel } from '@/components/affect/DimensionsPanel';
-import { AffectSessionProvider } from '@/components/affect/AffectSessionContext';
+import { AffectSessionProvider, useAffectSession } from '@/components/affect/AffectSessionContext';
 import { moodToAffectEvent, summarizeDelta } from '@/components/affect/affect-model';
 
 function renderPanel() {
@@ -84,6 +91,7 @@ function renderPanel() {
 }
 
 beforeEach(() => {
+  authUser.current = { id: 'm1', role: 'member' };
   emit.mockReset();
   q['affect-events'] = { data: { events: [] }, isLoading: false, isError: false, error: null };
 });
@@ -110,7 +118,7 @@ describe('Affect S-AFF-1 — the state is wired to its inputs', () => {
     const { getByRole, findByText } = renderPanel();
     fireEvent.click(getByRole('button', { name: /Emit Event/ }));
     await waitFor(() => expect(emit).toHaveBeenCalledTimes(1));
-    expect(emit).toHaveBeenCalledWith('default', { type: 'USER_MESSAGE', intensity: 0.5, polarity: 0 });
+    expect(emit).toHaveBeenCalledWith('', { type: 'USER_MESSAGE', intensity: 0.5, polarity: 0 });
     expect(await findByText(/Event recorded — Valence \+4\.0 · Fatigue -1\.0/)).toBeTruthy();
   });
 
@@ -141,5 +149,41 @@ describe('mood → FEEDBACK mapping', () => {
     expect(summarizeDelta({ v: 0.04, f: -0.01, a: 0 })).toBe('Valence +4.0 · Fatigue -1.0');
     expect(summarizeDelta({})).toBe('');
     expect(summarizeDelta(undefined)).toBe('');
+  });
+
+  it('a member viewing someone else\'s named session is not offered Emit at all, and nothing is emitted', () => {
+    authUser.current = { id: 'm1', role: 'member' };
+    function ViewForeign() {
+      const { setSessionId } = useAffectSession();
+      React.useEffect(() => { setSessionId('user_someone-else'); }, [setSessionId]);
+      return null;
+    }
+    const { queryByRole, getByText } = render(
+      <AffectSessionProvider>
+        <ViewForeign />
+        <DimensionsPanel />
+      </AffectSessionProvider>,
+    );
+    expect(queryByRole('button', { name: /Emit Event/ })).toBeNull();
+    expect(getByText(/limited to the\s+session.s owner/)).toBeTruthy();
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('an operator may emit on a named foreign session', async () => {
+    authUser.current = { id: 'op1', role: 'admin' };
+    emit.mockResolvedValue({ data: { ok: true, delta: { v: 0.01 } } });
+    function ViewForeign() {
+      const { setSessionId } = useAffectSession();
+      React.useEffect(() => { setSessionId('user_someone-else'); }, [setSessionId]);
+      return null;
+    }
+    const { getByRole } = render(
+      <AffectSessionProvider>
+        <ViewForeign />
+        <DimensionsPanel />
+      </AffectSessionProvider>,
+    );
+    fireEvent.click(getByRole('button', { name: /Emit Event/ }));
+    await waitFor(() => expect(emit).toHaveBeenCalledWith('user_someone-else', expect.anything()));
   });
 });
