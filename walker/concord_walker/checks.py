@@ -499,29 +499,6 @@ class LensWalk:
                     self.mark("create_delete", "ERROR", error=scrub(repr(e), 200))
             else:
                 self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
-        # ULW v3 (GB-1576 W5c): DURABILITY rides the write phase — after the
-        # lens's writes, before isolation. Best-effort; never fails the lens.
-        if "write" in self.phases and self.allow_write and self.acct:
-            if not self.over_budget():
-                try:
-                    self._begin_phase("durability")
-                    self.durability_phase()
-                    self._end_phase("durability")
-                except AccountMismatch:
-                    self._end_phase("durability")
-                    raise
-                except Exception as e:
-                    self._end_phase("durability")
-                    self.log("  phase durability error: %s" % scrub(repr(e), 200))
-                    self.result["durability"] = {"status": "ERROR",
-                                                 "reason": scrub(repr(e), 160),
-                                                 "probes": 0, "failed": 0,
-                                                 "unverified": 0, "rows": []}
-            else:
-                self.result["durability"] = {"status": "SKIPPED",
-                                             "reason": "lens time budget exceeded",
-                                             "probes": 0, "failed": 0,
-                                             "unverified": 0, "rows": []}
         self.console_network()
         try:
             self.isolation_phase()
@@ -689,6 +666,9 @@ class LensWalk:
         # ACTOR-SPOOF ride the isolation phase as standard legs.
         if not self.over_budget():
             self.trust_phase(owner, observer)
+        # ULW v3 (GB-1576 W5a): the core-verb drive rides the same phase.
+        if not self.over_budget():
+            self.core_verb_phase(owner, observer)
         self.result["isolation"] = _iso.packet_block(self.result.get("two_account"),
                                                       probe_row, probe_skip)
 
@@ -843,139 +823,121 @@ class LensWalk:
                 pass
             self._close(octx)
 
-    def durability_phase(self):
-        """ULW v3 (GB-1576 W5c): DURABILITY — re-issue up to
-        thresholds.durability_max_probes of the lens's recorded creates as
-        the write account, each with a unique planted marker; wait past the
-        save debounce (thresholds.durability_wait_s, one wait for the
-        batch); then verify each marker via a FRESH session (new context,
-        reload, durable texts) and a BACKEND READ (the created object's
-        URL, else the lens's recorded read route for the collection).
-        Planning and verdicts live in concord_walker.durability (pure);
-        this method only drives contexts. A DURABLE_FAIL files a walk
-        finding; probe objects are deleted best-effort when their object
-        URL is known, else left carrying the run's marker (the labelled-
-        fixture discipline). No server restarts, ever."""
-        from . import durability as _dur
+    def core_verb_phase(self, owner, observer):
+        """ULW v3 (GB-1576 W5a): the core-verb drive — the lens's ONE
+        defining verb, exercised end to end with the phase's two accounts.
+        The spec (walker/specs/core_verbs.json, via concord_walker.
+        core_verbs) names the verb and its lens action; this leg performs
+        it through POST /api/lens/run as the writer (owner) with the
+        walk's labelled marker in the args, verifies the result persisted
+        by a fresh read-back (the reload witness: object GET when the
+        response carried an id, else the domain list), checks the
+        observer's visibility both ways against the spec, and cleans the
+        created data up via the write account. Planning and verdicts live
+        in core_verbs (pure); this method only drives contexts. A FAIL
+        files a finding; anything the probe itself could not establish
+        verdicts UNSPECIFIED with the reason named — never a silent skip,
+        never a PASS. Money-class actions are never driven."""
+        from . import core_verbs as _cv
+        from .auth import has_session
         import json as _json
-        wait_s = self.th.get("durability_wait_s", 8)
-        cap = self.th.get("durability_max_probes", 3)
-        calls = list(self.net.replay or [])
-        label = None
-        for f in (self.rec.fixtures or {}).values():
-            if f.get("lens") == self.slug and f.get("label"):
-                label = f.get("label")
-        candidates = _dur.pick_write_calls(calls, cap=cap, fixture_label=label)
-        plan = _dur.probe_plan(candidates)
-        if not plan["run"]:
-            self.result["durability"] = _dur.durability_block(None, plan["reason"])
+        doc = _cv.load_spec_doc()
+        spec = _cv.spec_for(doc, self.slug)
+        p = _cv.plan(spec, has_observer=has_session(self.cfg, observer))
+        if not p["run"]:
+            self.result["core_verb"] = _cv.core_verb_block(
+                spec, "CORE_VERB_UNSPECIFIED", p["reason"])
+            self.log("  core verb %s: CORE_VERB_UNSPECIFIED (%s)" % (self.slug, p["reason"]))
             return
-        wctx, _wpage, _wcdp = self.open(account=self.write_acct)
-        fired = []
+        base = self.cfg["base_url"].rstrip("/")
+        run_url = base + "/api/lens/run"
+        domain = spec["action"]["domain"]
+        label = "%s-cv-%s-%s" % (self.cfg["fixture_prefix"], self.slug, self.rec.rid[-6:])
+        vp = self.cfg["viewport_desktop"]
+        wctx, _wp, _wc = self.open(account=owner)
+        fctx = new_context(self.b, self.cfg, observer, vp)
         try:
-            assert_account(wctx, self.cfg, self.write_acct, "durability probes", self.log)
-            for i, cand in enumerate(candidates):
-                marker = "%s-DUR-%s-%s-%d" % (self.cfg["fixture_prefix"], self.slug,
-                                              (self.rec.rid or "run")[-4:], i)
-                body, field = _dur.plant_marker(cand["post"], marker, label)
-                if body is None:
-                    continue
-                status, resp_obj = None, None
+            assert_account(fctx, self.cfg, observer, "core verb", self.log)
+
+            def run_as(ctx, body):
                 try:
-                    resp = wctx.request.fetch(cand["url"], method=cand["method"],
-                                              data=body, timeout=15000,
-                                              headers={"Content-Type": "application/json"})
-                    status = resp.status
+                    resp = ctx.request.post(run_url, data=_json.dumps(body),
+                                            headers={"Content-Type": "application/json"},
+                                            timeout=20000)
                     try:
-                        resp_obj = resp.json()
+                        rbody = resp.json()
                     except Exception:
-                        resp_obj = None
+                        rbody = None
+                    return resp.status, rbody
                 except Exception:
-                    status = None
-                fired.append({"cand": cand, "marker": marker, "field": field,
-                              "status": status, "resp_obj": resp_obj,
-                              "obj_url": _dur.object_url(cand, resp_obj)})
-        finally:
-            self._close(wctx)
-        if fired:
-            time.sleep(wait_s)
-        rows = []
-        fctx = fpage = fcdp = None
-        try:
-            fctx, fpage, fcdp = self.open(account=self.write_acct)
-            assert_account(fctx, self.cfg, self.write_acct, "durability verify", self.log)
-            self.nav(fpage, fcdp)
-            texts = fcdp.ax().durable_texts()
-
-            def backend_read(probe):
-                urls = []
-                if probe["obj_url"]:
-                    urls.append(probe["obj_url"])
-                for rc in _dur.pick_read_calls(calls, probe["cand"]):
-                    if rc.get("url") and rc["url"] not in urls:
-                        urls.append(rc["url"])
-                if not urls:
                     return None, None
-                last_status = None
-                for u in urls:
-                    try:
-                        resp = fctx.request.get(u, timeout=15000)
-                        last_status = resp.status
-                        if not (200 <= resp.status < 300):
-                            continue
-                        try:
-                            text = resp.text()
-                        except Exception:
-                            text = None
-                        if text is None:
-                            try:
-                                text = _json.dumps(resp.json(), default=str)
-                            except Exception:
-                                text = ""
-                        return probe["marker"] in (text or ""), resp.status
-                    except Exception:
-                        continue
-                return False, last_status
 
-            for probe in fired:
-                fresh = any(probe["marker"] in t for t in texts)
-                backend, backend_status = backend_read(probe)
-                verdict, reason = _dur.probe_verdict(probe["status"], fresh,
-                                                     backend, backend_status)
-                row = {"write": "%s %s" % (probe["cand"]["method"],
-                                           probe["cand"]["path"]),
-                       "field": probe["field"], "wait_s": wait_s,
-                       "fresh": fresh, "backend": backend,
-                       "verdict": verdict, "reason": reason}
-                if probe["obj_url"]:
+            def read_as(ctx):
+                """(object_seen, list_seen): object_seen is True/False when
+                an object GET answered, None when unavailable; list_seen
+                likewise for the domain list search."""
+                obj_seen = None
+                if oid is not None:
                     try:
-                        resp = fctx.request.fetch(probe["obj_url"], method="DELETE",
-                                                  timeout=15000)
-                        row["cleanup"] = ("deleted" if resp.status in (200, 204, 404)
-                                          else "delete_status_%s" % resp.status)
+                        resp = ctx.request.get("%s/api/lens/%s/%s" % (base, domain, oid),
+                                               timeout=15000)
+                        if 200 <= resp.status < 300:
+                            obj_seen = True
+                        elif resp.status in (401, 403, 404):
+                            obj_seen = False
                     except Exception:
-                        row["cleanup"] = "delete_error"
+                        obj_seen = None
+                list_seen = None
+                try:
+                    resp = ctx.request.get("%s/api/lens/%s" % (base, domain), timeout=15000)
+                    if 200 <= resp.status < 300:
+                        try:
+                            text = resp.text() or ""
+                        except Exception:
+                            text = ""
+                        list_seen = (label in text) or (oid is not None and str(oid) in text)
+                    elif resp.status in (401, 403, 404):
+                        list_seen = False
+                except Exception:
+                    list_seen = None
+                return obj_seen, list_seen
+
+            st, rbody = run_as(wctx, _cv.verb_body(spec, label))
+            drive = _cv.classify_drive(st, rbody)
+            oid = _cv.extract_object_id(rbody)
+            persisted = observer_sees = None
+            cleanup = "not_attempted"
+            if drive == "performed":
+                wo, wl = read_as(wctx)
+                persisted = wo if wo is not None else wl
+                fo, fl = read_as(fctx)
+                observer_sees = fo if fo is not None else fl
+                cbody = _cv.cleanup_body(spec, oid)
+                if cbody is not None:
+                    cst, _cb = run_as(wctx, cbody)
+                    cleanup = "deleted" if (cst is not None and 200 <= cst < 300) \
+                        else "delete_failed_%s" % (cst,)
                 else:
-                    row["cleanup"] = "left_labelled"
-                if verdict == "DURABLE_FAIL":
-                    ev = self.shot(fpage, "durability-fail")
-                    self.finding("durability", "high",
-                                 "Write did not persist past the save debounce: %s" % row["write"],
-                                 ["Open %s" % self.url,
-                                  "Write via the lens (%s, marker in field '%s')" % (row["write"], probe["field"]),
-                                  "Wait %ss (past the save debounce)" % wait_s,
-                                  "Reload in a fresh session and re-read the backend"],
-                                 "The written object is readable from the backend and visible in a fresh session",
-                                 reason, [ev], root_cause="RCA-durability",
-                                 area="%s/durability" % self.slug)
-                rows.append(row)
+                    cleanup = "not_derived (created data carries the walk label %s)" % label
+            word, reason = _cv.verdict(spec, drive=drive, persisted=persisted,
+                                       observer_sees=observer_sees)
+            self.result["core_verb"] = _cv.core_verb_block(
+                spec, word, reason, drive=drive, persisted=persisted,
+                observer_sees=observer_sees, cleanup=cleanup)
+            if word == "CORE_VERB_FAIL":
+                self.finding("core_verb", "high",
+                             "Core verb fails end to end: %s" % spec.get("verb"),
+                             _cv.repro_steps(spec, word, reason),
+                             "The lens's defining verb works for its own user, persists on reload, and is visible per spec (%s)" % spec.get("visibility"),
+                             reason, [self.result.get("initial_evidence")],
+                             defect_class="greeting-dead-surfaces")
+            self.log("  core verb %s: %s (%s)" % (self.slug, word, reason))
         finally:
-            if fctx is not None:
-                self._close(fctx)
-        self.result["durability"] = _dur.durability_block(rows)
-        db = self.result["durability"]
-        self.log("  durability %s: %d probe(s), %d failed, %d unverified (wait %ss)" % (
-            self.slug, db["probes"], db["failed"], db["unverified"], wait_s))
+            try:
+                fctx.close()
+            except Exception:
+                pass
+            self._close(wctx)
 
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
