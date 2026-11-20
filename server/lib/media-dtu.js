@@ -530,9 +530,34 @@ function draftMediaHiddenFromViewer(STATE, mediaDTU, viewerId) {
  * @param {string|null} viewerId
  * @returns {{ ok: boolean, mediaDTU?: object, status?: number, error?: string }}
  */
-export function getMediaDTUForViewer(STATE, mediaId, viewerId) {
+/**
+ * May a share link's token open this media? A maker who shares a piece of
+ * work (an animation with its soundtrack, say) puts that link's token on the
+ * media it needs; whoever holds the link may stream exactly those files, and
+ * revoking the link takes the token off again.
+ */
+const SHARE_TOKEN_RE = /^[A-Za-z0-9_-]{16,80}$/;
+export function mediaShareTokenOk(mediaDTU, token) {
+  if (!mediaDTU || typeof token !== "string" || !SHARE_TOKEN_RE.test(token)) return false;
+  return Array.isArray(mediaDTU.shareTokens) && mediaDTU.shareTokens.includes(token);
+}
+export function setMediaShareToken(STATE, mediaId, token, allowed) {
+  if (!mediaId || typeof token !== "string" || !SHARE_TOKEN_RE.test(token)) return { ok: false, error: "mediaId and a share token are required" };
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  const list = Array.isArray(dtu.shareTokens) ? dtu.shareTokens : [];
+  dtu.shareTokens = allowed ? (list.includes(token) ? list : [...list, token].slice(-20)) : list.filter((t) => t !== token);
+  rememberMedia(STATE, dtu);
+  return { ok: true };
+}
+
+export function getMediaDTUForViewer(STATE, mediaId, viewerId, opts = {}) {
   const result = getMediaDTU(STATE, mediaId);
   if (!result.ok) return { ok: false, status: 404, error: "Media not found" };
+  if (opts.shareToken && mediaShareTokenOk(result.mediaDTU, opts.shareToken)) {
+    return { ok: true, mediaDTU: result.mediaDTU, viaShare: true };
+  }
 
   if (draftMediaHiddenFromViewer(STATE, result.mediaDTU, viewerId)) {
     const status = !viewerId ? 401 : 404;

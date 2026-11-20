@@ -2,7 +2,10 @@
 // Domain actions for animation: keyframe interpolation, timing analysis,
 // frame rate optimization, storyboard sequencing, easing calculation.
 
+import crypto from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { getMediaDTU, setMediaShareToken } from "../lib/media-dtu.js";
+import { createReleaseShop } from "../lib/media-release-shop.js";
 export default function registerAnimationActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   registerLensAction("animation", "interpolateKeyframes", (ctx, artifact, _params) => {
@@ -372,6 +375,12 @@ export default function registerAnimationActions(registerLensAction) {
     try { deleteShotRow(ctx, params.id); } catch (e) {
       return { ok: false, error: "shot_not_saved", detail: String(e?.message || e) };
     }
+    // A deleted shot's share link stops working, and its soundtrack goes private again.
+    const gone = arr[i];
+    if (gone.shareToken) {
+      for (const t of gone.audio || []) if (t.mediaId) setMediaShareToken(globalThis._concordSTATE, t.mediaId, gone.shareToken, false);
+      s.shares?.delete?.(gone.shareToken);
+    }
     arr.splice(i, 1);
     s.animUndo?.delete(params.id); // don't leak undo/redo history for a deleted project
     saveAnimState();
@@ -710,21 +719,39 @@ export default function registerAnimationActions(registerLensAction) {
   });
 
   // ── Audio tracks ────────────────────────────────────────────────────
+  // A soundtrack is the animator's own uploaded audio (POST /api/media/
+  // upload-raw), so it plays in the studio, on the share page and in the
+  // export. An external http(s) URL is still accepted for a track hosted
+  // elsewhere. A track with neither is refused rather than kept silent.
+  const anMedia = (id) => { try { return getMediaDTU(globalThis._concordSTATE, String(id))?.mediaDTU || null; } catch { return null; } };
+  const anTrackSrc = (t) => (t.mediaId ? `/api/media/${encodeURIComponent(t.mediaId)}/stream` : t.url || null);
   registerLensAction("animation", "audio-track-add", (ctx, _a, params = {}) => {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
     if (!Array.isArray(anim.audio)) anim.audio = [];
     if (anim.audio.length >= 6) return { ok: false, error: "audio track limit (6) reached" };
-    const name = anClean(params.name, 80);
-    if (!name) return { ok: false, error: "track name required" };
+    let mediaId = null; let durationSec = null; let defaultName = "";
+    if (params.mediaId) {
+      const md = anMedia(params.mediaId);
+      if (!md || md.author !== anAid(ctx)) return { ok: false, error: "that audio is not one of your uploads" };
+      if (md.mediaType !== "audio") return { ok: false, error: "a soundtrack must be an audio file" };
+      mediaId = md.id; defaultName = md.title || "";
+      durationSec = Number(md.duration) > 0 ? Math.round(Number(md.duration) * 1000) / 1000 : null;
+    }
     const url = anClean(params.url, 600);
+    const external = /^https?:\/\//.test(url) ? url : null;
+    if (!mediaId && !external) return { ok: false, error: "upload the audio file (or give an http(s) link to it)" };
+    const name = anClean(params.name, 80) || anClean(defaultName, 80);
+    if (!name) return { ok: false, error: "track name required" };
     const track = {
-      id: anId("aud"), name,
-      url: /^https?:\/\//.test(url) ? url : null,
+      id: anId("aud"), name, mediaId, url: mediaId ? null : external, durationSec,
       startSec: Math.max(0, anNum(params.startSec)),
     };
+    track.src = anTrackSrc(track);
     anim.audio.push(track);
+    // An existing share link carries its soundtrack.
+    if (mediaId && anim.shareToken) setMediaShareToken(globalThis._concordSTATE, mediaId, anim.shareToken, true);
     anim.updatedAt = anNow();
     saveAnimState();
     return { ok: true, result: { track } };
@@ -734,7 +761,8 @@ export default function registerAnimationActions(registerLensAction) {
     const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const anim = findAnim(s, anAid(ctx), params.animId);
     if (!anim) return { ok: false, error: "animation not found" };
-    return { ok: true, result: { tracks: anim.audio || [], count: (anim.audio || []).length } };
+    const tracks = (anim.audio || []).map((t) => ({ ...t, src: anTrackSrc(t) }));
+    return { ok: true, result: { tracks, count: tracks.length } };
   });
 
   registerLensAction("animation", "audio-track-remove", (ctx, _a, params = {}) => {
@@ -743,7 +771,9 @@ export default function registerAnimationActions(registerLensAction) {
     if (!anim) return { ok: false, error: "animation not found" };
     const trackId = String(params.id || params.trackId || "");
     const before = (anim.audio || []).length;
+    const gone = (anim.audio || []).find((t) => t.id === trackId);
     anim.audio = (anim.audio || []).filter((t) => t.id !== trackId);
+    if (gone?.mediaId && anim.shareToken && !anim.audio.some((t) => t.mediaId === gone.mediaId)) setMediaShareToken(globalThis._concordSTATE, gone.mediaId, anim.shareToken, false);
     if (!trackId || anim.audio.length === before) return { ok: false, error: "not_found" };
     anim.updatedAt = anNow();
     saveAnimState();
@@ -1352,7 +1382,8 @@ export default function registerAnimationActions(registerLensAction) {
     for (const sh of shares.values()) {
       if (sh.animId === anim.id && sh.ownerId === anAid(ctx)) { existing = sh; break; }
     }
-    const token = existing ? existing.token : anId("shr");
+    const token = existing ? existing.token : `shr_${crypto.randomBytes(16).toString("hex")}`;
+    for (const t of anim.audio || []) if (t.mediaId) setMediaShareToken(globalThis._concordSTATE, t.mediaId, token, true);
     const share = {
       token,
       animId: anim.id,
@@ -1384,11 +1415,19 @@ export default function registerAnimationActions(registerLensAction) {
       ok: true,
       result: {
         share: { token: share.token, title: share.title, views: share.views, allowDownload: share.allowDownload },
+        // Everything the page needs to PLAY it: the frames with their
+        // exposures (a share that can't be watched isn't a share) and the
+        // soundtrack, streamed through this link's token. allowDownload only
+        // decides whether the page offers a download.
         animation: {
           id: anim.id, title: anim.title, width: anim.width, height: anim.height,
           fps: anim.fps, background: anim.background, thumbnail: anim.thumbnail,
-          frames: share.allowDownload ? anim.frames : undefined,
+          frames: anim.frames,
           frameCount: anim.frames.length,
+          audio: (anim.audio || []).map((t) => ({
+            id: t.id, name: t.name, startSec: t.startSec, durationSec: t.durationSec ?? null,
+            src: t.mediaId ? `/api/media/${encodeURIComponent(t.mediaId)}/stream?share=${encodeURIComponent(share.token)}` : t.url || null,
+          })).filter((t) => t.src),
         },
       },
     };
@@ -1402,8 +1441,80 @@ export default function registerAnimationActions(registerLensAction) {
     shares.delete(share.token);
     const owner = s.projects.get(share.ownerId) || [];
     const anim = owner.find((a) => a.id === share.animId);
+    for (const t of anim?.audio || []) if (t.mediaId) setMediaShareToken(globalThis._concordSTATE, t.mediaId, share.token, false);
     if (anim && anim.shareToken === share.token) delete anim.shareToken;
     saveAnimState();
     return { ok: true, result: { revoked: share.token } };
   });
+
+  // ── The exposure sheet (X-sheet) ────────────────────────────────────
+  // The animator's timing document: one row per film frame, in order. A
+  // drawing held for N frames (its exposure) fills N rows; the action,
+  // dialogue (the sound broken down for lip-sync) and camera columns are
+  // notes the animator writes against the drawing.
+  const XS_FIELDS = { action: 120, dialogue: 40, camera: 60 };
+  registerLensAction("animation", "xsheet-set", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const frame = anim.frames.find((f) => f.id === params.frameId);
+    if (!frame) return { ok: false, error: "frame not found" };
+    let touched = 0;
+    for (const [k, max] of Object.entries(XS_FIELDS)) {
+      if (params[k] === undefined) continue;
+      if (params[k] !== null && typeof params[k] !== "string") return { ok: false, error: `${k} must be text` };
+      const v = String(params[k] ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+      if (!frame.sheet) frame.sheet = {};
+      if (v) frame.sheet[k] = v; else delete frame.sheet[k];
+      touched++;
+    }
+    if (!touched) return { ok: false, error: "nothing to write: give action, dialogue or camera" };
+    anim.updatedAt = anNow();
+    saveAnimState();
+    return { ok: true, result: { frameId: frame.id, sheet: { ...(frame.sheet || {}) } } };
+  });
+
+  registerLensAction("animation", "xsheet-get", (ctx, _a, params = {}) => {
+    const s = getAnimState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const anim = findAnim(s, anAid(ctx), params.animId);
+    if (!anim) return { ok: false, error: "animation not found" };
+    const fps = anim.fps || 12;
+    const drawings = [];
+    let at = 1;
+    anim.frames.forEach((f, i) => {
+      const exposure = Math.max(1, Math.round(f.exposure || 1));
+      drawings.push({
+        frameId: f.id, drawing: i + 1, startFrame: at, endFrame: at + exposure - 1, exposure,
+        startSec: Math.round(((at - 1) / fps) * 1000) / 1000,
+        action: f.sheet?.action || "", dialogue: f.sheet?.dialogue || "", camera: f.sheet?.camera || "",
+      });
+      at += exposure;
+    });
+    const totalFrames = at - 1;
+    return { ok: true, result: { fps, totalFrames, durationSec: Math.round((totalFrames / fps) * 1000) / 1000, drawings } };
+  });
+
+  // ── Releases: published animations, free or sold in CC ──────────────
+  // The animator renders the shot (frame-accurate, soundtrack mixed in) and
+  // uploads the video; that upload is what is released. Money, preview
+  // gating and visibility are the shared release shop's (also Film's).
+  const shop = createReleaseShop(registerLensAction, {
+    domain: "animation", prefix: "anim-release", noun: "animation", makerNoun: "animator",
+    ownerField: "animatorId", ownerView: "animator",
+    dtuType: "animation_release", dtuDomain: "animation", tag: "animation",
+    minPreviewSec: 3,
+    home: () => getAnimState(), save: saveAnimState, aid: anAid, makeId: anId, now: anNow,
+    resolve(s, userId, params) {
+      const anim = findAnim(s, userId, params.animId);
+      if (!anim) return { ok: false, error: "animation not found" };
+      if (!params.platformMediaId) return { ok: false, error: "render the animation and upload the video first" };
+      return { ok: true, platformMediaId: String(params.platformMediaId), title: anim.title, fields: { animId: anim.id } };
+    },
+    extraView(s, r) {
+      const anim = (s.projects.get(r.animatorId) || []).find((a) => a.id === r.animId);
+      return { fps: anim?.fps ?? null, width: anim?.width ?? null, height: anim?.height ?? null };
+    },
+    filter: (r, params) => !params.animId || r.animId === String(params.animId),
+  });
+  void shop;
 }

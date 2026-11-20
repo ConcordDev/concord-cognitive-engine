@@ -15460,6 +15460,11 @@ async function runMacro(domain, name, input, ctx) {
   // publicReadDomains: domain+name allowlist for read-only macros (Gate 2 of 3)
   // CRITICAL: Every frontend macro call domain must be listed here
   const publicReadDomains = {
+    // Released films and animations are public pages: anyone may browse the
+    // gallery and open one. What they can WATCH is decided at the media
+    // stream (signed-out: the platform preview; priced: the sale preview).
+    animation: new Set(["anim-release-list", "anim-release-get"]),
+    "film-studios": new Set(["film-release-list", "film-release-get"]),
     // Wave 8b — the authored cosmology is the player-facing canon (hidden_truth
     // stripped in the lib); the codex reads it without auth.
     lore: new Set(["list", "get", "facets", "spine"]),
@@ -63154,8 +63159,9 @@ app.post("/api/esign/:token/sign", perEndpointRateLimit("write.esign"), async (r
 // owner/animation from its own server-side `shares` Map keyed by the
 // token — a valid token for animation A can only ever resolve animation
 // A's frames, never anyone else's. `share-get`'s own logic (unchanged
-// here) already redacts `frames` when the owner disabled downloads, and
-// never returns anything beyond the single share record + its animation.
+// here) returns the frames and the soundtrack (streamed through the share
+// token) so the page can play it, and never anything beyond the single
+// share record + its animation.
 function _runAnimationShareAction(token) {
   const handler = LENS_ACTIONS.get("animation.share-get");
   if (!handler) return { ok: false, error: "portal_unavailable" };
