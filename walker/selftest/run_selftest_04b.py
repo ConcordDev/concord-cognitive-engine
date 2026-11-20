@@ -43,6 +43,10 @@ cfg["base_url"] = base
 cfg["audit_dir"] = audit
 st = os.path.join(tmp, "t1.json"); json.dump({"cookies": [], "origins": []}, open(st, "w"))
 cfg["accounts"]["t1"]["storage_state"] = st
+# D3 (post-Gate-2 alignment): pin the fixture walk to the single-account write lane. The landed config names a
+# dedicated write account (C28); this fixture serves ONE member, so the write-lane account check would abort
+# the walk. C28 keeps its own selftest (test_c28_write_account.py).
+cfg.pop("write_account", None)
 cfg["write_skip_lenses"] = ["skipme"]
 cfg["admin_lenses"] = ["ops"]
 RUNS = os.path.join(tmp, "runs"); os.makedirs(RUNS)

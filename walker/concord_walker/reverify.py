@@ -842,15 +842,15 @@ class Reverifier:
             ev = [lw.shot(page, "fix007-composer-filled")]
             note = "click %s, typed in %.1fs, value set %s, Send %s" % (clicked, fill_s, filled, "enabled" if send_ok else "missing/disabled")
             if not (clicked and filled and fill_s < 8):
-                page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+                page.keyboard.press("ControlOrMeta+A"); page.keyboard.press("Backspace")
                 return {"verdict": STILL, "method": "390 composer fill", "evidence": ev, "notes": note}
             if not self.allow_write:
-                page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+                page.keyboard.press("ControlOrMeta+A"); page.keyboard.press("Backspace")
                 return {"verdict": HUMAN, "method": "390 composer fill (send not exercised: read-only)", "evidence": ev,
                         "notes": note + ". Fill/click timeout NOT reproduced; Send needs --allow-write or a tester."}
             # write: send own labelled message once, then log it as a fixture
             label = "%s-chat-%s" % (self.cfg["fixture_prefix"], self.rec.rid)
-            page.keyboard.press("Control+A"); page.keyboard.press("Backspace")
+            page.keyboard.press("ControlOrMeta+A"); page.keyboard.press("Backspace")
             page.keyboard.type(label, delay=20)
             assert_account(ctx, self.cfg, "t1", "chat send (create)", self.log)
             self.rec.fixture(label, lens, "create_clicked", "FIX-007 composer send at 390")

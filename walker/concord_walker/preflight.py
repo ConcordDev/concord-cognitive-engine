@@ -23,7 +23,7 @@ way — the failure is published, not whispered.
 """
 import re
 
-from .auth import expected_username, has_session, write_account_key, write_account_proof
+from .auth import expected_username, has_session, isolation_observer_key, write_account_key, write_account_proof
 
 PRIMARY_ACCOUNTS = ("t1", "t2")
 
@@ -118,18 +118,20 @@ def verify_sessions_live(browser, cfg, log=None):
     problems = []
     keys = [k for k in PRIMARY_ACCOUNTS if k in (cfg.get("accounts") or {})]
     wkey = write_account_key(cfg)
-    if wkey:
+    if wkey and wkey not in keys:
         keys.append(wkey)
     if "admin" in (cfg.get("accounts") or {}) and has_session(cfg, "admin"):
         keys.append("admin")
     vp = cfg.get("viewport_desktop") or (1280, 900)
+    live_names = {}
     for key in keys:
         if not has_session(cfg, key):
             problems.append("no saved session for %s" % key)
             continue
         ctx = new_context(browser, cfg, key, vp)
         try:
-            assert_account(ctx, cfg, key, "pre-flight", log)
+            me = assert_account(ctx, cfg, key, "pre-flight", log)
+            live_names[key] = ((me or {}).get("username") or "").strip().lower() or None
         except AccountMismatch as e:
             problems.append("session for %s failed pre-flight: %s" % (key, e))
         except Exception as e:
@@ -139,6 +141,13 @@ def verify_sessions_live(browser, cfg, log=None):
                 ctx.close()
             except Exception:
                 pass
+    # ULW C28 live leg: the write account and the isolation observer must be two different LIVE users
+    observer = isolation_observer_key(cfg)
+    if wkey and observer:
+        if wkey == observer:
+            problems.append("write account %r is the isolation observer - not a separate account" % wkey)
+        elif live_names.get(wkey) and live_names.get(wkey) == live_names.get(observer):
+            problems.append("write account %s and isolation observer %s are the same live user" % (wkey, observer))
     return problems
 
 

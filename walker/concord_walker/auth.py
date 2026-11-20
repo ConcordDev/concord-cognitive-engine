@@ -131,15 +131,31 @@ def write_account_key(cfg):
     return None
 
 
+def isolation_observer_key(cfg):
+    """ULW C28 (walk-2 ruling GB-1561): the account that OBSERVES the write account's content for the
+    isolation legs - cfg["isolation_observer"] when it names a configured account, else "t2" (the
+    pre-ruling default: t2 is the isolation counterparty). Walk 2 sets write_account "t2" and
+    isolation_observer "t1"."""
+    accounts = cfg.get("accounts") or {}
+    key = cfg.get("isolation_observer")
+    if key and key in accounts:
+        return key
+    return "t2" if "t2" in accounts else None
+
+
 def write_account_proof(cfg):
     """Browser-free proof legs for the write account (ULW C28): configured, distinct from the
-    primary (t1) and isolation (t2) accounts by expected username, a saved session present,
-    and its expected roles admissible (none forbidden). Returns a dict with a `problems`
-    list; empty problems = the machinery is ready to fire. The live leg — assert_account
-    on a real context — is the pre-flight's job (concord_walker.preflight, ULW C8)."""
+    primary (t1) evidence account and from the isolation observer (isolation_observer_key; "t2"
+    unless configured) by expected username, a saved session present, and its expected roles
+    admissible (none forbidden). The write account may itself be t2 when the observer is NOT t2
+    (walk-2 ruling: t2 writes, t1 observes). Returns a dict with a `problems` list; empty
+    problems = the machinery is ready to fire. The live leg - assert_account on a real context,
+    which also compares LIVE usernames - is the pre-flight's job (concord_walker.preflight, ULW C8)."""
     key = write_account_key(cfg)
+    observer = isolation_observer_key(cfg)
     proof = {"key": key, "configured": bool(key), "username": None, "session_present": False,
-             "distinct_from_t1": False, "distinct_from_t2": False, "roles_ok": False, "problems": []}
+             "observer": observer, "distinct_from_t1": False, "distinct_from_t2": False,
+             "distinct_from_observer": False, "roles_ok": False, "problems": []}
     if not key:
         proof["problems"].append("no write_account configured (write lane rides the walk account)")
         return proof
@@ -147,11 +163,22 @@ def write_account_proof(cfg):
     proof["session_present"] = has_session(cfg, key)
     if not proof["session_present"]:
         proof["problems"].append("no saved session for write account %r (walker.py login --account %s)" % (key, key))
+    accounts = cfg.get("accounts") or {}
+    if observer and key == observer:
+        proof["problems"].append("write account %r is the isolation observer - not a separate account" % key)
     for other, field in (("t1", "distinct_from_t1"), ("t2", "distinct_from_t2")):
-        if other in (cfg.get("accounts") or {}):
-            proof[field] = proof["username"] != expected_username(cfg, other)
-            if not proof[field]:
-                proof["problems"].append("write account username equals %s's - not a separate account" % other)
+        if other not in accounts:
+            continue
+        if other == key and other != "t1" and other != observer:
+            proof[field] = None  # n/a: this IS the write account (allowed only when it is not the observer)
+            continue
+        proof[field] = proof["username"] != expected_username(cfg, other)
+        if not proof[field]:
+            proof["problems"].append("write account username equals %s's - not a separate account" % other)
+    if observer and observer in accounts:
+        proof["distinct_from_observer"] = key != observer and proof["username"] != expected_username(cfg, observer)
+        if key != observer and not proof["distinct_from_observer"]:
+            proof["problems"].append("write account username equals the isolation observer %s's - not a separate account" % observer)
     roles = [str(r).lower() for r in (cfg["accounts"][key].get("expected_roles") or [])]
     forbidden = [str(r).lower() for r in cfg.get("forbidden_roles", [])]
     proof["roles_ok"] = bool(roles) and not any(r in forbidden for r in roles)

@@ -202,7 +202,7 @@ class FormFuzz:
 
     def _type_into(self, page, cdp, node, value):
         cdp.click(node.backend)
-        page.keyboard.press("Control+A")
+        page.keyboard.press("ControlOrMeta+A")
         page.keyboard.press("Backspace")
         if value:
             page.keyboard.type(value, delay=25)

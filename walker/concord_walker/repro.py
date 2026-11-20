@@ -1780,7 +1780,7 @@ class PlaywrightDriver:
         node = next(n for n in nodes if n.name == hit)
         if node.backend is None or not self.cdp.focus(node.backend):
             return False
-        self.page.keyboard.press("Control+A")
+        self.page.keyboard.press("ControlOrMeta+A")
         self.page.keyboard.type(value)
         return True
 
@@ -1875,7 +1875,7 @@ class PlaywrightDriver:
         node = next(n for n in nodes if n.name == hit)
         if node.backend is None or not self.cdp.focus(node.backend):
             return False
-        self.page.keyboard.press("Control+A")
+        self.page.keyboard.press("ControlOrMeta+A")
         if value == "":
             self.page.keyboard.press("Backspace")
         else:
@@ -1901,7 +1901,7 @@ class PlaywrightDriver:
             return None
         if not self.cdp.focus(pick.backend):
             return None
-        self.page.keyboard.press("Control+A")
+        self.page.keyboard.press("ControlOrMeta+A")
         self.page.keyboard.type(label)
         return pick.name
 
