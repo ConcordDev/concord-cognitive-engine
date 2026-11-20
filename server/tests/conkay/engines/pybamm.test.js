@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: PyBaMM battery modelling health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("pybamm", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.relDeviation <= 0.08, `SPM 1C discharge capacity within 8% of the Chen2020 nominal (dev ${h.outputs.relDeviation})`);
 });

@@ -34,6 +34,22 @@ def fail(code, message):
     sys.exit(code)
 
 
+def find_tool(name):
+    """PATH first, then the sibling of the running interpreter —
+    the SXE-00 env-provisioning shape: a tool installed into the
+    kernel's own driver env (a pip/conda console entry point)
+    sits beside its python even when the ambient PATH does not
+    carry the env's bin (first-live correction, 2026-11-19)."""
+    exe = shutil.which(name)
+    if exe:
+        return exe
+    sibling = os.path.join(
+        os.path.dirname(os.path.abspath(sys.executable)), name)
+    if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+        return sibling
+    return None
+
+
 DECK = """&CONTROL
   calculation = 'scf', prefix = 'si', outdir = './out',
   pseudo_dir = './pseudo', verbosity = 'low'
@@ -57,7 +73,7 @@ K_POINTS automatic
 
 
 def run_scf(ecut_wfc=20.0):
-    pw = shutil.which("pw.x")
+    pw = find_tool("pw.x")
     if not pw:
         fail(3, "pw.x executable not found on PATH (Quantum "
                 "ESPRESSO is not provisioned for this engine env)")

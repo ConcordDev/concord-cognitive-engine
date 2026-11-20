@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: pycalphad health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("pycalphad", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(Math.abs(h.outputs.fractionSum - 1) < 1e-3, "equilibrium phase fractions sum to 1");
   assert.ok(h.outputs.phases.length > 0, "a stable phase set is served");
 });

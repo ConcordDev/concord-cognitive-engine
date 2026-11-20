@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: IQ-TREE health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("iqtree", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.equal(h.outputs.tips, 4);
   assert.ok(Number.isFinite(h.outputs.logLikelihood), "a finite log-likelihood is served");
 });

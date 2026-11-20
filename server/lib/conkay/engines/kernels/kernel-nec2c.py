@@ -2,22 +2,25 @@
 """NEC2 kernel (nec2c) — SXE-17.
 
 Speaks the SXE-00 kernel protocol: {"op", "request"} JSON on stdin,
-one result JSON on stdout. Health case (the plan's): the half-wave
-dipole's input impedance vs the closed-form reference 73 + j42.5
-ohm (the standard thin-wire half-wave dipole value). The deck is
+one result JSON on stdout. Health case: the half-wave dipole's
+input impedance against the reference recorded from the pinned
+nec2c 1.3.1 on this exact deck: 84.8 + j48.0 ohm. The deck is
 generated in-kernel: a centre-fed wire of length lambda/2 at the
 request frequency, radius lambda/1000, 21 segments; nec2c runs as
 a separate process (public-domain code, nothing imported) and the
 kernel parses the ANTENNA INPUT PARAMETERS block of its output.
 
-Ops:
-  health / dipole-impedance — request {frequencyMHz} (default 300)
-    -> {resistanceOhm, reactanceOhm, expectedResistanceOhm,
-        expectedReactanceOhm, absErrorR, absErrorX, converged}.
-
-Bands: |R - 73| <= 10 ohm, |X - 42.5| <= 15 ohm (NEC2 thin-wire
-results move a few ohms with segmentation and radius; the bands
-cover the converged range without letting a wrong deck pass).
+Reference provenance (first-live correction, 2026-11-19): the
+textbook 73 + j42.5 ohm is the induced-EMF value for a dipole of
+ZERO radius. At the deck's finite radius (lambda/1000) the
+converged NEC-2 result is 84.8 + j48.0 ohm — measured on the
+pinned binary (84.815 / 48.008) when the first-live hardening
+pass ran this kernel against real nec2c 1.3.1; the thin-wire
+figure can never be met by a correct NEC-2 at this radius, so
+the recorded reference governs, in the fleet's stored-reference
+form. Bands: |R - 84.8| <= 3 ohm, |X - 48.0| <= 5 ohm — tight
+enough to catch a deck or parser regression, wide enough for
+patch-level binary variation.
 
 No nec2c binary on PATH is a provisioning defect: exit 3.
 """
@@ -36,8 +39,8 @@ def fail(code, message):
 
 
 C_M_S = 299792458.0
-EXPECTED_R, EXPECTED_X = 73.0, 42.5
-BAND_R, BAND_X = 10.0, 15.0
+EXPECTED_R, EXPECTED_X = 84.8, 48.0
+BAND_R, BAND_X = 3.0, 5.0
 
 
 def deck(freq_mhz):
@@ -71,10 +74,14 @@ def run_dipole(freq_mhz):
             fail(6, "nec2c run failed (rc=%s): %s"
                     % (proc.returncode, (proc.stderr or "")[:200]))
         text = open(out_path).read()
-    # ANTENNA INPUT PARAMETERS block: a data line carrying
-    # VOLTAGE / CURRENT / IMPEDANCE R / IMPEDANCE X after the header.
-    m = re.search(r"ANTENNA INPUT PARAMETERS(.*?)"
-                  r"\n\s*\d+\s+\d+\s+[-0-9.E+]+ [-0-9.E+]+\s+"
+    # ANTENNA INPUT PARAMETERS block: the data line carries
+    # TAG SEG, then VOLTAGE and CURRENT as complex pairs, then
+    # IMPEDANCE R / X — four floats precede the impedance pair,
+    # and the column spacing is variable (first-live correction:
+    # the original pattern's literal single spaces and two-float
+    # skip matched nothing in real nec2c output).
+    m = re.search(r"ANTENNA INPUT PARAMETERS.*?"
+                  r"\n\s*\d+\s+\d+(?:\s+[-0-9.E+]+){4}\s+"
                   r"([-0-9.E+]+)\s+([-0-9.E+]+)", text, re.S)
     if not m:
         fail(6, "nec2c output carried no antenna input impedance")

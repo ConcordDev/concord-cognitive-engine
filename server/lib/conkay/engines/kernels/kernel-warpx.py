@@ -35,6 +35,22 @@ def fail(code, message):
     sys.exit(code)
 
 
+def find_tool(name):
+    """PATH first, then the sibling of the running interpreter —
+    the SXE-00 env-provisioning shape: a tool installed into the
+    kernel's own driver env (a pip/conda console entry point)
+    sits beside its python even when the ambient PATH does not
+    carry the env's bin (first-live correction, 2026-11-19)."""
+    exe = shutil.which(name)
+    if exe:
+        return exe
+    sibling = os.path.join(
+        os.path.dirname(os.path.abspath(sys.executable)), name)
+    if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+        return sibling
+    return None
+
+
 INPUTS = """# 1-D Langmuir oscillation (ConKay SXE-31 health)
 max_step = %(STEPS)d
 amr.n_cell = 128
@@ -71,7 +87,7 @@ EF.path = diags/reducedEF/
 
 
 def run_langmuir(n0, n_steps):
-    exe = shutil.which("warpx.1d") or shutil.which("warpx")
+    exe = find_tool("warpx.1d") or find_tool("warpx")
     if not exe:
         fail(3, "warpx executable (warpx.1d) not found on PATH "
                 "(WarpX is not provisioned for this engine env)")

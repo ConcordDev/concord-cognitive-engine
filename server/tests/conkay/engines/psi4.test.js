@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: Psi4 health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("psi4", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.absError <= 0.005, `H2O RHF/STO-3G within 0.005 Ha of the CCCBDB value (err ${h.outputs.absError})`);
 });

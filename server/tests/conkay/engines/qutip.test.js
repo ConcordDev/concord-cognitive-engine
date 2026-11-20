@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: QuTiP health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("qutip", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.pExcitedHalfPeriod > 0.999, "full population transfer at the Rabi half period");
   assert.ok(h.outputs.pExcitedFullPeriod < 1e-3, "population returned at the full Rabi period 2*pi/Omega");
 });

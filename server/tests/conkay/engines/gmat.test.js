@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: GMAT health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("gmat", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.radiusKm >= 6000 && h.outputs.radiusKm <= 8000, `final radius inside the scripted orbit's envelope (${h.outputs.radiusKm} km)`);
 });

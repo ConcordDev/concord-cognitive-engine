@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: python-control (+ slycot) health (CI lane only)", async (t) => 
     return;
   }
   const h = await runEngine("control", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.maxRelError < 1e-6, `LQR gain matches the analytic Riccati solution (rel ${h.outputs.maxRelError})`);
   assert.equal(h.outputs.closedLoopStable, true);
 });

@@ -24,7 +24,9 @@ Provision the nec2c 1.3.1 binary on PATH (source build from the pinned tag) and 
 
 ## Health
 
-`health` is the plan's case: the half-wave dipole's input impedance vs the closed-form reference **73 + j42.5 ohm**. The kernel generates the deck (centre-fed wire, length lambda/2 at the request frequency, radius lambda/1000, 21 segments), runs nec2c, and parses the ANTENNA INPUT PARAMETERS block. Bands: |R - 73| <= **10 ohm**, |X - 42.5| <= **15 ohm** — NEC2 thin-wire results move a few ohms with segmentation and radius; the bands cover the converged range without letting a wrong deck pass.
+`health` is the plan's case: the half-wave dipole's input impedance against the reference recorded from the pinned nec2c 1.3.1 on this exact deck: **84.8 + j48.0 ohm**. The kernel generates the deck (centre-fed wire, length lambda/2 at the request frequency, radius lambda/1000, 21 segments), runs nec2c, and parses the ANTENNA INPUT PARAMETERS block. Bands: |R - 84.8| <= **3 ohm**, |X - 48.0| <= **5 ohm**.
+
+First-live correction (2026-11-19, the SXE-53/54 hardening pass): the original reference, 73 + j42.5 ohm, is the induced-EMF value for a dipole of ZERO radius; at the deck's finite radius the converged NEC-2 result is 84.815 + j48.008 ohm (measured on nec2c 1.3.1), outside the original bands under a CORRECT engine — and the output parser's pattern matched nothing in real nec2c output (fixed single-space separators; it also skipped two floats where the data line carries four — voltage and current are complex pairs). Both are fixed: the parser reads the impedance pair after the four voltage/current floats with variable spacing, and the reference is the recorded value in the fleet's stored-reference form.
 
 ## Absent behaviour
 

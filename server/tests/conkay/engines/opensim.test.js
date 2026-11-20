@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: OpenSim health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("opensim", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.relError <= 0.05, `pendulum period within 5% of the closed form (rel ${h.outputs.relError})`);
   assert.ok(h.outputs.energyDriftRel <= 0.05, "energy drift inside 5% over the run");
 });

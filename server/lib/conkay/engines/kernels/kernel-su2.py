@@ -18,6 +18,22 @@ Ops:
 Missing SU2_CFD or the tutorial mesh is a provisioning defect:
 exit 3 naming it (mesh via env CONKAY_SU2_MESH). A history file
 with no CL column is rejected (exit 5), never guessed.
+
+First-live correction (2026-11-19, hardening pass): the config
+template as first written could not run under the pinned SU2
+8.3.0 at all — it omitted REF_ORIGIN_MOMENT_Y/Z (8.x requires
+the triple), MARKER_FAR for the mesh's farfield marker,
+CONV_NUM_METHOD_FLOW / TIME_DISCRE_FLOW (no longer defaulted),
+and HISTORY_OUTPUT, without which the history file carries no
+CL column. The template now follows the case's own published
+v8.3.0 configuration (SU2 repo TestCases inv_NACA0012:
+WEIGHTED_LEAST_SQUARES gradients, JST, FGMRES + LU_SGS,
+3-level W-cycle multigrid). Verified end to end on the real
+binary: the run converges (RMS density -8 at iteration ~212)
+and the final CL is 0.3285 — inside the +-0.05 band around
+the tutorial's published 0.287, near its edge; the band
+absorbs the numerics-generation difference, recorded here
+rather than silently re-centred.
 """
 import csv
 import json
@@ -33,23 +49,43 @@ def fail(code, message):
 
 
 CONFIG = """SOLVER= EULER
-KIND_TURB_MODEL= NONE
+MATH_PROBLEM= DIRECT
+RESTART_SOL= NO
 MACH_NUMBER= %(MACH)r
 AOA= %(AOA)r
 FREESTREAM_PRESSURE= 101325.0
 FREESTREAM_TEMPERATURE= 288.15
 REF_ORIGIN_MOMENT_X= 0.25
+REF_ORIGIN_MOMENT_Y= 0.0
+REF_ORIGIN_MOMENT_Z= 0.0
 REF_LENGTH= 1.0
 REF_AREA= 1.0
-ITER= %(ITER)d
-CONV_FILENAME= history
-OUTPUT_FILES= (RESTART, PARAVIEW, SURFACE_PARAVIEW)
+REF_DIMENSIONALIZATION= FREESTREAM_PRESS_EQ_ONE
 MARKER_EULER= ( airfoil )
-MARKER_MONITORING= ( airfoil )
+MARKER_FAR= ( farfield )
 MARKER_PLOTTING= ( airfoil )
-NUM_METHOD_GRAD= GREEN_GAUSS
+MARKER_MONITORING= ( airfoil )
+NUM_METHOD_GRAD= WEIGHTED_LEAST_SQUARES
 CFL_NUMBER= 5.0
+CFL_ADAPT= NO
+ITER= %(ITER)d
 LINEAR_SOLVER= FGMRES
+LINEAR_SOLVER_PREC= LU_SGS
+LINEAR_SOLVER_ERROR= 1E-6
+LINEAR_SOLVER_ITER= 5
+MGLEVEL= 3
+MGCYCLE= W_CYCLE
+MG_PRE_SMOOTH= ( 1, 2, 3, 3 )
+MG_POST_SMOOTH= ( 0, 0, 0, 0 )
+MG_CORRECTION_SMOOTH= ( 0, 0, 0, 0 )
+MG_DAMP_RESTRICTION= 1.0
+MG_DAMP_PROLONGATION= 1.0
+CONV_NUM_METHOD_FLOW= JST
+JST_SENSOR_COEFF= ( 0.5, 0.02 )
+TIME_DISCRE_FLOW= EULER_IMPLICIT
+CONV_FILENAME= history
+HISTORY_OUTPUT= (ITER, RMS_RES, AERO_COEFF)
+OUTPUT_FILES= (RESTART, PARAVIEW, SURFACE_PARAVIEW)
 MESH_FILENAME= %(MESH)s
 MESH_FORMAT= SU2
 CONV_FIELD= RMS_DENSITY

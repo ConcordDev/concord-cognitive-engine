@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,7 +69,7 @@ test("real lane: BLAST+ health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("blast", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.equal(h.outputs.hitAccession, "planted-alpha");
   assert.ok(h.outputs.identityPct >= 99.9, "the exact-copy query hits its record at ~100% identity");
 });

@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin", CONKAY_GEANT4_B1: "/nonexistent" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: Geant4 (reduced library) health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("geant4", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.doseMicroGy > 0, "B1 serves a positive cumulated dose in the scoring volume");
 });

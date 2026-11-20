@@ -60,3 +60,24 @@ pinned release at manifest time, not copied from memory.
 5. Engine results become signable only through a solver declaration
    that passed the independent checker agent (DC-01) — the framework
    signs nothing itself.
+
+## First-live correction — kernel environment (2026-11-19)
+
+runEngine spawned kernels with a fixed env allowlist
+(PATH, thread caps, CONKAY_ENGINE_ID/SCRATCH) that stripped
+every CONKAY_* provisioning var the kernels read — tool
+paths (CONKAY_CCX_BIN, CONKAY_MF6_BIN, CONKAY_EPANET_LIB,
+CONKAY_GEANT4_B1), case/mesh/demo dirs (CONKAY_SU2_MESH,
+CONKAY_OQ_DEMO, CONKAY_VINA_CASE_DIR, CONKAY_GMAT_CASE_DIR,
+CONKAY_QE_PSEUDO, CONKAY_SPICE_KERNEL_DIR, CONKAY_SKYFIELD_DATA,
+...) and every stored-reference var (CONKAY_*_REF_*). No
+env-provisioned or stored-reference real leg could pass
+through the runner; the suites could not see it because the
+legs skip without engines and the kernel-direct legs spawn
+with the env intact. runEngine now forwards the CONKAY_*
+family from the ambient environment (its own ID/SCRATCH
+still win); arbitrary ambient vars stay out. Found by the
+SXE-53/54 hardening pass running SU2 end to end; see
+CHECK-SXE-HARDENING.md. The same defect exists in the
+sx/solver-core branch's copy of run-engine.js — flagged
+for that branch's next landing.

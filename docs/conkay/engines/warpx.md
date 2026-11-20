@@ -44,3 +44,15 @@ leg run locally. The value legs run only in the CI lane
 (`.github/workflows/conkay-engine-warpx.yml`, manual
 dispatch per F8), which installs the pinned engine, sets
 `CONKAY_ENGINE_WARPX_BIN`, and fails if any test skips.
+
+## First-live correction (2026-11-19, hardening pass)
+
+The kernel located `warpx.1d` by PATH only; the lane
+provisions WarpX into the driver env, whose bin is not on
+the ambient PATH — the real leg could never have found
+it. The kernel now falls back to the sibling of the
+running interpreter (the env's own bin) after the PATH
+lookup, in the SXE-00 env-provisioning shape. Verified by
+construction with a stub beside the interpreter under a
+scrubbed PATH; absent both, it still exits 3 naming
+warpx.

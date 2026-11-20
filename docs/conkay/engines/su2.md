@@ -44,3 +44,20 @@ leg run locally. The value legs run only in the CI lane
 (`.github/workflows/conkay-engine-su2.yml`, manual
 dispatch per F8), which installs the pinned engine, sets
 `CONKAY_ENGINE_SU2_BIN`, and fails if any test skips.
+
+## First-live correction (2026-11-19, hardening pass)
+
+Verified end to end against the real pinned binary
+(SU2-v8.3.0-linux64 + the TestCases mesh) before first
+dispatch. Two defects, both fixed: (1) runEngine stripped
+CONKAY_SU2_MESH from the kernel's environment — see the
+run-engine note in CHECK-SXE-HARDENING.md; (2) the kernel's
+config template predated SU2 8 and could not run (missing
+REF_ORIGIN_MOMENT_Y/Z, MARKER_FAR, CONV_NUM_METHOD_FLOW,
+TIME_DISCRE_FLOW, HISTORY_OUTPUT). The template now
+follows the case's own published v8.3.0 configuration.
+Measured on the real run: convergence at iteration ~212,
+final CL 0.3285 — inside the +-0.05 band around the
+tutorial's published 0.287, near its edge; the difference
+is the numerics generation, recorded rather than
+re-centred.

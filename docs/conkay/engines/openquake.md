@@ -44,3 +44,15 @@ leg run locally. The value legs run only in the CI lane
 (`.github/workflows/conkay-engine-openquake.yml`, manual
 dispatch per F8), which installs the pinned engine, sets
 `CONKAY_ENGINE_OPENQUAKE_BIN`, and fails if any test skips.
+
+## First-live correction (2026-11-19, hardening pass)
+
+The kernel located `oq` by PATH only; the lane installs
+OpenQuake INTO the driver env, whose bin is not on the
+ambient PATH — the real leg could never have found it. The
+kernel now falls back to the sibling of the running
+interpreter (the env's own bin) after the PATH lookup, in
+the SXE-00 env-provisioning shape. Verified by construction:
+with a stub `oq` beside the interpreter and PATH scrubbed,
+the kernel proceeds past the lookup to its demo check;
+absent both, it still exits 3 naming oq.

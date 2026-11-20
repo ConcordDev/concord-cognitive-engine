@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: NEC2 (nec2c) health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("nec2c", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
-  assert.ok(h.outputs.absErrorR <= 10 && h.outputs.absErrorX <= 15, `dipole impedance within band of 73 + j42.5 ohm (got ${h.outputs.resistanceOhm} + j${h.outputs.reactanceOhm})`);
+  assert.equal(h.status, "PASS", JSON.stringify(h));
+  assert.ok(h.outputs.absErrorR <= 3 && h.outputs.absErrorX <= 5, `dipole impedance within band of the recorded 84.8 + j48.0 ohm reference (got ${h.outputs.resistanceOhm} + j${h.outputs.reactanceOhm})`);
 });

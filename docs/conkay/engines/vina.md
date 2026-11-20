@@ -20,7 +20,7 @@ provisioning. Ops: `health`, `redock`. Kernel:
 
 ## Install (host provisioning, H2)
 
-Provision the Vina 1.2.7 release binary on PATH, a driver venv at `/opt/concord-engines/vina`, and the docking case at `CONKAY_VINA_CASE_DIR`: `receptor.pdbqt`, `ligand.pdbqt` (the crystal pose) and `case.json` {center, size} — assembled from the AutoDock Vina tutorial case (1iep) in the pinned v1.2.7 source tree, with the box recorded from the tutorial at provisioning time. Footprint: ~256 MB disk, 512 MB memory, 4 threads.
+Provision the Vina 1.2.7 release binary on PATH, a driver venv at `/opt/concord-engines/vina`, and the docking case at `CONKAY_VINA_CASE_DIR`: `receptor.pdbqt`, `ligand.pdbqt` (the crystal pose) and `case.json` {center, size} — assembled from the official AutoDock Vina tutorial case (1iep), with the box recorded from the tutorial at provisioning time. Footprint: ~256 MB disk, 512 MB memory, 4 threads.
 
 ## Health
 
@@ -44,3 +44,13 @@ leg run locally. The value legs run only in the CI lane
 (`.github/workflows/conkay-engine-vina.yml`, manual
 dispatch per F8), which installs the pinned engine, sets
 `CONKAY_ENGINE_VINA_BIN`, and fails if any test skips.
+
+
+## First-live correction (2026-11-19, hardening pass)
+
+The case is NOT in the pinned v1.2.7 source tree — verified
+against the release tree (it contains no .pdbqt files); the
+original doc text claiming so is corrected above. The case
+comes from the official Vina tutorial (1iep) at provisioning
+time, and the lane's assembly step is an explicit TODO in
+that form until it is written against the tutorial files.

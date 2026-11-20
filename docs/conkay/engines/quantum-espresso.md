@@ -44,3 +44,16 @@ leg run locally. The value legs run only in the CI lane
 (`.github/workflows/conkay-engine-quantum-espresso.yml`, manual
 dispatch per F8), which installs the pinned engine, sets
 `CONKAY_ENGINE_QUANTUM_ESPRESSO_BIN`, and fails if any test skips.
+
+## First-live correction (2026-11-19, hardening pass)
+
+Two fixes. (1) The kernel located `pw.x` by PATH only; it
+now falls back to the sibling of the running interpreter
+(the driver env's bin), in the SXE-00 env-provisioning
+shape — verified by construction with a stub under a
+scrubbed PATH. (2) The lane provisioned Quantum ESPRESSO
+by apt, whose pockets serve 6.7 — the 7.4 pin is not
+provisionable from Ubuntu at all. The corrected lane
+provisions qe=7.4 from conda-forge (verified present for
+linux-64) into the driver env, where the kernel's sibling
+fallback finds pw.x.

@@ -137,6 +137,17 @@ export async function runProcessKernel(entry, op, request, opts = {}) {
     const child = spawn(binary, [entry.kernel], {
       cwd: scratch,
       env: {
+        // Provisioning channel (first-live correction, 2026-11-19):
+        // kernels read their CONKAY_* vars — tool paths, case and
+        // mesh dirs, recorded references — from the environment
+        // the lane provisioned, but this env was a fixed allowlist
+        // that stripped every one of them, so no env-provisioned
+        // or stored-reference real leg could ever pass through
+        // runEngine. Forward the CONKAY_* family only (arbitrary
+        // ambient vars — LD_*, credentials — stay out); the
+        // runner's own vars below win over ambient namesakes.
+        ...Object.fromEntries(
+          Object.entries(process.env).filter(([k]) => k.startsWith("CONKAY_"))),
         PATH: process.env.PATH || "",
         OMP_NUM_THREADS: String(threads),
         OPENBLAS_NUM_THREADS: String(threads),

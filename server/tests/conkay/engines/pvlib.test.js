@@ -54,6 +54,7 @@ test("malformed request is refused before spawn; unknown op is refused", async (
 
 test("kernel: unprovisioned engine is named, never fabricated around", () => {
   const r = spawnSync("/usr/bin/python3", [KERNEL], {
+    env: { ...process.env, PATH: "/nonexistent-bin" },
     input: JSON.stringify({ op: "health", request: {} }),
     encoding: "utf8",
     timeout: 60_000,
@@ -68,6 +69,6 @@ test("real lane: pvlib health (CI lane only)", async (t) => {
     return;
   }
   const h = await runEngine("pvlib", "health", {}, { fresh: true });
-  assert.equal(h.status, "PASS");
+  assert.equal(h.status, "PASS", JSON.stringify(h));
   assert.ok(h.outputs.zenithErrorDeg <= 0.15 && h.outputs.ghiRelDiff <= 0.10, `solar position matches NOAA and the clear-sky models agree (zenith err ${h.outputs.zenithErrorDeg} deg, GHI diff ${h.outputs.ghiRelDiff})`);
 });
