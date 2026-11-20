@@ -33,6 +33,8 @@ describe("shelves", () => {
     [{ title: "BTC price", source: "feed:coingecko", meta: { feedName: "coingecko" } }, "data"],
     [{ title: "Glulam beam sizing", domain: "engineering", human: { summary: "Sizing glulam beams for residential spans." } }, "specs"],
     [{ title: "Report", source: "file-import", human: { summary: "x" } }, "documents"],
+    [{ title: "Low Tide — film", meta: { type: "film_release" }, human: { summary: "Two sisters and a boat, told over one long tide." } }, "works"],
+    [{ title: "Generated chair #a1", source: "asset-gen", tags: ["generated-asset", "chair"], human: { summary: "A chair generated from a template and checked with beam-frame FEA." } }, "specs"],
     [{ title: "Todo Tracker", type: "forge_app", meta: { skill_kind: "forge_app" }, human: { summary: "A single-file todo tracker app, built in the forge." } }, "specs"],
     [{ title: "Why arches stand", human: { summary: "An arch carries load in compression, pushing outward at its feet, so the abutments must resist the thrust." } }, "knowledge"],
   ];

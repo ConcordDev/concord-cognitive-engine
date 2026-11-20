@@ -1,8 +1,11 @@
 // server/domains/filmstudios.js
+import crypto from "node:crypto";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { acceptSceneLocation } from "../lib/bounded-text.js";
 import { callVision, callVisionUrl, visionPromptForDomain } from "../lib/vision-inference.js";
 import { registerLensExportProvider } from "../lib/lens-export.js";
+import { getMediaDTU, readMediaDurationSec, setMediaScreeningGuest } from "../lib/media-dtu.js";
+import registerFilmReleases from "./film-releases.js";
 
 export default function registerFilmStudiosActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
@@ -865,14 +868,24 @@ export default function registerFilmStudiosActions(registerLensAction) {
       const trackClips = clips.filter((c) => c.track === tr).sort((a, b) => a.order - b.order);
       if (!trackClips.length) continue;
       let frame = 0;
+      const mediaById = new Map(((getFmExtra()?.media?.get(userId)) || []).map((m) => [m.id, m]));
       tracks[tr] = trackClips.map((c) => {
         const startTc = fmTimecode(frame, fps);
+        const startFrame = frame;
         frame += c.durationFrames;
+        const m = c.mediaId ? mediaById.get(c.mediaId) : null;
         return {
           id: c.id, name: c.name, transition: c.transition,
           durationFrames: c.durationFrames,
           startTimecode: startTc, endTimecode: fmTimecode(frame, fps),
           mediaId: c.mediaId || null, mcamAngle: c.mcamAngle || null,
+          // What a player needs to play this clip in the cut: where from,
+          // where in the source to start, how long, and where it sits.
+          streamUrl: fmStreamUrl(m),
+          mediaKind: m ? m.kind : null,
+          sourceInSec: Math.round(((c.inFrame || 0) / fps) * 1000) / 1000,
+          durationSec: Math.round((c.durationFrames / fps) * 1000) / 1000,
+          startSec: Math.round((startFrame / fps) * 1000) / 1000,
         };
       });
       longest = Math.max(longest, frame);
@@ -896,8 +909,21 @@ export default function registerFilmStudiosActions(registerLensAction) {
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const label = fmClean(params.label, 100);
     if (!label) return { ok: false, error: "version label required" };
+    // A version reviews something real: an uploaded export (film media) or
+    // a sequence played clip by clip.
+    let mediaId = null, sequenceId = null;
+    if (params.mediaId) {
+      const m = ((getFmExtra()?.media?.get(userId)) || []).find((mm) => mm.id === params.mediaId && mm.projectId === String(params.projectId));
+      if (!m) return { ok: false, error: "media not found in this production" };
+      mediaId = m.id;
+    }
+    if (params.sequenceId) {
+      const q = (s.sequences.get(userId) || []).find((qq) => qq.id === params.sequenceId && qq.projectId === String(params.projectId));
+      if (!q) return { ok: false, error: "sequence not found in this production" };
+      sequenceId = q.id;
+    }
     const version = {
-      id: fmId("ver"), projectId: String(params.projectId), label,
+      id: fmId("ver"), projectId: String(params.projectId), label, mediaId, sequenceId,
       stage: fmPick(params.stage, ["assembly", "rough_cut", "fine_cut", "picture_lock", "final"], "rough_cut"),
       runtimeSec: Math.max(0, Math.round(fmNum(params.runtimeSec))),
       createdAt: fmNow(),
@@ -916,7 +942,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .map((v) => {
         const vNotes = notes.filter((n) => n.versionId === v.id);
-        return { ...v, noteCount: vNotes.length, openNotes: vNotes.filter((n) => !n.resolved).length };
+        const m = v.mediaId ? ((getFmExtra()?.media?.get(userId)) || []).find((mm) => mm.id === v.mediaId) : null;
+        return { ...v, streamUrl: fmStreamUrl(m), noteCount: vNotes.length, openNotes: vNotes.filter((n) => !n.resolved).length };
       });
     return { ok: true, result: { versions, count: versions.length } };
   });
@@ -930,9 +957,10 @@ export default function registerFilmStudiosActions(registerLensAction) {
     if (!body) return { ok: false, error: "note body required" };
     const note = {
       id: fmId("not"), versionId: version.id, projectId: version.projectId,
-      timecodeSec: Math.max(0, Math.round(fmNum(params.timecodeSec))),
+      timecodeSec: Math.max(0, Math.round(fmNum(params.timecodeSec) * 10) / 10),
       body,
       author: fmClean(params.author, 60) || "Reviewer",
+      authorId: userId,
       resolved: false,
       createdAt: fmNow(),
     };
@@ -1303,6 +1331,27 @@ export default function registerFilmStudiosActions(registerLensAction) {
   //  proxy media, festival submission tracker.
   // ════════════════════════════════════════════════════════════════════
 
+  /** Where a piece of footage plays from: the platform stream, else its own URL. */
+  /** The footage a version party screens (from the host's own media), or null. */
+  function fmVersionMedia(x, party) {
+    if (!party?.versionId || party.releaseId) return null;
+    const v = (getFmState()?.versions?.get(party.host) || []).find((vv) => vv.id === party.versionId);
+    return v?.mediaId ? (x.media.get(party.host) || []).find((mm) => mm.id === v.mediaId) || null : null;
+  }
+  function fmStreamUrl(m) {
+    if (!m) return null;
+    if (m.platformMediaId) return `/api/media/${encodeURIComponent(m.platformMediaId)}/stream`;
+    return m.proxyUrl || m.sourceUrl || null;
+  }
+  /** A party the caller hosts or has joined (parties live in the host's list). */
+  function fmFindParty(x, partyId, userId) {
+    for (const [host, list] of x.parties.entries()) {
+      const p = (list || []).find((q) => q.id === partyId);
+      if (p && (host === userId || (p.participants || []).includes(userId))) return { party: p, host, list };
+    }
+    return null;
+  }
+
   function getFmExtra() {
     const STATE = globalThis._concordSTATE;
     if (!STATE) return null;
@@ -1541,6 +1590,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
   try {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
+    // A party for a released film (anyone who may watch it) is made by
+    // film-release-party; this one screens a version of your own production.
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
     const title = fmClean(params.title, 120);
     if (!title) return { ok: false, error: "party title required" };
@@ -1550,7 +1601,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
       if (!v) return { ok: false, error: "version not found" };
       versionId = v.id;
     }
-    const code = `FILM-${Math.floor(1000 + Math.random() * 9000)}`;
+    // An unguessable join code: it is the only thing a guest needs.
+    const code = `FILM-${crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase()}`;
     const party = {
       id: fmId("pty"), projectId: String(params.projectId), title, code,
       versionId, host: userId,
@@ -1566,16 +1618,34 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   registerLensAction("film-studios", "party-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
-    const parties = (x.parties.get(fmAid(ctx)) || [])
-      .filter((p) => p.projectId === String(params.projectId))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const userId = fmAid(ctx);
+    const parties = [];
+    for (const [host, list] of x.parties.entries()) {
+      for (const p of list || []) {
+        const mine = host === userId;
+        if (!mine && !(p.participants || []).includes(userId)) continue;
+        if (params.projectId && p.projectId !== String(params.projectId) && !(params.includeJoined && !mine)) continue;
+        parties.push({ ...p, isHost: mine });
+      }
+    }
+    parties.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return { ok: true, result: { parties, count: parties.length } };
   });
 
   registerLensAction("film-studios", "party-state", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
-    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
-    if (!party) return { ok: false, error: "party not found" };
+    const userId = fmAid(ctx);
+    const found = fmFindParty(x, String(params.id), userId);
+    if (!found) return { ok: false, error: "party not found" };
+    const party = found.party;
+    // What everyone watches: the released film, or the host's version.
+    let streamUrl = null;
+    if (party.releaseId) streamUrl = globalThis._concordFilmReleaseStream?.(party.releaseId, userId) || null;
+    else if (party.versionId) {
+      const v = (getFmState().versions.get(found.host) || []).find((vv) => vv.id === party.versionId);
+      const m = v?.mediaId ? (x.media.get(found.host) || []).find((mm) => mm.id === v.mediaId) : null;
+      streamUrl = fmStreamUrl(m);
+    }
     // Project the live position forward if playing.
     let position = party.positionSec;
     if (party.playing) {
@@ -1587,9 +1657,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
       result: {
         party: {
           id: party.id, title: party.title, code: party.code,
-          versionId: party.versionId, playing: party.playing,
+          versionId: party.versionId, releaseId: party.releaseId || null, playing: party.playing,
           positionSec: Math.round(position * 100) / 100,
           participantCount: party.participants.length,
+          isHost: found.host === userId,
+          streamUrl,
         },
       },
     };
@@ -1597,8 +1669,11 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   registerLensAction("film-studios", "party-sync", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
-    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
-    if (!party) return { ok: false, error: "party not found" };
+    const found = fmFindParty(x, String(params.id), fmAid(ctx));
+    if (!found) return { ok: false, error: "party not found" };
+    // The host drives the shared transport; guests follow it.
+    if (found.host !== fmAid(ctx)) return { ok: false, error: "only the host controls playback" };
+    const party = found.party;
     if (params.positionSec != null) party.positionSec = Math.max(0, fmNum(params.positionSec));
     if (params.playing != null) party.playing = !!params.playing;
     party.updatedAt = fmNow();
@@ -1608,13 +1683,16 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   registerLensAction("film-studios", "party-chat-post", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
-    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
-    if (!party) return { ok: false, error: "party not found" };
+    const found = fmFindParty(x, String(params.id), fmAid(ctx));
+    if (!found) return { ok: false, error: "party not found" };
+    const party = found.party;
     const text = fmClean(params.text, 500);
     if (!text) return { ok: false, error: "message text required" };
     const msg = {
       id: fmId("msg"), partyId: party.id,
-      author: fmClean(params.author, 60) || "Guest",
+      // The signed-in person, never a name the caller types in.
+      author: globalThis._concordDisplayName?.(fmAid(ctx)) || (found.host === fmAid(ctx) ? "Host" : "Guest"),
+      authorId: fmAid(ctx),
       text,
       atSec: Math.max(0, Math.round(fmNum(params.atSec))),
       createdAt: fmNow(),
@@ -1627,12 +1705,41 @@ export default function registerFilmStudiosActions(registerLensAction) {
 
   registerLensAction("film-studios", "party-chat-list", (ctx, _a, params = {}) => {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
-    const party = (x.parties.get(fmAid(ctx)) || []).find((p) => p.id === params.id);
-    if (!party) return { ok: false, error: "party not found" };
+    const found = fmFindParty(x, String(params.id), fmAid(ctx));
+    if (!found) return { ok: false, error: "party not found" };
+    const party = found.party;
     const messages = (x.partyChat.get(party.id) || [])
       .slice()
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return { ok: true, result: { messages, count: messages.length } };
+  });
+
+  /** Join a watch party by its code. */
+  registerLensAction("film-studios", "party-join", (ctx, _a, params = {}) => {
+    const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
+    const userId = fmAid(ctx);
+    if (!userId || userId === "anon") return { ok: false, error: "sign in to join a party" };
+    const code = fmClean(params.code, 20).toUpperCase();
+    if (!/^FILM-[A-Z0-9]{4,12}$/.test(code)) return { ok: false, error: "that is not a party code" };
+    for (const list of x.parties.values()) {
+      const p = (list || []).find((q) => q.code === code);
+      if (!p) continue;
+      if (p.releaseId) {
+        const can = globalThis._concordFilmReleaseStream?.(p.releaseId, userId);
+        if (!can) return { ok: false, error: "this party screens a film you don't have yet" };
+      }
+      if (!p.participants.includes(userId)) {
+        if (p.participants.length >= 200) return { ok: false, error: "the party is full" };
+        p.participants.push(userId);
+      }
+      // A version screening shows the host's private cut: the guest may
+      // watch that one file while the party exists.
+      const vm = fmVersionMedia(x, p);
+      if (vm?.platformMediaId) setMediaScreeningGuest(globalThis._concordSTATE, vm.platformMediaId, userId, true);
+      saveFmState();
+      return { ok: true, result: { party: { id: p.id, title: p.title, code: p.code, releaseId: p.releaseId || null } } };
+    }
+    return { ok: false, error: "no party with that code" };
   });
 
   registerLensAction("film-studios", "party-delete", (ctx, _a, params = {}) => {
@@ -1640,6 +1747,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
     const arr = x.parties.get(fmAid(ctx)) || [];
     const i = arr.findIndex((p) => p.id === params.id);
     if (i < 0) return { ok: false, error: "party not found" };
+    const vm = fmVersionMedia(x, arr[i]);
+    if (vm?.platformMediaId) for (const u of arr[i].participants || []) if (u !== fmAid(ctx)) setMediaScreeningGuest(globalThis._concordSTATE, vm.platformMediaId, u, false);
     x.partyChat.delete(params.id);
     arr.splice(i, 1);
     saveFmState();
@@ -1720,27 +1829,42 @@ export default function registerFilmStudiosActions(registerLensAction) {
     const x = getFmExtra(); if (!x) return { ok: false, error: "STATE unavailable" };
     const s = getFmState(); const userId = fmAid(ctx);
     if (!fmProject(s, userId, params.projectId)) return { ok: false, error: "project not found" };
-    const name = fmClean(params.name, 160);
+    // Real footage: a platform media upload of the caller's (POST
+    // /api/media/upload-raw). Its title, kind and duration come from the
+    // upload itself; playback streams through /api/media/:id/stream.
+    let platform = null;
+    if (params.platformMediaId) {
+      const md = getMediaDTU(globalThis._concordSTATE, String(params.platformMediaId))?.mediaDTU;
+      if (!md || md.author !== userId) return { ok: false, error: "upload not found among your media" };
+      if (!["video", "audio", "image"].includes(md.mediaType)) return { ok: false, error: "only video, audio or image uploads can be footage" };
+      platform = md;
+    }
+    const name = fmClean(params.name, 160) || (platform ? fmClean(platform.title, 160) : "");
     if (!name) return { ok: false, error: "media name required" };
     const sourceUrl = fmClean(params.sourceUrl, 600);
     if (sourceUrl && !/^https?:\/\//.test(sourceUrl)) return { ok: false, error: "sourceUrl must be http(s)" };
     const proxyUrl = fmClean(params.proxyUrl, 600);
     if (proxyUrl && !/^https?:\/\//.test(proxyUrl)) return { ok: false, error: "proxyUrl must be http(s)" };
+    const fpsIn = parseFloat(params.fps) || null;
+    // The upload's exact duration (the shared helper rounds to whole seconds).
+    const platformSec = platform ? (Number(platform.duration) > 0 ? Math.round(Number(platform.duration) * 1000) / 1000 : readMediaDurationSec(globalThis._concordSTATE, platform.id)) : 0;
     const media = {
       id: fmId("mda"), projectId: String(params.projectId), name,
-      kind: fmPick(params.kind, FM_MEDIA_KIND, "video"),
+      kind: platform ? fmPick(platform.mediaType, FM_MEDIA_KIND, "video") : fmPick(params.kind, FM_MEDIA_KIND, "video"),
+      platformMediaId: platform ? platform.id : null,
+      durationSec: platformSec > 0 ? platformSec : null,
       sourceUrl: sourceUrl || null,
       proxyUrl: proxyUrl || null,
       quality: proxyUrl ? "proxy" : fmPick(params.quality, FM_PROXY_QUALITY, "full"),
       camera: fmClean(params.camera, 40) || null,
       fps: parseFloat(params.fps) || null,
-      durationFrames: Math.max(0, Math.round(fmNum(params.durationFrames))),
+      durationFrames: platformSec > 0 ? Math.round(platformSec * (fpsIn || 24)) : Math.max(0, Math.round(fmNum(params.durationFrames))),
       mcamGroupId: null,
       createdAt: fmNow(),
     };
     fmListB(x.media, userId).push(media);
     saveFmState();
-    return { ok: true, result: { media } };
+    return { ok: true, result: { media: { ...media, streamUrl: fmStreamUrl(media) } } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -1752,7 +1876,7 @@ export default function registerFilmStudiosActions(registerLensAction) {
     return {
       ok: true,
       result: {
-        media, count: media.length,
+        media: media.map((m) => ({ ...m, streamUrl: fmStreamUrl(m) })), count: media.length,
         proxyCount: media.filter((m) => m.quality === "proxy").length,
       },
     };
@@ -2005,4 +2129,8 @@ export default function registerFilmStudiosActions(registerLensAction) {
       };
     });
   });
+
+  // Finished films: release, sell in CC, watch, screen together.
+  registerFilmReleases(registerLensAction, { getFmState, getFmExtra, saveFmState, fmAid, fmClean, fmNum, fmId, fmNow, fmProject, fmStreamUrl });
+
 }

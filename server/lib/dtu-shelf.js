@@ -29,11 +29,11 @@ const SYSTEM_SOURCES = /^(client_error|error|heartbeat|kernel|sentinel|ops|incid
 const RECORD_SOURCES = /^(conversation-memory|chat-enrichment|memory|mood|notification|affect_valence_delta|proactive|your-thread|user_rule|scheduled|today|chat|session|journal|retail-till-close|income|credits|accounting-invoice)$/;
 const RECORD_TAGS = /^(chat|conversation|chat-memory|session|memory|mood|journal|till|ledger|receipt|invoice|notification)$/;
 const PART_TYPES = /^(podcast_supporter_pass|supporter_pass|license|listing_cover)$/;
-const WORK_TYPES = /^(music_release|artwork|album|track|podcast_episode|video|film|animation|poem|poetry|story|novel|essay|writing|photo|photograph|game|world)$/;
+const WORK_TYPES = /^(music_release|film_release|artwork|album|track|podcast_episode|video|film|animation|poem|poetry|story|novel|essay|writing|photo|photograph|game|world)$/;
 const WORK_DOMAINS = /^(music|art|film|poetry|writing|creative-writing|photography|podcast|animation|studio|games?|literature|fashion|dance|theatre|theater)$/;
 const SPEC_DOMAINS = /^(engineering|code|cad|architecture|woodworking|welding|carpentry|masonry|plumbing|hvac|electrical|manufacturing|robotics|automotive|aerospace|materials|chem|chemistry|cooking|food|trades|home-improvement|construction|conkay|electronics|3d|maker)$/;
-const SPEC_SOURCES = /^(conkay_design|cad\.body|step-import|code-lens|blueprint|user-forge|hubkit|kit|typescript)$/;
-const SPEC_TAGS = /^(spec|specs|specification|cad|blueprint|design|schematic|recipe|how-to|howto|bom|datasheet|tolerance|drawing)$/;
+const SPEC_SOURCES = /^(asset-gen|conkay_design|cad\.body|step-import|code-lens|blueprint|user-forge|hubkit|kit|typescript)$/;
+const SPEC_TAGS = /^(generated-asset|spec|specs|specification|cad|blueprint|design|schematic|recipe|how-to|howto|bom|datasheet|tolerance|drawing)$/;
 // Made things that run or get built: apps, code, blueprints, recipes, formulas.
 const SPEC_TYPES = /^(forge_app|app|program|code|blueprint|recipe|formula|craft|evo_asset|skill_recipe|spell_recipe|fighting_style_recipe|design|cad|schematic|kit)$/;
 const DOC_SOURCES = /^(file-import|csv-import|upload|text-extraction|pdf|document|docx)$/;

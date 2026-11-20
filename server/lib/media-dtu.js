@@ -446,6 +446,10 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 
   if (!viewerId) return { allowed: false, reason: "Authentication required" };
   if (mediaDTU.author === viewerId) return { allowed: true };
+  // A buyer keeps their copy even after the author takes it down, and a
+  // guest the author invited to a screening may watch while it runs.
+  if (Array.isArray(mediaDTU.licensedUserIds) && mediaDTU.licensedUserIds.includes(viewerId)) return { allowed: true };
+  if (Array.isArray(mediaDTU.screeningUserIds) && mediaDTU.screeningUserIds.includes(viewerId)) return { allowed: true };
 
   if (privacy === "followers-only") {
     const social = STATE._social;
@@ -1234,6 +1238,18 @@ export function setMediaSaleTerms(STATE, mediaId, authorId, { streaming = "full"
 }
 
 /** A purchase entitles the buyer to the full stream of a track (read by viewerMayStreamFull). Idempotent; persisted. */
+/** Let (or stop letting) a screening guest watch the author's private media. */
+export function setMediaScreeningGuest(STATE, mediaId, userId, allowed) {
+  if (!mediaId || !userId) return { ok: false, error: "mediaId and userId are required" };
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  const list = Array.isArray(dtu.screeningUserIds) ? dtu.screeningUserIds : [];
+  dtu.screeningUserIds = allowed ? (list.includes(userId) ? list : [...list, userId]) : list.filter((u) => u !== userId);
+  rememberMedia(STATE, dtu);
+  return { ok: true };
+}
+
 export function grantMediaEntitlement(STATE, mediaId, userId) {
   if (!mediaId || !userId) return { ok: false, error: "mediaId and userId are required" };
   const media = getMediaState(STATE);
