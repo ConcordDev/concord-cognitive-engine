@@ -1,0 +1,30 @@
+# CI lane for the plasmapy engine (SXE-31, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-plasmapy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install PlasmaPy 2025.1.0 (pinned)
+        run: |
+          python3 -m venv /opt/concord-engines/plasmapy
+          /opt/concord-engines/plasmapy/bin/pip install --no-cache-dir plasmapy==2025.1.0
+          /opt/concord-engines/plasmapy/bin/python -c "import plasmapy; print(plasmapy.__version__)"
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_PLASMAPY_BIN: /opt/concord-engines/plasmapy/bin/python
+        run: |
+          node --test server/tests/conkay/engines/plasmapy.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

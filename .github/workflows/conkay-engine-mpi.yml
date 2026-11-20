@@ -1,0 +1,32 @@
+# CI lane for the mpi engine (SXE-39, built under SXE-52).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-mpi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install OpenMPI 5.0.11 + mpi4py (pinned)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openmpi-bin libopenmpi-dev
+          mpirun --version
+          python3 -m venv /opt/concord-engines/mpi
+          /opt/concord-engines/mpi/bin/pip install --no-cache-dir mpi4py==4.1.2
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_MPI_BIN: /opt/concord-engines/mpi/bin/python
+        run: |
+          node --test server/tests/conkay/engines/mpi.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

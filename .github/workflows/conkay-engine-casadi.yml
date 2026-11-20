@@ -1,0 +1,30 @@
+# CI lane for the casadi engine (SXE-20, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-casadi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install CasADi 3.7.0 (pinned)
+        run: |
+          python3 -m venv /opt/concord-engines/casadi
+          /opt/concord-engines/casadi/bin/pip install --no-cache-dir casadi==3.7.0
+          /opt/concord-engines/casadi/bin/python -c "import casadi; print(casadi.__version__)"
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_CASADI_BIN: /opt/concord-engines/casadi/bin/python
+        run: |
+          node --test server/tests/conkay/engines/casadi.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

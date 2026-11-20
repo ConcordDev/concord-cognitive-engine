@@ -1,0 +1,30 @@
+# CI lane for the phreeqc engine (SXE-24, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-phreeqc
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install phreeqpy (IPhreeqc 3.8.6) (pinned)
+        run: |
+          python3 -m venv /opt/concord-engines/phreeqc
+          /opt/concord-engines/phreeqc/bin/pip install --no-cache-dir phreeqpy
+          /opt/concord-engines/phreeqc/bin/python -c "import phreeqpy; print('phreeqpy ok')"
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_PHREEQC_BIN: /opt/concord-engines/phreeqc/bin/python
+        run: |
+          node --test server/tests/conkay/engines/phreeqc.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log

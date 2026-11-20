@@ -1,0 +1,31 @@
+# CI lane for the su2 engine (SXE-12, built under SXE-53).
+#
+# Heavy-engine lane: MANUAL DISPATCH ONLY per the founder F8
+# ruling (2026-11-18) — no automatic schedule until the founder
+# approves one as a spend decision. Lands via the desk git route
+# (the GitHub connector cannot write workflow files).
+name: conkay-engine-su2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install SU2 8.3.0 (pinned release) + tutorial mesh + driver env
+        run: |
+          echo "Install the SU2 8.3.0 release binary and the inv_NACA0012 tutorial mesh per docs/conkay/engines/su2.md"
+          which SU2_CFD || true
+          python3 -m venv /opt/concord-engines/su2
+      - name: Run engine tests (skips fail the lane)
+        env:
+          CONKAY_ENGINE_SU2_BIN: /opt/concord-engines/su2/bin/python
+          CONKAY_SU2_MESH: /opt/concord-engines/su2/mesh_NACA0012_inv.su2
+        run: |
+          node --test server/tests/conkay/engines/su2.test.js 2>&1 | tee /tmp/engine-tests.log
+          grep -q "ℹ skipped 0" /tmp/engine-tests.log
