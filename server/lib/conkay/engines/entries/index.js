@@ -11,8 +11,13 @@
  * pybamm (SXE-25). SXE-54 (breadth) appends in batches —
  * batch 1: meep + mpb (SXE-18), quantlib (SXE-23),
  * pycalphad + phreeqc (SXE-24), plasmapy + warpx (SXE-31),
- * qutip (SXE-32). Later engine programmes append their
- * imports here; engines/index.js imports this module
+ * qutip (SXE-32); batch 2: pyscf + xtb + rdkit + psi4 +
+ * openbabel + quantum-espresso (SXE-26), biopython + blast +
+ * mafft + iqtree + samtools + bwa + roadrunner + cobrapy +
+ * vina + opensim (SXE-28), openmc + geant4 (SXE-30),
+ * modflow + swmm + openquake + specfem + climlab + aermod +
+ * epanet + proj (SXE-35). Later engine programmes append
+ * their imports here; engines/index.js imports this module
  * exactly once.
  */
 import "./mpi.js";
@@ -42,3 +47,29 @@ import "./meep.js";
 import "./mpb.js";
 import "./pycalphad.js";
 import "./phreeqc.js";
+import "./pyscf.js";
+import "./xtb.js";
+import "./rdkit.js";
+import "./psi4.js";
+import "./openbabel.js";
+import "./quantum-espresso.js";
+import "./biopython.js";
+import "./blast.js";
+import "./mafft.js";
+import "./iqtree.js";
+import "./samtools.js";
+import "./bwa.js";
+import "./roadrunner.js";
+import "./cobrapy.js";
+import "./vina.js";
+import "./opensim.js";
+import "./openmc.js";
+import "./geant4.js";
+import "./modflow.js";
+import "./swmm.js";
+import "./openquake.js";
+import "./specfem.js";
+import "./climlab.js";
+import "./aermod.js";
+import "./epanet.js";
+import "./proj.js";
