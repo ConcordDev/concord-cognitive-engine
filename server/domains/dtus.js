@@ -178,12 +178,15 @@ function normalizeDtu(d) {
   };
 }
 
+import registerDtusBinder from "./dtus-binder.js";
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
 import { saveAfterWrites } from "../lib/lens-save-on-write.js";
 export default function registerDtusActions(registerLensAction) {
   registerLensAction = saveAfterWrites(guardAnonWrites(registerLensAction)); // anonymous callers can read, not write (lib/lens-authz.js)
+  // The Binder: shelves, cards, connections, fuse/remix, check + gated publish.
+  registerDtusBinder(registerLensAction);
   /**
    * lineageAnalysis
    * Trace the full lineage of a DTU — parent chain, child forks, depth,

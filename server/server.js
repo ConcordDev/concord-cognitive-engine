@@ -13,6 +13,7 @@
 
 // Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { publishGateDenial } from "./lib/dtu-publish-gate.js";
 import { mountPodcastPublicRoutes } from "./domains/podcast-studio.js";
 import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normalize.js";
@@ -13767,6 +13768,13 @@ globalThis._concordSaveStateDebounced = saveStateDebounced;
 // music release publishing its cover) persists it through the normal DTU write
 // path instead of mutating STATE.dtus in memory only.
 globalThis._concordUpsertDTU = (dtu) => upsertDTU(dtu, { broadcast: false });
+// The Binder (domains/dtus-binder.js) reads with the same visibility rule as
+// the DTU list routes and publishes through the gated lattice publish.
+globalThis._concordUserVisibleDTUs = (viewerId) => userVisibleDTUs(viewerId);
+globalThis._concordPublishDTU = (id) => publishDTU(id);
+globalThis._concordUnpublishDTU = (id) => unpublishDTU(id);
+globalThis._concordIsPublishedDTU = (id) => PUBLIC_LATTICE.publishedDTUs.has(id);
+globalThis._concordPublishedDTUIds = () => [...PUBLIC_LATTICE.publishedDTUs];
 
 /**
  * Synchronous state save — bypasses debounce entirely.
@@ -26081,6 +26089,10 @@ function publishDTU(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
   if (isQuarantined(dtu)) return { ok: false, error: "quarantined", message: "Quarantined DTUs cannot be published." };
+  // Knowledge must carry a current, non-refuted check receipt; personal and
+  // system rows are never published (lib/dtu-publish-gate.js).
+  const gate = publishGateDenial(dtu);
+  if (gate) return { ok: false, ...gate };
 
   PUBLIC_LATTICE.publishedDTUs.add(dtuId);
   PUBLIC_LATTICE.enabled = true;
@@ -46459,6 +46471,7 @@ let _vgIter = null;
 function getVerifyGate() {
   if (_verifyGateSvc) return _verifyGateSvc;
   _verifyGateSvc = createVerifyGateService({
+    // (deps are also handed to the Binder's on-demand check: see _concordVerifyDeps below)
     store: {
       get: (id) => STATE.dtus.get(id) || null,
       annotate: (id, v) => { const d = STATE.dtus.get(id); if (!d) return; d.meta = { ...(d.meta || {}), verification: v }; upsertDTU(d, { broadcast: false }); },
@@ -46502,6 +46515,18 @@ function getVerifyGate() {
   });
   return _verifyGateSvc;
 }
+// The same checker dependencies the background gate uses, for an on-demand
+// check of one DTU (dtus.card-check). Lazily built with the gate.
+let _vgDepsRef = null;
+globalThis._concordVerifyDeps = () => {
+  if (_vgDepsRef) return _vgDepsRef;
+  _vgDepsRef = {
+    dtuExists: async (id) => STATE.dtus.has(id) || Boolean(db?.prepare?.("SELECT 1 FROM dtus WHERE id = ? LIMIT 1").get(id)),
+    yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }),
+    proveClaim: _vgProveClaim,
+  };
+  return _vgDepsRef;
+};
 
 async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
   let attempted = 0;
@@ -48432,6 +48457,9 @@ register("marketplace", "list", async (ctx, input) => {
   if (dtu.ownerId && dtu.ownerId !== userId) {
     return { ok: false, error: "not_your_dtu" };
   }
+  // Same rule as the public lattice: knowledge is checked before it goes on sale.
+  const publishGate = publishGateDenial(dtu);
+  if (publishGate) return { ok: false, ...publishGate };
   // Owner private work may be local (dtu.create default) or personal (locker).
   // Block already-global / already-marketplace scopes from a second list path.
   // (Uploaded media DTUs are global/user by design — free listen-only path.)
