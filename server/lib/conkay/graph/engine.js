@@ -22,6 +22,63 @@ function touches(readKey, changedKey) {
   return readKey === changedKey || changedKey.startsWith(`${readKey}.`) || readKey.startsWith(`${changedKey}.`);
 }
 
+/**
+ * SC-05: the design's declared values for one target, in the namespace
+ * solvers echo them in — the `supplied` half of the registry's
+ * input-integrity guard (physics/registry.js inputIntegrityViolation).
+ * Drawn from exactly the records a solver reads through the context —
+ * the target node's geometry / props / position, its material record,
+ * and the loads on it — so the guard compares the solver's echo against
+ * what the design actually served, and a solver that quietly uses a
+ * different number than the design declares is NOT_COMPUTED instead of
+ * PASS. Load fields are supplied as `<field>.<loadCase>` (the corpus
+ * echo form) and bare only when every load case agrees on the value.
+ * Material values ride under their record names plus the registry's
+ * canonical aliases (E = youngsModulusPa, yield = yieldPa). Non-numeric
+ * declarations (support, shape, names) are not comparable and stay out;
+ * names the design does not declare are never invented here. The
+ * `ignored` half is deliberately not derived: which declared values a
+ * solver may legitimately not consume is per-solver knowledge the
+ * engine does not have, and guessing it would refuse honest runs.
+ */
+function declaredInputs(graph, target) {
+  // Only values the graph itself represents numerically count as declared
+  // numbers: a finite number, or a parsed quantity { value: <number> }.
+  // Booleans and strings are declarations of another kind (a flag like
+  // props.massBudget: true, a support kind) — coercing them (Number(true)
+  // === 1) would invent a numeric declaration the design never made.
+  const num = (v) => {
+    if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+    if (v && typeof v === "object" && typeof v.value === "number" && Number.isFinite(v.value)) return v.value;
+    return undefined;
+  };
+  const supplied = {};
+  const put = (name, v) => { const n = num(v); if (n !== undefined) supplied[name] = n; };
+  for (const section of ["geometry", "props", "position"]) {
+    const o = graph.get(target, section);
+    if (o && typeof o === "object") for (const [k, v] of Object.entries(o)) put(k, v);
+  }
+  const m = graph.materialOf(target);
+  if (m) {
+    for (const [k, v] of Object.entries(m)) put(k, v);
+    put("E", m.youngsModulusPa);
+    put("yield", m.yieldPa);
+  }
+  const byField = new Map();
+  for (const l of graph.loadsOn(target)) {
+    for (const [k, v] of Object.entries(l)) {
+      if (k === "loadCase" || k === "target") continue;
+      const n = num(v);
+      if (n === undefined) continue;
+      supplied[`${k}.${l.loadCase}`] = n;
+      if (!byField.has(k)) byField.set(k, n);
+      else if (byField.get(k) !== n) byField.set(k, null);
+    }
+  }
+  for (const [k, n] of byField) if (n !== null) supplied[k] = n;
+  return supplied;
+}
+
 export class DesignEngine {
   constructor(graph, solverIds = listSolvers().map((s) => s.id)) {
     this.graph = graph;
@@ -109,7 +166,7 @@ export class DesignEngine {
       let raw;
       try { raw = s.run(this.context(run), run.target); }
       catch (e) { raw = null; run.envelope = { runId: id, status: "ERROR", error: e instanceof Error ? e.message : String(e), solver: { id: s.id, version: s.version }, target: run.target }; }
-      if (raw) run.envelope = envelope(s, run.target, raw, { runtimeMs: +(performance.now() - t0).toFixed(3), revision: this.graph.revision });
+      if (raw) run.envelope = envelope(s, run.target, raw, { runtimeMs: +(performance.now() - t0).toFixed(3), revision: this.graph.revision, supplied: declaredInputs(this.graph, run.target) });
       run.stale = false;
       this.computedThisPass.push(id);
       return run.envelope;
