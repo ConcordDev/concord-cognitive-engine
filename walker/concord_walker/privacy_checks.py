@@ -138,7 +138,7 @@ class FrameCapture:
 
 
 # ---------------------------------------------------------------- the probes
-def probe_foreign_rows(walk, owner_ctx, label, api_paths, log=None):
+def probe_foreign_rows(walk, owner_ctx, label, api_paths, log=None, owner_acct=None, foreign_acct="t2"):
     """Foreign-row probe against a live LensWalk (t1 = the walk's account).
 
     Preconditions (the caller — reverify dispatch — guarantees them):
@@ -154,14 +154,17 @@ def probe_foreign_rows(walk, owner_ctx, label, api_paths, log=None):
                 "notes": "all candidate routes are money routes; probe set empty by deny-list"}
     # Guards: t1 is who the walk claims, before any probing context opens.
     try:
-        assert_account(owner_ctx, cfg, walk.acct, "privacy probe (owner)", log)
+        assert_account(owner_ctx, cfg, owner_acct or walk.acct, "privacy probe (owner)", log)
     except Exception as e:
         return {"verdict": HUMAN, "method": "privacy:foreign-rows", "category": "privacy",
                 "notes": "owner guard failed: %s" % type(e).__name__}
     ui_texts, bodies = {}, {}
     contexts = []
+    if (owner_acct or walk.acct) == foreign_acct:
+        return {"verdict": HUMAN, "method": "privacy:foreign-rows", "category": "privacy",
+                "notes": "owner %s is the probing account - not a foreign probe" % foreign_acct}
     try:
-        for name, acct in (("t2", "t2"), ("signed-out", None)):
+        for name, acct in ((foreign_acct, foreign_acct), ("signed-out", None)):
             if acct and acct not in cfg.get("accounts", {}):
                 continue
             ctx = new_context(browser, cfg, acct, cfg["viewport_desktop"])
@@ -193,7 +196,7 @@ def probe_foreign_rows(walk, owner_ctx, label, api_paths, log=None):
                 pass
     verdict, leaks = foreign_probe_verdict(ui_texts, bodies, label)
     notes = ("foreign label visible to: %s" % ", ".join(leaks)) if leaks else \
-        "label absent from t2 + signed-out UI texts and API bodies"
+        "label absent from %s + signed-out UI texts and API bodies" % foreign_acct
     if excluded:
         notes += "; money routes excluded: %s" % ", ".join(excluded)
     return {"verdict": verdict, "method": "privacy:foreign-rows", "category": "privacy",

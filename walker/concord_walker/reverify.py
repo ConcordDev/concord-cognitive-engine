@@ -803,9 +803,12 @@ class Reverifier:
         acct, admin = self.account_for(t["lens"])
         lw = LensWalk(self.b, self.cfg, self.rec, self.inv[t["lens"]], acct, self.log,
                       allow_write=False, admin=admin)
-        ctx, page, _cdp = lw.open()
+        from .auth import isolation_pair
+        owner, observer = isolation_pair(self.cfg, acct)
+        ctx, page, _cdp = lw.open(account=owner)  # ULW C28: owner = the fixture's creator
         try:
-            row = _pc.probe_foreign_rows(lw, ctx, label, paths, self.log)
+            row = _pc.probe_foreign_rows(lw, ctx, label, paths, self.log,
+                                         owner_acct=owner, foreign_acct=observer)
         finally:
             lw._close(ctx)
         row["evidence"] = [lw.result.get("initial_evidence")]

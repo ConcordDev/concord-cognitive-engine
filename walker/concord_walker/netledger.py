@@ -262,8 +262,10 @@ class NetLedger:
         return None, True
 
     # ---------------------------------------------------------------- hooks
-    def attach(self, page):
-        page.on("request", self._on_request)
+    def attach(self, page, account=None):
+        # ULW C28: every recorded call is tagged with the account whose context made it, so the
+        # isolation replay never replays an account's calls as that same account.
+        page.on("request", lambda req: self._on_request(req, account))
         page.on("requestfinished", self._on_finished)
         page.on("requestfailed", self._on_failed)
         page.on("console", self._on_console)
@@ -346,7 +348,7 @@ class NetLedger:
         except Exception:
             pass
 
-    def _on_request(self, req):
+    def _on_request(self, req, account=None):
         try:
             u = urlsplit(req.url)
         except Exception:
@@ -362,7 +364,7 @@ class NetLedger:
             self.static += 1
             self._static_live[id(req)] = template_path(u.path)[0][:80]
             return
-        e = {"req": req, "t_seen": self.clock(), "failed": None, "finished": False}
+        e = {"req": req, "t_seen": self.clock(), "failed": None, "finished": False, "acct": account}
         self.raw.append(e)
         self._live[id(req)] = e
 
@@ -530,7 +532,8 @@ class NetLedger:
                 and row.get("type") in API_TYPES and not tele:
             # upgrade 3: kept in memory for the t2 replay only; never serialized
             self.replay.append({"t": t, "method": method, "url": req.url, "path": path_t,
-                                "post": (req.post_data if method in WRITE_METHODS else None)})
+                                "post": (req.post_data if method in WRITE_METHODS else None),
+                                "acct": e.get("acct")})
         try:
             sz = req.sizes()
             row["resp_bytes"] = int(sz.get("responseBodySize") or 0)

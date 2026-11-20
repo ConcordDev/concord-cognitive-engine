@@ -266,7 +266,7 @@ class LensWalk:
         ctx = new_context(self.b, self.cfg, account if account is not None else self.acct, vp, mobile=mobile)
         page = ctx.new_page()
         self.attach(page)
-        self.net.attach(page)
+        self.net.attach(page, account=account if account is not None else self.acct)
         cdp = Cdp(ctx, page)
         self.net.watch_initiators(cdp.s)
         return ctx, page, cdp
@@ -631,11 +631,12 @@ class LensWalk:
         run roll-up aggregates it. A phase that cannot run is SKIPPED with
         its reason — reported, never silent."""
         from . import isolation as _iso
-        from .auth import has_session
+        from .auth import has_session, isolation_pair
+        owner, observer = isolation_pair(self.cfg, self.acct)
         plan = _iso.phase_plan(acct=self.acct, admin=self.admin,
                                allow_write=self.allow_write,
-                               has_t2=has_session(self.cfg, "t2"),
-                               two_account_flag=self.two_account)
+                               has_t2=has_session(self.cfg, observer),
+                               two_account_flag=self.two_account, observer=observer)
         if not plan["run"]:
             self.result["isolation"] = {"status": "SKIPPED", "reason": plan["reason"],
                                         "checks": 0, "findings": 0, "leaks": []}
@@ -648,11 +649,15 @@ class LensWalk:
         paths = list(dict.fromkeys(r["path"] for r in self.net.replay if r.get("path")))
         pp = _iso.probe_plan(fixture_label=label, api_paths=paths)
         probe_row, probe_skip = None, None
+        if pp["run"] and owner == observer:
+            pp = {"run": False, "reason": "fixture owner %s is the isolation observer" % owner}
         if pp["run"] and not self.over_budget():
             from . import privacy_checks as _pc
-            ctx, _page, _cdp = self.open()
+            # ULW C28: the owner context is the account that created the fixture (write account)
+            ctx, _page, _cdp = self.open(account=owner)
             try:
-                probe_row = _pc.probe_foreign_rows(self, ctx, label, paths, self.log)
+                probe_row = _pc.probe_foreign_rows(self, ctx, label, paths, self.log,
+                                                   owner_acct=owner, foreign_acct=observer)
             finally:
                 self._close(ctx)
         else:
@@ -666,14 +671,15 @@ class LensWalk:
         t1's object = ownership finding. Raw URLs/bodies live only in memory for this
         replay and are never written. Never deletes; t2 credentials are never read here
         (the saved auth/t2.json session is used)."""
-        from .auth import has_session
+        from .auth import has_session, isolation_pair
         from urllib.parse import urlsplit
         cap = self.th.get("two_account_max_calls", 12)
+        _owner, foreign = isolation_pair(self.cfg, self.acct)
         if self.admin or not self.acct or self.acct != "t1":
             self.result["two_account"] = {"status": "SKIPPED", "reason": "t1 member walks only"}
             return
-        if not has_session(self.cfg, "t2"):
-            self.result["two_account"] = {"status": "SKIPPED", "reason": "no saved t2 session (auth/t2.json)"}
+        if not has_session(self.cfg, foreign):
+            self.result["two_account"] = {"status": "SKIPPED", "reason": "no saved %s session (auth/%s.json)" % (foreign, foreign)}
             return
         from . import intended_public as _ip
         ip_entries = _ip.load(self.cfg.get("intended_public_file"))
@@ -682,6 +688,9 @@ class LensWalk:
         for r in sorted(self.net.replay, key=lambda x: (x["method"] != "GET", self.net._cid_at(x["t"]).endswith(":page:-"), x["t"])):
             k = (r["method"], r["path"])
             if k in seen or r["method"] == "DELETE":
+                continue
+            # ULW C28: never replay an account's own calls as itself (untagged rows = the walk account)
+            if (r.get("acct") or self.acct) == foreign:
                 continue
             if r["method"] != "GET" and not self.th.get("two_account_writes", True):
                 continue
@@ -693,9 +702,9 @@ class LensWalk:
             self.result["two_account"] = {"status": "NA", "reason": "no object calls recorded", "replayed": 0}
             return
         vp = self.cfg["viewport_desktop"]
-        ctx = new_context(self.b, self.cfg, "t2", vp)
+        ctx = new_context(self.b, self.cfg, foreign, vp)
         try:
-            assert_account(ctx, self.cfg, "t2", "two-account replay", self.log)
+            assert_account(ctx, self.cfg, foreign, "two-account replay", self.log)
             for r in todo:
                 if urlsplit(r["url"]).netloc != urlsplit(self.cfg["base_url"]).netloc:
                     continue
@@ -717,7 +726,8 @@ class LensWalk:
                 leak = 200 <= st < 300 and not refused
                 cid = self.net._cid_at(r["t"])
                 row = {"method": r["method"], "path": r["path"], "status": st, "control_id": cid,
-                       "verdict": "OWNERSHIP_FAIL" if leak else "PASS"}
+                       "verdict": "OWNERSHIP_FAIL" if leak else "PASS",
+                       "owner": r.get("acct") or self.acct, "foreign": foreign}
                 if leak and r["method"] == "GET":
                     # false-positive control: a resource a signed-out visitor can also read is
                     # public, not an ownership leak (live run 2026-11-16). GET only; anon never writes.
@@ -731,7 +741,7 @@ class LensWalk:
                         # CALLER's own data (or an empty shell). Only t2 receiving the same non-empty
                         # payload t1 receives is a leak. Payloads are compared in memory only; just
                         # the verdict is stored (live run 2026-11-16, /api/chat/memory/:id).
-                        same, b1 = self._same_as_t1(r["url"], body, vp)
+                        same, b1 = self._same_as_t1(r["url"], body, vp, owner=r.get("acct") or self.acct)
                         echoes = tuple(x for x in urlsplit(r["url"]).path.split("/") if x)
                         row["same_as_t1"] = same
                         # shape stats only (leaf counts, never values) so a later reader can tell a
@@ -753,7 +763,7 @@ class LensWalk:
                 rows.append(row)
                 if leak:
                     kind = "read" if r["method"] == "GET" else "write"
-                    self.net.annotate(cid, ownership=["t2 %s %s %s -> %d" % (kind, r["method"], r["path"], st)])
+                    self.net.annotate(cid, ownership=["%s %s %s %s -> %d" % (foreign, kind, r["method"], r["path"], st)])
                     if not (self.net.meta.get(cid) or {}).get("evidence") and self.result.get("initial_evidence"):
                         self.net.annotate(cid, evidence=[self.result["initial_evidence"]])
                     sid = (self.net.meta.get(cid) or {}).get("sid")
@@ -772,7 +782,7 @@ class LensWalk:
                                       "public_intended": sum(1 for x in rows if x["verdict"] == "PUBLIC_INTENDED"),
                                       "calls": rows}
 
-    def _same_as_t1(self, url, t2_body, vp):
+    def _same_as_t1(self, url, t2_body, vp, owner="t1"):
         """(same, t1_payload): does t1 get the identical JSON payload for this GET? same is None
         if unknown. The payload stays in memory; callers store only derived booleans/counts."""
         import json as _json
@@ -780,7 +790,7 @@ class LensWalk:
             return None, None
         ctx = None
         try:
-            ctx = new_context(self.b, self.cfg, "t1", vp)
+            ctx = new_context(self.b, self.cfg, owner, vp)  # ULW C28: the row's OWNER account
             resp = ctx.request.get(url, timeout=15000)
             try:
                 b1 = resp.json()

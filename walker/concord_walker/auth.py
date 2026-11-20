@@ -131,6 +131,17 @@ def write_account_key(cfg):
     return None
 
 
+def isolation_pair(cfg, walk_acct):
+    """ULW C28 runtime wiring (walk-2 ruling GB-1561 / t1362s16084): (owner, observer) for the
+    isolation legs. owner = the account that CREATED the walk's fixtures / object calls under
+    test (the write account when configured, else the walk's own account); observer = the
+    configured isolation observer (default "t2"). Default configs (no write_account /
+    isolation_observer) give (walk_acct, "t2") - the pre-C28 behaviour, unchanged."""
+    owner = write_account_key(cfg) or walk_acct
+    observer = isolation_observer_key(cfg) or "t2"
+    return owner, observer
+
+
 def isolation_observer_key(cfg):
     """ULW C28 (walk-2 ruling GB-1561): the account that OBSERVES the write account's content for the
     isolation legs - cfg["isolation_observer"] when it names a configured account, else "t2" (the
