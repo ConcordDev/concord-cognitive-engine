@@ -16,7 +16,7 @@ decidable and testable offline (selftest/run_selftest_c16.py).
 """
 
 
-def phase_plan(*, acct, admin, allow_write, has_t2, two_account_flag=False, observer="t2"):
+def phase_plan(*, acct, admin, allow_write, has_t2, two_account_flag=False, observer="t2", reader="t1"):
     """Should this walk carry the isolation phase, and if not, why not.
 
     The phase is standard for a t1 member walk that can write: the walk
@@ -28,7 +28,7 @@ def phase_plan(*, acct, admin, allow_write, has_t2, two_account_flag=False, obse
     """
     if admin:
         return {"run": False, "reason": "admin look-only walk"}
-    if acct != "t1":
+    if acct != reader:
         return {"run": False, "reason": "t1 member walks only"}
     if not has_t2:
         return {"run": False, "reason": "no saved %s session (auth/%s.json)" % (observer, observer)}

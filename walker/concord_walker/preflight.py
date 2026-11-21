@@ -28,6 +28,18 @@ from .auth import expected_username, has_session, isolation_observer_key, write_
 PRIMARY_ACCOUNTS = ("t1", "t2")
 
 
+def required_accounts(cfg):
+    """t1/t2 plus every account a shard pair names (ULW v3 W3 walk-behind:
+    reader / writer / observer per shard), in a stable order."""
+    keys = list(PRIMARY_ACCOUNTS)
+    for pair in cfg.get("shard_accounts") or []:
+        for role in ("reader", "writer", "observer"):
+            k = (pair or {}).get(role)
+            if k and k not in keys:
+                keys.append(k)
+    return keys
+
+
 def _slugs(inventory):
     out = []
     for e in inventory or []:
@@ -81,7 +93,7 @@ def verify_config(cfg, inventory):
     proof (ULW C28), labelling, the published write-skip list, coverage."""
     problems = []
     sessions = {}
-    for key in PRIMARY_ACCOUNTS:
+    for key in required_accounts(cfg):
         if key not in (cfg.get("accounts") or {}):
             problems.append("account %r is not configured" % key)
             continue
@@ -116,7 +128,7 @@ def verify_sessions_live(browser, cfg, log=None):
     (empty = every session verified). Never raises: pre-flight REPORTS."""
     from .auth import assert_account, new_context, AccountMismatch
     problems = []
-    keys = [k for k in PRIMARY_ACCOUNTS if k in (cfg.get("accounts") or {})]
+    keys = [k for k in required_accounts(cfg) if k in (cfg.get("accounts") or {})]
     wkey = write_account_key(cfg)
     if wkey and wkey not in keys:
         keys.append(wkey)
@@ -148,6 +160,18 @@ def verify_sessions_live(browser, cfg, log=None):
             problems.append("write account %r is the isolation observer - not a separate account" % wkey)
         elif live_names.get(wkey) and live_names.get(wkey) == live_names.get(observer):
             problems.append("write account %s and isolation observer %s are the same live user" % (wkey, observer))
+    # ULW v3 W3: every shard's writer and observer are two different LIVE users, and no
+    # writer is shared between shards (their creates/deletes would collide).
+    writers = {}
+    for i, pair in enumerate(cfg.get("shard_accounts") or []):
+        w = (pair or {}).get("writer")
+        o = (pair or {}).get("observer") or (pair or {}).get("reader") or observer
+        if w and o and (w == o or (live_names.get(w) and live_names.get(w) == live_names.get(o))):
+            problems.append("shard %d: writer %s and observer %s are not separate live users" % (i, w, o))
+        if w and live_names.get(w):
+            if live_names[w] in writers:
+                problems.append("shard %d: writer %s is also shard %d's writer" % (i, w, writers[live_names[w]]))
+            writers[live_names[w]] = i
     return problems
 
 

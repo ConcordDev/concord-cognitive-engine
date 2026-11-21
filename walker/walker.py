@@ -154,6 +154,10 @@ def cmd_walk(args, cfg, log):
         reader_key, writer_key = shard_accounts(cfg, shard[0])
         if writer_key:
             cfg = dict(cfg, write_account=writer_key)
+        _pairs = cfg.get("shard_accounts") or []
+        _pair = _pairs[shard[0]] if shard[0] < len(_pairs) else None
+        cfg = dict(cfg, reader_account=reader_key,
+                   isolation_observer=((_pair or {}).get("observer") or cfg.get("isolation_observer")))
     rid = getattr(args, "resume", None) or run_id()
     if shard and not getattr(args, "resume", None):
         rid = shard_run_id(rid, shard[0], shard[1])

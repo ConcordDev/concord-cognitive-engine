@@ -134,8 +134,11 @@ class RunData:
         self.records = {}
         self.wiring = {}
         self.labels = {}
-        for name in sorted(os.listdir(run_dir)) if os.path.isdir(run_dir) else []:
-            p = os.path.join(run_dir, name)
+        entries = []
+        for base in (run_dir, os.path.join(run_dir, "wiring")):
+            if os.path.isdir(base):
+                entries += [(n, os.path.join(base, n)) for n in sorted(os.listdir(base))]
+        for name, p in entries:
             if name.startswith("lens-") and name.endswith(".json"):
                 rec = _load_json(p)
                 if rec is not None:
@@ -513,9 +516,10 @@ def _gates(rec, wiring, scan, manifest_entry):
     premap_own = [p for p in rec.get("premap_findings", []) or []
                   if p.get("class") == "ownership"]
     sec_flags = [f for f in scan["flags"] if f["class"] == "security"]
-    if ta.get("status") == "FAIL" or premap_own or sec_flags:
+    trust_landed = int((rec.get("trust") or {}).get("findings") or 0)
+    if ta.get("status") == "FAIL" or premap_own or sec_flags or trust_landed:
         security = "FAIL"
-    elif not ta and not (rec.get("premap_findings") is not None):
+    elif not ta and not rec.get("trust") and not (rec.get("premap_findings") is not None):
         security = "NOT_RUN"
     else:
         security = "PASS"

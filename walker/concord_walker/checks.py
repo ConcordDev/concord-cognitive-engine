@@ -659,7 +659,8 @@ class LensWalk:
         plan = _iso.phase_plan(acct=self.acct, admin=self.admin,
                                allow_write=self.allow_write,
                                has_t2=has_session(self.cfg, observer),
-                               two_account_flag=self.two_account, observer=observer)
+                               two_account_flag=self.two_account, observer=observer,
+                               reader=self.cfg.get("reader_account") or "t1")
         if not plan["run"]:
             self.result["isolation"] = {"status": "SKIPPED", "reason": plan["reason"],
                                         "checks": 0, "findings": 0, "leaks": []}
@@ -1193,7 +1194,7 @@ class LensWalk:
         from urllib.parse import urlsplit
         cap = self.th.get("two_account_max_calls", 12)
         _owner, foreign = isolation_pair(self.cfg, self.acct)
-        if self.admin or not self.acct or self.acct != "t1":
+        if self.admin or not self.acct or self.acct != (self.cfg.get("reader_account") or "t1"):
             self.result["two_account"] = {"status": "SKIPPED", "reason": "t1 member walks only"}
             return
         if not has_session(self.cfg, foreign):
