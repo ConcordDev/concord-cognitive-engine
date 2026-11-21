@@ -174,6 +174,38 @@ def refused_body(body):
     return isinstance(body, dict) and (body.get("ok") is False or "error" in body)
 
 
+_ID_TOKEN = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+    r"|[0-9a-fA-F]{16,}|\d{4,}|[A-Za-z0-9_.\-]{24,}")
+
+
+def error_reason(body):
+    """A scrubbed one-line reason from a lens/run response body (GB-1579):
+    the error text — the error key's string, an error object's message /
+    code, or the message key of a refused body — with id-shaped tokens and
+    long values replaced, whitespace collapsed, capped at 120 chars. The
+    stored block keeps the reason's meaning only: no values, no ids. None
+    when the body carries no error text."""
+    if not isinstance(body, dict):
+        return None
+    raw = None
+    e = body.get("error")
+    if isinstance(e, str) and e.strip():
+        raw = e
+    elif isinstance(e, dict):
+        for k in ("message", "code", "name"):
+            if isinstance(e.get(k), str) and e[k].strip():
+                raw = e[k]
+                break
+    if raw is None and isinstance(body.get("message"), str) and body["message"].strip() \
+            and (body.get("ok") is False or "error" in body):
+        raw = body["message"]
+    if raw is None:
+        return None
+    text = _ID_TOKEN.sub("…", " ".join(str(raw).split()))
+    return text[:120] or None
+
+
 def validation_refusal(status, body):
     """A 4xx refusal whose body reads as argument validation (missing /
     invalid / required fields) — the probe's minimal args were not
@@ -253,12 +285,16 @@ def repro_steps(spec, verdict_word, reason):
 
 
 def core_verb_block(spec, verdict_word, reason, *, drive=None, persisted=None,
-                    observer_sees=None, cleanup=None, steps=None):
+                    observer_sees=None, cleanup=None, steps=None,
+                    http_status=None, error=None):
     """The per-lens core-verb block written into the walk result, beside
     the isolation and trust blocks. Carries the verdict + repro, the
     spec's identity (status / verb / action / visibility), the step
-    outcomes, and the cleanup state. No bodies, no ids of real objects:
-    the created object was the walk's own labelled fixture."""
+    outcomes, and the cleanup state. GB-1579: every block also carries
+    the drive's http_status and a scrubbed error reason (error_reason —
+    no values, no ids), so an UNSPECIFIED verdict is diagnosable from
+    the record alone. No bodies, no ids of real objects: the created
+    object was the walk's own labelled fixture."""
     act = (spec or {}).get("action") or {}
     return {
         "verdict": verdict_word,
@@ -268,6 +304,8 @@ def core_verb_block(spec, verdict_word, reason, *, drive=None, persisted=None,
         "action": ("%s.%s" % (act["domain"], act["name"])) if act else None,
         "visibility": (spec or {}).get("visibility"),
         "drive": drive,
+        "http_status": http_status,
+        "error": error,
         "persisted": persisted,
         "observer_sees": observer_sees,
         "cleanup": cleanup,

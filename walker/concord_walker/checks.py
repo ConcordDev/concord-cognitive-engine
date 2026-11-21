@@ -713,7 +713,8 @@ class LensWalk:
         from urllib.parse import urlsplit, urlunsplit
         import json as _json
         cap = self.th.get("trust_probe_max_calls", 12)
-        calls = list(self.net.replay or [])
+        _leg = getattr(self.net, "leg_calls", None)
+        calls = _leg() if _leg else list(self.net.replay or [])
         own_writes = [r for r in calls if (r.get("method") or "") in _tp.WRITE_METHODS
                       and (r.get("acct") or self.acct) in (owner, self.acct)]
         actor_hits = sum(len(_tp.actor_fields_in(r.get("post"))) for r in own_writes)
@@ -919,9 +920,9 @@ class LensWalk:
                         rbody = resp.json()
                     except Exception:
                         rbody = None
-                    return resp.status, rbody
-                except Exception:
-                    return None, None
+                    return resp.status, rbody, None
+                except Exception as e:
+                    return None, None, type(e).__name__
 
             def read_as(ctx):
                 """(object_seen, list_seen): object_seen is True/False when
@@ -953,8 +954,13 @@ class LensWalk:
                     list_seen = None
                 return obj_seen, list_seen
 
-            st, rbody = run_as(wctx, _cv.verb_body(spec, label))
+            st, rbody, terr = run_as(wctx, _cv.verb_body(spec, label))
             drive = _cv.classify_drive(st, rbody)
+            # GB-1579: the block carries the drive's HTTP status + a scrubbed
+            # error reason, so an UNSPECIFIED verdict is diagnosable.
+            derr = _cv.error_reason(rbody) if drive != "performed" else None
+            if derr is None and st is None and terr:
+                derr = "transport error: %s" % terr
             oid = _cv.extract_object_id(rbody)
             persisted = observer_sees = None
             cleanup = "not_attempted"
@@ -965,7 +971,7 @@ class LensWalk:
                 observer_sees = fo if fo is not None else fl
                 cbody = _cv.cleanup_body(spec, oid)
                 if cbody is not None:
-                    cst, _cb = run_as(wctx, cbody)
+                    cst, _cb, _cterr = run_as(wctx, cbody)
                     cleanup = "deleted" if (cst is not None and 200 <= cst < 300) \
                         else "delete_failed_%s" % (cst,)
                 else:
@@ -974,7 +980,8 @@ class LensWalk:
                                        observer_sees=observer_sees)
             self.result["core_verb"] = _cv.core_verb_block(
                 spec, word, reason, drive=drive, persisted=persisted,
-                observer_sees=observer_sees, cleanup=cleanup)
+                observer_sees=observer_sees, cleanup=cleanup,
+                http_status=st, error=derr)
             if word == "CORE_VERB_FAIL":
                 self.finding("core_verb", "high",
                              "Core verb fails end to end: %s" % spec.get("verb"),
@@ -1006,7 +1013,8 @@ class LensWalk:
         import json as _json
         wait_s = self.th.get("durability_wait_s", 8)
         cap = self.th.get("durability_max_probes", 3)
-        calls = list(self.net.replay or [])
+        _leg = getattr(self.net, "leg_calls", None)
+        calls = _leg() if _leg else list(self.net.replay or [])
         label = None
         for f in (self.rec.fixtures or {}).values():
             if f.get("lens") == self.slug and f.get("label"):
