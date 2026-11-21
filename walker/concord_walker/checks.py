@@ -1010,17 +1010,10 @@ class LensWalk:
         """ULW v3 (GB-1576 W5c): DURABILITY — re-issue up to
         thresholds.durability_max_probes of the lens's recorded creates as
         the write account, each with a unique planted marker; wait past the
-        save debounce (thresholds.durability_wait_s), then verify each
-        marker via a FRESH session (new context, reload, durable texts)
-        and a BACKEND READ (the created object's URL, else the lens's
-        recorded read route for the collection) — POLLED (Walk 3 honesty
-        fix, CB-1053/CB-1058): re-verify every
-        thresholds.durability_poll_interval_s until every probe passes
-        or the thresholds.durability_poll_s budget expires, so a slow
-        persistence is judged at the budget, not raced at the first
-        read; verdicts, findings and cleanup run once, from the final
-        round. A probe still unverified at the budget is UNVERIFIED —
-        the block verdict says so; unverified never reads PASS.
+        save debounce (thresholds.durability_wait_s, one wait for the
+        batch); then verify each marker via a FRESH session (new context,
+        reload, durable texts) and a BACKEND READ (the created object's
+        URL, else the lens's recorded read route for the collection).
         Planning and verdicts live in concord_walker.durability (pure);
         this method only drives contexts. A DURABLE_FAIL files a walk
         finding; probe objects are deleted best-effort when their object
@@ -1076,6 +1069,7 @@ class LensWalk:
             fctx, fpage, fcdp = self.open(account=self.write_acct)
             assert_account(fctx, self.cfg, self.write_acct, "durability verify", self.log)
             self.nav(fpage, fcdp)
+            texts = fcdp.ax().durable_texts()
 
             def backend_read(probe):
                 urls = []
@@ -1107,36 +1101,16 @@ class LensWalk:
                         continue
                 return False, last_status
 
-            def verify_round():
-                texts = fcdp.ax().durable_texts()
-                out = []
-                for probe in fired:
-                    fresh = any(probe["marker"] in t for t in texts)
-                    backend, backend_status = backend_read(probe)
-                    verdict, reason = _dur.probe_verdict(
-                        probe["status"], fresh, backend, backend_status)
-                    out.append({"write": "%s %s" % (probe["cand"]["method"],
-                                                    probe["cand"]["path"]),
-                                "field": probe["field"],
-                                "fresh": fresh, "backend": backend,
-                                "verdict": verdict, "reason": reason})
-                return out
-
-            poll_s = self.th.get("durability_poll_s", 30)
-            interval = self.th.get("durability_poll_interval_s", 5)
-            rounds, elapsed = 0, wait_s
-            while True:
-                rounds += 1
-                if rounds > 1:
-                    self.nav(fpage, fcdp)
-                rows = verify_round()
-                if _dur.all_passed(rows) or elapsed >= poll_s:
-                    break
-                time.sleep(interval)
-                elapsed += interval
-            for probe, row in zip(fired, rows):
-                row["rounds"] = rounds
-                row["wait_s"] = elapsed
+            for probe in fired:
+                fresh = any(probe["marker"] in t for t in texts)
+                backend, backend_status = backend_read(probe)
+                verdict, reason = _dur.probe_verdict(probe["status"], fresh,
+                                                     backend, backend_status)
+                row = {"write": "%s %s" % (probe["cand"]["method"],
+                                           probe["cand"]["path"]),
+                       "field": probe["field"], "wait_s": wait_s,
+                       "fresh": fresh, "backend": backend,
+                       "verdict": verdict, "reason": reason}
                 if probe["obj_url"]:
                     try:
                         resp = fctx.request.fetch(probe["obj_url"], method="DELETE",
@@ -1147,24 +1121,25 @@ class LensWalk:
                         row["cleanup"] = "delete_error"
                 else:
                     row["cleanup"] = "left_labelled"
-                if row["verdict"] == "DURABLE_FAIL":
+                if verdict == "DURABLE_FAIL":
                     ev = self.shot(fpage, "durability-fail")
                     self.finding("durability", "high",
                                  "Write did not persist past the save debounce: %s" % row["write"],
                                  ["Open %s" % self.url,
                                   "Write via the lens (%s, marker in field '%s')" % (row["write"], probe["field"]),
-                                  "Wait %ss (past the save debounce; polled %d round(s) over %ss)" % (wait_s, rounds, elapsed),
+                                  "Wait %ss (past the save debounce)" % wait_s,
                                   "Reload in a fresh session and re-read the backend"],
                                  "The written object is readable from the backend and visible in a fresh session",
-                                 row["reason"], [ev], root_cause="RCA-durability",
+                                 reason, [ev], root_cause="RCA-durability",
                                  area="%s/durability" % self.slug)
+                rows.append(row)
         finally:
             if fctx is not None:
                 self._close(fctx)
         self.result["durability"] = _dur.durability_block(rows)
         db = self.result["durability"]
-        self.log("  durability %s: %s — %d probe(s), %d failed, %d unverified (wait %ss + poll to %ss, %d round(s))" % (
-            self.slug, db["verdict"], db["probes"], db["failed"], db["unverified"], wait_s, elapsed, rounds))
+        self.log("  durability %s: %d probe(s), %d failed, %d unverified (wait %ss)" % (
+            self.slug, db["probes"], db["failed"], db["unverified"], wait_s))
     def _broadcast_leg(self, owner, observer, octx, label, candidates):
         """W5b private-broadcast leg: the foreign context listens on this
         lens's socket while the owner performs a private write on its own
@@ -1230,9 +1205,13 @@ class LensWalk:
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
         writes) as t2 in t2's OWN isolated context. t2 getting 2xx with a non-error body on
-        t1's object = ownership finding. Raw URLs/bodies live only in memory for this
-        replay and are never written. Never deletes; t2 credentials are never read here
-        (the saved auth/t2.json session is used)."""
+        t1's object = ownership finding, subject to the false-positive controls below:
+        GET replays get the anon-public + same-payload controls, and non-GET replays get
+        the same-payload control (CB-1056) — every lens.run action rides POST, so a bare
+        2xx cannot distinguish a foreign write into the owner's object from an
+        actor-scoped action answering with the caller's own data. Raw URLs/bodies live
+        only in memory for this replay and are never written. Never deletes; t2
+        credentials are never read here (the saved auth/t2.json session is used)."""
         from .auth import has_session, isolation_pair
         from urllib.parse import urlsplit
         cap = self.th.get("two_account_max_calls", 12)
@@ -1316,6 +1295,28 @@ class LensWalk:
                             row["verdict"], leak = "EMPTY", False
                         elif same is False:
                             row["verdict"], leak = "SCOPED", False
+                if leak and r["method"] != "GET":
+                    # CB-1056 false-positive control for non-GET replays, mirroring GET
+                    # control 2: every lens.run action rides POST, so the method cannot
+                    # tell a read from a write (Walk 3: thread's page-load draft-list —
+                    # an actor-scoped read — filed OWNERSHIP_FAIL on a bare 200 while
+                    # the handler keys every row to the caller). Re-issue the identical
+                    # call (method + recorded body) as the owner and compare payloads in
+                    # memory: identical non-empty payload = the owner's data crossed
+                    # (FAIL stands); a different payload = the action answered with the
+                    # caller's own data (SCOPED); an empty foreign payload = EMPTY.
+                    # An unknown comparison (owner re-issue failed) leaves the FAIL —
+                    # the conservative side for writes.
+                    same, b1 = self._same_as_owner_replay(r, body, vp, owner=r.get("acct") or self.acct)
+                    echoes = tuple(x for x in urlsplit(r["url"]).path.split("/") if x)
+                    row["same_as_owner"] = same
+                    row["t2_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(body, echoes))) if body is not None else None
+                    row["t1_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(b1, echoes))) if b1 is not None else None
+                    row["t1_contentless"] = _contentless(b1, echoes) if b1 is not None else None
+                    if _contentless(body, echoes):
+                        row["verdict"], leak = "EMPTY", False
+                    elif same is False:
+                        row["verdict"], leak = "SCOPED", False
                 if leak:
                     # product decision: route intended to be readable by any member (config/intended_public.json)
                     ip = _ip.match(ip_entries, r["method"], r["path"])
@@ -1343,6 +1344,39 @@ class LensWalk:
                                       "scoped": sum(1 for x in rows if x["verdict"] in ("SCOPED", "EMPTY")),
                                       "public_intended": sum(1 for x in rows if x["verdict"] == "PUBLIC_INTENDED"),
                                       "calls": rows}
+
+    def _same_as_owner_replay(self, r, foreign_body, vp, owner="t1"):
+        """(same, owner_payload): does the owner get the identical JSON payload for this
+        exact call — same URL, method and recorded body — re-issued as the owner? The
+        non-GET sibling of _same_as_t1 (which is GET-only). Re-issuing repeats the
+        owner's own recorded action on the owner's own account, which the walk already
+        executed once as them. same is None if unknown. The payload stays in memory;
+        callers store only derived booleans/counts."""
+        import json as _json
+        if foreign_body is None:
+            return None, None
+        ctx = None
+        try:
+            ctx = new_context(self.b, self.cfg, owner, vp)  # the row's OWNER account
+            kw = {"timeout": 15000}
+            if r.get("post") is not None:
+                kw["data"] = r["post"]
+                kw["headers"] = {"Content-Type": "application/json"}
+            resp = ctx.request.fetch(r["url"], method=r["method"], **kw)
+            try:
+                b1 = resp.json()
+            except Exception:
+                return None, None
+            canon = lambda x: _json.dumps(x, sort_keys=True, default=str)
+            return canon(b1) == canon(foreign_body), b1
+        except Exception:
+            return None, None
+        finally:
+            try:
+                if ctx is not None:
+                    ctx.close()
+            except Exception:
+                pass
 
     def _same_as_t1(self, url, t2_body, vp, owner="t1"):
         """(same, t1_payload): does t1 get the identical JSON payload for this GET? same is None
