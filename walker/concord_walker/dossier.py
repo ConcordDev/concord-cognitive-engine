@@ -29,12 +29,12 @@ Sections (GB-1575 §W2):
                   are printed in every dossier). Plus core_verb (GB-1576
                   W5a): the record's core-verb verdict, carried as a gate
                   so the polished rule below can read it.
-  6. score        "distance to bar": 100 = at the bar. Deterministic
-                  deductions, every input printed with the score:
-                    security/money code-scan flag  -15 each (cap -45)
-                    other code-scan flag            -8 each (cap -24)
-                    orphaned component              -3 each (cap -15)
-                    hidden backend feature          -2 each (cap -10)
+  6. score        "distance to bar": 100 = at the bar, split since
+                  GB-1580 into live_quality (what the walk observed)
+                  and code_smell (what the static scan found); the
+                  combined score deducts live in full and smell up to
+                  a 25-point cap, so code smell alone cannot zero a
+                  lens. Live deductions:
                     open root cause, by its max severity:
                       critical -10 / high -6 / medium -3 / low -1 (cap -30)
                     replay REOPENED ticket          -5 each (cap -15)
@@ -43,6 +43,17 @@ Sections (GB-1575 §W2):
                     core verb UNSPECIFIED           -10 (a present verdict;
                     an absent core-verb block — the phase did not run —
                     deducts nothing)
+                  Smell deductions:
+                    security/money code-scan flag  -15 each (cap -45)
+                    other code-scan flag            -8 each (cap -24)
+                    orphaned component (imported but unmounted)
+                                                    -3 each (cap -15)
+                    backend action with no frontend caller
+                                                    -2 each (cap -10)
+                  Dead components (no imports anywhere) and walk-hidden
+                  actions are reported, never deducted. The security
+                  gate judges live evidence only; scan flags render as
+                  code-smell: security.
                   Floor 0. A platform INDEX ranks all lenses by score.
 
 Gate definitions (the dossier's, printed in the output):
@@ -72,12 +83,18 @@ SEV_POINTS = {"critical": 10, "high": 6, "medium": 3, "low": 1, "info": 0}
 SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 
 SCORE_FORMULA = (
-    "score = max(0, 100 - deductions); deductions: security/money scan flag "
-    "-15 ea (cap 45) | other scan flag -8 ea (cap 24) | orphaned component "
-    "-3 ea (cap 15) | hidden backend feature -2 ea (cap 10) | open root "
+    "GB-1580 split: live_quality = max(0, 100 - live deductions); "
+    "code_smell = max(0, 100 - smell deductions); combined score = "
+    "max(0, 100 - live deductions - min(25, smell deductions)) — code "
+    "smell alone can never zero a lens. Live deductions: open root "
     "cause by max severity critical -10 / high -6 / medium -3 / low -1 "
     "(cap 30) | replay REOPENED -5 ea (cap 15) | gate FAIL -5 ea | core "
-    "verb FAIL -40 / UNSPECIFIED -10 (absent block deducts nothing)")
+    "verb FAIL -40 / UNSPECIFIED -10 (absent block deducts nothing). "
+    "Smell deductions: security/money scan flag -15 ea (cap 45) | other "
+    "scan flag -8 ea (cap 24) | orphaned (imported, unmounted) component "
+    "-3 ea (cap 15) | backend action with no frontend caller -2 ea "
+    "(cap 10). Dead components (no imports anywhere) and walk-hidden "
+    "actions deduct nothing.")
 
 
 # ------------------------------------------------------------------ git tree
@@ -217,7 +234,7 @@ def _components(tree, slug):
                   if p.rsplit(".", 1)[-1] in ("tsx", "ts", "jsx", "js")]
     if not comp_files:
         return OrderedDict([("dir", None), ("files", []), ("mounted", []),
-                            ("orphaned", []),
+                            ("orphaned", []), ("dead_components", []),
                             ("note", "no components/%s directory at the walk build" % slug)])
     entry_files = [p for p in tree.ls("%s/app/lenses/%s" % (fe, slug))
                    if p.rsplit(".", 1)[-1] in ("tsx", "ts", "jsx", "js")]
@@ -234,10 +251,60 @@ def _components(tree, slug):
                     queue.append(cand)
                     break
     mounted = sorted(p for p in comp_files if p in reachable)
-    orphaned = sorted(p for p in comp_files if p not in reachable)
+    # GB-1580 item 3: a component no file anywhere imports is dead
+    # code — listed for cleanup as INFO, never a deduction. Only an
+    # imported-but-unmounted component stays an orphan (a redesign
+    # that replaced a surface leaves the old one imported or dead;
+    # the tree-wide import scan decides which).
+    imported = _frontend_scan(tree)["imported"]
+    dead = sorted(p for p in comp_files
+                  if p not in reachable and p not in imported)
+    orphaned = sorted(p for p in comp_files
+                      if p not in reachable and p in imported)
     return OrderedDict([("dir", comp_dir), ("files", sorted(comp_files)),
                         ("mounted", mounted), ("orphaned", orphaned),
+                        ("dead_components", dead),
                         ("note", None)])
+
+
+# GB-1580 items 2+3: one static pass over the whole frontend per repo
+# tree, cached on the tree object (run_dossiers shares one tree per
+# build across all 270 lenses). Collects (a) every "domain.action"
+# string literal — the lensRun / /api/lens/run call-site shape — and
+# (b) every import specifier resolved to a repo path, so "no caller
+# anywhere" and "no imports anywhere" are tree-wide facts, not
+# per-lens guesses.
+_FE_ACTION_LITERAL = re.compile(r"[\"']([a-z][a-z0-9_-]*)\.([A-Za-z][\w.-]*)[\"']")
+
+
+def _frontend_scan(tree):
+    cache = getattr(tree, "_fe_scan_cache", None)
+    if cache is not None:
+        return cache
+    fe = "concord-frontend"
+    called = set()
+    imported = set()
+    files = [p for p in tree.ls(fe)
+             if p.rsplit(".", 1)[-1] in ("tsx", "ts", "jsx", "js")]
+    existing = set(files)
+    for p in files:
+        text = tree.read(p)
+        if not text:
+            continue
+        for m in _FE_ACTION_LITERAL.finditer(text):
+            called.add((m.group(1), m.group(2)))
+        for spec in _IMPORT_RE.findall(text):
+            for cand in _resolve_import(spec, os.path.dirname(p), fe) or []:
+                if cand in existing:
+                    imported.add(cand)
+                    break
+    cache = {"called_actions": called, "imported": imported,
+             "files": len(files)}
+    try:
+        tree._fe_scan_cache = cache
+    except Exception:
+        pass
+    return cache
 
 
 # ------------------------------------------------------------------ backend reach
@@ -251,7 +318,7 @@ def _registry(tree):
     return mod.build(mod.GitTree(tree.repo, tree.sha), tree.sha)
 
 
-def _backend_reach(rec, wiring, registry, slug):
+def _backend_reach(rec, wiring, registry, slug, tree=None):
     called = {}
     for a in rec.get("actions", []) or []:
         if a.get("domain") and a.get("action"):
@@ -287,12 +354,22 @@ def _backend_reach(rec, wiring, registry, slug):
                 exposed.append(row)
                 if (a["domain"], a["action"]) not in called:
                     hidden.append(row)
+    # GB-1580 item 2: "hidden" above is a WALK-reach statistic (exposed
+    # but un-triggered by the walk) and no longer carries a deduction.
+    # The deduction-bearing set is uncalled_actions: exposed actions
+    # with no call site anywhere in the frontend code.
+    uncalled = None
+    if tree is not None and registry is not None:
+        fe_called = _frontend_scan(tree)["called_actions"]
+        uncalled = [r for r in exposed
+                    if (r["domain"], r["action"]) not in fe_called]
     return OrderedDict([
         ("domains", domains),
         ("called_actions", [called[k] for k in sorted(called)]),
         ("called_routes", [routes[k] for k in sorted(routes)]),
         ("exposed_actions", exposed),
         ("hidden_actions", hidden),
+        ("uncalled_actions", uncalled),
         ("registry", None if registry is None else registry.get("counts")),
     ])
 
@@ -301,7 +378,14 @@ def _backend_reach(rec, wiring, registry, slug):
 # Named, conservative line patterns. A flag is a scan hit for human review.
 _OWNER_TOKENS = re.compile(
     r"owner|actor\.userId|ctx\.userId|userId\s*===|requireAuth|guardAnon|"
-    r"isOwner|ownership|createdBy\s*===|authorId\s*===", re.I)
+    r"isOwner|ownership|createdBy\s*===|authorId\s*==="
+    # GB-1580 item 1: the platform's actor-identity guard shapes — a
+    # span that resolves the actor through the canonical accessor or
+    # an actor/owner guard call IS actor-checked; the old token set
+    # missed every one of these spellings (actorId( appears 500+
+    # times in the server tree) and flagged guarded writes wholesale.
+    r"|actorId\s*\(|actorIdFor\s*\(|actorIdentity|requireActor|requireOwner",
+    re.I)
 _WRITE_NAME = re.compile(
     r"^(create|update|delete|remove|save|set|add|edit|write|post|submit|"
     r"rename|move|toggle|assign|upload|import|publish|archive|restore)", re.I)
@@ -311,6 +395,15 @@ _MONEY_NAME = re.compile(
 _LEDGER_TOKENS = re.compile(
     r"ledger|tipContent|purchaseWithRoyalties|fees\.|recordFee|coinTx|"
     r"economy\.|applyFee", re.I)
+# GB-1580 item 1: real money semantics, judged on the action SPAN (not
+# the name). The old rule fired on the name alone, so a playback
+# "device-transfer" action in music.js flagged as money without a
+# ledger call. A span carries money semantics when it names the coin,
+# a balance, or a money verb's object — or touches a ledger/wallet
+# call site (which the ledger-token check then judges).
+_MONEY_SEMANTICS = re.compile(
+    r"concord\s*coin|\bcc\b|\bsparks?\b|balance|escrow|payout|price|"
+    r"purchase|tip\b|royalt|ledger|wallet|\bamount\b|cost\b", re.I)
 
 SCAN_PATTERNS = [
     # (kind, flag class, regex over one line, applies to: domain|frontend|both)
@@ -354,7 +447,12 @@ SCAN_PATTERNS = [
 _FABRICATED_VETO = re.compile(
     r"toString\(\s*36\s*\)|randomUUID|randomId"
     r"|(?:^|[^\w])(?:\w*(?:Id|ID|Uuid|UUID|Key|Nonce|Token)|id|uuid|key|nonce|token)\s*[:=]"
-    r"|\b(?:color|colour|hue|hsl|hsla|palette|shade|tint)\b", re.I)
+    r"|\b(?:color|colour|hue|hsl|hsla|palette|shade|tint)\b"
+    # GB-1580 item 1: legitimate randomness contexts — a shuffle, a
+    # random order, a mix, sampling, jitter/backoff timing use
+    # Math.random() as the mechanism, not as fabricated content.
+    r"|\b(?:shuffle|randomi[sz]e|random[-_ ]?order|sampling|sample|"
+    r"jitter|backoff|mix)\b", re.I)
 # The veto judges ONLY the Math.random() alternative: a line carrying a
 # textual fabrication signal (fabricat / synthetic / fake-data /
 # mock-data — the SCAN_PATTERNS entry minus Math.random) flags
@@ -411,6 +509,71 @@ def _strip_comments(lines):
     return out
 
 
+# GB-1580 item 1: raw_fetch_user_url judged on host control, not on
+# the fetch line alone. The old line pattern fired on every
+# fetch(<identifier>) — in the deployed tree those are overwhelmingly
+# fixed-host API calls (a template over a CONSTANT base like
+# `${MACROSTRAT_API}/...`, or a literal host like
+# `https://api.stripe.com/v1${path}`), which are not user-supplied
+# URLs. A fetch flags only when its host can be user-controlled: the
+# expression traces to action input (args/params/input/body/query),
+# or it cannot be traced at all (kept, conservatively — the flag is a
+# review census). Identifier resolution is file-level, first
+# assignment, depth 2 — a heuristic, named as such.
+_USER_INPUT = re.compile(r"\b(?:args|params|input|body|query|req|ctx)\s*[.\[]")
+_FETCH_CALL = re.compile(r"\bfetch\(\s*([^,)\n]+)")
+_ASSIGN = re.compile(r"(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)")
+_CONST_BASE = re.compile(r"^\$\{\s*[A-Z][A-Z0-9_]*\s*\}/")
+
+
+def _expr_host_user_controlled(expr, assigns, depth=0):
+    expr = expr.strip()
+    if expr[:1] in ("'", '"', "`"):
+        # Literal / template: the host is fixed when the static head
+        # names one, or the first interpolation is a CONSTANT base.
+        head = expr[1:].split("${", 1)[0]
+        if "://" in head or head.startswith("/"):
+            return False
+        if _CONST_BASE.match(expr[1:]):
+            return False
+        m = re.match(r"^\$\{\s*([^}]+)\}", expr[1:])
+        if m:
+            return _expr_host_user_controlled(m.group(1), assigns, depth + 1)
+        return False
+    if _USER_INPUT.search(expr):
+        return True
+    m = re.match(r"^([A-Za-z_$][\w$]*)$", expr)
+    if m and depth < 2:
+        rhs = assigns.get(m.group(1))
+        if rhs is None:
+            return True  # untraceable: kept, conservatively
+        return _expr_host_user_controlled(rhs, assigns, depth + 1)
+    if "(" in expr:  # a call: judge its arguments
+        inner = expr[expr.index("(") + 1:expr.rindex(")")] if ")" in expr else ""
+        return any(_expr_host_user_controlled(a, assigns, depth + 1)
+                   for a in inner.split(",") if a.strip())
+    return True  # any other shape: kept, conservatively
+
+
+def _fetch_flags(text):
+    """Yield (line_no, expr) for fetches whose host may be user-supplied."""
+    assigns = {}
+    for m in _ASSIGN.finditer(text):
+        assigns.setdefault(m.group(1), m.group(2))
+    for i, ln in enumerate(text.splitlines()):
+        for m in _FETCH_CALL.finditer(ln):
+            expr = m.group(1)
+            if expr.startswith("`") and "`" not in expr[1:]:
+                # Template literal truncated at an inner comma: extend
+                # to the closing backtick before judging.
+                rest = ln[m.start(1):]
+                end = rest.find("`", 1)
+                if end > 0:
+                    expr = rest[:end + 1]
+            if _expr_host_user_controlled(expr, assigns):
+                yield i + 1, expr[:40]
+
+
 def _action_spans(text):
     """Yield (action_name, start_line, span_text) per registerLensAction."""
     lines = text.splitlines()
@@ -452,6 +615,8 @@ def _code_scan(tree, slug, domains, misses):
         for kind, cls, rx, want in SCAN_PATTERNS:
             if want not in (applies, "both"):
                 continue
+            if kind == "raw_fetch_user_url":
+                continue  # GB-1580: judged on host control below
             if kind == "fabricated_data":
                 # GB-1577 tuning: comments are not shipped data, and a
                 # Math.random() in an id/colour context is not
@@ -468,13 +633,18 @@ def _code_scan(tree, slug, domains, misses):
                 if rx.search(ln):
                     add(kind, cls, path, i + 1, rx.pattern[:60])
         if applies == "domain":
+            for line_no, expr in _fetch_flags(text):
+                add("raw_fetch_user_url", "security", path, line_no,
+                    "fetch host may be user-supplied: %s" % expr)
             for name, line_no, span in _action_spans(text):
                 if _WRITE_NAME.match(name) and not _OWNER_TOKENS.search(span):
                     add("write_without_owner_check", "security", path,
                         line_no, "action span lacks an owner token")
-                if _MONEY_NAME.search(name) and not _LEDGER_TOKENS.search(span):
+                if (_MONEY_NAME.search(name)
+                        and _MONEY_SEMANTICS.search(span)
+                        and not _LEDGER_TOKENS.search(span)):
                     add("money_action_without_ledger_call", "money", path,
-                        line_no, "money-named action span lacks a ledger token")
+                        line_no, "money action span lacks a ledger token")
     # W1 study checks for this lens (consumed when the study file exists).
     study = []
     for row in misses or []:
@@ -599,7 +769,11 @@ def _gates(rec, wiring, scan, manifest_entry):
                   if p.get("class") == "ownership"]
     sec_flags = [f for f in scan["flags"] if f["class"] == "security"]
     trust_landed = int((rec.get("trust") or {}).get("findings") or 0)
-    if ta.get("status") == "FAIL" or premap_own or sec_flags or trust_landed:
+    # GB-1580 item 5: the security gate judges LIVE evidence only
+    # (two-account, ownership premap, trust findings). Scan flags are
+    # code smell — counted on the block and in the smell sub-score,
+    # never a live gate FAIL.
+    if ta.get("status") == "FAIL" or premap_own or trust_landed:
         security = "FAIL"
     elif not ta and not rec.get("trust") and not (rec.get("premap_findings") is not None):
         security = "NOT_RUN"
@@ -630,7 +804,12 @@ def _score(scan, components, backend, causes, replay, gates):
     sec_money = sum(1 for f in scan["flags"] if f["class"] in ("security", "money"))
     other = len(scan["flags"]) - sec_money
     orphans = len(components.get("orphaned") or [])
-    hidden = len(backend.get("hidden_actions") or [])
+    # GB-1580 item 2: only no-frontend-caller actions deduct; when the
+    # caller scan did not run (no tree), fall back to the walk-hidden
+    # count so offline callers keep the old behaviour.
+    uncalled = backend.get("uncalled_actions")
+    hidden = (len(uncalled) if uncalled is not None
+              else len(backend.get("hidden_actions") or []))
     cause_pts = sum(SEV_POINTS.get(g["max_severity"], 0) for g in causes)
     reopened = replay["counts"].get("REOPENED", 0)
     gates_failed = sum(1 for g in gates.values() if g["status"] == "FAIL")
@@ -638,19 +817,33 @@ def _score(scan, components, backend, causes, replay, gates):
     # a present UNSPECIFIED -10, an absent block (phase not run) nothing.
     cv_verdict = (gates.get("core_verb") or {}).get("verdict")
     cv_pts = {"CORE_VERB_FAIL": 40, "CORE_VERB_UNSPECIFIED": 10}.get(cv_verdict, 0)
-    ded = OrderedDict([
-        ("security_money_flags", min(45, 15 * sec_money)),
-        ("other_scan_flags", min(24, 8 * other)),
-        ("orphaned_components", min(15, 3 * orphans)),
-        ("hidden_backend_features", min(10, 2 * hidden)),
+    # GB-1580 item 5: two sub-scores. Live quality carries everything
+    # the walk observed; code smell carries the static scan. The
+    # combined score deducts live in full and smell only up to a
+    # 25-point cap, so backend code smells cannot zero a lens whose
+    # live walk is clean.
+    live_ded = OrderedDict([
         ("open_root_causes", min(30, cause_pts)),
         ("replay_reopened", min(15, 5 * reopened)),
         ("gates_failed", 5 * gates_failed),
         ("core_verb", cv_pts),
     ])
-    return OrderedDict([("score", max(0, 100 - sum(ded.values()))),
-                        ("deductions", ded),
-                        ("formula", SCORE_FORMULA)])
+    smell_ded = OrderedDict([
+        ("security_money_flags", min(45, 15 * sec_money)),
+        ("other_scan_flags", min(24, 8 * other)),
+        ("orphaned_components", min(15, 3 * orphans)),
+        ("uncalled_backend_actions", min(10, 2 * hidden)),
+    ])
+    live_total = sum(live_ded.values())
+    smell_total = sum(smell_ded.values())
+    return OrderedDict([
+        ("score", max(0, 100 - live_total - min(25, smell_total))),
+        ("live_quality", max(0, 100 - live_total)),
+        ("code_smell", max(0, 100 - smell_total)),
+        ("deductions", OrderedDict([
+            ("live", live_ded), ("code_smell", smell_ded),
+            ("smell_in_combined", min(25, smell_total))])),
+        ("formula", SCORE_FORMULA)])
 
 
 # ------------------------------------------------------------------ assembly
@@ -685,11 +878,11 @@ def build_dossier(run, slug, tree=None, registry=None, misses=None):
     inv = _inventory(rec, labels)
     components = (_components(tree, slug) if tree is not None else
                   OrderedDict([("dir", None), ("files", []), ("mounted", []),
-                               ("orphaned", []),
+                               ("orphaned", []), ("dead_components", []),
                                ("note", "no repo supplied; component scan not run")]))
     called_domains = sorted({a.get("domain") for a in rec.get("actions", []) or []
                              if a.get("domain")} | {slug})
-    backend = _backend_reach(rec, wiring, registry, slug)
+    backend = _backend_reach(rec, wiring, registry, slug, tree=tree)
     if tree is not None:
         scan = _code_scan(tree, slug, backend["domains"], misses)
     else:
@@ -727,10 +920,15 @@ def render_md(d):
              "Packet: %s · run %s · walked %s" % (d["packet_id"], d["run_id"],
                                                   d["walked_at"]), "",
              "## Distance to bar: %d / 100" % s["score"], "",
+             "Live quality: %d / 100 · Code smell: %d / 100" % (
+                 s["live_quality"], s["code_smell"]), "",
              s["formula"], "",
              "| deduction | points |", "|---|---|"]
-    for k, v in s["deductions"].items():
-        lines.append("| %s | -%d |" % (k, v))
+    for group in ("live", "code_smell"):
+        for k, v in s["deductions"][group].items():
+            lines.append("| %s (%s) | -%d |" % (k, group, v))
+    lines.append("| smell counted in combined (cap 25) | -%d |"
+                 % s["deductions"]["smell_in_combined"])
     lines += ["", "## Gates", "", "| gate | status | inputs |", "|---|---|---|"]
     for name, g in d["gates"].items():
         inputs = ", ".join("%s=%s" % (k, v) for k, v in g.items() if k != "status")
@@ -745,21 +943,28 @@ def render_md(d):
     for dup in inv["duplicates"]:
         lines.append("- DUPLICATE %s %r x%d" % (dup["role"], dup["name"], dup["count"]))
     comp = d["components"]
-    lines += ["", "Components (%s): %d files, %d mounted, %d orphaned." % (
+    lines += ["", "Components (%s): %d files, %d mounted, %d orphaned, %d dead." % (
         comp.get("dir"), len(comp["files"]), len(comp["mounted"]),
-        len(comp["orphaned"]))]
+        len(comp["orphaned"]), len(comp.get("dead_components") or []))]
     for p in comp["orphaned"]:
         lines.append("- ORPHANED %s" % p)
+    for p in comp.get("dead_components") or []:
+        lines.append("- DEAD (info, cleanup) %s" % p)
     if comp.get("note"):
         lines.append("- note: %s" % comp["note"])
     be = d["backend_reach"]
     lines += ["", "## Backend reach", "",
-              "Domains: %s. Called actions: %d. Exposed: %d. Hidden/unmounted: %d." % (
+              "Domains: %s. Called actions: %d. Exposed: %d. Walk-hidden: %d. No frontend caller: %s." % (
                   ", ".join(be["domains"]), len(be["called_actions"]),
-                  len(be["exposed_actions"]), len(be["hidden_actions"]))]
+                  len(be["exposed_actions"]), len(be["hidden_actions"]),
+                  "n/a" if be.get("uncalled_actions") is None
+                  else str(len(be["uncalled_actions"])))]
     for h in be["hidden_actions"]:
-        lines.append("- HIDDEN %s.%s (%s:%s)" % (h["domain"], h["action"],
-                                                 h["file"], h["line"]))
+        lines.append("- WALK-HIDDEN %s.%s (%s:%s)" % (h["domain"], h["action"],
+                                                      h["file"], h["line"]))
+    for h in be.get("uncalled_actions") or []:
+        lines.append("- NO-CALLER %s.%s (%s:%s)" % (h["domain"], h["action"],
+                                                   h["file"], h["line"]))
     lines += ["", "## Code-scan flags", ""]
     if d["code_scan"]["flags"]:
         for f in d["code_scan"]["flags"]:
@@ -843,11 +1048,16 @@ def _index_row(d):
     return OrderedDict([
         ("lens", d["lens"]), ("build12", d["build12"]),
         ("score", d["score"]["score"]),
+        ("live_quality", d["score"]["live_quality"]),
+        ("code_smell", d["score"]["code_smell"]),
         ("gates", {k: v["status"] for k, v in d["gates"].items()}),
         ("open_root_causes", len(d["findings_by_root_cause"])),
         ("scan_flags", len(d["code_scan"]["flags"])),
         ("orphaned_components", len(d["components"]["orphaned"])),
+        ("dead_components", len(d["components"].get("dead_components") or [])),
         ("hidden_actions", len(d["backend_reach"]["hidden_actions"])),
+        ("uncalled_actions", None if d["backend_reach"].get("uncalled_actions") is None
+         else len(d["backend_reach"]["uncalled_actions"])),
         ("durability", d["durability"].get("verdict")
          or d["durability"].get("status")),
         ("durability_risks", sum(1 for f in d["code_scan"]["flags"]
@@ -873,15 +1083,18 @@ def _write_index(out_dir, run_id, rows):
         json.dump(idx, f, indent=1, sort_keys=True)
         f.write("\n")
     md = ["# Dossier index — run %s" % run_id, "", SCORE_FORMULA, "",
-          "| lens | score | polished | stacking | wiring | security | causes | flags | orphans | hidden | durability | durab risks |",
-          "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+          "| lens | score | live | smell | polished | stacking | wiring | security | causes | flags | orphans | hidden | uncalled | durability | durab risks |",
+          "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         g = r["gates"]
-        md.append("| %s | %d | %s | %s | %s | %s | %d | %d | %d | %d | %s | %d |" % (
-            r["lens"], r["score"], g.get("polished"), g.get("stacking"),
+        md.append("| %s | %d | %d | %d | %s | %s | %s | %s | %d | %d | %d | %d | %s | %s | %d |" % (
+            r["lens"], r["score"], r.get("live_quality", ""), r.get("code_smell", ""),
+            g.get("polished"), g.get("stacking"),
             g.get("wiring"), g.get("security_detector"),
             r["open_root_causes"], r["scan_flags"], r["orphaned_components"],
-            r["hidden_actions"], r.get("durability"),
+            r["hidden_actions"],
+            "n/a" if r.get("uncalled_actions") is None else r["uncalled_actions"],
+            r.get("durability"),
             r.get("durability_risks", 0)))
     with open(os.path.join(out_dir, "INDEX.md"), "w") as f:
         f.write("\n".join(md) + "\n")

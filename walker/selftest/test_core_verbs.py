@@ -131,23 +131,23 @@ def main():
     base = {"findings": [], "two_account": {"status": "PASS"}, "premap_findings": []}
     g, s = gates_score(dict(base))
     check("dossier: absent block -> core_verb gate NOT_RUN, no deduction, polished PASS",
-          g["core_verb"]["status"] == "NOT_RUN" and s["deductions"]["core_verb"] == 0
+          g["core_verb"]["status"] == "NOT_RUN" and s["deductions"]["live"]["core_verb"] == 0
           and g["polished"]["status"] == "PASS" and s["score"] == 100, (g, s))
     g, s = gates_score(dict(base, core_verb={"verdict": "CORE_VERB_FAIL",
                                              "spec_status": "confirmed",
                                              "verb": "create a song project"}))
     check("dossier: FAIL -> polished FAIL + gate FAIL + -40",
           g["polished"]["status"] == "FAIL" and g["core_verb"]["status"] == "FAIL"
-          and s["deductions"]["core_verb"] == 40, (g, s))
+          and s["deductions"]["live"]["core_verb"] == 40, (g, s))
     g, s = gates_score(dict(base, core_verb={"verdict": "CORE_VERB_UNSPECIFIED",
                                              "spec_status": "draft", "verb": "x"}))
     check("dossier: UNSPECIFIED -> -10, polished untouched",
-          s["deductions"]["core_verb"] == 10 and g["polished"]["status"] == "PASS"
+          s["deductions"]["live"]["core_verb"] == 10 and g["polished"]["status"] == "PASS"
           and g["core_verb"]["status"] == "UNSPECIFIED", (g, s))
     g, s = gates_score(dict(base, core_verb={"verdict": "CORE_VERB_PASS",
                                              "spec_status": "draft", "verb": "x"}))
     check("dossier: PASS -> no deduction",
-          s["deductions"]["core_verb"] == 0 and s["score"] == 100, (g, s))
+          s["deductions"]["live"]["core_verb"] == 0 and s["score"] == 100, (g, s))
 
     # ---- wiring: the leg exists and rides the isolation phase
     src = open(os.path.join(HERE, "concord_walker", "checks.py")).read()

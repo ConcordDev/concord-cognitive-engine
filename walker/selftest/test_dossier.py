@@ -52,7 +52,8 @@ function registerAll(registerLensAction, ctx) {
 
 PAGE_TSX = """
 import UsedPanel from "@/components/fixturelens/UsedPanel";
-export default function Page() { return <UsedPanel />; }
+import { lensRun } from "@/lib/lensRun";
+export default function Page() { lensRun("fixture.listThings", {}); return <UsedPanel />; }
 """
 
 USED_TSX = "export default function UsedPanel() { return null; }\n"
@@ -143,15 +144,24 @@ def main():
           inv["controls_total"] == 3 and len(inv["duplicates"]) == 1
           and inv["duplicates"][0]["name"] == "Overview", inv)
     comp = d["components"]
-    check("orphan called, used panel mounted",
-          comp["orphaned"] == ["concord-frontend/components/fixturelens/OrphanPanel.tsx"]
+    # GB-1580 item 3: OrphanPanel is imported NOWHERE — dead code (info),
+    # not an orphan deduction. UsedPanel is mounted via the page.
+    check("unimported panel is dead (info), used panel mounted",
+          comp["dead_components"] == ["concord-frontend/components/fixturelens/OrphanPanel.tsx"]
+          and comp["orphaned"] == []
           and comp["mounted"] == ["concord-frontend/components/fixturelens/UsedPanel.tsx"],
           comp)
     be = d["backend_reach"]
     hidden = {(h["domain"], h["action"]) for h in be["hidden_actions"]}
-    check("hidden = exposed minus called",
+    check("walk-hidden = exposed minus walk-called",
           hidden == {("fixture", "saveThing"), ("fixture", "tipThing"),
                      ("fixture", "secretFeature")}, hidden)
+    # GB-1580 item 2: the page calls fixture.listThings via lensRun, so
+    # the no-frontend-caller set is the other three exposed actions.
+    uncalled = {(h["domain"], h["action"]) for h in be["uncalled_actions"]}
+    check("uncalled = exposed minus frontend call sites",
+          uncalled == {("fixture", "saveThing"), ("fixture", "tipThing"),
+                       ("fixture", "secretFeature")}, uncalled)
     kinds = sorted(f["kind"] for f in d["code_scan"]["flags"])
     check("one flag per scan class",
           kinds == ["fabricated_data", "money_action_without_ledger_call",
@@ -164,16 +174,26 @@ def main():
           d["replay"]["counts"] == {"VERIFIED": 1, "REOPENED": 1},
           d["replay"]["counts"])
     g = d["gates"]
+    # GB-1580 item 5: security judges live evidence only — two_account
+    # PASS + no trust/premap findings means PASS despite the scan flags
+    # (they render as code smell, counted on the gate block).
     check("gates from named inputs",
           g["polished"]["status"] == "FAIL"
           and g["stacking"]["status"] == "FAIL"
           and g["wiring"]["status"] == "PASS"
-          and g["security_detector"]["status"] == "FAIL", g)
-    # Hand-computed: sec/money flags 3 -> 45; other flags 1 -> 8; orphans
-    # 1 -> 3; hidden 3 -> 6; causes high 6 + medium 3 -> 9; reopened 1 -> 5;
-    # gates failed 3 -> 15. Total 91; score 9.
+          and g["security_detector"]["status"] == "PASS"
+          and g["security_detector"]["security_scan_flags"] == 2, g)
+    # Hand-computed under the GB-1580 split (re-pinned; CB-1014 names
+    # the continuity question for the desk): LIVE — causes high 6 +
+    # medium 3 = 9; reopened 1 -> 5; gates failed 2 -> 10; core verb
+    # absent -> 0. Live total 24, live_quality 76. SMELL — sec/money
+    # flags 3 -> 45; other flags 1 -> 8; orphans 0 (the panel is dead,
+    # info only); uncalled actions 3 -> 6. Smell total 59, code_smell
+    # 41, smell in combined capped at 25. Combined = 100 - 24 - 25 = 51.
     check("score equals the hand-computed formula value",
-          d["score"]["score"] == 9, d["score"])
+          d["score"]["score"] == 51
+          and d["score"]["live_quality"] == 76
+          and d["score"]["code_smell"] == 41, d["score"])
     clean = json.load(open(os.path.join(out, "cleanlens@%s.json" % sha12)))
     check("clean lens scores exactly 100", clean["score"]["score"] == 100,
           clean["score"])
