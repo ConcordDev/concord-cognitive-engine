@@ -3,11 +3,11 @@
  "version": 1,
  "work_order": "GB-1576 W5a",
  "build": "21303b4672",
- "derived": "walker/inventory.json (270 lenses) + registerLensAction scan of server/ at walker/ulw-v3 bf59c7718a + the W1 redesign study (walker/docs/REDESIGN-STUDY.md). Drafts are derivation-grade, not truth; confirmed entries are grounded in the study record with registry-verified action names.",
+ "derived": "walker/inventory.json (270 lenses) + registerLensAction scan of server/ at walker/ulw-v3 bf59c7718a + the W1 redesign study (walker/docs/REDESIGN-STUDY.md). Drafts are derivation-grade, not truth; confirmed entries are grounded in the study record with registry-verified action names. Pinning pass 2026-11-21 (B3, CB-1054 seating): the 55 action-null entries were hand-resolved against a corrected two-form registry scan (register + registerLensAction, case-sensitive) of server/ at build 21303b4672 — 593 domains / 11,363 actions; the original derivation scan had covered one registration form (263 domains), which is why so many domains read as absent. 33 entries are now pinned with handler-verified minimal args; 22 stay null with the specific blocker named in each note.",
  "counts": {
   "confirmed": 15,
-  "draft_action": 202,
-  "draft_null": 53
+  "draft_action": 234,
+  "draft_null": 21
  },
  "lenses": {
   "global": {
@@ -62,22 +62,28 @@
   "chat": {
    "name": "Chat",
    "category": "core",
-   "verb": "send a message in a thread",
-   "action": null,
+   "verb": "schedule a message in chat",
+   "action": {
+    "domain": "chat",
+    "name": "scheduled-create"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "prompt": "{label}",
+    "runAt": "2099-01-01T00:00:00.000Z"
+   },
    "cleanup_action": null,
    "expect": "After the verb, the result exists in the writer's Chat data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Chat lens as the writer account.",
-    "Perform the core verb: send a message in a thread.",
+    "Perform the core verb: schedule a message in chat (via chat.scheduled-create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "confirmed",
    "source": "w1-study",
-   "note": "The Notebook (PR #2398 branch): message routes are not registered lens actions — the action stays unpinned, so the check verdicts UNSPECIFIED until the desk pins it."
+   "note": "W1-confirmed entry; its action was left unpinned by the study \"until the desk pins it\" — pinned 2026-11-21 under the CB-1054 seating (B3; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The W1-grounded verb is sending a message; the conversational send (chat.respond) is a live brain call whose session result carries no witnessable object, so the persisted message object is scheduled-create (server/domains/chat.js: prompt + a future runAt required; the far-future runAt never fires during a walk and the task stands fixture-labelled). Cleanup is not pinned: scheduled-cancel takes the task id, which the response nests under result.task, outside the cleanup extractor's reach."
   },
   "board": {
    "name": "Board",
@@ -200,37 +206,33 @@
    "visibility": "public",
    "args": null,
    "cleanup_action": null,
-   "expect": "After the verb, the result exists in the writer's DTU Browser data, survives a reload, and its visibility matches the spec.",
+   "expect": "Unpinned: In the full registry the dtus domain registers 17 actions, all analysis and views (lineageAnalysis, qualityScore, citationNetwork, saveView, ...): DTU creation is not a lens action — it lives in the core DTU routes. saveView persists a view, which would judge a different verb than this lens's core verb, so the action stays unpinned rather than mis-pinned. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the DTU Browser lens as the writer account.",
-    "Perform the core verb: publish a knowledge DTU to the catalogue.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must be VISIBLE to them (spec visibility: public).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — publish a knowledge DTU to the catalogue — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "confirmed",
    "source": "w1-study",
-   "note": "The Binder (PR #2398): the publish paths (publishDTU, marketplace.list) are lib paths, not registered lens actions in the dtus domain — the action stays unpinned, so the check verdicts UNSPECIFIED until the desk pins it. Publishing itself is gated by the publish gate (DT-01)."
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). In the full registry the dtus domain registers 17 actions, all analysis and views (lineageAnalysis, qualityScore, citationNetwork, saveView, ...): DTU creation is not a lens action — it lives in the core DTU routes. saveView persists a view, which would judge a different verb than this lens's core verb, so the action stays unpinned rather than mis-pinned."
   },
   "literary": {
    "name": "Literary",
    "category": "knowledge",
-   "verb": "use Literary",
+   "verb": "annotate a passage",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: literary.annotate is the domain's only write and it creates a real derivative DTU — but it requires the chunkId of an existing corpus passage (a literary_chunks row), which a static spec cannot name without harvesting live corpus ids. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Literary lens as the writer account.",
-    "Perform the core verb: use Literary.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — annotate a passage — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). literary.annotate is the domain's only write and it creates a real derivative DTU — but it requires the chunkId of an existing corpus passage (a literary_chunks row), which a static spec cannot name without harvesting live corpus ids."
   },
   "thread": {
    "name": "Threads",
@@ -462,22 +464,29 @@
   "goals": {
    "name": "Goals",
    "category": "knowledge",
-   "verb": "use Goals",
-   "action": null,
+   "verb": "propose a goal",
+   "action": {
+    "domain": "goals",
+    "name": "propose"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "title": "{label}",
+    "description": "ULW core-verb fixture",
+    "type": "exploration"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Goals data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Goals lens as the writer account.",
-    "Perform the core verb: use Goals.",
+    "Perform the core verb: propose a goal (via goals.propose).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) builds the proposal from title/description/type and persists it in the goal registry + proposal queue. Cleanup is not pinned: goals.delete is role-gated to owner/admin/founder, so a member drive cannot remove its own proposal; it stands labelled."
   },
   "calendar": {
    "name": "Calendar",
@@ -979,22 +988,34 @@
   "resonance": {
    "name": "Resonance",
    "category": "core",
-   "verb": "use Resonance",
-   "action": null,
+   "verb": "author a resonance pair",
+   "action": {
+    "domain": "resonance",
+    "name": "proposePair"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "a": {
+     "domain": "music",
+     "title": "{label} (side A)"
+    },
+    "b": {
+     "domain": "code",
+     "title": "{label} (side B)"
+    }
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Resonance data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Resonance lens as the writer account.",
-    "Perform the core verb: use Resonance.",
+    "Perform the core verb: author a resonance pair (via resonance.proposePair).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/resonance.js) requires a.domain/a.title/b.domain/b.title and refuses duplicate side-pairs in either orientation — the per-run {label} inside the nested titles is what keeps repeat drives unique (build_args substitutes {label} recursively since this pass). Cleanup is not pinned: the created pair id is nested in the response, outside the cleanup extractor's reach."
   },
   "docs": {
    "name": "Docs",
@@ -1515,22 +1536,29 @@
   "math": {
    "name": "Math",
    "category": "science",
-   "verb": "use Math",
-   "action": null,
+   "verb": "solve an equation step by step",
+   "action": {
+    "domain": "math",
+    "name": "stepSolve"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "expression": "x^2 - 4",
+    "right": "0",
+    "variable": "x"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "The verb performs and returns the worked solution. Persistence witness caveat: a solve carries no label-bearing field and returns no object id, so the generic read-back may not surface it (the lens's own surface is math.casHistory).",
    "steps": [
     "Open the Math lens as the writer account.",
-    "Perform the core verb: use Math.",
+    "Perform the core verb: solve an equation step by step (via math.stepSolve).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). stepSolveImpl (server/domains/math.js) takes left/expression + right + variable and solves with worked steps. Witness caveat: a solve carries no label-bearing field and returns no object id, so the generic read-back (domain list searched for the label/id) may not surface it — expect UNSPECIFIED rather than PASS until the witness widens; the lens's own persistence surface is math.casHistory."
   },
   "root": {
    "name": "Refusal Algebra",
@@ -1604,42 +1632,55 @@
   "genesis": {
    "name": "Genesis",
    "category": "ai",
-   "verb": "use Genesis",
-   "action": null,
+   "verb": "save a roster search",
+   "action": {
+    "domain": "genesis",
+    "name": "search-save"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "label": "{label}",
+    "query": "a"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Genesis data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Genesis lens as the writer account.",
-    "Perform the core verb: use Genesis.",
+    "Perform the core verb: save a roster search (via genesis.search-save).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The Genesis corpus (identities, lineage) is authored data and read-only for members; the saved search is the lens's one persisted member write (server/domains/genesis.js: label required, persists per user, search-list reads it back, search-delete removes it). Cleanup is not pinned: the saved entry id is nested in the response, outside the cleanup extractor."
   },
   "translation": {
    "name": "Translation",
    "category": "ai",
-   "verb": "use Translation",
-   "action": null,
+   "verb": "translate a passage",
+   "action": {
+    "domain": "translation",
+    "name": "translate"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "text": "The quick brown fox jumps over the lazy dog",
+    "sourceLanguage": "English",
+    "targetLanguage": "Spanish"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "The verb performs and returns the translation. No persistence surface exists for translations, so the read-back witness cannot establish persistence.",
    "steps": [
     "Open the Translation lens as the writer account.",
-    "Perform the core verb: use Translation.",
+    "Perform the core verb: translate a passage (via translation.translate).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/translation.js) requires text + targetLanguage; the explicit source language avoids the same-language short-circuit. The verb is perform-only: translation keeps no per-user history surface, so no read-back can witness persistence — expect UNSPECIFIED rather than PASS until a witness exists; the drive itself is judgeable (performed + result)."
   },
   "ml": {
    "name": "ML",
@@ -1797,22 +1838,28 @@
   "cri": {
    "name": "CRI",
    "category": "knowledge",
-   "verb": "use CRI",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "create a response initiative",
+   "action": {
+    "domain": "cri",
+    "name": "create"
+   },
+   "visibility": "shared",
+   "args": {
+    "name": "{label}",
+    "domain": "walk-fixture"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's CRI data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the CRI lens as the writer account.",
-    "Perform the core verb: use CRI.",
+    "Perform the core verb: create a response initiative (via cri.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: shared).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Registered in server/server.js as cri.createCRI(name, domain); CRIs are a shared registry (cri.list reads across members), hence shared visibility. No delete action exists in the domain, so the fixture CRI stands labelled."
   },
   "ingest": {
    "name": "Ingest",
@@ -1941,22 +1988,28 @@
   "affect": {
    "name": "Affect",
    "category": "ai",
-   "verb": "use Affect",
-   "action": null,
+   "verb": "log a mood check-in",
+   "action": {
+    "domain": "affect",
+    "name": "checkin"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "mood": 3,
+    "note": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Affect data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Affect lens as the writer account.",
-    "Perform the core verb: use Affect.",
+    "Perform the core verb: log a mood check-in (via affect.checkin).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/affect.js) requires mood inside the caller's scale; the default scale is Daylio 1..5, so 3 is valid for any account that has not customised its scale. The entry persists (checkinHistory) and deleteCheckin exists; cleanup is not pinned because the created entry id is nested in the response, outside the cleanup extractor's reach."
   },
   "attention": {
    "name": "Attention",
@@ -4681,42 +4734,46 @@
   "ops-telemetry": {
    "name": "Ops Telemetry",
    "category": "system",
-   "verb": "use Ops Telemetry",
-   "action": null,
+   "verb": "raise an ops incident",
+   "action": {
+    "domain": "ops",
+    "name": "incidentCreate"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "title": "{label}",
+    "severity": "sev3"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Ops Telemetry data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Ops Telemetry lens as the writer account.",
-    "Perform the core verb: use Ops Telemetry.",
+    "Perform the core verb: raise an ops incident (via ops.incidentCreate).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain is \"ops\" (server/domains/ops.js): incidentCreate requires title, defaults severity to sev3, and persists the incident in the caller's own ops state (incidentList reads it back). The state is per-user, so a member drive is the lens's own working surface, not an operator act on shared infrastructure."
   },
   "world-observatory": {
    "name": "World Observatory",
    "category": "system",
-   "verb": "use World Observatory",
+   "verb": "observe the worlds",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: Read-only by design: the lens's own header records that it renders the two worldstate macros (overview, world_detail), \"both read-only, no mutation\". No write action exists for this lens. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the World Observatory lens as the writer account.",
-    "Perform the core verb: use World Observatory.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — observe the worlds — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Read-only by design: the lens's own header records that it renders the two worldstate macros (overview, world_detail), \"both read-only, no mutation\". No write action exists for this lens."
   },
   "concord-link-frontier": {
    "name": "Concord Link Frontier",
@@ -4744,202 +4801,205 @@
   "plugins": {
    "name": "Plugin Gallery",
    "category": "system",
-   "verb": "use Plugin Gallery",
+   "verb": "register a plugin",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: plugin.register installs a plugin module into the live runtime loader (server/server.js loaderRegisterPlugin) — an extensibility act with code-shaped state, not a user verb a walk fixture may perform on the live server. enable/disable act only on already-installed plugins. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Plugin Gallery lens as the writer account.",
-    "Perform the core verb: use Plugin Gallery.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — register a plugin — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). plugin.register installs a plugin module into the live runtime loader (server/server.js loaderRegisterPlugin) — an extensibility act with code-shaped state, not a user verb a walk fixture may perform on the live server. enable/disable act only on already-installed plugins."
   },
   "quests": {
    "name": "Quests",
    "category": "progression",
-   "verb": "use Quests",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "author a quest",
+   "action": {
+    "domain": "quests",
+    "name": "create"
+   },
+   "visibility": "public",
+   "args": {
+    "title": "{label}",
+    "objectives": [
+     {
+      "type": "observe",
+      "target": "the horizon",
+      "requiredCount": 1
+     }
+    ],
+    "rewardXp": 0
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Quests data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Quests lens as the writer account.",
-    "Perform the core verb: use Quests.",
+    "Perform the core verb: author a quest (via quests.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/quests.js) requires title + 1..5 objectives with a typed objective (observe is in the allowed set) and persists an authored quest in the writer's world — authored quests enter the world's available pool, hence public. No delete action exists for authored quests; the fixture quest stands labelled."
   },
   "auction": {
    "name": "Auction House",
    "category": "economy",
-   "verb": "use Auction House",
+   "verb": "list an item for auction",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: auctions.create is ownership-gated in the lib (server/lib/auctions.js): the itemId must be a DTU or inventory item the seller already owns, which a static spec cannot name. The domain's other writes (bid, place_buy_order) escrow coin — money-class, never driven. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Auction House lens as the writer account.",
-    "Perform the core verb: use Auction House.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — list an item for auction — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). auctions.create is ownership-gated in the lib (server/lib/auctions.js): the itemId must be a DTU or inventory item the seller already owns, which a static spec cannot name. The domain's other writes (bid, place_buy_order) escrow coin — money-class, never driven."
   },
   "lfg": {
    "name": "LFG",
    "category": "social",
-   "verb": "use LFG",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "post a looking-for-group request",
+   "action": {
+    "domain": "lfg",
+    "name": "post"
+   },
+   "visibility": "public",
+   "args": {
+    "note": "{label}",
+    "role": "any"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's LFG data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the LFG lens as the writer account.",
-    "Perform the core verb: use LFG.",
+    "Perform the core verb: post a looking-for-group request (via lfg.post).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). postLfg (server/lib/lfg.js) defaults worldId/role and persists an open request the world can join, hence public. Cleanup is not pinned: lfg.cancel takes lfgId while the cleanup body sends {id} — the names do not line up, and a stale post auto-cancels on the writer's next post in the same world."
   },
   "achievements": {
    "name": "Achievements",
    "category": "progression",
-   "verb": "use Achievements",
+   "verb": "earn an achievement",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The achievements domain registers only get/list/mine/recent/sync. sync refreshes derived state; achievements are earned in play across other lenses, not authored or created in this one — there is no member write to drive. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Achievements lens as the writer account.",
-    "Perform the core verb: use Achievements.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — earn an achievement — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The achievements domain registers only get/list/mine/recent/sync. sync refreshes derived state; achievements are earned in play across other lenses, not authored or created in this one — there is no member write to drive."
   },
   "training-room": {
    "name": "Training Room",
    "category": "progression",
-   "verb": "use Training Room",
+   "verb": "look up frame data",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The training-room domain registers only reference reads (frame_data, kind_frame_data, list_kinds, list_skills) — fighting-game frame tables. No write action exists. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Training Room lens as the writer account.",
-    "Perform the core verb: use Training Room.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — look up frame data — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The training-room domain registers only reference reads (frame_data, kind_frame_data, list_kinds, list_skills) — fighting-game frame tables. No write action exists."
   },
   "housing": {
    "name": "Housing",
    "category": "world",
-   "verb": "use Housing",
+   "verb": "claim a house",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: Every housing write keys off an object a fresh account does not have and a static spec cannot name: claim needs a landClaimId + buildingId inside an existing land claim, and place_furniture/rename/set_* need a houseId the caller already owns. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Housing lens as the writer account.",
-    "Perform the core verb: use Housing.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — claim a house — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Every housing write keys off an object a fresh account does not have and a static spec cannot name: claim needs a landClaimId + buildingId inside an existing land claim, and place_furniture/rename/set_* need a houseId the caller already owns."
   },
   "announcements": {
    "name": "Announcements",
    "category": "system",
-   "verb": "use Announcements",
+   "verb": "post an announcement",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: announcements.post is admin-only by design (server/domains/announcements.js refuses any non-admin actor with admin_only). The walk's member accounts cannot perform this lens's only write; the member surface is the read (list/get). The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Announcements lens as the writer account.",
-    "Perform the core verb: use Announcements.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — post an announcement — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). announcements.post is admin-only by design (server/domains/announcements.js refuses any non-admin actor with admin_only). The walk's member accounts cannot perform this lens's only write; the member surface is the read (list/get)."
   },
   "detective": {
    "name": "Detective board",
    "category": "world",
-   "verb": "use Detective board",
+   "verb": "lock in a deduction on a case",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: detective.deduce (and its alias detective.create) requires the crimeId of a live case plus a suspectId from that case's cast (server/domains/detective.js) — world-state ids a static spec cannot name. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Detective board lens as the writer account.",
-    "Perform the core verb: use Detective board.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — lock in a deduction on a case — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). detective.deduce (and its alias detective.create) requires the crimeId of a live case plus a suspectId from that case's cast (server/domains/detective.js) — world-state ids a static spec cannot name."
   },
   "narrative-walk": {
    "name": "Narrative trail",
    "category": "creative",
-   "verb": "use Narrative trail",
+   "verb": "walk the narrative trail",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The narrative domain registers a single action, ripple_report, a read. The trail lens is a reading surface over authored narrative data; no member write exists. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Narrative trail lens as the writer account.",
-    "Perform the core verb: use Narrative trail.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — walk the narrative trail — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The narrative domain registers a single action, ripple_report, a read. The trail lens is a reading surface over authored narrative data; no member write exists."
   },
   "photos": {
    "name": "Photos",
@@ -4973,62 +5033,80 @@
   "mail": {
    "name": "Mail",
    "category": "social",
-   "verb": "use Mail",
-   "action": null,
+   "verb": "draft a message",
+   "action": {
+    "domain": "mail",
+    "name": "draft-save"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "subject": "{label}",
+    "body": "ULW core-verb fixture"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Mail data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Mail lens as the writer account.",
-    "Perform the core verb: use Mail.",
+    "Perform the core verb: draft a message (via mail.draft-save).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The headline verb is mail.send, but sendMail (server/lib/player-mail.js) requires the recipient's real user id, resolved against the users table, and refuses self-mail — the paired observer's id is per-shard runtime knowledge a static spec cannot name. The draft is the compose loop's persisted, writer-local leg (server/domains/mail.js: toUserId optional on draft-save) and is what the static spec can honestly judge."
   },
   "spectate": {
    "name": "Spectate",
    "category": "world",
-   "verb": "use Spectate",
-   "action": null,
+   "verb": "open a spectator session on a world",
+   "action": {
+    "domain": "spectate",
+    "name": "watch"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "worldId": "concordia-hub"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "The verb performs and persists a spectator session. Persistence witness caveat: the session carries no label-bearing field, so the generic read-back may not surface it.",
    "steps": [
     "Open the Spectate lens as the writer account.",
-    "Perform the core verb: use Spectate.",
+    "Perform the core verb: open a spectator session on a world (via spectate.watch).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/spectate.js) requires worldId and persists a spectator session. The money verb of this lens (spectate.bet) is never driven. Witness caveat: the session carries no label-bearing field, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens."
   },
   "settings": {
    "name": "Settings",
    "category": "system",
-   "verb": "use Settings",
-   "action": null,
+   "verb": "change a setting",
+   "action": {
+    "domain": "settings",
+    "name": "set"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "settings": {
+     "walk_fixture": "{label}"
+    }
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Settings data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Settings lens as the writer account.",
-    "Perform the core verb: use Settings.",
+    "Perform the core verb: change a setting (via settings.set).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) merges input.settings into the caller's settings state and settings.get reads it back; the fixture writes one walk-namespaced key rather than touching a real preference. build_args substitutes {label} recursively since this pass, so the nested value carries the label."
   },
   "creator": {
    "name": "Creator",
@@ -5105,142 +5183,160 @@
   "courtship": {
    "name": "Courtship",
    "category": "specialized",
-   "verb": "use Courtship",
+   "verb": "court a partner",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: Both courtship writes (interact, propose) require the partnerId of an existing partner — an NPC or player record in world state (server/domains/courtship.js) — which a static spec cannot name. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Courtship lens as the writer account.",
-    "Perform the core verb: use Courtship.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — court a partner — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Both courtship writes (interact, propose) require the partnerId of an existing partner — an NPC or player record in world state (server/domains/courtship.js) — which a static spec cannot name."
   },
   "fishing": {
    "name": "Fishing",
    "category": "specialized",
-   "verb": "use Fishing",
-   "action": null,
+   "verb": "cast a line",
+   "action": {
+    "domain": "fishing",
+    "name": "cast"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "worldId": "concordia-hub",
+    "biome": "water"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Fishing data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Fishing lens as the writer account.",
-    "Perform the core verb: use Fishing.",
+    "Perform the core verb: cast a line (via fishing.cast).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). castLine (server/domains/fishing.js) opens a cast session with worldId/biome defaulted; the session is the persisted first half of the catch loop (reel/create needs the session id cast returns, which a one-call drive cannot chain). The session stands labelled and unresolved sessions expire with the session store."
   },
   "creatures": {
    "name": "Creatures",
    "category": "specialized",
-   "verb": "use Creatures",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "author and publish a creature",
+   "action": {
+    "domain": "creatures",
+    "name": "creature-publish"
+   },
+   "visibility": "public",
+   "args": {
+    "speciesId": "wolf",
+    "name": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Creatures data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Creatures lens as the writer account.",
-    "Perform the core verb: use Creatures.",
+    "Perform the core verb: author and publish a creature (via creatures.creature-publish).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/creatures.js) requires speciesId, generates a physics-validated blueprint and mints it as a creator-attributed blueprint DTU — a published creature, hence public. No unpublish/delete sibling exists; the fixture creature stands labelled."
   },
   "garage": {
    "name": "Garage",
    "category": "specialized",
-   "verb": "use Garage",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "spawn a vehicle",
+   "action": {
+    "domain": "garage",
+    "name": "create"
+   },
+   "visibility": "public",
+   "args": {
+    "kind": "cart",
+    "name": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Garage data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Garage lens as the writer account.",
-    "Perform the core verb: use Garage.",
+    "Perform the core verb: spawn a vehicle (via garage.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). garage.create is the spawn alias (server/domains/garage.js doSpawn); kind must be one of cart/boat/canal_taxi (server/lib/world-vehicles.js) and a member spawn is stamped to the actor in the shared world, hence public. Cleanup is not pinned: garage.despawn takes vehicleId while the cleanup body sends {id}."
   },
   "repair-telemetry": {
    "name": "Repair Telemetry",
    "category": "specialized",
-   "verb": "use Repair Telemetry",
+   "verb": "run a repair-telemetry action",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: This is an operator lens: its page gates on REPAIR_OPERATOR_ROLES, and the repair domain's writes (run_now, resolve_escalation, health_log) are operator acts on the repair system, not member verbs a walk account may perform. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Repair Telemetry lens as the writer account.",
-    "Perform the core verb: use Repair Telemetry.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — run a repair-telemetry action — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). This is an operator lens: its page gates on REPAIR_OPERATOR_ROLES, and the repair domain's writes (run_now, resolve_escalation, health_log) are operator acts on the repair system, not member verbs a walk account may perform."
   },
   "move-builder": {
    "name": "Move Builder",
    "category": "specialized",
-   "verb": "use Move Builder",
-   "action": null,
+   "verb": "compose and mint a move",
+   "action": {
+    "domain": "move-builder",
+    "name": "mint"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}",
+    "skillKind": "spell"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Move Builder data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Move Builder lens as the writer account.",
-    "Perform the core verb: use Move Builder.",
+    "Perform the core verb: compose and mint a move (via move-builder.mint).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). compose alone is a pure preview (nothing persists); mint (server/domains/move-builder.js) is the persisted verb — it requires name, composes within budget, and persists a kind=move_recipe DTU owned by the caller. skillKind \"spell\" is the composer's own canonical default. Cleanup is not pinned: the minted move id is not exposed at a level the cleanup extractor reads."
   },
   "codex": {
    "name": "Codex",
    "category": "knowledge",
-   "verb": "use Codex",
+   "verb": "read the canon",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The Codex is closed canon by founder ruling (Decision Walk #2: read/search only, user lore lives as users' own DTUs and never merges into canon). Its domain (lore) registers only reads — facets/get/list/spine. There is no write to pin. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Codex lens as the writer account.",
-    "Perform the core verb: use Codex.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — read the canon — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The Codex is closed canon by founder ruling (Decision Walk #2: read/search only, user lore lives as users' own DTUs and never merges into canon). Its domain (lore) registers only reads — facets/get/list/spine. There is no write to pin."
   },
   "reasoning-traces": {
    "name": "HLR Traces",
@@ -5271,42 +5367,46 @@
   "civic-bonds": {
    "name": "Civic Bonds",
    "category": "governance",
-   "verb": "use Civic Bonds",
+   "verb": "open a civic bond drive",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: civic_bonds.create is gated to ruler/leader/officer roles (its own registration note) and the bond lifecycle runs on spark escrow (pledge/fund) — a member walk account holds no such role, and the money legs are never driven regardless. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Civic Bonds lens as the writer account.",
-    "Perform the core verb: use Civic Bonds.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — open a civic bond drive — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). civic_bonds.create is gated to ruler/leader/officer roles (its own registration note) and the bond lifecycle runs on spark escrow (pledge/fund) — a member walk account holds no such role, and the money legs are never driven regardless."
   },
   "careers": {
    "name": "Careers",
    "category": "economy",
-   "verb": "use Careers",
-   "action": null,
+   "verb": "work a career shift",
+   "action": {
+    "domain": "careers",
+    "name": "work"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "trackId": "chef",
+    "skillInput": 0.5
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Careers data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Careers lens as the writer account.",
-    "Perform the core verb: use Careers.",
+    "Perform the core verb: work a career shift (via careers.work).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/careers.js) requires a valid trackId (chef is a TRACKS key in server/lib/professions.js) and persists shift progress (xp/shifts) server-side; tier and attribute are server-owned. Repeat drives inside the shift cooldown are refused with shift_cooldown, which the verdict reads as the probe's limit, not the verb's failure."
   },
   "bounties": {
    "name": "Bounties",
@@ -5334,22 +5434,28 @@
   "byo-keys": {
    "name": "API Keys",
    "category": "system",
-   "verb": "use API Keys",
-   "action": null,
+   "verb": "set a bring-your-own-key brain override",
+   "action": {
+    "domain": "byo_keys",
+    "name": "set"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "slot": "utility",
+    "provider": "ollama"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's API Keys data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the API Keys lens as the writer account.",
-    "Perform the core verb: use API Keys.",
+    "Perform the core verb: set a bring-your-own-key brain override (via byo_keys.set).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). setKey (server/lib/byo-keys.js) requires a valid slot (conscious/subconscious/utility/repair/vision) + provider; provider \"ollama\" is the local path and stores NO credential (the apiKey branch is skipped for ollama/concord_default), so the fixture writes only a provider override row on the test account. byo_keys.remove is the domain's own undo; cleanup is not pinned because the row is keyed by slot, not by an extractable object id."
   },
   "classroom": {
    "name": "Classroom",
@@ -5400,22 +5506,33 @@
   "cognition": {
    "name": "Cognition",
    "category": "ai",
-   "verb": "use Cognition",
-   "action": null,
+   "verb": "export a reasoning trace",
+   "action": {
+    "domain": "cognition",
+    "name": "exportTrace"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "title": "{label}",
+    "trace": {
+     "input": {
+      "question": "What does the walk fixture trace?"
+     },
+     "mode": "hlr"
+    }
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Cognition data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Cognition lens as the writer account.",
-    "Perform the core verb: use Cognition.",
+    "Perform the core verb: export a reasoning trace (via cognition.exportTrace).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/cognition.js) requires a trace object and persists the export into the caller's export ledger (listExports reads it back; deleteExport removes it). Cleanup is not pinned: the response carries the id as exportId, outside the cleanup extractor's key set (id/_id/uuid)."
   },
   "cognitive-replay": {
    "name": "Cognitive Replay",
@@ -5446,82 +5563,93 @@
   "crisis-ops": {
    "name": "Crisis Ops",
    "category": "governance",
-   "verb": "use Crisis Ops",
-   "action": null,
+   "verb": "stockpile a response resource",
+   "action": {
+    "domain": "crisis",
+    "name": "resource_upsert"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}",
+    "category": "general",
+    "quantity": 1,
+    "unit": "units"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Crisis Ops data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Crisis Ops lens as the writer account.",
-    "Perform the core verb: use Crisis Ops.",
+    "Perform the core verb: stockpile a response resource (via crisis.resource_upsert).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). resource_upsert (server/domains/crisis.js) requires name + a whole quantity 1..1,000,000 and persists the caller's own resource stockpile (resource_delete is its sibling). The lens's headline verb, crisis.declare, starts a crisis in the SHARED world state for every player, so the walk deliberately drives the per-user verb instead and leaves declare to the lens's own live use."
   },
   "death-insurance": {
    "name": "Death Insurance",
    "category": "economy",
-   "verb": "use Death Insurance",
+   "verb": "write a death-insurance pact",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: insurance.pact-write requires at least one beneficiary whose user id resolves in the users table, with self-pacts blocked (server/domains/insurance.js), plus a spark-denominated premium. The beneficiary id is per-shard runtime knowledge a static spec cannot name, and the premium leg is money-adjacent. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Death Insurance lens as the writer account.",
-    "Perform the core verb: use Death Insurance.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — write a death-insurance pact — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). insurance.pact-write requires at least one beneficiary whose user id resolves in the users table, with self-pacts blocked (server/domains/insurance.js), plus a spark-denominated premium. The beneficiary id is per-shard runtime knowledge a static spec cannot name, and the premium leg is money-adjacent."
   },
   "deities": {
    "name": "Deities",
    "category": "world",
-   "verb": "use Deities",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "compose a deity",
+   "action": {
+    "domain": "deity",
+    "name": "compose"
+   },
+   "visibility": "public",
+   "args": {
+    "name": "{label}",
+    "domainTitle": "Patron of walk fixtures",
+    "creed": "Prove the verb, keep the receipt."
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Deities data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Deities lens as the writer account.",
-    "Perform the core verb: use Deities.",
+    "Perform the core verb: compose a deity (via deity.compose).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain registers as \"deity\" (server/domains/deities.js): compose requires only a name and persists the deity into the shared pantheon (deity.list ranks all non-retired deities), hence public. deity.retire is the lifecycle sibling; cleanup is not pinned because the response nests the id under result.deityId."
   },
   "dreams": {
    "name": "Dreams",
    "category": "ai",
-   "verb": "use Dreams",
+   "verb": "interpret a recorded dream",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: Every dreams write (interpret, publish, tag, reprice) keys off a pre-existing dream record's id. Dreams are recorded during Concordia play, not created in this lens, so a fresh walk account has no dreamId a static spec could name. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Dreams lens as the writer account.",
-    "Perform the core verb: use Dreams.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — interpret a recorded dream — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Every dreams write (interpret, publish, tag, reprice) keys off a pre-existing dream record's id. Dreams are recorded during Concordia play, not created in this lens, so a fresh walk account has no dreamId a static spec could name."
   },
   "dx-platform": {
    "name": "DX Platform",
@@ -5601,42 +5729,53 @@
   "expert-mode": {
    "name": "Expert Mode",
    "category": "ai",
-   "verb": "use Expert Mode",
-   "action": null,
+   "verb": "ask a research question",
+   "action": {
+    "domain": "expert_mode",
+    "name": "ask"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "query": "{label} — what is the capital of France?",
+    "useWeb": false
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Expert Mode data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Expert Mode lens as the writer account.",
-    "Perform the core verb: use Expert Mode.",
+    "Perform the core verb: ask a research question (via expert_mode.ask).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/expert-mode.js) requires query and persists the Q+A as a thread the caller owns (thread_get/thread_list read it back; thread_delete removes it). useWeb false keeps the drive on the local path. The label rides in the query because the thread title derives from it — that is what the read-back list search can witness. Cleanup is not pinned: thread_delete takes threadId, not the cleanup body's {id}."
   },
   "forecast": {
    "name": "Forecast",
    "category": "knowledge",
-   "verb": "use Forecast",
-   "action": null,
-   "visibility": "private",
-   "args": null,
+   "verb": "compose a world forecast",
+   "action": {
+    "domain": "forecast",
+    "name": "compose"
+   },
+   "visibility": "public",
+   "args": {
+    "worldId": "concordia-hub"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "The verb composes and persists the world's 24h forecast (forecast.recent is the lens's own read-back). Persistence witness caveat: the forecast carries no label-bearing field, so the generic read-back may not surface it.",
    "steps": [
     "Open the Forecast lens as the writer account.",
-    "Perform the core verb: use Forecast.",
+    "Perform the core verb: compose a world forecast (via forecast.compose).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Open the same surface as the observer account: the result MUST be visible to them (spec visibility: public).",
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) composes the 24h forecast for a world and persists it by default (forecast.recent reads it back); a world forecast is world-readable, hence public. Witness caveat: the forecast carries no label-bearing field and returns no object id, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens."
   },
   "forge": {
    "name": "Forge",
@@ -5664,42 +5803,46 @@
   "ledger": {
    "name": "Concordia world ledger (game world)",
    "category": "world",
-   "verb": "use Concordia world ledger (game world)",
+   "verb": "read the world ledger",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The ledger domain registers only world-ledger analytics reads (anomalies, faction_economy, flow_summary) over Concordia's world economy. No member write exists in this lens. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Concordia world ledger (game world) lens as the writer account.",
-    "Perform the core verb: use Concordia world ledger (game world).",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — read the world ledger — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The ledger domain registers only world-ledger analytics reads (anomalies, faction_economy, flow_summary) over Concordia's world economy. No member write exists in this lens."
   },
   "foundry": {
    "name": "Foundry",
    "category": "world",
-   "verb": "use Foundry",
-   "action": null,
+   "verb": "create a foundry world",
+   "action": {
+    "domain": "foundry",
+    "name": "create"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}",
+    "description": "ULW core-verb fixture"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Foundry data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Foundry lens as the writer account.",
-    "Perform the core verb: use Foundry.",
+    "Perform the core verb: create a foundry world (via foundry.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/foundry.js) requires name and inserts a draft world row owned by the caller. foundry.delete is the sibling; cleanup is not pinned because the created world id is nested under the response's world object, outside the cleanup extractor's reach."
   },
   "gallery": {
    "name": "Gallery",
@@ -5730,42 +5873,46 @@
   "ghost-tracker": {
    "name": "Ghost Tracker",
    "category": "world",
-   "verb": "use Ghost Tracker",
+   "verb": "open a spectral dossier",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: ghost-hunt.create requires the residueId of a live spectral residue row (server/domains/ghost-hunt.js refuses residue_not_found otherwise) — a world-generated id a static spec cannot name. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Ghost Tracker lens as the writer account.",
-    "Perform the core verb: use Ghost Tracker.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — open a spectral dossier — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). ghost-hunt.create requires the residueId of a live spectral residue row (server/domains/ghost-hunt.js refuses residue_not_found otherwise) — a world-generated id a static spec cannot name."
   },
   "goddess": {
    "name": "Goddess",
    "category": "world",
-   "verb": "use Goddess",
-   "action": null,
+   "verb": "subscribe to a goddess dispatch tone",
+   "action": {
+    "domain": "goddess",
+    "name": "subscribe"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "tone": "warm",
+    "worldId": "concordia-hub"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Goddess data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Goddess lens as the writer account.",
-    "Perform the core verb: use Goddess.",
+    "Perform the core verb: subscribe to a goddess dispatch tone (via goddess.subscribe).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/goddess.js) requires tone in KNOWN_TONES (exalted/warm/neutral/cold/mourning) and persists the caller's subscription. The lens's other writes do not fit a static drive: compose_now is the broadcaster's own system act, and react needs a live dispatch id. Cleanup is not pinned: unsubscribe takes subscriptionId, which the response nests, outside the cleanup extractor."
   },
   "inheritance": {
    "name": "Inheritance",
@@ -5796,62 +5943,71 @@
   "kingdoms": {
    "name": "Kingdoms",
    "category": "governance",
-   "verb": "use Kingdoms",
-   "action": null,
+   "verb": "create a dynasty character",
+   "action": {
+    "domain": "kingdoms",
+    "name": "char_create"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Kingdoms data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Kingdoms lens as the writer account.",
-    "Perform the core verb: use Kingdoms.",
+    "Perform the core verb: create a dynasty character (via kingdoms.char_create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/kingdoms.js) requires name and persists the character in the caller's dynasty (dynasty_tree reads it back). No delete sibling exists; the fixture character stands labelled."
   },
   "lattice": {
    "name": "Lattice",
    "category": "ai",
-   "verb": "use Lattice",
+   "verb": "birth a lattice DTU",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The lattice domain registers system/compute verbs only: beacon computes an overlap reading, and birth_protocol forges a DTU only through a reality guard whose acceptance depends on live lattice state — it has no statically valid form a spec could carry. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Lattice lens as the writer account.",
-    "Perform the core verb: use Lattice.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — birth a lattice DTU — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lattice domain registers system/compute verbs only: beacon computes an overlap reading, and birth_protocol forges a DTU only through a reality guard whose acceptance depends on live lattice state — it has no statically valid form a spec could carry."
   },
   "maker": {
    "name": "Maker",
    "category": "creative",
-   "verb": "use Maker",
-   "action": null,
+   "verb": "start a make on the bench",
+   "action": {
+    "domain": "maker",
+    "name": "create"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}",
+    "spec": "ULW core-verb fixture"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Maker data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Maker lens as the writer account.",
-    "Perform the core verb: use Maker.",
+    "Perform the core verb: start a make on the bench (via maker.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/maker.js) requires name (duplicate names refused per user) and inserts the make into maker_pieces; maker.list reads it back and maker.delete is the sibling. Cleanup is not pinned: the created id is nested under the response's make object, outside the cleanup extractor's reach."
   },
   "markets": {
    "name": "Markets",
@@ -5977,22 +6133,20 @@
   "personas": {
    "name": "Personas",
    "category": "ai",
-   "verb": "use Personas",
+   "verb": "view a persona",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: The personas domain registers only get/stats. Personas are created and managed through other surfaces (profile/chat); this lens is a read-only view of them. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Personas lens as the writer account.",
-    "Perform the core verb: use Personas.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — view a persona — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The personas domain registers only get/stats. Personas are created and managed through other surfaces (profile/chat); this lens is a read-only view of them."
   },
   "productivity": {
    "name": "Productivity",
@@ -6072,22 +6226,28 @@
   "saved": {
    "name": "Saved",
    "category": "core",
-   "verb": "use Saved",
-   "action": null,
+   "verb": "save an item",
+   "action": {
+    "domain": "saved",
+    "name": "add"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "kind": "other",
+    "title": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Saved data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Saved lens as the writer account.",
-    "Perform the core verb: use Saved.",
+    "Perform the core verb: save an item (via saved.add).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/saved.js) requires at least one of title/refId/url and persists the item in the caller's saved store (saved.list reads it back; saved.remove is the sibling). Cleanup is not pinned: the item id is nested under result.item, outside the cleanup extractor's holder set."
   },
   "vault": {
    "name": "TheVault",
@@ -6138,42 +6298,53 @@
   "sentinel": {
    "name": "Sentinel",
    "category": "system",
-   "verb": "use Sentinel",
-   "action": null,
+   "verb": "create a monitoring scan",
+   "action": {
+    "domain": "sentinel",
+    "name": "monitor.create"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "name": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Sentinel data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Sentinel lens as the writer account.",
-    "Perform the core verb: use Sentinel.",
+    "Perform the core verb: create a monitoring scan (via sentinel.monitor.create).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sentinel.js) defaults every other field (scope all, severity medium, interval clamped 5..1440) and persists the monitor per user (monitor.list reads it back; monitor.delete is the sibling). Cleanup is not pinned: the monitor id is monitorId nested under result.monitor, outside the cleanup extractor's reach."
   },
   "sessions": {
    "name": "Sessions",
    "category": "system",
-   "verb": "use Sessions",
-   "action": null,
+   "verb": "start a lens session",
+   "action": {
+    "domain": "sessions",
+    "name": "start"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "lensId": "sessions",
+    "title": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Sessions data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Sessions lens as the writer account.",
-    "Perform the core verb: use Sessions.",
+    "Perform the core verb: start a lens session (via sessions.start).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sessions.js) requires lensId and inserts an open session row for the caller (list_mine reads it back; close/remove are the lifecycle siblings). Cleanup is not pinned: the session id is nested under the response's session object, outside the cleanup extractor's reach."
   },
   "social": {
    "name": "Social",
@@ -6273,22 +6444,20 @@
   "strategic-adds": {
    "name": "Strategic Adds",
    "category": "system",
-   "verb": "use Strategic Adds",
+   "verb": "apply a strategic add-on",
    "action": null,
    "visibility": "private",
    "args": null,
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "Unpinned: Strategic Adds is a composite lens: its surfaces drive other domains' actions (privacy.dsarSubmit, integrations.connectApp in the F1/F2 record) rather than one domain of its own. There is no single core create to pin; each underlying domain's verb is specced under its own lens. The check verdicts UNSPECIFIED until the blocker clears.",
    "steps": [
     "Open the Strategic Adds lens as the writer account.",
-    "Perform the core verb: use Strategic Adds.",
-    "Reload the lens and re-read through the API: the result must still be there (persistence).",
-    "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "The core verb — apply a strategic add-on — has no pinned action (see the note).",
+    "Until a drive exists, the check verdicts UNSPECIFIED with the reason in the spec's note."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Hand-resolved 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Strategic Adds is a composite lens: its surfaces drive other domains' actions (privacy.dsarSubmit, integrations.connectApp in the F1/F2 record) rather than one domain of its own. There is no single core create to pin; each underlying domain's verb is specced under its own lens."
   },
   "sub-worlds": {
    "name": "Sub-Worlds",
@@ -6411,22 +6580,28 @@
   "wellness": {
    "name": "Wellness",
    "category": "progression",
-   "verb": "use Wellness",
-   "action": null,
+   "verb": "log a mood entry",
+   "action": {
+    "domain": "wellness",
+    "name": "mood-log"
+   },
    "visibility": "private",
-   "args": null,
+   "args": {
+    "mood": "good",
+    "note": "{label}"
+   },
    "cleanup_action": null,
-   "expect": "No create-class action is registered for this lens's domain in the scanned code; the core verb is unspecified until a human pins it.",
+   "expect": "After the verb, the result exists in the writer's Wellness data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Wellness lens as the writer account.",
-    "Perform the core verb: use Wellness.",
+    "Perform the core verb: log a mood entry (via wellness.mood-log).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
-    "Delete the created data via the write account (cleanup)."
+    "Leave the created data standing under the walk's fixture label (no cleanup action pinned — see the note)."
    ],
    "status": "draft",
-   "source": "registry-draft",
-   "note": "No domain with a create-class registered action was found for this slug in the scan; action unpinned by construction."
+   "source": "registry-pin-2026-11-21",
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/wellness.js) requires mood in MOOD_SCALE (awful/bad/meh/good/great) and persists the entry (mood-list reads it back; mood-delete is the sibling). Cleanup is not pinned: the entry id is nested under result.entry, outside the cleanup extractor's reach."
   },
   "world-creator": {
    "name": "World Creator",

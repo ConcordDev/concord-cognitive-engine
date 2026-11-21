@@ -15,8 +15,9 @@ One entry per lens (all 270, keyed by the `walker/inventory.json` slug):
 - `action` — `{domain, name}` of the registered lens action that performs
   it, or `null` when unpinned (the check then verdicts UNSPECIFIED).
 - `args` — a minimal argument template for the drive; `{label}` is
-  replaced with the walk's unique fixture label. `null` = the default
-  `{title, name}` template.
+  replaced with the walk's unique fixture label, recursively — inside
+  nested objects and lists too, wherever the action's schema puts the
+  label-bearing field. `null` = the default `{title, name}` template.
 - `visibility` — who should see the verb's result: `private` (the maker
   only), `shared`, or `public`.
 - `cleanup_action` — the domain's delete/remove sibling of the verb
@@ -53,6 +54,46 @@ verdicts live in `concord_walker/core_verbs.py`; the leg only drives:
 
 Money-class actions (buy / tender / transfer / escrow / …) are never
 driven; they verdict UNSPECIFIED with the reason named.
+
+## The pinning pass (2026-11-21, CB-1054 seating)
+
+Walk 3's core-verb tally was 228 UNSPECIFIED, of which 55 were the
+spec's action-null entries. Those 55 are now hand-resolved (B3, checker
+B2) against a corrected registry scan: the W5a derivation had scanned
+one registration form (`registerLensAction`, 263 domains); the server
+registers macros through a second form too (`register(domain, action)`
+inside per-domain `register…Macros` functions), and the full two-form,
+case-sensitive scan of the deployed build finds 593 domains / 11,363
+actions.
+
+- **33 pinned** — each with the minimal valid args read off the action
+  handler's own validation. One of them, chat, sits in the W1-confirmed
+  set: the study grounded its verb and expressly left the action
+  unpinned "until the desk pins it"; this pass is that pinning, and
+  the entry keeps its confirmed status with the pin recorded in its
+  note. (required fields, enum sets, numeric
+  ranges), the design visibility, and the grounding in the entry's
+  `note`. Where the domain's cleanup sibling cannot be driven by the
+  cleanup machinery as it stands (the created id is nested deeper than
+  the extractor reads, or the sibling takes a differently-named id
+  argument), `cleanup_action` stays null and the created data stands
+  under the walk's fixture label — the note says which case applies.
+- **22 stay null**, each with the specific blocker named in its note:
+  a required id from live world state a static spec cannot name
+  (detective, ghost-tracker, housing, dreams, courtship, auction), an
+  operator/admin gate (announcements, repair-telemetry), a read-only
+  surface by design or founder ruling (codex, world-observatory,
+  training-room, ledger, personas, narrative-walk, achievements), a
+  money-adjacent or role-gated create (civic-bonds, death-insurance),
+  a composite lens (strategic-adds), a system-only domain (lattice,
+  plugins), or a core verb that is not a lens action at all (dtus,
+  literary).
+
+Four pinned verbs are perform-only or witness-poor (math, translation,
+forecast, spectate): they return their result but carry no
+label-bearing field the generic read-back can witness, so they are
+expected to verdict UNSPECIFIED rather than PASS until the read-back
+witness widens — the entries' `expect`/`note` say so per lens.
 
 ## Verdicts
 

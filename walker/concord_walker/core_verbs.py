@@ -129,14 +129,27 @@ def is_money_action(spec):
 
 def build_args(spec, label):
     """The args object for the drive: the spec's template with {label}
-    substituted, or the default title/name template. Returns a dict."""
+    substituted, or the default title/name template. Returns a dict.
+
+    Substitution is recursive (pinning pass 2026-11-21): {label} is
+    replaced inside nested objects and lists too, so a template can
+    label a field wherever the action's schema puts it — a resonance
+    pair side's title, a settings value one level down. Non-string
+    scalars pass through untouched."""
     tpl = (spec or {}).get("args")
     if tpl is None:
         tpl = {"title": "{label}", "name": "{label}"}
-    out = {}
-    for k, v in tpl.items():
-        out[k] = v.replace("{label}", label) if isinstance(v, str) else v
-    return out
+
+    def sub(v):
+        if isinstance(v, str):
+            return v.replace("{label}", label)
+        if isinstance(v, dict):
+            return {k: sub(x) for k, x in v.items()}
+        if isinstance(v, list):
+            return [sub(x) for x in v]
+        return v
+
+    return sub(tpl)
 
 
 def verb_body(spec, label):

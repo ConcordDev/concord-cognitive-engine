@@ -77,6 +77,19 @@ def main():
     check("extract id absent", cv.extract_object_id({"ok": True}) is None)
     check("default args template", cv.build_args({"args": None}, "L") == {"title": "L", "name": "L"})
 
+    # ---- build_args recursion (pinning pass 2026-11-21): {label} is
+    # substituted inside nested objects and lists, scalars untouched.
+    nested = {"args": {"a": {"domain": "music", "title": "{label} (side A)"},
+                       "objectives": [{"type": "observe", "target": "{label}"}],
+                       "mood": 3, "flag": True, "none": None}}
+    built = cv.build_args(nested, "LBL")
+    check("build_args nested dict substitution",
+          built["a"] == {"domain": "music", "title": "LBL (side A)"}, built)
+    check("build_args nested list substitution",
+          built["objectives"] == [{"type": "observe", "target": "LBL"}], built)
+    check("build_args scalars pass through",
+          built["mood"] == 3 and built["flag"] is True and built["none"] is None, built)
+
     # ---- drive classification
     check("drive performed", cv.classify_drive(200, {"ok": True}) == "performed")
     check("drive refused body is failed", cv.classify_drive(200, {"ok": False, "error": "nope"}) == "failed")
@@ -148,6 +161,41 @@ def main():
                                              "spec_status": "draft", "verb": "x"}))
     check("dossier: PASS -> no deduction",
           s["deductions"]["live"]["core_verb"] == 0 and s["score"] == 100, (g, s))
+
+    # ---- the pinning pass of 2026-11-21 (CB-1054 seating): the 55
+    # formerly-null entries are resolved — 33 pinned with dict args,
+    # 22 null with the specific blocker named in a substantive note —
+    # and the doc's counts block tallies with the entries themselves.
+    PINNED_1121 = ["chat", "goals", "resonance", "math", "genesis", "translation",
+                   "cri", "affect", "quests", "lfg", "mail", "spectate", "settings",
+                   "fishing", "creatures", "garage", "move-builder", "careers",
+                   "byo-keys", "cognition", "crisis-ops", "deities", "expert-mode",
+                   "forecast", "foundry", "goddess", "kingdoms", "maker", "saved",
+                   "sentinel", "sessions", "wellness", "ops-telemetry"]
+    NULL_1121 = ["dtus", "literary", "auction", "achievements", "training-room",
+                 "housing", "announcements", "detective", "narrative-walk",
+                 "courtship", "repair-telemetry", "codex", "civic-bonds",
+                 "death-insurance", "dreams", "ghost-tracker", "lattice", "ledger",
+                 "personas", "plugins", "strategic-adds", "world-observatory"]
+    lenses = doc["lenses"]
+    check("pinning pass: all 33 pins carry an action + dict args",
+          all(lenses[s].get("action") and isinstance(lenses[s].get("args"), dict)
+              for s in PINNED_1121))
+    check("pinning pass: all 22 nulls stay null with a substantive named blocker",
+          all(not lenses[s].get("action") and len(lenses[s].get("note") or "") >= 200
+              for s in NULL_1121))
+    tally = {"confirmed": 0, "draft_action": 0, "draft_null": 0}
+    for s in lenses.values():
+        if s["status"] == "confirmed":
+            tally["confirmed"] += 1
+        elif s.get("action"):
+            tally["draft_action"] += 1
+        else:
+            tally["draft_null"] += 1
+    check("pinning pass: counts block tallies with the entries", doc["counts"] == tally,
+          (doc["counts"], tally))
+    check("pinning pass: no money-class action among the pins",
+          not any(cv.is_money_action(lenses[s]) for s in PINNED_1121))
 
     # ---- wiring: the leg exists and rides the isolation phase
     src = open(os.path.join(HERE, "concord_walker", "checks.py")).read()
