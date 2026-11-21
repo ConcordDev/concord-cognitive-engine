@@ -1010,10 +1010,17 @@ class LensWalk:
         """ULW v3 (GB-1576 W5c): DURABILITY — re-issue up to
         thresholds.durability_max_probes of the lens's recorded creates as
         the write account, each with a unique planted marker; wait past the
-        save debounce (thresholds.durability_wait_s, one wait for the
-        batch); then verify each marker via a FRESH session (new context,
-        reload, durable texts) and a BACKEND READ (the created object's
-        URL, else the lens's recorded read route for the collection).
+        save debounce (thresholds.durability_wait_s), then verify each
+        marker via a FRESH session (new context, reload, durable texts)
+        and a BACKEND READ (the created object's URL, else the lens's
+        recorded read route for the collection) — POLLED (Walk 3 honesty
+        fix, CB-1053/CB-1058): re-verify every
+        thresholds.durability_poll_interval_s until every probe passes
+        or the thresholds.durability_poll_s budget expires, so a slow
+        persistence is judged at the budget, not raced at the first
+        read; verdicts, findings and cleanup run once, from the final
+        round. A probe still unverified at the budget is UNVERIFIED —
+        the block verdict says so; unverified never reads PASS.
         Planning and verdicts live in concord_walker.durability (pure);
         this method only drives contexts. A DURABLE_FAIL files a walk
         finding; probe objects are deleted best-effort when their object
@@ -1069,7 +1076,6 @@ class LensWalk:
             fctx, fpage, fcdp = self.open(account=self.write_acct)
             assert_account(fctx, self.cfg, self.write_acct, "durability verify", self.log)
             self.nav(fpage, fcdp)
-            texts = fcdp.ax().durable_texts()
 
             def backend_read(probe):
                 urls = []
@@ -1101,16 +1107,36 @@ class LensWalk:
                         continue
                 return False, last_status
 
-            for probe in fired:
-                fresh = any(probe["marker"] in t for t in texts)
-                backend, backend_status = backend_read(probe)
-                verdict, reason = _dur.probe_verdict(probe["status"], fresh,
-                                                     backend, backend_status)
-                row = {"write": "%s %s" % (probe["cand"]["method"],
-                                           probe["cand"]["path"]),
-                       "field": probe["field"], "wait_s": wait_s,
-                       "fresh": fresh, "backend": backend,
-                       "verdict": verdict, "reason": reason}
+            def verify_round():
+                texts = fcdp.ax().durable_texts()
+                out = []
+                for probe in fired:
+                    fresh = any(probe["marker"] in t for t in texts)
+                    backend, backend_status = backend_read(probe)
+                    verdict, reason = _dur.probe_verdict(
+                        probe["status"], fresh, backend, backend_status)
+                    out.append({"write": "%s %s" % (probe["cand"]["method"],
+                                                    probe["cand"]["path"]),
+                                "field": probe["field"],
+                                "fresh": fresh, "backend": backend,
+                                "verdict": verdict, "reason": reason})
+                return out
+
+            poll_s = self.th.get("durability_poll_s", 30)
+            interval = self.th.get("durability_poll_interval_s", 5)
+            rounds, elapsed = 0, wait_s
+            while True:
+                rounds += 1
+                if rounds > 1:
+                    self.nav(fpage, fcdp)
+                rows = verify_round()
+                if _dur.all_passed(rows) or elapsed >= poll_s:
+                    break
+                time.sleep(interval)
+                elapsed += interval
+            for probe, row in zip(fired, rows):
+                row["rounds"] = rounds
+                row["wait_s"] = elapsed
                 if probe["obj_url"]:
                     try:
                         resp = fctx.request.fetch(probe["obj_url"], method="DELETE",
@@ -1121,25 +1147,24 @@ class LensWalk:
                         row["cleanup"] = "delete_error"
                 else:
                     row["cleanup"] = "left_labelled"
-                if verdict == "DURABLE_FAIL":
+                if row["verdict"] == "DURABLE_FAIL":
                     ev = self.shot(fpage, "durability-fail")
                     self.finding("durability", "high",
                                  "Write did not persist past the save debounce: %s" % row["write"],
                                  ["Open %s" % self.url,
                                   "Write via the lens (%s, marker in field '%s')" % (row["write"], probe["field"]),
-                                  "Wait %ss (past the save debounce)" % wait_s,
+                                  "Wait %ss (past the save debounce; polled %d round(s) over %ss)" % (wait_s, rounds, elapsed),
                                   "Reload in a fresh session and re-read the backend"],
                                  "The written object is readable from the backend and visible in a fresh session",
-                                 reason, [ev], root_cause="RCA-durability",
+                                 row["reason"], [ev], root_cause="RCA-durability",
                                  area="%s/durability" % self.slug)
-                rows.append(row)
         finally:
             if fctx is not None:
                 self._close(fctx)
         self.result["durability"] = _dur.durability_block(rows)
         db = self.result["durability"]
-        self.log("  durability %s: %d probe(s), %d failed, %d unverified (wait %ss)" % (
-            self.slug, db["probes"], db["failed"], db["unverified"], wait_s))
+        self.log("  durability %s: %s — %d probe(s), %d failed, %d unverified (wait %ss + poll to %ss, %d round(s))" % (
+            self.slug, db["verdict"], db["probes"], db["failed"], db["unverified"], wait_s, elapsed, rounds))
     def _broadcast_leg(self, owner, observer, octx, label, candidates):
         """W5b private-broadcast leg: the foreign context listens on this
         lens's socket while the owner performs a private write on its own

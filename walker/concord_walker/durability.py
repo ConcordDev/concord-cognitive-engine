@@ -24,6 +24,16 @@ Verdicts per probe (probe_verdict):
                       not (the route may not be the object's source).
                       Named, never a pass.
 
+Block verdict (durability_block): FAIL when any probe failed, PASS only
+when at least one probe ran and EVERY probe passed, UNVERIFIED
+otherwise. Walk 3 honesty fix (CB-1053/CB-1058): the original
+composition read PASS whenever nothing had failed, which turned a
+walk's worth of all-unverified probes into 220 PASS — unverified is a
+verdict of its own now, at probe level and block level alike. The
+phase polls verification until the poll budget expires before any
+verdict is final, so a slow persistence is judged at the budget, not
+raced at the first read.
+
 Pure by design: planning (which recorded writes can carry a probe), marker
 planting, read-route selection, verdicts and the counted record block are
 decidable offline; the driving leg lives in
@@ -204,18 +214,38 @@ def probe_plan(candidates):
     return {"run": True, "reason": "%d probe candidate(s)" % len(candidates)}
 
 
+def all_passed(rows):
+    """The poll loop's exit decision (pure): every probe DURABLE_PASS
+    and at least one probe. Anything else keeps polling until the
+    budget expires — a verdict is only final at the budget or here."""
+    return bool(rows) and all(r.get("verdict") == "DURABLE_PASS"
+                              for r in rows)
+
+
 def durability_block(rows=None, skip=None):
     """The per-lens durability block written into the walk result.
-    Status RAN when probes ran, SKIPPED with the reason otherwise; verdict
-    FAIL when any probe failed, PASS when every probe passed or was
-    unverified-with-reason (unverified is counted, never hidden)."""
+    Status RAN when probes ran, SKIPPED with the reason otherwise.
+    Verdict: FAIL when any probe failed · PASS only when at least one
+    probe ran and every probe passed · UNVERIFIED otherwise (no probe
+    passed clean, or none ran) — unverified is counted AND verdicted,
+    never folded into PASS (Walk 3 honesty fix, CB-1053/CB-1058;
+    supersedes the W5c composition, under which PASS + UNVERIFIED
+    probes read PASS)."""
     if rows is None:
         return {"status": "SKIPPED", "reason": skip or "not run",
-                "probes": 0, "failed": 0, "unverified": 0, "rows": []}
+                "probes": 0, "failed": 0, "unverified": 0, "passed": 0,
+                "verdict": "SKIPPED", "rows": []}
     failed = sum(1 for r in rows if r.get("verdict") == "DURABLE_FAIL")
+    passed = sum(1 for r in rows if r.get("verdict") == "DURABLE_PASS")
     block = {"status": "RAN", "probes": len(rows), "failed": failed,
+             "passed": passed,
              "unverified": sum(1 for r in rows
                                if r.get("verdict") == "DURABLE_UNVERIFIED"),
              "rows": rows}
-    block["verdict"] = "FAIL" if failed else "PASS"
+    if failed:
+        block["verdict"] = "FAIL"
+    elif rows and passed == len(rows):
+        block["verdict"] = "PASS"
+    else:
+        block["verdict"] = "UNVERIFIED"
     return block

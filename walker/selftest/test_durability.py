@@ -105,8 +105,30 @@ check("block counts and fails on any DURABLE_FAIL",
       and blk["unverified"] == 1 and blk["verdict"] == "FAIL", blk)
 blk = dur.durability_block([{"verdict": "DURABLE_PASS"},
                             {"verdict": "DURABLE_UNVERIFIED"}])
-check("block passes with unverified counted, not hidden",
-      blk["verdict"] == "PASS" and blk["unverified"] == 1, blk)
+# SUPERSEDED (Walk 3 honesty fix, CB-1053/CB-1058): this pin used to read
+# "block passes with unverified counted, not hidden" (verdict PASS) — that
+# composition is the defect CB-1053 filed: Walk 3's all-unverified probes
+# read 220 PASS. Unverified is a verdict of its own now.
+check("block with an unverified probe is UNVERIFIED, never PASS",
+      blk["verdict"] == "UNVERIFIED" and blk["unverified"] == 1
+      and blk["passed"] == 1, blk)
+blk = dur.durability_block([{"verdict": "DURABLE_UNVERIFIED"},
+                            {"verdict": "DURABLE_UNVERIFIED"}])
+check("all-unverified block is UNVERIFIED",
+      blk["verdict"] == "UNVERIFIED" and blk["passed"] == 0, blk)
+blk = dur.durability_block([])
+check("empty block is UNVERIFIED, not PASS",
+      blk["verdict"] == "UNVERIFIED" and blk["probes"] == 0, blk)
+blk = dur.durability_block([{"verdict": "DURABLE_PASS"},
+                            {"verdict": "DURABLE_PASS"}])
+check("all-pass block is PASS",
+      blk["verdict"] == "PASS" and blk["passed"] == 2, blk)
+check("all_passed truth table (the poll loop's exit decision)",
+      dur.all_passed([{"verdict": "DURABLE_PASS"}]) is True
+      and dur.all_passed([{"verdict": "DURABLE_PASS"},
+                          {"verdict": "DURABLE_UNVERIFIED"}]) is False
+      and dur.all_passed([{"verdict": "DURABLE_FAIL"}]) is False
+      and dur.all_passed([]) is False)
 blk = dur.durability_block(None, "no recorded write")
 check("skipped block carries its reason",
       blk["status"] == "SKIPPED" and blk["reason"] == "no recorded write",
