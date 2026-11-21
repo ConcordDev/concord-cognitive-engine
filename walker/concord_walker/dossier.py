@@ -341,6 +341,75 @@ SCAN_PATTERNS = [
      "domain"),
 ]
 
+# GB-1577 tuning (B9, from the desk's shakedown): the fabricated_data
+# scan matched Math.random() in id generators and sticky-colour picks,
+# and matched signal words inside comments (a comment describing a
+# past fix is not shipped data) — nearly every lens saturated the
+# score's flag cap. The kind now matches against comment-stripped
+# lines, and a Math.random() line in an id-making or colour context
+# is vetoed. Heuristic by design (a census, never a verdict): the
+# comment stripper tracks quotes and /* */ state but does not parse
+# regex literals, so a // inside a regex literal can cut a line
+# early — that only ever LOSES a flag, never invents one.
+_FABRICATED_VETO = re.compile(
+    r"toString\(\s*36\s*\)|randomUUID|randomId"
+    r"|(?:^|[^\w])(?:\w*(?:Id|ID|Uuid|UUID|Key|Nonce|Token)|id|uuid|key|nonce|token)\s*[:=]"
+    r"|\b(?:color|colour|hue|hsl|hsla|palette|shade|tint)\b", re.I)
+# The veto judges ONLY the Math.random() alternative: a line carrying a
+# textual fabrication signal (fabricat / synthetic / fake-data /
+# mock-data — the SCAN_PATTERNS entry minus Math.random) flags
+# regardless of any id-shaped field elsewhere on the line.
+_FABRICATED_TEXT = re.compile(
+    r"\bfabricat|\bsynthetic\s+(data|timestamp|value)"
+    r"|\bfake[-_ ]?data\b|\bmock[-_ ]?data\b", re.I)
+_MATH_RANDOM = re.compile(r"Math\.random\(\)")
+
+
+def _strip_comments(lines):
+    """Return the lines with // and /* */ comments removed (string-aware
+    heuristic; block state carried across lines)."""
+    out = []
+    in_block = False
+    for ln in lines:
+        buf = []
+        i, quote = 0, None
+        while i < len(ln):
+            ch = ln[i]
+            nxt = ln[i + 1] if i + 1 < len(ln) else ""
+            if in_block:
+                if ch == "*" and nxt == "/":
+                    in_block = False
+                    i += 2
+                else:
+                    i += 1
+                continue
+            if quote:
+                buf.append(ch)
+                if ch == "\\":
+                    if nxt:
+                        buf.append(nxt)
+                        i += 2
+                        continue
+                elif ch == quote:
+                    quote = None
+                i += 1
+                continue
+            if ch in ("'", '"', "`"):
+                quote = ch
+                buf.append(ch)
+                i += 1
+                continue
+            if ch == "/" and nxt == "/":
+                break
+            if ch == "/" and nxt == "*":
+                in_block = True
+                i += 2
+                continue
+            buf.append(ch)
+            i += 1
+        out.append("".join(buf))
+    return out
+
 
 def _action_spans(text):
     """Yield (action_name, start_line, span_text) per registerLensAction."""
@@ -379,8 +448,21 @@ def _code_scan(tree, slug, domains, misses):
         if not text:
             continue
         lines = text.splitlines()
+        stripped = None
         for kind, cls, rx, want in SCAN_PATTERNS:
             if want not in (applies, "both"):
+                continue
+            if kind == "fabricated_data":
+                # GB-1577 tuning: comments are not shipped data, and a
+                # Math.random() in an id/colour context is not
+                # fabrication (see _FABRICATED_VETO above).
+                if stripped is None:
+                    stripped = _strip_comments(lines)
+                for i, ln in enumerate(stripped):
+                    if _FABRICATED_TEXT.search(ln) or (
+                            _MATH_RANDOM.search(ln)
+                            and not _FABRICATED_VETO.search(ln)):
+                        add(kind, cls, path, i + 1, rx.pattern[:60])
                 continue
             for i, ln in enumerate(lines):
                 if rx.search(ln):
