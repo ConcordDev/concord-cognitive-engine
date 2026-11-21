@@ -28,13 +28,20 @@ def test_budget_math():
     b = ReplayBudget()
     check("defaults: base 60 + 25/ticket, cap 900", (b.for_lens(0), b.for_lens(2), b.for_lens(10), b.for_lens(500)) == (60, 110, 310, 900), (b.for_lens(2), b.for_lens(500)))
     check("configurable base/per-ticket/cap", ReplayBudget(10, 5, 30).for_lens(3) == 25 and ReplayBudget(10, 5, 30).for_lens(50) == 30)
-    check("fixed override wins over the formula", ReplayBudget(override_s=7).for_lens(100) == 7)
+    # GB-1581 item 5c: the override is a per-lens FLOOR, never a flat total —
+    # Walk 2's flat replay_budget_s: 180 starved 501 tickets in 94 lenses.
+    check("override is a floor: small lens gets the override", ReplayBudget(override_s=180).for_lens(1) == 180)
+    check("override is a floor: many tickets scale past it", ReplayBudget(override_s=180).for_lens(10) == 310)
+    check("override never starves a big lens (cap still applies)", ReplayBudget(override_s=7).for_lens(100) == 900)
+    check("a non-positive override stays exhausted (a disabled budget is not a floor)",
+          ReplayBudget(override_s=-1).for_lens(3) == -1 and ReplayBudget(override_s=0).for_lens(3) == 0)
 
     class A: replay_budget_s = None; replay_budget_base_s = 5; replay_budget_per_ticket_s = None; replay_budget_cap_s = None
     cfg = {"thresholds": {"replay_budget_per_ticket_s": 11, "replay_budget_base_s": 99}}
     rb = ReplayBudget.from_config(cfg, A())
     check("CLI flag beats config thresholds; config fills the rest", (rb.base_s, rb.per_ticket_s, rb.cap_s) == (5, 11, 900), vars(rb))
-    check("config threshold replay_budget_s is a fixed override", ReplayBudget.from_config({"thresholds": {"replay_budget_s": 33}}).for_lens(9) == 33)
+    check("config threshold replay_budget_s is the floor", ReplayBudget.from_config({"thresholds": {"replay_budget_s": 33}}).for_lens(9) == 285
+          and ReplayBudget.from_config({"thresholds": {"replay_budget_s": 33}}).for_lens(0) == 60)
 
 
 def _mk(n, **kw):
@@ -64,12 +71,14 @@ def test_replay_budget_too_small():
         time.sleep(0.12)
         return H.FIXED_RR
     rr, rv, ledger, rec, tmp = H.setup(tickets, slow)
-    rr.replay_budget = ReplayBudget(override_s=0.1)
+    # GB-1581 5c: a too-small budget is now expressed via base/per-ticket —
+    # a tiny override can no longer starve a lens (it is a floor).
+    rr.replay_budget = ReplayBudget(base_s=0.05, per_ticket_s=0.01, cap_s=0.1)
     rr.replay_lens("demo", H.FakeWalk())
     rows = rr.coverage_rows({"demo"}, {"demo"})
     na = [r for r in rows if r["verdict"] == "NOT_ATTEMPTED"]
     check("replay budget too small: first ticket ran, the rest are NOT_ATTEMPTED", len(calls) == 1 and len(na) == 3, (calls, rows))
-    check("reason is R_BUDGET + '(replay budget Ns, k/n done)'", all(r["reason"].startswith(cov.R_BUDGET) and "replay budget 0.1s, 1/4 done" in r["reason"] for r in na), [r["reason"] for r in na])
+    check("reason is R_BUDGET + '(replay budget Ns, k/n done)'", all(r["reason"].startswith(cov.R_BUDGET) and "replay budget 0.09s, 1/4 done" in r["reason"] for r in na), [r["reason"] for r in na])
     check("never silent: the lens replay block lists the skipped tickets with the reason", len(rr.blocks["demo"]["skipped"]) == 3
           and all("replay budget" in v for v in rr.blocks["demo"]["skipped"].values()), rr.blocks["demo"])
 

@@ -22,7 +22,7 @@ judge is disabled and judge_ticket returns None — the caller keeps exactly
 the pre-upgrade NEEDS_HUMAN behaviour. Screenshots live under the audit
 evidence tree as always; records carry local paths only, never image bytes.
 """
-import base64, hashlib, json, os, random, re, urllib.error, urllib.request
+import base64, hashlib, json, os, random, re, threading, urllib.error, urllib.request
 
 from .util import append_jsonl, scrub, ts_et
 
@@ -74,6 +74,35 @@ The FIRST image is the view on arrival; the SECOND is the same view after settli
 Answer with ONLY a JSON object: {{"verdict": "MATCHES_EXPECTED"|"DOES_NOT_MATCH"|"UNCERTAIN", "confidence": <0..1>, "rationale": "<= 200 chars"}}"""
 
 
+class JudgeQueue:
+    """Serializes judge calls — ONE in flight — with a single retry
+    (GB-1581 item 2). In Walk 2, 233 of 312 judge calls died with
+    TimeoutError because calls competed with the sweep for the local
+    vision endpoint; queued calls at the raised timeout stop the pile-up.
+    Counters ride VisionJudge.accounting() for the run record."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.in_flight = 0
+        self.max_in_flight = 0
+        self.retries = 0
+        self.queued_calls = 0
+
+    def call(self, client, images, prompt):
+        with self._lock:
+            self.in_flight += 1
+            self.max_in_flight = max(self.max_in_flight, self.in_flight)
+            self.queued_calls += 1
+            try:
+                try:
+                    return client(images, prompt)
+                except Exception:
+                    self.retries += 1
+                    return client(images, prompt)
+            finally:
+                self.in_flight -= 1
+
+
 class HttpVisionClient:
     """OpenAI-compatible vision endpoint via urllib (stdlib only).
 
@@ -84,7 +113,7 @@ class HttpVisionClient:
     it reports one, else the configured id.
     """
 
-    def __init__(self, url, api_key, model, timeout_s=60):
+    def __init__(self, url, api_key, model, timeout_s=180):
         self.url, self.api_key, self.model, self.timeout_s = url, api_key, model, timeout_s
 
     def __call__(self, images_b64, prompt):
@@ -134,8 +163,9 @@ class VisionJudge:
             self.enabled = bool(vcfg.get("enabled")) and bool(url) and bool(self.model_cfg)
             if self.enabled:
                 self.client = HttpVisionClient(url, key, self.model_cfg,
-                                               timeout_s=float(vcfg.get("timeout_s", 60)))
+                                               timeout_s=float(vcfg.get("timeout_s", 180)))
             self.model_id = self.model_cfg
+        self.queue = JudgeQueue()
 
     # ------------------------------------------------------------ capture
     def capture_pair(self, rev, t, mobile):
@@ -218,7 +248,7 @@ class VisionJudge:
                                       actual=scrub(t.get("actual"), 300))
         self.calls += 1  # attempts count against the cap, conservatively
         try:
-            out = self.client(images, prompt)
+            out = self.queue.call(self.client, images, prompt)
         except Exception as e:
             self._ledger(tid, t.get("lens"), cat, self.model_id, None, HUMAN, pair, "judge error: %s" % type(e).__name__)
             return {"verdict": HUMAN, "method": "vision judge (error)", "category": cat,
@@ -261,7 +291,80 @@ class VisionJudge:
     def accounting(self):
         return {"calls": self.calls, "cap": self.cap, "judged": self.judged,
                 "partial_due_to_cap": self.partial_due_to_cap,
-                "remaining": max(0, self.cap - self.calls)}
+                "remaining": max(0, self.cap - self.calls),
+                "queued_calls": self.queue.queued_calls, "retries": self.queue.retries,
+                "max_in_flight": self.queue.max_in_flight}
+
+
+# --------------------------------------------------------------------------
+# Offline re-judge (GB-1581 item 2): re-run the judge over the (screenshot,
+# expected) pairs a finished run already saved, with no browser and no new
+# capture — the 156 Walk 2 rows that died on judge timeouts are decided
+# from their saved pairs once the queue + 180 s timeout are in place.
+# --------------------------------------------------------------------------
+
+def load_saved_pairs(run_dir):
+    """The run's vision.jsonl rows that carry a usable pair, latest row per
+    ticket (a ticket judged twice keeps its most recent pair)."""
+    out = {}
+    path = os.path.join(run_dir, "vision.jsonl")
+    if not os.path.isfile(path):
+        return []
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except Exception:
+                continue
+            pair = row.get("pair") if isinstance(row, dict) else None
+            if row.get("ticket_id") and pair and pair[0] and pair[1]:
+                out[row["ticket_id"]] = row
+    return [out[k] for k in sorted(out)]
+
+
+def rejudge_saved_pairs(cfg, run_dir, tickets, log, client=None, only_human=True):
+    """Re-judge a finished run's saved pairs. tickets: {tid: ticket dict}
+    (title/expected/actual feed the judge prompt). By default only rows
+    whose saved verdict was NEEDS_HUMAN are re-judged (the waiting queue);
+    only_human=False re-judges every saved pair. Returns a summary dict;
+    per-ticket outcomes are appended to <run_dir>/vision-rejudge.jsonl and
+    the judge's own ledger lines go there too (the original vision.jsonl
+    is never rewritten)."""
+    import types
+    rows = load_saved_pairs(run_dir)
+    rec = types.SimpleNamespace(run_dir=run_dir, rid=os.path.basename(os.path.normpath(run_dir)) + "-rejudge")
+    judge = VisionJudge(cfg, rec, log, client=client)
+    judge.ledger_path = os.path.join(run_dir, "vision-rejudge.jsonl")
+    out_path = judge.ledger_path
+    summary = {"rows": len(rows), "rejudged": 0, "skipped_no_ticket": 0, "skipped_verdict": 0,
+               "verdicts": {}, "judge_enabled": judge.enabled}
+    if not judge.enabled:
+        return summary
+    for row in rows:
+        tid = row["ticket_id"]
+        if only_human and row.get("verdict") != HUMAN:
+            summary["skipped_verdict"] += 1
+            continue
+        t = tickets.get(tid)
+        if t is None:
+            summary["skipped_no_ticket"] += 1
+            continue
+        pair = row["pair"]
+        res = judge.judge_ticket(None, t, row.get("category"), pair_provider=lambda _t, p=pair: p)
+        if res is None:
+            summary["skipped_no_ticket"] += 1
+            continue
+        summary["rejudged"] += 1
+        summary["verdicts"][res["verdict"]] = summary["verdicts"].get(res["verdict"], 0) + 1
+        append_jsonl(out_path, {"ts": ts_et(), "ticket_id": tid, "lens": t.get("lens"),
+                                "prior_vision_verdict": row.get("verdict"),
+                                "verdict": res["verdict"], "method": res.get("method"),
+                                "notes": res.get("notes")})
+    summary["accounting"] = judge.accounting()
+    return summary
 
 
 # --------------------------------------------------------------------------

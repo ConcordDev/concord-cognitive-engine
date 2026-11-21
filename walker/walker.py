@@ -695,6 +695,19 @@ def cmd_reverify(args, cfg, log):
             rec.flush_leftovers()
             # Coverage table: always in the run dir; the shared audit copy only
             # when the run is not dry (same rule as tickets/queue).
+            # GB-1581 item 1: a --resume's journal-finished ids carry the earlier
+            # attempt's verdict from this run dir's reverify.jsonl — merge it;
+            # an id with no row anywhere was lost on resume, not done.
+            _prior = cov.load_prior_results(rec.run_dir)
+            for _tid, _why in list(cov_skip.items()):
+                if not str(_why).startswith(cov.R_RESUMED):
+                    continue
+                _res = _prior.get(_tid)
+                if _res is not None and _res.get("verdict") in (cov.FIXED, cov.STILL, cov.HUMAN):
+                    cov_results.setdefault(_tid, _res)
+                    del cov_skip[_tid]
+                else:
+                    cov_skip[_tid] = cov.R_RESUMED_NO_ROWS
             cov_rows = cov.build_rows(scope, cov_results, cov_skip)
             cov_dirs = [rec.run_dir] + ([] if dry else [cfg["audit_dir"]])
             cov.write(cov_dirs, cov_rows, {"run_id": rid, "live_sha": live, "dry": dry, "ts": human_et(),
@@ -848,6 +861,22 @@ def cmd_merge_shards(args, cfg, log):
         log("merge-shards: %d conflict(s); contested ids are EXCLUDED from the merged ledger and listed in merge-report.json" % len(report["conflicts"]))
 
 
+def cmd_vision_rejudge(args, cfg, log):
+    """GB-1581 item 2: offline re-judge over a finished run's saved
+    (screenshot, expected) pairs — no browser, no new captures. Decides the
+    rows whose judge calls died (Walk 2: 233 timeouts) from vision.jsonl."""
+    from concord_walker import vision as vision_mod
+    run_dir = args.run_dir
+    if not os.path.isdir(run_dir):
+        raise SystemExit("--run-dir %s: not a run dir" % run_dir)
+    store = TicketStore(cfg["audit_dir"])
+    tickets = {tid: store.get(tid) for tid in store.base}
+    summary = vision_mod.rejudge_saved_pairs(cfg, run_dir, tickets, log, only_human=not args.all)
+    log("vision re-judge %s: %s" % (run_dir, summary))
+    if not summary["judge_enabled"]:
+        log("vision judge is not enabled/configured (vision_judge.enabled + url + model); nothing re-judged")
+
+
 def cmd_owner_scan(args, cfg, log):
     """ULW v3 W5b (GB-1576): the offline ownership + broadcast code scan.
     Walks a server tree and writes the ranked file:line candidate list
@@ -957,6 +986,9 @@ def main():
     p.add_argument("--repo", help="Concord repo checkout for git show at the walk build (component/code-scan/backend sections stay empty without one)")
     p.add_argument("--out", help="output dir (default: <run-dir>/dossiers)")
     p.add_argument("--misses", help="W1 redesign_misses.jsonl (default: walker/analysis/redesign_misses.jsonl when present)")
+    p = sub.add_parser("vision-rejudge", help="GB-1581: offline re-judge of a finished run's saved screenshot pairs (no browser; decides rows whose judge calls timed out)")
+    p.add_argument("--run-dir", required=True, help="finished run dir holding vision.jsonl")
+    p.add_argument("--all", action="store_true", help="re-judge every saved pair, not only NEEDS_HUMAN rows")
     p = sub.add_parser("owner-scan", help="ULW v3 W5b: offline ownership + private-broadcast code scan over a server tree (ranked file:line candidates, JSONL)")
     p.add_argument("--from-repo", required=True, help="repo checkout (or its server/ dir) to scan")
     p.add_argument("--out", help="ranked list path (default: walker/analysis/owner-scan.jsonl)")
@@ -985,6 +1017,8 @@ def main():
         cmd_dossier(args, cfg, log)
     elif args.cmd == "owner-scan":
         cmd_owner_scan(args, cfg, log)
+    elif args.cmd == "vision-rejudge":
+        cmd_vision_rejudge(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":

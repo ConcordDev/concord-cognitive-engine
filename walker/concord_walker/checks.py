@@ -559,7 +559,13 @@ class LensWalk:
         t0 = time.time()
         read_only = self.slug in self.cfg.get("write_skip_lenses", [])
         ax = cdp.ax()
+        # GB-1580 item 4: the sweep covers the lens MAIN-CONTENT region only.
+        # Shell chrome (app sidebar Expand/Collapse, nav, top bar, global
+        # search) is noted once per control as shell_chrome — auditable in
+        # the record, never clicked, never counted as a lens control.
+        scope = region_scope(ax)
         cands, seen = [], set()
+        counts = {"clicked": 0, "reused": 0, "skipped": 0, "shell": 0}
         for n in ax.by_role(*self.SWEEP_ROLES):
             if not (n.name or "").strip():
                 continue
@@ -567,13 +573,17 @@ class LensWalk:
             if key in seen:
                 continue
             seen.add(key)
+            if not in_main_region(ax, n, scope):
+                self.net.note_control("sweep", n.role, control_label(n.name), False, reason="shell_chrome",
+                                      cid=control_id("sweep", n.role, control_label(n.name)))
+                counts["shell"] += 1
+                continue
             cands.append((n.role, control_label(n.name), n.name, n.disabled))
         prior = {}
         for cid, m in self.net.meta.items():
             if m["phase"] in self.REUSE_PHASES and m.get("exercised"):
                 prior.setdefault(m["name"], cid)
         cap = self.th.get("max_sweep_controls", 120)
-        counts = {"clicked": 0, "reused": 0, "skipped": 0}
         for i, (role, label, raw, disabled) in enumerate(cands):
             cid = control_id("sweep", role, label)
             if i >= cap:
@@ -638,8 +648,8 @@ class LensWalk:
                 page.keyboard.press("Escape")
             self.reset_page(page, cdp)
         self.net.close_window()
-        self.mark("premap_sweep", "PASS", controls=len(cands), budget_s=self.premap_budget_s,
-                  elapsed_s=int(time.time() - t0), **counts)
+        self.mark("premap_sweep", "PASS", controls=len(cands), region=scope[0], controls_seen=len(cands) + counts["shell"],
+                  budget_s=self.premap_budget_s, elapsed_s=int(time.time() - t0), **counts)
 
     def isolation_phase(self):
         """C16 (ULW-43, Gate section 14): the two-account isolation phase as a
@@ -1496,8 +1506,20 @@ class LensWalk:
         inputs = ax.by_role("textbox", "searchbox", "combobox", "spinbutton")
         unnamed = [n for n in buttons if not n.name.strip()]
         unfocus = [n for n in buttons + tabs if not n.disabled and not n.focusable and n.name.strip()]
+        # GB-1580 item 4: the inventory also reports the lens MAIN-CONTENT
+        # region (shell chrome excluded) — the page-wide counts stay for
+        # comparability, the *_main fields are the lens's own inventory.
+        _scope = region_scope(ax)
+
+        def _in(n):
+            return in_main_region(ax, n, _scope)
+
         self.result["surface"] = {"tabs": [control_label(n.name) for n in tabs][:60], "buttons": len(buttons), "links": len(links),
                                   "inputs": len(inputs), "unnamed_buttons": len(unnamed), "non_focusable": len(unfocus),
+                                  "region": _scope[0],
+                                  "buttons_main": sum(1 for n in buttons if _in(n)), "links_main": sum(1 for n in links if _in(n)),
+                                  "inputs_main": sum(1 for n in inputs if _in(n)), "tabs_main": sum(1 for n in tabs if _in(n)),
+                                  "button_names_main": [control_label(n.name) for n in buttons if n.name.strip() and _in(n)][:80],
                                   "disabled_buttons": sum(1 for n in buttons if n.disabled),
                                   # WALK-03: names, so reverify can confirm the ticket's own control
                                   # individually instead of judging the whole surface.
@@ -1648,8 +1670,10 @@ class LensWalk:
 
     def openers(self, page, cdp):
         ax = cdp.ax()
+        # GB-1581 item 3a: open-only candidates (Share / Publish / Export /
+        # Download openers) join the Escape check — opened, never submitted.
         cands = [n for n in ax.by_role("button", "menuitem") if n.backend and not n.disabled
-                 and safety.is_opener_safe(n.name, self.admin) and not safety.EXPORT.search(n.name)]
+                 and (safety.is_opener_safe(n.name, self.admin) or safety.is_open_only_safe(n.name, self.admin))]
         seen, rows, status = set(), [], "NA"
         for n in cands:
             if len(rows) >= self.th["max_openers_per_lens"] or self.over_budget() or self.phase_over():
@@ -1677,6 +1701,8 @@ class LensWalk:
             kind = pop.role if pop else "expanded"
             ev_open = self.shot(page, "open-" + key[:20])
             row = {"opener": key, "popup": kind, "evidence": ev_open}
+            if not safety.is_opener_safe(node.name, self.admin):
+                row["open_only"] = True  # GB-1581 3a: opened for the Escape check; nothing inside was activated
             status = "PASS" if status == "NA" else status
             # focus trap (dialogs only)
             if pop is not None and pop.role in ("dialog", "alertdialog"):
@@ -2004,6 +2030,40 @@ class LensWalk:
                              ["Open %s at 390x844" % self.url, "Look for tabs/buttons past the right edge"],
                              "All tabs and buttons reachable at 390 px", "Off-screen: %s" % ", ".join(off[:8]), [ev_vp, ev_full],
                              element=off[0], area="%s/mobile layout" % self.slug)
+            # GB-1581 item 3b: FAB / bottom-nav overlap geometry at 390 — a
+            # floating action button whose box intersects the fixed bottom
+            # nav's box is covered (or covers a nav target) where they meet.
+            dev_h = self.cfg["viewport_mobile"][1]
+            nav_boxes = []
+            for n in ax.by_role("navigation"):
+                if not n.backend:
+                    continue
+                b = cdp.box(n.backend)
+                if b and b[1] + b[3] >= dev_h - 4 and b[2] >= 0.6 * dev_w:
+                    nav_boxes.append((n.backend, b))
+            fab_hits = []
+            if nav_boxes:
+                nav_backends = {be for be, _b in nav_boxes}
+                fabs = []
+                for n in ax.by_role("button"):
+                    if not n.backend or n.disabled:
+                        continue
+                    if _ancestor_backends(snap, n.backend) & nav_backends:
+                        continue  # a nav's own button is not a FAB
+                    b = cdp.box(n.backend)
+                    if b and b[3] <= 96 and b[1] + b[3] >= dev_h - 160:
+                        fabs.append((control_label(n.name), b))
+                fab_hits = fab_nav_overlaps(fabs, [b for _be, b in nav_boxes])
+            row["fab_overlap"] = fab_hits
+            if fab_hits:
+                status = "FAIL"
+                self.finding("fab_overlap", "low",
+                             "Floating action button(s) overlap the bottom navigation at 390 px: %s"
+                             % ", ".join("'%s' (%d px²)" % (h["control"], h["overlap_px"]) for h in fab_hits[:4]),
+                             ["Open %s at 390x844" % self.url, "Look at the bottom-right action button against the bottom nav"],
+                             "The floating action button sits clear of the bottom navigation",
+                             "Bounding boxes intersect the fixed bottom nav", [ev_vp, ev_full],
+                             element=fab_hits[0]["control"], area="%s/mobile layout" % self.slug)
             self.mark("mobile_390", status, **row)
         finally:
             self._nav_cid = LOAD_CONTROL
@@ -2315,6 +2375,71 @@ def _disabled_ancestor(nodes, S, ni, depth=4):
 def _attrs(nodes, S, ni):
     a = (nodes.get("attributes") or [[]])[ni] if nodes.get("attributes") else []
     return {S[a[i]]: S[a[i + 1]] for i in range(0, len(a) - 1, 2)}
+
+
+SHELL_LANDMARKS = ("navigation", "banner", "complementary", "contentinfo", "search")
+
+
+def region_scope(ax):
+    """GB-1580 item 4: the lens MAIN-CONTENT region. Returns (scope, inside_ids):
+    scope 'main' with the id set of every <main> landmark plus its descendants,
+    or scope 'page' with inside None (no main landmark on the page — the whole
+    page is in scope and the record says so; nothing is silently excluded)."""
+    mains = ax.by_role("main")
+    if not mains:
+        return "page", None
+    inside = set()
+    for m in mains:
+        inside.add(m.id)
+        inside.update(d.id for d in ax.descendants(m))
+    return "main", inside
+
+
+def is_shell_chrome(ax, node, mains=None):
+    """True when the node rides in an app-shell landmark (sidebar navigation /
+    complementary, top banner, global search, footer) that is neither inside
+    the lens <main> nor wrapping it — a landmark inside main is the lens's own
+    chrome and stays in scope."""
+    if mains is None:
+        mains = ax.by_role("main")
+    for a in [node] + ax.ancestors(node):
+        if a.role in SHELL_LANDMARKS:
+            if any(a.id == m.id or ax.is_inside(a, m) or ax.is_inside(m, a) for m in mains):
+                return False
+            return True
+    return False
+
+
+def in_main_region(ax, node, scope):
+    """scope is a region_scope() pair. In scope = inside a main landmark (when
+    the page has one) and not shell chrome riding outside/above it."""
+    name, inside = scope
+    if inside is None:
+        return True
+    if node.id not in inside:
+        return False
+    return not is_shell_chrome(ax, node)
+
+
+def rects_overlap(a, b):
+    """Positive-area intersection of two (x, y, w, h) boxes (GB-1581 3b)."""
+    x = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+    y = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
+    return x > 0 and y > 0
+
+
+def fab_nav_overlaps(fabs, navs):
+    """[{'control': label, 'overlap_px': area}] for each (label, box) FAB
+    whose box intersects any bottom-nav box (GB-1581 item 3b)."""
+    out = []
+    for label, b in fabs:
+        for nb in navs:
+            if rects_overlap(b, nb):
+                x = min(b[0] + b[2], nb[0] + nb[2]) - max(b[0], nb[0])
+                y = min(b[1] + b[3], nb[1] + nb[3]) - max(b[1], nb[1])
+                out.append({"control": label, "overlap_px": int(x * y)})
+                break
+    return out
 
 
 def overflow_offenders(snap, vw):

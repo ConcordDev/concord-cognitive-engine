@@ -97,6 +97,29 @@ def is_menu_format_safe(name):
     return bool(EXPORT_FORMAT.search(n)) and not EXPORT_DENY.search(n) and not HARD_DENY.search(EXPORT_FORMAT.sub("", n))
 
 
+# ------------------------------------------------- GB-1581 item 3a: open-only overlays
+# The Escape check needs Share / Publish / Export / Download overlays OPEN,
+# but their actions stay never-run (WRITE_NEVER / HARD_DENY refuse them as
+# actions everywhere). An open-only opener may be clicked to OPEN and then
+# Escaped — nothing inside the overlay is ever activated on that path, and
+# any follow-up submit/send/confirm click is judged by its own name and
+# still refused. Money, payment-adjacent and bulk/global qualifiers refuse
+# even the open.
+OPEN_ONLY_OPENER = re.compile(r"(?i)^\s*(share|publish|export|download)\b")
+_OPEN_ONLY_STRIP = re.compile(r"(?i)\b(share|publish|export|download)\b")
+OPEN_ONLY_DENY = re.compile(r"(?i)\b(all users|everyone|global|public|bulk|council|system|server|database|backup)\b")
+_OPEN_ONLY_MONEY = re.compile(r"(?i)\b(payments?|billing|invoices?|checkout|wallet|credits?|pricing)\b")
+
+
+def is_open_only_safe(name, admin=False):
+    n = name or ""
+    if admin or not OPEN_ONLY_OPENER.search(n):
+        return False
+    if money_deny(n) or _OPEN_ONLY_MONEY.search(n) or SWEEP_PAYMENT.search(n) or OPEN_ONLY_DENY.search(n):
+        return False
+    return not HARD_DENY.search(_OPEN_ONLY_STRIP.sub("", n))
+
+
 def is_close_safe(name):
     return bool(CLOSE.search(name or ""))
 

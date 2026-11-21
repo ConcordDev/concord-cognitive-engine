@@ -38,13 +38,16 @@ def ticket_text(t):
 
 
 def classify(t):
-    txt = ticket_text(t).lower()
+    # GB-1581 item 5a: TITLE-ONLY classification. The old whole-text fallback
+    # let a stray keyword in actual/expected/steps pick the standard check
+    # (225 Walk-2 rows were classified by keyword soup and capped); the gate
+    # is title<->category agreement — the category's words must hit the
+    # TITLE. No title hit -> None -> the smoke-only / vision path, which is
+    # the honest NEEDS_HUMAN instead of a guessed check.
     title = (t.get("title") or "").lower()
-    # Title wins: first category whose words hit the title, else the whole text.
-    for scope in (title, txt):
-        for c in ORDER:
-            if re.search(CATEGORY_WORDS[c], scope):
-                return c
+    for c in ORDER:
+        if re.search(CATEGORY_WORDS[c], title):
+            return c
     return None
 
 

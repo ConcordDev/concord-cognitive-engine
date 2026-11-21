@@ -72,6 +72,12 @@ check("classify neighbour: something went wrong -> tab_error",
       rv_mod.classify(T("Tab shows something went wrong")) == "tab_error")
 check("classify precedence: dead click beats computed in one title",
       rv_mod.classify(T("Total is wrong and the save button does nothing when clicked")) == "dead_click")
+check("GB1581 5a: keywords in actual/expected alone no longer classify (title-only gate)",
+      rv_mod.classify(T("Something is off", "Export produces no file and the total is wrong", "a file downloads")) is None)
+check("GB1581 5a: the title's category stands against body noise from other categories",
+      rv_mod.classify(T("Export produces no file", "contrast is also poor and the total is wrong")) == "export")
+check("GB1581 5a: a category-free title with category-free body stays unclassified",
+      rv_mod.classify(T("The thing is broken", "it fails", "it works")) is None)
 
 # ------------------------------------------------------------- integrity
 check("integrity: ORDER and CATEGORY_WORDS name the same categories",

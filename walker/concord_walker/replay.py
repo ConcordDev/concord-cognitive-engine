@@ -129,11 +129,21 @@ class ReplayRun:
 
     # ------------------------------------------------------------ coverage
     def coverage_rows(self, inv_slugs, walked_slugs, resumed=()):
-        """One row for EVERY in-scope ticket in the fold (not only the lenses walked)."""
+        """One row for EVERY in-scope ticket in the fold (not only the lenses walked).
+
+        GB-1581 item 1: on --resume the earlier attempts' verdict rows (this
+        run dir's reverify.jsonl, appended by every attempt) merge in, so a
+        resumed lens's tickets carry their real verdicts into coverage
+        instead of a bare R_RESUMED. A resumed lens whose ticket has NO row
+        anywhere is not done: it is named R_RESUMED_NO_ROWS."""
         scope = [(tid, self.store.get(tid)) for tid in self.store.base if tid in self.baseline]
+        results = dict(self.results)
+        for tid, res in cov.load_prior_results(self.run_dir).items():
+            if tid in self.baseline and tid not in results:
+                results[tid] = res
         skipped = dict(self.skipped)
         for tid, t in scope:
-            if t is None or str(t.get("status") or "").upper() not in cov.SCOPE_STATUSES or tid in self.results or tid in skipped:
+            if t is None or str(t.get("status") or "").upper() not in cov.SCOPE_STATUSES or tid in results or tid in skipped:
                 continue
             lens = t.get("lens")
             if self.store.lane(tid) == "ci":
@@ -143,7 +153,7 @@ class ReplayRun:
             elif self.no_replay:
                 skipped[tid] = cov.R_NO_REPLAY
             elif lens in resumed:
-                skipped[tid] = cov.R_RESUMED
+                skipped[tid] = cov.R_RESUMED_NO_ROWS
             elif lens not in walked_slugs:
                 skipped[tid] = cov.R_NOT_WALKED + " (%s)" % lens
-        return cov.build_rows(scope, self.results, skipped)
+        return cov.build_rows(scope, results, skipped)
