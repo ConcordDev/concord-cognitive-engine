@@ -40,6 +40,8 @@ R_LOW_MEM = "stopped: low memory before this ticket"
 R_ABORT = "stopped: run aborted before this ticket"
 R_NOT_REACHED = "stopped: run ended before this ticket"
 R_RESUMED = "finished in an earlier attempt of this run (--resume); verdict is in that attempt's reverify.jsonl"
+R_RESUMED_NO_ROWS = ("resumed: the earlier attempt finished this lens/id but left no reverify row "
+                     "for this ticket — the verdict was lost on resume, so this ticket is NOT done")
 
 
 def recipe_kind(tid, res, recipe_ids):
@@ -196,6 +198,34 @@ def write(dirs, rows, meta=None):
             os.replace(tmp, p)
             paths.append(p)
     return paths
+
+
+def load_prior_results(run_dir):
+    """{tid: result} from a run dir's reverify.jsonl — the verdict rows the
+    EARLIER attempts of this run wrote (GB-1581 item 1: on --resume those
+    verdicts must merge into coverage, not vanish behind R_RESUMED). Rows
+    were cap_verdict-ed when written (Reverifier.run applies the cap), so
+    they carry their coverage_basis with them. Last row per id wins; a
+    missing or unreadable file yields {}."""
+    out = {}
+    path = os.path.join(run_dir, "reverify.jsonl") if run_dir else None
+    if not path or not os.path.isfile(path):
+        return out
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except Exception:
+                    continue
+                if isinstance(row, dict) and row.get("id"):
+                    out[row["id"]] = row
+    except Exception:
+        return out
+    return out
 
 
 def walked_lenses(run_dirs):

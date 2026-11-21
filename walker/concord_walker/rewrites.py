@@ -51,8 +51,11 @@ _FE_CACHE = {}
 
 
 def frontend_label_at(path, line, label, repo=None, sha=FOLD_SHA):
-    """True iff `path` exists at the fold sha and `label` literally appears (case-insens., whitespace-normalised) on that line
-    (+-0: the exact line). Fails closed (False) when git/the sha is unavailable."""
+    """True iff `path` exists at the fold sha, the pinned `line` exists in it, and `label` literally appears
+    (case-insens., whitespace-normalised) SOMEWHERE in the file. GB-1581 item 5d: the pin's line is
+    provenance, not the gate — all 22 Walk-2 'src_not_live' pins carried labels that ARE in the deployed
+    source, just on other lines (the file shifted under the pin). Fails closed (False) when git/the sha
+    is unavailable, the file/line does not exist, or the label is nowhere in the file."""
     import subprocess
     repo = repo or os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     key = (repo, sha, path)
@@ -66,7 +69,8 @@ def frontend_label_at(path, line, label, repo=None, sha=FOLD_SHA):
     if not lines or not (1 <= line <= len(lines)):
         return False
     norm = lambda x: re.sub(r"\s+", " ", _qn(x or "")).strip().lower()
-    return bool(norm(label)) and norm(label) in norm(lines[line - 1])
+    lab = norm(label)
+    return bool(lab) and any(lab in norm(l) for l in lines)
 
 
 def _fe_ok(src, label, repo=None):
@@ -228,6 +232,10 @@ KINDS = {
     "item_created": lambda a: "new item appears",
     "appears_in_list": lambda a: "it appears in the list",
     "popup_closed": lambda a: "dialog closes",
+    # GB-1581 item 4: value / count / order compare kinds
+    "value_equals": lambda a: ('%s shows "%s"' % (a["name"], a["value"])) if a.get("name") and _plain(a.get("name")) and isinstance(a.get("value"), str) and 0 < len(a["value"]) <= 60 else (('value is "%s"' % a["value"]) if isinstance(a.get("value"), str) and 0 < len(a["value"]) <= 60 else None),
+    "count_equals": lambda a: ("shows %d %s" % (a["count"], a["of"])) if isinstance(a.get("count"), int) and 0 <= a["count"] <= 999 and isinstance(a.get("of"), str) and re.fullmatch(r"[a-z][a-z\-]{2,20}(?: [a-z][a-z\-]{2,20})?", a["of"]) else None,
+    "order_matches": lambda a: ("in order %s" % ", ".join(a["names"])) if isinstance(a.get("names"), list) and 2 <= len(a["names"]) <= 8 and all(_plain(n) for n in a["names"]) else (("sorted alphabetically") if a.get("sorted") == "alpha" else None),
 }
 # anchor the ORIGINAL clause text must contain (case-insens.) for a literal-free kind to be a faithful reading of it
 KIND_ANCHOR = {
@@ -241,6 +249,8 @@ KIND_ANCHOR = {
     "item_created": r"creat|add|appear|new|saved|listed|row", "appears_in_list": r"list|appear|row|show|table|card|feed|visible|history",
     "popup_closed": r"clos|dismiss|disappear|gone", "control_present": r"control|button|field|link|toggle|tab|menu|option|input|available|present|visible|shows?|has|label",
     "text_phrase": r"show|display|list|render|contain|read|say|text|label|heading", "text_absent": r"no |not |never|without|doesn|absent|gone",
+    "value_equals": r"value|field|input|shows?|displays?|reads?", "count_equals": r"\d|count|shows?|there are|lists?",
+    "order_matches": r"order|sorted|alphabet",
 }
 _NAME_KINDS = {"control_present": "names", "text_absent": "name", "tab_reaches": "name", "persisted": "name"}
 

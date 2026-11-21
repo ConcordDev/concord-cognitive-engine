@@ -169,6 +169,35 @@ class FormFuzz:
         self.evidence = []
         self.case_rows = []      # (field label, case, outcome, detail)
         self.created_cases = []  # (field label, case, bad value) that created
+        # ULW v3 W4: per-lens formfuzz budget (default 600 s, config
+        # thresholds.formfuzz_budget_s). Cases the budget cuts are recorded
+        # not_run and join the sweep's carry-over queue - never run unbounded.
+        try:
+            self.budget_s = float((rv.cfg.get("thresholds") or {}).get("formfuzz_budget_s", 600))
+        except Exception:
+            self.budget_s = 600.0
+        self.clock = time.monotonic
+        self._t0 = None
+        self.not_run = []        # "field/case" labels cut by the budget
+
+    def _over_budget(self):
+        return self._t0 is not None and (self.clock() - self._t0) > self.budget_s
+
+    def _finish(self, result):
+        """Attach the budget record to a finished battery result and report
+        the cut cases to the Reverifier's not_run list (the replay block and
+        the sweep's carry-over queue pick them up from there)."""
+        if self.not_run:
+            result["not_run"] = list(self.not_run)
+            result["notes"] = (result.get("notes") or "") + \
+                " Formfuzz budget %ss reached: %d case(s) not run (carry-over): %s." % (
+                    int(self.budget_s), len(self.not_run), ", ".join(self.not_run[:6]))
+            sink = getattr(self.rv, "not_run", None)
+            if sink is not None:
+                for label in self.not_run:
+                    sink.append({"slug": self.lens, "check": "formfuzz:" + label,
+                                 "reason": "formfuzz budget %ss reached before this case ran" % int(self.budget_s)})
+        return result
 
     # ------------------------------------------------------------ form access
     def _open_form(self, page, cdp):
@@ -383,8 +412,16 @@ class FormFuzz:
                         "notes": "form found but no bad-input case applies to its field types (%s)"
                                  % [field_kind(f) for f in fields]}
             ambiguous = []
+            self._t0 = self.clock()
             try:
-                for idx, flabel, case_name, bad, kind in plan:
+                for pos, (idx, flabel, case_name, bad, kind) in enumerate(plan):
+                    if self._over_budget():
+                        self.not_run = ["%s/%s" % (p[1], p[2]) for p in plan[pos:]]
+                        if has_date_pair:
+                            self.not_run.append("date pair/reversed-dates")
+                        rv.log("  formfuzz budget %ss reached on %s: %d case(s) not run (carry-over)"
+                               % (int(self.budget_s), self.lens, len(self.not_run)))
+                        break
                     if idx >= len(fields):
                         ambiguous.append("field %s vanished on reopen" % flabel)
                         break
@@ -408,8 +445,12 @@ class FormFuzz:
                     except Exception as e:
                         ambiguous.append("form did not reopen after case %s (%s)" % (case_name, type(e).__name__))
                         break
-                if has_date_pair and not ambiguous:
-                    res = self._run_date_pair(page, cdp, rec_net, container, fields, open_texts)
+                if has_date_pair and not ambiguous and not self.not_run:
+                    res = None
+                    if self._over_budget():
+                        self.not_run = ["date pair/reversed-dates"]
+                    else:
+                        res = self._run_date_pair(page, cdp, rec_net, container, fields, open_texts)
                     if res:
                         outcome, detail = res
                         self.case_rows.append(("date pair", "reversed-dates", outcome, detail))
@@ -438,22 +479,22 @@ class FormFuzz:
             refused = [r for r in self.case_rows if r[2] == "refused"]
             summary = "; ".join("%s/%s: %s" % (r[0], r[1], r[2]) for r in self.case_rows)[:280]
             if created:
-                return {"verdict": STILL, "method": "form bad-input recipe", "category": "validation",
+                return self._finish({"verdict": STILL, "method": "form bad-input recipe", "category": "validation",
                         "evidence": self.evidence,
-                        "notes": "bad input still creates: %s. Cases: %s" % (created[0][3], summary)}
+                        "notes": "bad input still creates: %s. Cases: %s" % (created[0][3], summary)})
             if silent:
-                return {"verdict": STILL, "method": "form bad-input recipe", "category": "validation",
+                return self._finish({"verdict": STILL, "method": "form bad-input recipe", "category": "validation",
                         "evidence": self.evidence,
                         "notes": "no record created, but no inline error or disabled submit either: %s. Cases: %s"
-                                 % (silent[0][3], summary)}
-            if ambiguous or not refused:
-                return {"verdict": HUMAN, "method": "form bad-input recipe", "category": "validation",
+                                 % (silent[0][3], summary)})
+            if ambiguous or not refused or self.not_run:
+                return self._finish({"verdict": HUMAN, "method": "form bad-input recipe", "category": "validation",
                         "evidence": self.evidence,
-                        "notes": "battery incomplete (%s). Cases: %s" % ("; ".join(ambiguous) or "no case ran", summary)}
-            return {"verdict": FIXED, "method": "form bad-input recipe", "category": "validation",
+                        "notes": "battery incomplete (%s). Cases: %s" % ("; ".join(ambiguous) or "no case ran", summary)})
+            return self._finish({"verdict": FIXED, "method": "form bad-input recipe", "category": "validation",
                     "evidence": self.evidence,
                     "notes": "all %d bad-input case(s) refused with an error or a disabled submit and no create. Cases: %s"
-                             % (len(refused), summary)}
+                             % (len(refused), summary)})
         except AccountMismatch as e:
             # signed out / wrong account at the door: a clean NEEDS_HUMAN, never a run abort
             return {"verdict": HUMAN, "method": "form bad-input recipe", "category": "validation",

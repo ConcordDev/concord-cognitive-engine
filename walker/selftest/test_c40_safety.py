@@ -93,9 +93,33 @@ def t_benign_controls_survive():
     assert safety.is_opener_safe("Export gifted roster")
 
 
+def t_open_only_overlays():
+    # GB-1581 item 3a: Share / Publish / Export / Download openers may be
+    # OPENED for the Escape check (open, then Escape, no submit) ...
+    for name in ("Share & Publish", "Share", "Publish", "Export", "Export CSV", "Download CSV"):
+        assert safety.is_open_only_safe(name), name
+    # ... while their ACTIONS stay refused everywhere, exactly as before
+    for name in ("Share & Publish", "Publish", "Share"):
+        allowed, _, _ = safety.write_step_decision(name, allow_write=True,
+                                                   fixture_labels=("qa-walker-x-tw-abc",))
+        assert not allowed, (name, "open-only must never become a write step")
+    # money / payment / bulk-global qualifiers refuse even the open, and a
+    # surviving HARD_DENY verb refuses too ("report" the verb, as in the
+    # export phase's is_export_safe — a "Download report" stays closed)
+    for name in ("Share payment link", "Export all users", "Publish to everyone",
+                 "Share billing details", "Download backup", "Export pay history",
+                 "Download report"):
+        assert not safety.is_open_only_safe(name), name
+    # admin lenses stay look-only; ordinary controls are not open-only openers
+    assert not safety.is_open_only_safe("Share & Publish", admin=True)
+    assert not safety.is_open_only_safe("Settings")
+    assert not safety.is_open_only_safe("Create share")
+
+
 def main():
     tests = [t_canonical_set, t_lists_carry_every_verb, t_sweep_refuses,
-             t_write_step_refuses, t_opener_and_tab_refuse, t_benign_controls_survive]
+             t_write_step_refuses, t_opener_and_tab_refuse, t_benign_controls_survive,
+             t_open_only_overlays]
     failed = 0
     for t in tests:
         try:

@@ -34,7 +34,7 @@ from . import viewport as _V2
 from . import domread as _DR
 from . import keyboard as _K
 from .matching import fuzzy_match
-from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, is_close_safe, write_step_decision, CREATE_OPENER, CREATE_SUBMIT
+from .safety import HARD_DENY, SWEEP_PAYMENT, is_tab_safe, is_close_safe, write_step_decision, CREATE_OPENER, CREATE_SUBMIT, is_opener_safe, is_open_only_safe
 FIELD_NEVER_RX = _W.FIELD_NEVER
 
 FIXED, STILL, HUMAN = "FIXED", "STILL_FAILING", "NEEDS_HUMAN"
@@ -287,6 +287,22 @@ def _parse_keys(s):
     return [(k, cnt) for k in keys]
 
 
+_ROLE_WORDS = {"button": "button", "tab": "tab", "link": "link", "menu": "menu", "checkbox": "checkbox",
+               "toggle": "switch", "switch": "switch", "field": "textbox", "input": "textbox",
+               "textbox": "textbox", "text field": "textbox", "option": "option", "radio": "radio"}
+
+
+def _role_word(rest):
+    """A bare role noun ('the button', 'a tab', 'the first link') -> its
+    a11y role, or None. GB-1581 item 4: a step naming a ROLE but no specific
+    control falls back to the first control of that role, not a failure."""
+    r = (rest or "").strip().lower()
+    r = re.sub(r"^(?:the|a|an|any|each)\s+", "", r)
+    r = re.sub(r"^first\s+", "", r)
+    r = re.sub(r"\s+(?:control|element|one)$", "", r).strip()
+    return _ROLE_WORDS.get(r)
+
+
 _DESCRIPTORS = {"floating", "header", "footer", "sticky", "inline", "top", "bottom", "left", "right", "main", "lens", "page",
                 "toolbar", "sidebar", "fixed", "global", "the", "a", "an"}
 _QUANT = {"own", "any", "each", "every", "several", "multiple", "some", "both", "all", "first", "last", "another", "one", "that", "this", "these", "those"}
@@ -448,6 +464,34 @@ def _map_core_base(s, seg, lens, lens_names, prev, in_crumb):
         else:
             return None, "the typed value %r is the point of the step - an own labelled value would not reproduce it" % v[:40]
         return [{"action": "fill", "name": prev["name"], "literal": lit, "raw": seg.strip(), "merge_prev": True}], None
+    # GB-1581 item 4: generic-instruction verb forms the NEEDS_HUMAN triage
+    # counted by the hundred — an attempt verb, the open-each-overlay loop,
+    # and the value-less 'type into <field>' forms.
+    m = re.match(r"(?i)^(?:attempt|try)\s+to\s+(tap|click|press|select|open|toggle)\s+(?:on\s+)?(?:the\s+)?(?P<rest>.+)$", s)
+    if m:
+        rest = m.group("rest").strip()
+        if _key_name(rest) is not None:
+            return [{"action": "press", "key": _key_name(rest), "count": 1, "attempt": True, "raw": seg.strip()}], None
+        nm = _label_ok(rest, lens_names)
+        if nm:
+            return [{"action": "click", "name": nm, "attempt": True, "raw": seg.strip()}], None
+        role = _role_word(rest)
+        if role:
+            return [{"action": "click", "first_of_role": role, "attempt": True, "raw": seg.strip()}], None
+        return None, "attempt names no specific control (%r)" % rest[:50]
+    m = re.match(r"(?i)^open\s+(?:each|every|all)\s+(?:the\s+)?(overlays?|menus?|dialogs?|popups?|panels?)\s*$", s)
+    if m:
+        return [{"action": "open_each_overlay", "scope": m.group(1).lower(), "raw": seg.strip()}], None
+    m = re.match(r"(?i)^(?:type|enter|fill(?: in)?|input|write)\s+(?:in|into)\s+(?:the\s+|a\s+|an\s+)?(?P<tail>.+?)\s*$", s)
+    if m:
+        tail = m.group("tail").strip()
+        if _role_word(tail) == "textbox":
+            return [{"action": "fill", "first_of_role": "textbox", "raw": seg.strip()}], None
+        cand = re.sub(r"(?i)\s+(?:field|input|box|textbox|text field)$", "", tail).strip()
+        nm = _label_ok(cand, lens_names) or _label_ok(tail, lens_names)
+        if nm:
+            return [{"action": "fill", "name": nm, "raw": seg.strip()}], None
+        return None, "'type into' names no field (%r)" % tail[:50]
     legacy = map_step(s, lens)
     if legacy["mapped"] and legacy["action"] == "observe":
         legacy = dict(legacy, mapped=False, reason="repro is a pointer to an evidence file / observation, not a replayable action" if re.match(r"(?i)^see\b", s) else "observation is mapped by the vocab observe split")
@@ -463,7 +507,8 @@ def _map_core_base(s, seg, lens, lens_names, prev, in_crumb):
         return [{"action": "open_tab", "name": nm, "raw": seg.strip()}], None
     m = _VERB_CLICK.match(s)
     if m:
-        rest = re.sub(r"(?i)\s+(?:button|tab|link|menu|control|panel|form|dialog|view)$", "", m.group("rest").strip())
+        rest_full = m.group("rest").strip()
+        rest = re.sub(r"(?i)\s+(?:button|tab|link|menu|control|panel|form|dialog|view)$", "", rest_full)
         rest = re.sub(r"(?i)\s+on\s+(?:the\s+)?(.+)$", lambda mm: "" if _norm(mm.group(1)) in lens_names else mm.group(0), rest)
         if _norm(rest) in lens_names:
             return [{"action": "noop", "note": "already on the lens", "raw": seg.strip()}], None
@@ -473,6 +518,11 @@ def _map_core_base(s, seg, lens, lens_names, prev, in_crumb):
         items = _list_items(rest, lens_names)
         if items:
             return [{"action": "click", "name": n, "raw": seg.strip(), "fanout": True} for n in items], None
+        role = _role_word(rest) or _role_word(rest_full)
+        if role:
+            # GB-1581 item 4: the step names a role, not a control — the
+            # executor falls back to the first control of that role.
+            return [{"action": "click", "first_of_role": role, "raw": seg.strip()}], None
         return None, "names no specific control (%r)" % rest[:50]
     items = _list_items(s, lens_names) if (in_crumb or True) else None
     if items and not _PROSE_START.match(s):
@@ -1030,8 +1080,38 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                     if not driver.click(names[0], role="tab"):
                         raise _NotFound("sub-tab %r could not be opened" % names[0])
                     rec(s, True, "'any sub-tab' = first of %d safe visible tab(s): opened %r" % (len(names), names[0]))
+                elif a == "open_each_overlay":
+                    # GB-1581 item 4: open every overlay opener on the page,
+                    # Escaping each — openers only, nothing inside is clicked.
+                    fn = getattr(driver, "names_of_role", None)
+                    if not fn:
+                        raise _NotFound("this driver cannot enumerate overlay openers")
+                    names = []
+                    for role in ("button", "menuitem"):
+                        for x in fn(role) or []:
+                            if x and x not in names and (is_opener_safe(x, wr.get("admin")) or is_open_only_safe(x, wr.get("admin"))):
+                                names.append(x)
+                    if not names:
+                        raise _NotFound("no overlay opener visible on the live page")
+                    opened = []
+                    for nm in names[:8]:
+                        if driver.click(nm):
+                            opened.append(nm)
+                            send_key("Escape")
+                    rec(s, True, "opened %d of %d overlay opener(s), Escaping each: %s" % (len(opened), len(names), opened[:8]))
                 elif a in ("click", "open_tab"):
-                    nm = s["name"]
+                    nm = s.get("name")
+                    fb_role = s.get("first_of_role")
+                    if not nm and fb_role:
+                        # GB-1581 item 4: first-of-role fallback — the step
+                        # named a role, so the first control of that role on
+                        # the live page is the target (named in the record).
+                        fn = getattr(driver, "names_of_role", None)
+                        names = fn(fb_role) if fn else (driver.tab_names() if fb_role == "tab" and getattr(driver, "tab_names", None) else [])
+                        names = [x for x in (names or []) if x]
+                        if not names:
+                            raise _NotFound("no %s control on the live page (first-of-role fallback)" % fb_role)
+                        nm = names[0]
                     if a == "open_tab" and not is_tab_safe(nm):
                         raise _Refused("tab %r refused by the click policy" % nm)
                     if _norm(nm) in forbid_repeat and click_counts.get(_norm(nm)):
@@ -1073,7 +1153,7 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                                         wr["on_fixture"](l, "create_clicked", "repro-steps replay: %s" % ticket.get("id"))
                         _pc = getattr(driver, "popup_count", None)
                         pc_before = _pc() if _pc else 0
-                        hit = driver.click(nm, role="tab" if a == "open_tab" else None)
+                        hit = driver.click(nm, role="tab" if a == "open_tab" or fb_role == "tab" else None)
                     res = getattr(driver, "last_resolution", None)
                     if not hit:
                         raise _NotFound(_L.describe(res) if res and res.get("status") in (_L.AMBIGUOUS, _L.ABSENT) else "no control matching %r on the live page" % nm)
@@ -1086,7 +1166,8 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                         ev["popups_before"], ev["closer"] = pc_before, nm
                         ev["popups_after"] = driver.popup_count()
                     st["opener"] = hit if isinstance(hit, str) else nm
-                    rec(s, True, "clicked %r (matched %r)%s" % (nm, hit if isinstance(hit, str) else nm, "" if kind == "read" else " [write: %s on own fixture]" % kind),
+                    rec(s, True, "clicked %r (matched %r)%s%s" % (nm, hit if isinstance(hit, str) else nm, "" if kind == "read" else " [write: %s on own fixture]" % kind,
+                        (" [first %s on the page: the step named the role]" % fb_role) if fb_role else ""),
                         resolution=dict(res) if res else None)
                 elif a == "type_value":
                     why = _W.field_refusal(s["name"])
@@ -1169,20 +1250,29 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                 elif a == "fill":
                     if not allow_fill:
                         raise _Refused("fill refused: this lens is read-only here (write-skip or admin look-only)")
+                    fname = s.get("name")
+                    if not fname and s.get("first_of_role"):
+                        # GB-1581 item 4: 'type into a field' — the first
+                        # field on the live page is the target.
+                        fn = getattr(driver, "names_of_role", None)
+                        names = [x for x in ((fn("textbox") if fn else []) or []) if x]
+                        if not names:
+                            raise _NotFound("no field on the live page (first-of-role fallback)")
+                        fname = names[0]
                     if wr.get("allow_write") and not wr.get("admin") and not wr.get("write_skip"):
                         label = "%s-s%d" % (wr.get("label_base") or "qa-walker-replay", s["n"])
                         val = label
                     else:
                         label, val = None, (s.get("literal") or (_FILL_LABEL + " value"))
-                    if not driver.type_into(s["name"], val):
-                        raise _NotFound("no field matching %r on the live page" % s["name"])
+                    if not driver.type_into(fname, val):
+                        raise _NotFound("no field matching %r on the live page" % fname)
                     if label:
                         created.append(label)
                         if wr.get("on_fixture"):
-                            wr["on_fixture"](label, "never_created", "repro-steps replay %s: typed into %r, not yet submitted" % (ticket.get("id"), s["name"]))
-                        rec(s, True, "typed own labelled fixture value %r into %r (not submitted by this step)" % (label, s["name"]))
+                            wr["on_fixture"](label, "never_created", "repro-steps replay %s: typed into %r, not yet submitted" % (ticket.get("id"), fname))
+                        rec(s, True, "typed own labelled fixture value %r into %r (not submitted by this step)" % (label, fname))
                     else:
-                        rec(s, True, "typed %s into %r (not submitted)" % (("the literal %r" % s["literal"]) if s.get("literal") else "an own labelled qa-walker value", s["name"]))
+                        rec(s, True, "typed %s into %r (not submitted)" % (("the literal %r" % s["literal"]) if s.get("literal") else "an own labelled qa-walker value", fname))
                 if a in _SETTLE_ACTIONS and getattr(driver, "settle", None):
                     driver.settle()          # in-flight writes/renders after this step land BEFORE its net window closes and the snapshot is taken
                 if om is not None:
@@ -1191,6 +1281,12 @@ def run_repro(ticket, driver, *, lens_slug, allow_fill=True, log=None, write=Non
                 if mk is not None:
                     ev["step_windows"].append({"n": s["n"], "action": a, "writes": driver.net_since(mk), "typed": s.get("_typed"), "submit": bool(s.get("_submit"))})
             except (_Refused, _NotFound) as e:
+                if s.get("attempt") and isinstance(e, _NotFound):
+                    # GB-1581 item 4: an 'attempt to ...' step records the
+                    # attempt; the target's absence does not fail the repro
+                    # (a safety _Refused still aborts, as everywhere).
+                    rec(s, True, "attempt recorded: %s" % e)
+                    continue
                 rec(s, False, str(e))
                 for rest in flat[s["n"]:]:
                     rec(rest, False, "not run: step %d.%d did not execute" % (s["step"], s["sub"]))
@@ -1727,29 +1823,96 @@ class PlaywrightDriver:
         self.last_resolution = res
         if node is None:
             return {"verdict": "NO_CONTROL", "ok": False, "note": _L.describe(res)}
-        before = {p.backend for p in self.cdp.ax().popups()}
-        dl = self.lw._try_download(self.page, lambda: self.cdp.click(node.backend), 6000)
-        if not dl:
+        def finish(dl):
+            fpath = os.path.join(self.lw.ev, "walker-export-" + re.sub(r"[^\w.-]", "_", dl.suggested_filename)[:60])
+            dl.save_as(fpath)
+            verdict, note, content = self.lw._validate_export(fpath)
+            rows = re.search(r"(\d+) rows", note or "")
+            return {"verdict": verdict, "ok": verdict == "PASS" and content != "wrong", "bytes": os.path.getsize(fpath),
+                    "parsed": verdict in ("PASS", "EMPTY"), "rows": int(rows.group(1)) if rows else None, "note": note, "file": os.path.basename(fpath)}
+
+        def menu_opts(scope):
+            return [d for d in scope if d.role in ("menuitem", "button", "option", "link", "menuitemradio") and d.backend and not d.disabled
+                    and d.backend != node.backend and safety.is_menu_format_safe(d.name)]
+
+        def open_menu():
+            """('direct', download) when clicking Export downloads at once,
+            ('menu', options) when a format menu is open, (None, None). An
+            already-open menu is reused as-is: a toggle-style Export button
+            would CLOSE it on a second click (GB-1581 item 5b re-opens the
+            menu per format)."""
+            ax0 = self.cdp.ax()
+            for p in ax0.popups():
+                opts = menu_opts(ax0.descendants(p))
+                if opts:
+                    return "menu", opts
+            before = {p.backend for p in ax0.popups()}
+            dl = self.lw._try_download(self.page, lambda: self.cdp.click(node.backend), 6000)
+            if dl:
+                return "direct", dl
             got = self.lw._popup_new(self.cdp, before, node.backend)
             if got:
                 ax2, pop = got
-                scope = ax2.descendants(pop) if pop else ax2.live()
-                opts = [d for d in scope if d.role in ("menuitem", "button", "option", "link", "menuitemradio") and d.backend and not d.disabled
-                        and d.backend != node.backend and safety.is_menu_format_safe(d.name)]
-                want = [f.lower() for f in (formats or [])]
-                pick = [d for d in opts if not want or any(w in d.name.lower() for w in want)]
-                if len(pick) == 1 or (pick and not want):
-                    dl = self.lw._try_download(self.page, lambda: self.cdp.click(pick[0].backend), 8000)
-                elif len(pick) > 1:
-                    return {"verdict": "NO_FILE", "ok": False, "note": "ambiguous format options: %s" % [d.name for d in pick[:4]]}
-        if not dl:
+                return "menu", menu_opts(ax2.descendants(pop) if pop else ax2.live())
+            ax3 = self.cdp.ax()
+            for p in ax3.popups():
+                opts = menu_opts(ax3.descendants(p))
+                if opts:
+                    return "menu", opts
+            return None, None
+
+        kind, got = open_menu()
+        if kind == "direct":
+            return finish(got)
+        if kind != "menu":
             return {"verdict": "NO_FILE", "ok": False, "note": "no download started"}
-        fpath = os.path.join(self.lw.ev, "walker-export-" + re.sub(r"[^\w.-]", "_", dl.suggested_filename)[:60])
-        dl.save_as(fpath)
-        verdict, note, content = self.lw._validate_export(fpath)
-        rows = re.search(r"(\d+) rows", note or "")
-        return {"verdict": verdict, "ok": verdict == "PASS" and content != "wrong", "bytes": os.path.getsize(fpath),
-                "parsed": verdict in ("PASS", "EMPTY"), "rows": int(rows.group(1)) if rows else None, "note": note, "file": os.path.basename(fpath)}
+        want = [f.lower() for f in (formats or [])]
+        pick = [d for d in got if not want or any(w in d.name.lower() for w in want)]
+        if not pick:
+            return {"verdict": "NO_FILE", "ok": False, "note": "no format option matches %s" % (want or "the menu")}
+        if len(pick) == 1:
+            dl = self.lw._try_download(self.page, lambda: self.cdp.click(pick[0].backend), 8000)
+            return finish(dl) if dl else {"verdict": "NO_FILE", "ok": False, "note": "no download started"}
+        # GB-1581 item 5b: several formats on offer — export EVERY one (the
+        # old code stopped at 'ambiguous format options'), re-opening the
+        # menu per format, and report each format's own result.
+        names = list(dict.fromkeys(d.name for d in pick))[:6]
+        results = []
+        pending = list(names)
+        opts_now = got
+        while pending:
+            nm = pending.pop(0)
+            opt = next((d for d in opts_now if d.name == nm), None)
+            if opt is None:
+                results.append({"format": nm, "verdict": "NO_FILE", "ok": False, "note": "format option not on the reopened menu"})
+            else:
+                dl = self.lw._try_download(self.page, lambda b=opt.backend: self.cdp.click(b), 8000)
+                r = finish(dl) if dl else {"verdict": "NO_FILE", "ok": False, "note": "no download started"}
+                r["format"] = nm
+                results.append(r)
+            if pending:
+                kind2, got2 = open_menu()
+                if kind2 == "direct":
+                    r = finish(got2)
+                    r["format"] = pending.pop(0)
+                    results.append(r)
+                    opts_now = []
+                elif kind2 == "menu":
+                    opts_now = got2
+                else:
+                    opts_now = []
+        produced = [r for r in results if r["verdict"] in ("PASS", "EMPTY")]
+        head = dict(results[0])
+        head["formats"] = results
+        head["note"] = "; ".join("%s: %s (%s)" % (r["format"], r["verdict"], r.get("note") or "") for r in results)[:400]
+        if len(produced) == len(results):
+            head["verdict"] = "PASS" if any(r["verdict"] == "PASS" for r in results) else results[0]["verdict"]
+            head["ok"] = all(r.get("ok") for r in results)
+        elif produced:
+            head["verdict"], head["ok"] = "PARTIAL", False
+        else:
+            head["verdict"], head["ok"] = "NO_FILE", False
+        return head
 
     def chat_ask(self, question):
         """One budgeted chat send through the walker's chat helpers (chatcheck). Needs the Reverifier's budget."""
@@ -1786,6 +1949,11 @@ class PlaywrightDriver:
 
     def tab_names(self):
         return [n.name for n in self._nodes("tab")]
+
+    def names_of_role(self, role):
+        """Live control names of one a11y role, in tree order (GB-1581:
+        the first-of-role fallback + the open-each-overlay loop)."""
+        return [n.name for n in self._nodes(role) if n.name]
 
     def focus_role(self, role):
         nodes = self._nodes(role)
