@@ -889,8 +889,10 @@ class LensWalk:
         core_verbs) names the verb and its lens action; this leg performs
         it through POST /api/lens/run as the writer (owner) with the
         walk's labelled marker in the args, verifies the result persisted
-        by a fresh read-back (the reload witness: object GET when the
-        response carried an id, else the domain list), checks the
+        by a fresh read-back (the reload witness: the artifact object GET
+        and list, PLUS the domain witness — the lens's own recorded read
+        calls re-issued, CB-1099 slice W: most lenses keep their verb
+        objects in a domain store the artifact reads never see), checks the
         observer's visibility both ways against the spec, and cleans the
         created data up via the write account. Planning and verdicts live
         in core_verbs (pure); this method only drives contexts. A FAIL
@@ -934,10 +936,28 @@ class LensWalk:
                 except Exception as e:
                     return None, None, type(e).__name__
 
+            try:
+                _leg = self.net.leg_calls()
+            except Exception:
+                _leg = getattr(self.net, "replay", [])
+            dom_reads = _cv.domain_read_calls(_leg, domain, spec["action"]["name"])
+
+            def _seen_in(resp):
+                try:
+                    text = resp.text() or ""
+                except Exception:
+                    try:
+                        text = _json.dumps(resp.json())
+                    except Exception:
+                        text = ""
+                return (label in text) or (oid is not None and str(oid) in text)
+
             def read_as(ctx):
-                """(object_seen, list_seen): object_seen is True/False when
-                an object GET answered, None when unavailable; list_seen
-                likewise for the domain list search."""
+                """(object_seen, list_seen, domain_seen): the artifact
+                object GET, the artifact list search, and the domain
+                witness (the lens's own recorded read calls re-issued
+                through this context). Each is True/False when its read
+                answered, None when it could not."""
                 obj_seen = None
                 if oid is not None:
                     try:
@@ -953,16 +973,32 @@ class LensWalk:
                 try:
                     resp = ctx.request.get("%s/api/lens/%s" % (base, domain), timeout=15000)
                     if 200 <= resp.status < 300:
-                        try:
-                            text = resp.text() or ""
-                        except Exception:
-                            text = ""
-                        list_seen = (label in text) or (oid is not None and str(oid) in text)
+                        list_seen = _seen_in(resp)
                     elif resp.status in (401, 403, 404):
                         list_seen = False
                 except Exception:
                     list_seen = None
-                return obj_seen, list_seen
+                domain_seen = None
+                dom_answered = False
+                for call in dom_reads:
+                    try:
+                        if call["method"] == "POST":
+                            resp = ctx.request.post(
+                                run_url, data=call["post"],
+                                headers={"Content-Type": "application/json"},
+                                timeout=15000)
+                        else:
+                            resp = ctx.request.get(call["url"], timeout=15000)
+                        if 200 <= resp.status < 300:
+                            dom_answered = True
+                            seen = _seen_in(resp)
+                            domain_seen = seen if domain_seen is None else (domain_seen or seen)
+                        elif resp.status in (401, 403, 404) and not dom_answered \
+                                and domain_seen is None:
+                            domain_seen = False
+                    except Exception:
+                        pass
+                return obj_seen, list_seen, domain_seen
 
             st, rbody, terr = run_as(wctx, _cv.verb_body(spec, label))
             drive = _cv.classify_drive(st, rbody)
@@ -975,10 +1011,10 @@ class LensWalk:
             persisted = observer_sees = None
             cleanup = "not_attempted"
             if drive == "performed":
-                wo, wl = read_as(wctx)
-                persisted = wo if wo is not None else wl
-                fo, fl = read_as(fctx)
-                observer_sees = fo if fo is not None else fl
+                wo, wl, wd = read_as(wctx)
+                persisted = _cv.combine_witnesses(wo, wl, wd)
+                fo, fl, fd = read_as(fctx)
+                observer_sees = _cv.combine_witnesses(fo, fl, fd)
                 cbody = _cv.cleanup_body(spec, oid)
                 if cbody is not None:
                     cst, _cb, _cterr = run_as(wctx, cbody)
@@ -992,6 +1028,10 @@ class LensWalk:
                 spec, word, reason, drive=drive, persisted=persisted,
                 observer_sees=observer_sees, cleanup=cleanup,
                 http_status=st, error=derr)
+            if drive == "performed":
+                self.result["core_verb"]["witness"] = {
+                    "writer": {"object": wo, "list": wl, "domain": wd},
+                    "observer": {"object": fo, "list": fl, "domain": fd}}
             if word == "CORE_VERB_FAIL":
                 self.finding("core_verb", "high",
                              "Core verb fails end to end: %s" % spec.get("verb"),

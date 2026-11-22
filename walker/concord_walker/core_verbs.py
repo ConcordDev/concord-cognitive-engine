@@ -313,6 +313,65 @@ def classify_drive(status, body):
     return "inconclusive"
 
 
+# ---------------------------------------------------------------------------
+# CB-1099 slice W: the domain witness. Walk 3's core-verb verdicts judged
+# persistence ONLY in the lens-artifact store (GET /api/lens/<domain>[/<id>]),
+# but most lenses keep their verb objects in a DOMAIN store behind their own
+# read actions — the walk filed 15 sound writes as fake successes. The phase
+# now also re-reads through the lens's own recorded read calls; the two pure
+# helpers below select those calls and combine the witnesses.
+
+def domain_read_calls(calls, domain, verb_name, cap=6):
+    """Select the recorded calls that read THIS lens's own data, for the
+    core-verb phase to re-issue as a persistence witness: POST /api/lens/run
+    calls for the same domain whose action is not the verb itself, and GETs
+    under the lens's API paths. Recorded order preserved; only calls the
+    ledger saw answer 2xx qualify (a read the page itself could not make is
+    no witness). Bodies ride along in memory only."""
+    out = []
+    for c in calls or []:
+        if len(out) >= cap:
+            break
+        st = c.get("status")
+        if st is not None and not (200 <= st < 300):
+            continue
+        method = (c.get("method") or "GET").upper()
+        path = c.get("path") or ""
+        url = c.get("url") or ""
+        if method == "POST" and path.rstrip("/").endswith("/api/lens/run"):
+            post = c.get("post")
+            body = None
+            if isinstance(post, str):
+                try:
+                    body = json.loads(post)
+                except Exception:
+                    body = None
+            elif isinstance(post, dict):
+                body = post
+            if not body or body.get("domain") != domain:
+                continue
+            if body.get("action") == verb_name:
+                continue
+            out.append({"method": "POST", "url": url, "post": post})
+        elif method == "GET":
+            seg = "/%s" % domain
+            if ("/api/lens" + seg) in path or ("/api" + seg + "/") in path \
+                    or path.rstrip("/").endswith("/api" + seg):
+                out.append({"method": "GET", "url": url, "post": None})
+    return out
+
+
+def combine_witnesses(*vals):
+    """One persistence answer from several witnesses (True/False/None):
+    True when ANY witness saw the object; False when at least one witness
+    answered and none saw it; None when no witness could answer."""
+    if any(v is True for v in vals):
+        return True
+    if any(v is False for v in vals):
+        return False
+    return None
+
+
 def verdict(spec, *, drive, persisted, observer_sees):
     """The core-verb verdict from the leg's observations.
     drive: classify_drive's word. persisted / observer_sees: True, False,
