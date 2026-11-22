@@ -351,9 +351,19 @@ export default function createFrontierRoutesPart2({ requireAuth, db, mediaListin
   }));
 
   router.post("/marketplace/listings", auth, wrap((req, res) => {
-    const { userId, title, description, category, price, tier } = req.body;
-    if (!userId || !title || !category || price === undefined) {
-      throw new Error("userId, title, category, and price are required");
+    // Seller identity (CB-1279 ticket C): the seller is the session
+    // caller (req.user), never the request body — before this fix any
+    // signed-in caller could create a listing owned by any user id
+    // they named in the body's userId. A body-supplied userId is
+    // ignored; there is no create-on-behalf capability in this route
+    // family, so admins likewise own the listings they create.
+    const userId = req.user?.id ?? req.user?.userId ?? null;
+    if (!userId || userId === "anon") {
+      return res.status(401).json({ ok: false, error: "authentication_required" });
+    }
+    const { title, description, category, price, tier } = req.body;
+    if (!title || !category || price === undefined) {
+      throw new Error("title, category, and price are required");
     }
     const id = crypto.randomUUID();
     const listing = {
