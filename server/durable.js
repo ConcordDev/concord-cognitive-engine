@@ -14,7 +14,7 @@
  */
 
 import { randomUUID } from "crypto";
-import { gateLogRead, sendGate, isLogAdmin, redactLogValue } from "./lib/log-access.js";
+import { gateLogRead, sendGate, isLogAdmin, redactLogValue, actorFromReq } from "./lib/log-access.js";
 import { createStorageAdapter } from "./storage/index.js";
 
 const storage = createStorageAdapter();
@@ -323,22 +323,45 @@ export function registerDurableEndpoints(app, db) {
   });
 
   // POST /api/marketplace/listings/:id/assets — attach artifacts
+  // Ownership gate (CB-1258): only the listing's owner or an admin-class
+  // role may attach. The caller comes from the authenticated session
+  // (req.user, read via actorFromReq), never from the request body —
+  // before this gate any caller could attach any artifact to any
+  // listing, and the attach was logged under the listing owner's id.
+  // Order follows log-access's reasoningTraceAccess: 401 -> 404 -> 403.
   app.post("/api/marketplace/listings/:id/assets", (req, res) => {
     try {
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
       const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(req.params.id);
       if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+      const admin = isLogAdmin(actor);
+      if (!admin && listing.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this listing" });
+      }
 
       const { artifact_id } = req.body;
       if (!artifact_id) return res.status(400).json({ error: "artifact_id required" });
 
-      const artifact = db.prepare("SELECT id FROM artifacts WHERE id = ?").get(artifact_id);
+      const artifact = db.prepare("SELECT id, owner_user_id FROM artifacts WHERE id = ?").get(artifact_id);
       if (!artifact) return res.status(404).json({ error: "Artifact not found" });
+
+      // The artifact leg of the same hole (CB-1258, discretionary): a
+      // listing owner attaching someone else's artifact would publish
+      // that person's work under this listing. Rows with no recorded
+      // owner stay attachable (the distribution route's precedent);
+      // admins are exempt.
+      if (!admin && artifact.owner_user_id && artifact.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this artifact" });
+      }
 
       db.prepare(
         "INSERT OR IGNORE INTO marketplace_listing_assets (listing_id, artifact_id) VALUES (?, ?)"
       ).run(req.params.id, artifact_id);
 
-      logEvent(db, "marketplace.asset_attached", listing.owner_user_id, { listingId: req.params.id, artifactId: artifact_id }, req.headers["x-request-id"]);
+      logEvent(db, "marketplace.asset_attached", actor.userId, { listingId: req.params.id, artifactId: artifact_id }, req.headers["x-request-id"]);
 
       res.json({ ok: true });
     } catch (e) {
