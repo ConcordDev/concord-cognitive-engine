@@ -229,7 +229,7 @@ def cmd_walk(args, cfg, log):
     summary = []
     carryover = CarryoverQueue()  # ULW C7: every NOT_RUN check queues for a run-end revisit
     from concord_walker.runstate import LensBudget, ReplayBudget
-    walk_budget = LensBudget(cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
+    walk_budget = LensBudget(getattr(args, "lens_budget_s", None) or cfg["thresholds"]["lens_budget_s"])  # WALK-05 hook: one run-shared per-lens budget
     # replay's OWN per-lens budget (base + per_ticket x n_tickets, capped), on its own clock: never the sweep's spent time
     replay_budget = ReplayBudget.from_config(cfg, args)
     log("replay budget per lens: %s" % ("fixed %ss" % replay_budget.override_s if replay_budget.override_s is not None else
@@ -926,6 +926,7 @@ def main():
         p.add_argument("--expect-sha", help="MST-W0-01: flag every record whose /health buildSha differs (sha_status=mismatch); never gates a read walk")
         p.add_argument("--two-account", action="store_true", help="upgrade 3: replay t1's object calls (reads + non-DELETE writes) as t2 from its saved session; 2xx = ownership finding. Needs auth/t2.json; never deletes")
         p.add_argument("--resume", help="resume this run id: lenses already walked in its walk-manifest.json are skipped")
+        p.add_argument("--lens-budget-s", type=int, help="per-lens time budget in seconds (default from config thresholds.lens_budget_s; CB-1240 FIX 4: the rerun sets it equal to the outer budget)")
         p.add_argument("--from-repo", help="replay: read the ticket fold from this repo checkout at --deploy-sha (REQUIRED for a live sweep unless --no-replay)")
         p.add_argument("--deploy-sha", help="replay: the pinned sha the fold is read at (with --from-repo)")
         p.add_argument("--no-replay", action="store_true", help="sweep WITHOUT replaying the original lens-walk tickets (logged loudly; every ticket gets a 'replay disabled' coverage row)")
