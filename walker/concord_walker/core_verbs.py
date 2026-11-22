@@ -19,6 +19,14 @@ This module is the pure layer of that measurement:
            status: confirmed (grounded in the W1 study record) or draft
            (derived mechanically from the registerLensAction registry
            scan; unreviewed by construction).
+  CLEANUP  A spec may pin a cleanup action plus cleanup_id_arg — the
+           argument name the cleanup action takes the created object's
+           id under (default "id"; siblings variously want pairId,
+           lfgId, subscriptionId, vehicleId, ...). The id itself comes
+           from extract_object_id, which reads the response's plain
+           holders first and then the object nested one level under a
+           holder (result.monitor, result.task, the world object) —
+           the shapes the pinned handlers actually return (CB-1066).
   VERDICT  CORE_VERB_PASS / CORE_VERB_FAIL / CORE_VERB_UNSPECIFIED from
            the driving leg's observations. The discipline: FAIL means the
            verb was genuinely exercised and the truth failed (the call
@@ -98,6 +106,12 @@ def validate_spec(slug, spec):
         ca = spec.get(key)
         if ca is not None and (not isinstance(ca, dict) or not ca.get("domain") or not ca.get("name")):
             out.append("%s: %s must be null or {domain, name}" % (slug, key))
+    cia = spec.get("cleanup_id_arg")
+    if cia is not None:
+        if not isinstance(cia, str) or not cia.strip():
+            out.append("%s: cleanup_id_arg must be a non-empty string" % slug)
+        if not spec.get("cleanup_action"):
+            out.append("%s: cleanup_id_arg without a cleanup_action" % slug)
     if spec.get("args") is not None and not isinstance(spec.get("args"), dict):
         out.append("%s: args must be null or an object" % slug)
     return out
@@ -161,26 +175,70 @@ def verb_body(spec, label):
 
 def cleanup_body(spec, object_id):
     """The POST /api/lens/run body deleting the created object via the
-    spec's cleanup action, or None when none is pinned."""
+    spec's cleanup action, or None when none is pinned. The id rides
+    under the spec's cleanup_id_arg (default "id") — cleanup siblings
+    name their id argument per domain (lfgId, subscriptionId, ...)."""
     ca = (spec or {}).get("cleanup_action")
     if not ca or object_id is None:
         return None
+    arg = (spec or {}).get("cleanup_id_arg") or "id"
     return {"domain": ca["domain"], "action": ca["name"],
-            "args": {"id": object_id}}
+            "args": {arg: object_id}}
+
+
+def _id_of(obj):
+    if isinstance(obj, dict):
+        for key in ("id", "_id", "uuid"):
+            v = obj.get(key)
+            if isinstance(v, (str, int)) and v not in ("", None):
+                return v
+    return None
 
 
 def extract_object_id(body):
     """An object id from a lens/run response body, when one is plainly
-    there: a scalar id/_id/uuid on the body or its data/result object."""
+    there: a scalar id/_id/uuid on the body or its data/result/item
+    holder — or, failing that, on the object nested one level under a
+    holder (result.monitor, result.task, data.world, ...), the shape
+    most pinned handlers return their created object in, or deeper
+    still within a bounded search (depth 4, document order). The plain
+    holders win first, exactly as before (CB-1066 deepening)."""
     if not isinstance(body, dict):
         return None
-    for holder in (body, body.get("data"), body.get("result"), body.get("item")):
+    holders = [body, body.get("data"), body.get("result"), body.get("item")]
+    for holder in holders:
+        v = _id_of(holder)
+        if v is not None:
+            return v
+    for holder in holders:
         if isinstance(holder, dict):
-            for key in ("id", "_id", "uuid"):
-                v = holder.get(key)
-                if isinstance(v, (str, int)) and v not in ("", None):
+            for sub in holder.values():
+                v = _id_of(sub)
+                if v is not None:
                     return v
-    return None
+
+    def walk(node, depth):
+        if depth <= 0:
+            return None
+        if isinstance(node, dict):
+            for sub in node.values():
+                v = _id_of(sub)
+                if v is not None:
+                    return v
+                r = walk(sub, depth - 1)
+                if r is not None:
+                    return r
+        elif isinstance(node, list):
+            for sub in node:
+                v = _id_of(sub)
+                if v is not None:
+                    return v
+                r = walk(sub, depth - 1)
+                if r is not None:
+                    return r
+        return None
+
+    return walk(body, 4)
 
 
 def refused_body(body):

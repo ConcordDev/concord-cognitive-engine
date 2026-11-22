@@ -72,9 +72,27 @@ def main():
     check("cleanup body shape", cb == {"domain": "studio", "action": "project-delete",
                                        "args": {"id": 42}}, cb)
     check("cleanup body needs an id", cv.cleanup_body(spec, None) is None)
+    named = dict(spec, cleanup_id_arg="lfgId")
+    cb2 = cv.cleanup_body(named, 7)
+    check("cleanup body named id arg",
+          cb2["args"] == {"lfgId": 7}, str(cb2))
+    check("validate flags orphan cleanup_id_arg",
+          any("cleanup_id_arg" in e for e in cv.validate_spec(
+              "x", dict(spec, cleanup_action=None, cleanup_id_arg="lfgId"))))
+    check("validate flags non-string cleanup_id_arg",
+          any("cleanup_id_arg" in e for e in cv.validate_spec(
+              "x", dict(spec, cleanup_id_arg=7))))
     check("extract id top-level", cv.extract_object_id({"id": "abc"}) == "abc")
     check("extract id nested", cv.extract_object_id({"data": {"_id": 7}}) == 7)
     check("extract id absent", cv.extract_object_id({"ok": True}) is None)
+    check("extract id one level under a holder",
+          cv.extract_object_id({"result": {"monitor": {"id": "m1"}}}) == "m1")
+    check("extract id prefers the plain holder",
+          cv.extract_object_id({"result": {"id": "top", "task": {"id": "deep"}}}) == "top")
+    check("extract id deep in a list",
+          cv.extract_object_id({"data": {"rows": [{"x": 1}, {"uuid": "u9"}]}}) == "u9")
+    check("extract id absent deep",
+          cv.extract_object_id({"result": {"task": {"name": "x"}}}) is None)
     check("default args template", cv.build_args({"args": None}, "L") == {"title": "L", "name": "L"})
 
     # ---- build_args recursion (pinning pass 2026-11-21): {label} is
@@ -196,6 +214,42 @@ def main():
           (doc["counts"], tally))
     check("pinning pass: no money-class action among the pins",
           not any(cv.is_money_action(lenses[s]) for s in PINNED_1121))
+
+    # ---- the cleanup pass (CB-1066): pins for the 33
+    CLEANUP_PINS_1121 = {
+        "chat": ("chat.scheduled-cancel", "id"),
+        "resonance": ("resonance.deletePair", "pairId"),
+        "genesis": ("genesis.search-delete", "id"),
+        "affect": ("affect.deleteCheckin", "id"),
+        "lfg": ("lfg.cancel", "lfgId"),
+        "move-builder": ("move-builder.delete", "id"),
+        "cognition": ("cognition.deleteExport", "exportId"),
+        "crisis-ops": ("crisis.resource_delete", "resourceId"),
+        "expert-mode": ("expert_mode.thread_delete", "threadId"),
+        "foundry": ("foundry.delete", "id"),
+        "goddess": ("goddess.unsubscribe", "subscriptionId"),
+        "maker": ("maker.delete", "id"),
+        "saved": ("saved.remove", "id"),
+        "sentinel": ("sentinel.monitor.delete", "id"),
+        "sessions": ("sessions.remove", "sessionId"),
+        "wellness": ("wellness.mood-delete", "id"),
+        "garage": ("garage.despawn", "vehicleId"),
+    }
+    bad = []
+    for slug, (want, arg) in CLEANUP_PINS_1121.items():
+        e = lenses[slug]
+        ca = e.get("cleanup_action") or {}
+        got = "%s.%s" % (ca.get("domain"), ca.get("name")) if ca else None
+        if got != want or (e.get("cleanup_id_arg") or "id") != arg:
+            bad.append(slug)
+    check("cleanup pass: all 17 cleanup pins carry the verified action + arg name",
+          not bad, str(bad))
+    bad = [s for s in PINNED_1121
+           if s not in CLEANUP_PINS_1121
+           and (lenses[s].get("cleanup_action")
+                or "Cleanup stays unpinned (CB-1066)" not in lenses[s].get("note", ""))]
+    check("cleanup pass: the other 16 pins stay cleanup-null with the reason named",
+          not bad, str(bad))
 
     # ---- wiring: the leg exists and rides the isolation phase
     src = open(os.path.join(HERE, "concord_walker", "checks.py")).read()

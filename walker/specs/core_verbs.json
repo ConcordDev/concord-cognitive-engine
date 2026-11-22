@@ -3,7 +3,7 @@
  "version": 1,
  "work_order": "GB-1576 W5a",
  "build": "21303b4672",
- "derived": "walker/inventory.json (270 lenses) + registerLensAction scan of server/ at walker/ulw-v3 bf59c7718a + the W1 redesign study (walker/docs/REDESIGN-STUDY.md). Drafts are derivation-grade, not truth; confirmed entries are grounded in the study record with registry-verified action names. Pinning pass 2026-11-21 (B3, CB-1054 seating): the 55 action-null entries were hand-resolved against a corrected two-form registry scan (register + registerLensAction, case-sensitive) of server/ at build 21303b4672 — 593 domains / 11,363 actions; the original derivation scan had covered one registration form (263 domains), which is why so many domains read as absent. 33 entries are now pinned with handler-verified minimal args; 22 stay null with the specific blocker named in each note.",
+ "derived": "walker/inventory.json (270 lenses) + registerLensAction scan of server/ at walker/ulw-v3 bf59c7718a + the W1 redesign study (walker/docs/REDESIGN-STUDY.md). Drafts are derivation-grade, not truth; confirmed entries are grounded in the study record with registry-verified action names. Pinning pass 2026-11-21 (B3, CB-1054 seating): the 55 action-null entries were hand-resolved against a corrected two-form registry scan (register + registerLensAction, case-sensitive) of server/ at build 21303b4672 — 593 domains / 11,363 actions; the original derivation scan had covered one registration form (263 domains), which is why so many domains read as absent. 33 entries are now pinned with handler-verified minimal args; 22 stay null with the specific blocker named in each note. Cleanup pass 2026-11-21 (CB-1066, B3; checker B2): 17 of the 33 pins gained a verified cleanup_action (8 under a per-spec cleanup_id_arg — pairId/lfgId/exportId/resourceId/threadId/subscriptionId/sessionId/vehicleId — the rest under the default id), each read off its handler; extract_object_id deepened to the object nested under a holder; the other 16 stay cleanup-null with the reason in their notes.",
  "counts": {
   "confirmed": 15,
   "draft_action": 234,
@@ -72,7 +72,10 @@
     "prompt": "{label}",
     "runAt": "2099-01-01T00:00:00.000Z"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "chat",
+    "name": "scheduled-cancel"
+   },
    "expect": "After the verb, the result exists in the writer's Chat data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Chat lens as the writer account.",
@@ -83,7 +86,7 @@
    ],
    "status": "confirmed",
    "source": "w1-study",
-   "note": "W1-confirmed entry; its action was left unpinned by the study \"until the desk pins it\" — pinned 2026-11-21 under the CB-1054 seating (B3; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The W1-grounded verb is sending a message; the conversational send (chat.respond) is a live brain call whose session result carries no witnessable object, so the persisted message object is scheduled-create (server/domains/chat.js: prompt + a future runAt required; the far-future runAt never fires during a walk and the task stands fixture-labelled). Cleanup is not pinned: scheduled-cancel takes the task id, which the response nests under result.task, outside the cleanup extractor's reach."
+   "note": "W1-confirmed entry; its action was left unpinned by the study \"until the desk pins it\" — pinned 2026-11-21 under the CB-1054 seating (B3; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The W1-grounded verb is sending a message; the conversational send (chat.respond) is a live brain call whose session result carries no witnessable object, so the persisted message object is scheduled-create (server/domains/chat.js: prompt + a future runAt required; the far-future runAt never fires during a walk and the task stands fixture-labelled). Cleanup is not pinned: scheduled-cancel takes the task id, which the response nests under result.task, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): chat.scheduled-cancel under {id} — takes params.id and cancels only the caller’s own scheduled task; the deepened extractor reads the created id from the nested result object."
   },
   "board": {
    "name": "Board",
@@ -486,7 +489,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) builds the proposal from title/description/type and persists it in the goal registry + proposal queue. Cleanup is not pinned: goals.delete is role-gated to owner/admin/founder, so a member drive cannot remove its own proposal; it stands labelled."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) builds the proposal from title/description/type and persists it in the goal registry + proposal queue. Cleanup is not pinned: goals.delete is role-gated to owner/admin/founder, so a member drive cannot remove its own proposal; it stands labelled. Cleanup stays unpinned (CB-1066): goals.delete is gated to owner/admin/founder ROLES (a system gate, not object ownership), so the member write account cannot run it on its own goal."
   },
   "calendar": {
    "name": "Calendar",
@@ -1004,7 +1007,11 @@
      "title": "{label} (side B)"
     }
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "resonance",
+    "name": "deletePair"
+   },
+   "cleanup_id_arg": "pairId",
    "expect": "After the verb, the result exists in the writer's Resonance data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Resonance lens as the writer account.",
@@ -1015,7 +1022,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/resonance.js) requires a.domain/a.title/b.domain/b.title and refuses duplicate side-pairs in either orientation — the per-run {label} inside the nested titles is what keeps repeat drives unique (build_args substitutes {label} recursively since this pass). Cleanup is not pinned: the created pair id is nested in the response, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/resonance.js) requires a.domain/a.title/b.domain/b.title and refuses duplicate side-pairs in either orientation — the per-run {label} inside the nested titles is what keeps repeat drives unique (build_args substitutes {label} recursively since this pass). Cleanup is not pinned: the created pair id is nested in the response, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): resonance.deletePair under {pairId} — finds the pair by pairId in the caller’s own list; the deepened extractor reads the created id from the nested result object."
   },
   "docs": {
    "name": "Docs",
@@ -1558,7 +1565,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). stepSolveImpl (server/domains/math.js) takes left/expression + right + variable and solves with worked steps. Witness caveat: a solve carries no label-bearing field and returns no object id, so the generic read-back (domain list searched for the label/id) may not surface it — expect UNSPECIFIED rather than PASS until the witness widens; the lens's own persistence surface is math.casHistory."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). stepSolveImpl (server/domains/math.js) takes left/expression + right + variable and solves with worked steps. Witness caveat: a solve carries no label-bearing field and returns no object id, so the generic read-back (domain list searched for the label/id) may not surface it — expect UNSPECIFIED rather than PASS until the witness widens; the lens's own persistence surface is math.casHistory. Cleanup stays unpinned (CB-1066): the verb is perform-only — nothing persists, so there is no created object to clean."
   },
   "root": {
    "name": "Refusal Algebra",
@@ -1642,7 +1649,10 @@
     "label": "{label}",
     "query": "a"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "genesis",
+    "name": "search-delete"
+   },
    "expect": "After the verb, the result exists in the writer's Genesis data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Genesis lens as the writer account.",
@@ -1653,7 +1663,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The Genesis corpus (identities, lineage) is authored data and read-only for members; the saved search is the lens's one persisted member write (server/domains/genesis.js: label required, persists per user, search-list reads it back, search-delete removes it). Cleanup is not pinned: the saved entry id is nested in the response, outside the cleanup extractor."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The Genesis corpus (identities, lineage) is authored data and read-only for members; the saved search is the lens's one persisted member write (server/domains/genesis.js: label required, persists per user, search-list reads it back, search-delete removes it). Cleanup is not pinned: the saved entry id is nested in the response, outside the cleanup extractor. Cleanup pinned 2026-11-21 (CB-1066): genesis.search-delete under {id} — takes params.id in the caller’s own saved searches; the deepened extractor reads the created id from the nested result object."
   },
   "translation": {
    "name": "Translation",
@@ -1680,7 +1690,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/translation.js) requires text + targetLanguage; the explicit source language avoids the same-language short-circuit. The verb is perform-only: translation keeps no per-user history surface, so no read-back can witness persistence — expect UNSPECIFIED rather than PASS until a witness exists; the drive itself is judgeable (performed + result)."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/translation.js) requires text + targetLanguage; the explicit source language avoids the same-language short-circuit. The verb is perform-only: translation keeps no per-user history surface, so no read-back can witness persistence — expect UNSPECIFIED rather than PASS until a witness exists; the drive itself is judgeable (performed + result). Cleanup stays unpinned (CB-1066): the verb is perform-only — nothing persists, so there is no created object to clean."
   },
   "ml": {
    "name": "ML",
@@ -1859,7 +1869,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Registered in server/server.js as cri.createCRI(name, domain); CRIs are a shared registry (cri.list reads across members), hence shared visibility. No delete action exists in the domain, so the fixture CRI stands labelled."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Registered in server/server.js as cri.createCRI(name, domain); CRIs are a shared registry (cri.list reads across members), hence shared visibility. No delete action exists in the domain, so the fixture CRI stands labelled. Cleanup stays unpinned (CB-1066): no delete sibling exists for a created CRI (remove_member targets members, not the registry entry), and the fixture entry stands in the shared registry under its walk label."
   },
   "ingest": {
    "name": "Ingest",
@@ -1998,7 +2008,10 @@
     "mood": 3,
     "note": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "affect",
+    "name": "deleteCheckin"
+   },
    "expect": "After the verb, the result exists in the writer's Affect data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Affect lens as the writer account.",
@@ -2009,7 +2022,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/affect.js) requires mood inside the caller's scale; the default scale is Daylio 1..5, so 3 is valid for any account that has not customised its scale. The entry persists (checkinHistory) and deleteCheckin exists; cleanup is not pinned because the created entry id is nested in the response, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/affect.js) requires mood inside the caller's scale; the default scale is Daylio 1..5, so 3 is valid for any account that has not customised its scale. The entry persists (checkinHistory) and deleteCheckin exists; cleanup is not pinned because the created entry id is nested in the response, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): affect.deleteCheckin under {id} — takes params.id in the caller’s own check-ins; the deepened extractor reads the created id from the nested result object."
   },
   "attention": {
    "name": "Attention",
@@ -4755,7 +4768,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain is \"ops\" (server/domains/ops.js): incidentCreate requires title, defaults severity to sev3, and persists the incident in the caller's own ops state (incidentList reads it back). The state is per-user, so a member drive is the lens's own working surface, not an operator act on shared infrastructure."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain is \"ops\" (server/domains/ops.js): incidentCreate requires title, defaults severity to sev3, and persists the incident in the caller's own ops state (incidentList reads it back). The state is per-user, so a member drive is the lens's own working surface, not an operator act on shared infrastructure. Cleanup stays unpinned (CB-1066): no incident-delete sibling exists in the ops domain."
   },
   "world-observatory": {
    "name": "World Observatory",
@@ -4847,7 +4860,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/quests.js) requires title + 1..5 objectives with a typed objective (observe is in the allowed set) and persists an authored quest in the writer's world — authored quests enter the world's available pool, hence public. No delete action exists for authored quests; the fixture quest stands labelled."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/quests.js) requires title + 1..5 objectives with a typed objective (observe is in the allowed set) and persists an authored quest in the writer's world — authored quests enter the world's available pool, hence public. No delete action exists for authored quests; the fixture quest stands labelled. Cleanup stays unpinned (CB-1066): no delete sibling exists in the quests domain, and authored quests enter the world pool by design."
   },
   "auction": {
    "name": "Auction House",
@@ -4880,7 +4893,11 @@
     "note": "{label}",
     "role": "any"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "lfg",
+    "name": "cancel"
+   },
+   "cleanup_id_arg": "lfgId",
    "expect": "After the verb, the result exists in the writer's LFG data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the LFG lens as the writer account.",
@@ -4891,7 +4908,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). postLfg (server/lib/lfg.js) defaults worldId/role and persists an open request the world can join, hence public. Cleanup is not pinned: lfg.cancel takes lfgId while the cleanup body sends {id} — the names do not line up, and a stale post auto-cancels on the writer's next post in the same world."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). postLfg (server/lib/lfg.js) defaults worldId/role and persists an open request the world can join, hence public. Cleanup is not pinned: lfg.cancel takes lfgId while the cleanup body sends {id} — the names do not line up, and a stale post auto-cancels on the writer's next post in the same world. Cleanup pinned 2026-11-21 (CB-1066): lfg.cancel under {lfgId} — cancelLfg acts on the caller’s own open post; the deepened extractor reads the created id from the nested result object."
   },
   "achievements": {
    "name": "Achievements",
@@ -5054,7 +5071,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The headline verb is mail.send, but sendMail (server/lib/player-mail.js) requires the recipient's real user id, resolved against the users table, and refuses self-mail — the paired observer's id is per-shard runtime knowledge a static spec cannot name. The draft is the compose loop's persisted, writer-local leg (server/domains/mail.js: toUserId optional on draft-save) and is what the static spec can honestly judge."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The headline verb is mail.send, but sendMail (server/lib/player-mail.js) requires the recipient's real user id, resolved against the users table, and refuses self-mail — the paired observer's id is per-shard runtime knowledge a static spec cannot name. The draft is the compose loop's persisted, writer-local leg (server/domains/mail.js: toUserId optional on draft-save) and is what the static spec can honestly judge. Cleanup stays unpinned (CB-1066): mail.delete removes the caller’s own SENT copy; the pinned verb creates a draft, a different object class, and no draft-delete sibling exists."
   },
   "spectate": {
    "name": "Spectate",
@@ -5079,7 +5096,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/spectate.js) requires worldId and persists a spectator session. The money verb of this lens (spectate.bet) is never driven. Witness caveat: the session carries no label-bearing field, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/spectate.js) requires worldId and persists a spectator session. The money verb of this lens (spectate.bet) is never driven. Witness caveat: the session carries no label-bearing field, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens. Cleanup stays unpinned (CB-1066): watch opens a session and no stop/end sibling exists in the spectate domain."
   },
   "settings": {
    "name": "Settings",
@@ -5106,7 +5123,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) merges input.settings into the caller's settings state and settings.get reads it back; the fixture writes one walk-namespaced key rather than touching a real preference. build_args substitutes {label} recursively since this pass, so the nested value carries the label."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) merges input.settings into the caller's settings state and settings.get reads it back; the fixture writes one walk-namespaced key rather than touching a real preference. build_args substitutes {label} recursively since this pass, so the nested value carries the label. Cleanup stays unpinned (CB-1066): settings.set merges into the caller’s settings and no unset/delete-key sibling exists; the fixture key is walk-namespaced and inert."
   },
   "creator": {
    "name": "Creator",
@@ -5222,7 +5239,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). castLine (server/domains/fishing.js) opens a cast session with worldId/biome defaulted; the session is the persisted first half of the catch loop (reel/create needs the session id cast returns, which a one-call drive cannot chain). The session stands labelled and unresolved sessions expire with the session store."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). castLine (server/domains/fishing.js) opens a cast session with worldId/biome defaulted; the session is the persisted first half of the catch loop (reel/create needs the session id cast returns, which a one-call drive cannot chain). The session stands labelled and unresolved sessions expire with the session store. Cleanup stays unpinned (CB-1066): cast opens a session and no session-end/delete sibling exists (catch-delete targets catches, not the session)."
   },
   "creatures": {
    "name": "Creatures",
@@ -5248,7 +5265,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/creatures.js) requires speciesId, generates a physics-validated blueprint and mints it as a creator-attributed blueprint DTU — a published creature, hence public. No unpublish/delete sibling exists; the fixture creature stands labelled."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/creatures.js) requires speciesId, generates a physics-validated blueprint and mints it as a creator-attributed blueprint DTU — a published creature, hence public. No unpublish/delete sibling exists; the fixture creature stands labelled. Cleanup stays unpinned (CB-1066): no delete/unpublish sibling exists for a published blueprint."
   },
   "garage": {
    "name": "Garage",
@@ -5263,7 +5280,11 @@
     "kind": "cart",
     "name": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "garage",
+    "name": "despawn"
+   },
+   "cleanup_id_arg": "vehicleId",
    "expect": "After the verb, the result exists in the writer's Garage data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Garage lens as the writer account.",
@@ -5274,7 +5295,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). garage.create is the spawn alias (server/domains/garage.js doSpawn); kind must be one of cart/boat/canal_taxi (server/lib/world-vehicles.js) and a member spawn is stamped to the actor in the shared world, hence public. Cleanup is not pinned: garage.despawn takes vehicleId while the cleanup body sends {id}."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). garage.create is the spawn alias (server/domains/garage.js doSpawn); kind must be one of cart/boat/canal_taxi (server/lib/world-vehicles.js) and a member spawn is stamped to the actor in the shared world, hence public. Cleanup is not pinned: garage.despawn takes vehicleId while the cleanup body sends {id}. Cleanup pinned 2026-11-21 (CB-1066): garage.despawn under {vehicleId} — despawns a vehicle the calling player owns; the deepened extractor reads the created id from the nested result object."
   },
   "repair-telemetry": {
    "name": "Repair Telemetry",
@@ -5307,7 +5328,10 @@
     "name": "{label}",
     "skillKind": "spell"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "move-builder",
+    "name": "delete"
+   },
    "expect": "After the verb, the result exists in the writer's Move Builder data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Move Builder lens as the writer account.",
@@ -5318,7 +5342,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). compose alone is a pure preview (nothing persists); mint (server/domains/move-builder.js) is the persisted verb — it requires name, composes within budget, and persists a kind=move_recipe DTU owned by the caller. skillKind \"spell\" is the composer's own canonical default. Cleanup is not pinned: the minted move id is not exposed at a level the cleanup extractor reads."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). compose alone is a pure preview (nothing persists); mint (server/domains/move-builder.js) is the persisted verb — it requires name, composes within budget, and persists a kind=move_recipe DTU owned by the caller. skillKind \"spell\" is the composer's own canonical default. Cleanup is not pinned: the minted move id is not exposed at a level the cleanup extractor reads. Cleanup pinned 2026-11-21 (CB-1066): move-builder.delete under {id} — accepts input.id and deletes only the caller’s own move_recipe DTU; the deepened extractor reads the created id from the nested result object."
   },
   "codex": {
    "name": "Codex",
@@ -5406,7 +5430,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/careers.js) requires a valid trackId (chef is a TRACKS key in server/lib/professions.js) and persists shift progress (xp/shifts) server-side; tier and attribute are server-owned. Repeat drives inside the shift cooldown are refused with shift_cooldown, which the verdict reads as the probe's limit, not the verb's failure."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/careers.js) requires a valid trackId (chef is a TRACKS key in server/lib/professions.js) and persists shift progress (xp/shifts) server-side; tier and attribute are server-owned. Repeat drives inside the shift cooldown are refused with shift_cooldown, which the verdict reads as the probe's limit, not the verb's failure. Cleanup stays unpinned (CB-1066): work accrues progress on the caller’s own track and no reset/undo sibling exists."
   },
   "bounties": {
    "name": "Bounties",
@@ -5455,7 +5479,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). setKey (server/lib/byo-keys.js) requires a valid slot (conscious/subconscious/utility/repair/vision) + provider; provider \"ollama\" is the local path and stores NO credential (the apiKey branch is skipped for ollama/concord_default), so the fixture writes only a provider override row on the test account. byo_keys.remove is the domain's own undo; cleanup is not pinned because the row is keyed by slot, not by an extractable object id."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). setKey (server/lib/byo-keys.js) requires a valid slot (conscious/subconscious/utility/repair/vision) + provider; provider \"ollama\" is the local path and stores NO credential (the apiKey branch is skipped for ollama/concord_default), so the fixture writes only a provider override row on the test account. byo_keys.remove is the domain's own undo; cleanup is not pinned because the row is keyed by slot, not by an extractable object id. Cleanup stays unpinned (CB-1066): byo_keys.remove is keyed by slot, not by an extracted object id — the id-based cleanup machinery cannot drive it."
   },
   "classroom": {
    "name": "Classroom",
@@ -5521,7 +5545,11 @@
      "mode": "hlr"
     }
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "cognition",
+    "name": "deleteExport"
+   },
+   "cleanup_id_arg": "exportId",
    "expect": "After the verb, the result exists in the writer's Cognition data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Cognition lens as the writer account.",
@@ -5532,7 +5560,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/cognition.js) requires a trace object and persists the export into the caller's export ledger (listExports reads it back; deleteExport removes it). Cleanup is not pinned: the response carries the id as exportId, outside the cleanup extractor's key set (id/_id/uuid)."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/cognition.js) requires a trace object and persists the export into the caller's export ledger (listExports reads it back; deleteExport removes it). Cleanup is not pinned: the response carries the id as exportId, outside the cleanup extractor's key set (id/_id/uuid). Cleanup pinned 2026-11-21 (CB-1066): cognition.deleteExport under {exportId} — finds the export by exportId in the caller’s own export ledger; the deepened extractor reads the created id from the nested result object."
   },
   "cognitive-replay": {
    "name": "Cognitive Replay",
@@ -5575,7 +5603,11 @@
     "quantity": 1,
     "unit": "units"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "crisis",
+    "name": "resource_delete"
+   },
+   "cleanup_id_arg": "resourceId",
    "expect": "After the verb, the result exists in the writer's Crisis Ops data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Crisis Ops lens as the writer account.",
@@ -5586,7 +5618,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). resource_upsert (server/domains/crisis.js) requires name + a whole quantity 1..1,000,000 and persists the caller's own resource stockpile (resource_delete is its sibling). The lens's headline verb, crisis.declare, starts a crisis in the SHARED world state for every player, so the walk deliberately drives the per-user verb instead and leaves declare to the lens's own live use."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). resource_upsert (server/domains/crisis.js) requires name + a whole quantity 1..1,000,000 and persists the caller's own resource stockpile (resource_delete is its sibling). The lens's headline verb, crisis.declare, starts a crisis in the SHARED world state for every player, so the walk deliberately drives the per-user verb instead and leaves declare to the lens's own live use. Cleanup pinned 2026-11-21 (CB-1066): crisis.resource_delete under {resourceId} — deletes from the caller’s own stockpile; a fresh fixture has nothing deployed, so the deployed-refusal does not bite; the deepened extractor reads the created id from the nested result object."
   },
   "death-insurance": {
    "name": "Death Insurance",
@@ -5631,7 +5663,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain registers as \"deity\" (server/domains/deities.js): compose requires only a name and persists the deity into the shared pantheon (deity.list ranks all non-retired deities), hence public. deity.retire is the lifecycle sibling; cleanup is not pinned because the response nests the id under result.deityId."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). The lens's domain registers as \"deity\" (server/domains/deities.js): compose requires only a name and persists the deity into the shared pantheon (deity.list ranks all non-retired deities), hence public. deity.retire is the lifecycle sibling; cleanup is not pinned because the response nests the id under result.deityId. Cleanup stays unpinned (CB-1066): deity.retire is the lifecycle sibling, but the compose response carries the id as a scalar result.deityId field, which the object-shaped extractor does not read — pinning it needs an id-path form the machinery does not yet have."
   },
   "dreams": {
    "name": "Dreams",
@@ -5739,7 +5771,11 @@
     "query": "{label} — what is the capital of France?",
     "useWeb": false
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "expert_mode",
+    "name": "thread_delete"
+   },
+   "cleanup_id_arg": "threadId",
    "expect": "After the verb, the result exists in the writer's Expert Mode data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Expert Mode lens as the writer account.",
@@ -5750,7 +5786,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/expert-mode.js) requires query and persists the Q+A as a thread the caller owns (thread_get/thread_list read it back; thread_delete removes it). useWeb false keeps the drive on the local path. The label rides in the query because the thread title derives from it — that is what the read-back list search can witness. Cleanup is not pinned: thread_delete takes threadId, not the cleanup body's {id}."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/expert-mode.js) requires query and persists the Q+A as a thread the caller owns (thread_get/thread_list read it back; thread_delete removes it). useWeb false keeps the drive on the local path. The label rides in the query because the thread title derives from it — that is what the read-back list search can witness. Cleanup is not pinned: thread_delete takes threadId, not the cleanup body's {id}. Cleanup pinned 2026-11-21 (CB-1066): expert_mode.thread_delete under {threadId} — owner-checked against the caller; the deepened extractor reads the created id from the nested result object."
   },
   "forecast": {
    "name": "Forecast",
@@ -5775,7 +5811,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) composes the 24h forecast for a world and persists it by default (forecast.recent reads it back); a world forecast is world-readable, hence public. Witness caveat: the forecast carries no label-bearing field and returns no object id, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/server.js) composes the 24h forecast for a world and persists it by default (forecast.recent reads it back); a world forecast is world-readable, hence public. Witness caveat: the forecast carries no label-bearing field and returns no object id, so the generic read-back may not surface it — expect UNSPECIFIED rather than PASS until the witness widens. Cleanup stays unpinned (CB-1066): forecast.archive is a historical READ (archive listing + trend points), not a delete; no forecast-delete sibling exists."
   },
   "forge": {
    "name": "Forge",
@@ -5831,7 +5867,10 @@
     "name": "{label}",
     "description": "ULW core-verb fixture"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "foundry",
+    "name": "delete"
+   },
    "expect": "After the verb, the result exists in the writer's Foundry data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Foundry lens as the writer account.",
@@ -5842,7 +5881,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/foundry.js) requires name and inserts a draft world row owned by the caller. foundry.delete is the sibling; cleanup is not pinned because the created world id is nested under the response's world object, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/foundry.js) requires name and inserts a draft world row owned by the caller. foundry.delete is the sibling; cleanup is not pinned because the created world id is nested under the response's world object, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): foundry.delete under {id} — creator-checked; the fixture world is an unpublished draft; the deepened extractor reads the created id from the nested result object."
   },
   "gallery": {
    "name": "Gallery",
@@ -5901,7 +5940,11 @@
     "tone": "warm",
     "worldId": "concordia-hub"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "goddess",
+    "name": "unsubscribe"
+   },
+   "cleanup_id_arg": "subscriptionId",
    "expect": "After the verb, the result exists in the writer's Goddess data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Goddess lens as the writer account.",
@@ -5912,7 +5955,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/goddess.js) requires tone in KNOWN_TONES (exalted/warm/neutral/cold/mourning) and persists the caller's subscription. The lens's other writes do not fit a static drive: compose_now is the broadcaster's own system act, and react needs a live dispatch id. Cleanup is not pinned: unsubscribe takes subscriptionId, which the response nests, outside the cleanup extractor."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/goddess.js) requires tone in KNOWN_TONES (exalted/warm/neutral/cold/mourning) and persists the caller's subscription. The lens's other writes do not fit a static drive: compose_now is the broadcaster's own system act, and react needs a live dispatch id. Cleanup is not pinned: unsubscribe takes subscriptionId, which the response nests, outside the cleanup extractor. Cleanup pinned 2026-11-21 (CB-1066): goddess.unsubscribe under {subscriptionId} — finds the subscription in the caller’s own list; the deepened extractor reads the created id from the nested result object."
   },
   "inheritance": {
    "name": "Inheritance",
@@ -5963,7 +6006,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/kingdoms.js) requires name and persists the character in the caller's dynasty (dynasty_tree reads it back). No delete sibling exists; the fixture character stands labelled."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/kingdoms.js) requires name and persists the character in the caller's dynasty (dynasty_tree reads it back). No delete sibling exists; the fixture character stands labelled. Cleanup stays unpinned (CB-1066): no char_delete sibling exists in the kingdoms domain."
   },
   "lattice": {
    "name": "Lattice",
@@ -5996,7 +6039,10 @@
     "name": "{label}",
     "spec": "ULW core-verb fixture"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "maker",
+    "name": "delete"
+   },
    "expect": "After the verb, the result exists in the writer's Maker data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Maker lens as the writer account.",
@@ -6007,7 +6053,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/maker.js) requires name (duplicate names refused per user) and inserts the make into maker_pieces; maker.list reads it back and maker.delete is the sibling. Cleanup is not pinned: the created id is nested under the response's make object, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/maker.js) requires name (duplicate names refused per user) and inserts the make into maker_pieces; maker.list reads it back and maker.delete is the sibling. Cleanup is not pinned: the created id is nested under the response's make object, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): maker.delete under {id} — deletes WHERE id AND the caller’s user_id; the deepened extractor reads the created id from the nested result object."
   },
   "markets": {
    "name": "Markets",
@@ -6236,7 +6282,10 @@
     "kind": "other",
     "title": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "saved",
+    "name": "remove"
+   },
    "expect": "After the verb, the result exists in the writer's Saved data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Saved lens as the writer account.",
@@ -6247,7 +6296,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/saved.js) requires at least one of title/refId/url and persists the item in the caller's saved store (saved.list reads it back; saved.remove is the sibling). Cleanup is not pinned: the item id is nested under result.item, outside the cleanup extractor's holder set."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/saved.js) requires at least one of title/refId/url and persists the item in the caller's saved store (saved.list reads it back; saved.remove is the sibling). Cleanup is not pinned: the item id is nested under result.item, outside the cleanup extractor's holder set. Cleanup pinned 2026-11-21 (CB-1066): saved.remove under {id} — takes input.id in the caller’s own saved store; the deepened extractor reads the created id from the nested result object."
   },
   "vault": {
    "name": "TheVault",
@@ -6307,7 +6356,10 @@
    "args": {
     "name": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "sentinel",
+    "name": "monitor.delete"
+   },
    "expect": "After the verb, the result exists in the writer's Sentinel data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Sentinel lens as the writer account.",
@@ -6318,7 +6370,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sentinel.js) defaults every other field (scope all, severity medium, interval clamped 5..1440) and persists the monitor per user (monitor.list reads it back; monitor.delete is the sibling). Cleanup is not pinned: the monitor id is monitorId nested under result.monitor, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sentinel.js) defaults every other field (scope all, severity medium, interval clamped 5..1440) and persists the monitor per user (monitor.list reads it back; monitor.delete is the sibling). Cleanup is not pinned: the monitor id is monitorId nested under result.monitor, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): sentinel.monitor.delete under {id} — accepts p.id (monitorId also read) in the caller’s own monitor map; the deepened extractor reads the created id from the nested result object."
   },
   "sessions": {
    "name": "Sessions",
@@ -6333,7 +6385,11 @@
     "lensId": "sessions",
     "title": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "sessions",
+    "name": "remove"
+   },
+   "cleanup_id_arg": "sessionId",
    "expect": "After the verb, the result exists in the writer's Sessions data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Sessions lens as the writer account.",
@@ -6344,7 +6400,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sessions.js) requires lensId and inserts an open session row for the caller (list_mine reads it back; close/remove are the lifecycle siblings). Cleanup is not pinned: the session id is nested under the response's session object, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/sessions.js) requires lensId and inserts an open session row for the caller (list_mine reads it back; close/remove are the lifecycle siblings). Cleanup is not pinned: the session id is nested under the response's session object, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): sessions.remove under {sessionId} — deletes the caller’s own session row (close would additionally demand an outcome argument); the deepened extractor reads the created id from the nested result object."
   },
   "social": {
    "name": "Social",
@@ -6590,7 +6646,10 @@
     "mood": "good",
     "note": "{label}"
    },
-   "cleanup_action": null,
+   "cleanup_action": {
+    "domain": "wellness",
+    "name": "mood-delete"
+   },
    "expect": "After the verb, the result exists in the writer's Wellness data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Wellness lens as the writer account.",
@@ -6601,7 +6660,7 @@
    ],
    "status": "draft",
    "source": "registry-pin-2026-11-21",
-   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/wellness.js) requires mood in MOOD_SCALE (awful/bad/meh/good/great) and persists the entry (mood-list reads it back; mood-delete is the sibling). Cleanup is not pinned: the entry id is nested under result.entry, outside the cleanup extractor's reach."
+   "note": "Pinned 2026-11-21 (B3, CB-1054 seating; checker B2) against the full two-form registry scan of the deployed build (593 domains / 11,363 actions). Handler (server/domains/wellness.js) requires mood in MOOD_SCALE (awful/bad/meh/good/great) and persists the entry (mood-list reads it back; mood-delete is the sibling). Cleanup is not pinned: the entry id is nested under result.entry, outside the cleanup extractor's reach. Cleanup pinned 2026-11-21 (CB-1066): wellness.mood-delete under {id} — takes input.id in the caller’s own mood list; the deepened extractor reads the created id from the nested result object."
   },
   "world-creator": {
    "name": "World Creator",

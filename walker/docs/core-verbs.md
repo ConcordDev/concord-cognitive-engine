@@ -95,6 +95,29 @@ label-bearing field the generic read-back can witness, so they are
 expected to verdict UNSPECIFIED rather than PASS until the read-back
 witness widens — the entries' `expect`/`note` say so per lens.
 
+## The cleanup pass (2026-11-21, CB-1066)
+
+The pinning pass left cleanup unpinned everywhere: the created id
+usually sits deeper in the response than the extractor read, and the
+cleanup siblings name their id argument per domain. Three machinery
+changes fix that:
+
+- `extract_object_id` now reads, after the plain holders (unchanged,
+  first), the object nested one level under a holder — `result.monitor`,
+  `result.task`, the world object — and deeper within a bounded search.
+- A spec may carry `cleanup_id_arg`: the argument name its cleanup
+  action takes the id under (default `id`). `cleanup_body` sends the
+  id under that name.
+- 17 of the 33 pins gained a handler-verified `cleanup_action`
+  (resonance `pairId`, lfg `lfgId`, cognition `exportId`, crisis
+  `resourceId`, expert-mode `threadId`, goddess `subscriptionId`,
+  sessions `sessionId`, garage `vehicleId`; the rest under the default
+  `id`). The other 16 stay cleanup-null with the reason in their notes —
+  a role-gated delete (goals), a sibling for a different object class
+  (mail), a slot-keyed remove (byo-keys), a scalar id field the
+  object-shaped extractor cannot read (deities), or no sibling at all.
+  The 202 drafts' cleanup entries keep the default `id` behaviour.
+
 ## Verdicts
 
 - `CORE_VERB_PASS` — performed, persisted on read-back, visibility per spec.
