@@ -1280,6 +1280,23 @@ html.a11y-reduce-motion .social-reveal-items > * {
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════════
+   DARK-THEME MUTED-TEXT LIFT (CB-1280, Walk 2 contrast)
+
+   text-zinc-500 is the product's de-facto muted-text utility (862 uses),
+   and on the lattice dark surfaces it measures below WCAG AA for normal
+   text: #71717a = 4.09:1 on #0a0a0f, 3.96:1 on #0f0f14, 3.88:1 on #111116,
+   4.01:1 on #0d0d11 (walker-measured, Walk 2). text-zinc-600 (#52525b)
+   measures 2.57:1 on #09090c. These rules lift both utilities to #a1a1aa
+   (zinc-400) on the dark default -- 7.34-7.71:1 on every lattice surface.
+   The light-theme override block below keeps its own values: its
+   selectors carry specificity (0,2,0) against these rules' (0,1,0), so
+   light surfaces and .light islands (the Vault) are untouched. Only text
+   colour moves -- zinc backgrounds and borders keep their authored shade.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.text-zinc-500 { color: #a1a1aa; }
+.text-zinc-600 { color: #a1a1aa; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
    LIGHT-THEME READABILITY OVERRIDE (audit 2026-07-27)
 
    Only lattice-* and neon-* tokens above are CSS-var-based and flip with the
