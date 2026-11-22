@@ -53980,15 +53980,42 @@ registerLensAction("feed", "repost", (ctx, artifact, _params) => {
   return { ok: true, repost };
 });
 registerLensAction("feed", "bookmark", (ctx, artifact, _params) => {
-  artifact.data = { ...artifact.data, bookmarked: true, bookmarkedAt: nowISO() };
+  // Per-actor bookmarks (CB-1069): this body used to write a single shared
+  // `bookmarked: true` into the post's data, so one member's bookmark marked
+  // the post bookmarked for every reader. Bookmarks now live in
+  // data.bookmarks as the ids of the actors who bookmarked (the repost
+  // records above are the family pattern; the social layer's bookmarkPost
+  // toggles the same way), the call toggles the CALLER's membership, and
+  // the legacy shared fields are dropped on write.
+  const userId = ctx.actor?.userId || "anon";
+  const prev = artifact.data || {};
+  const list = Array.isArray(prev.bookmarks) ? prev.bookmarks.filter((u) => typeof u === "string") : [];
+  const has = list.includes(userId);
+  const next = has ? list.filter((u) => u !== userId) : [...list, userId];
+  const { bookmarked: _legacyFlag, bookmarkedAt: _legacyAt, ...rest } = prev;
+  artifact.data = { ...rest, bookmarks: next };
   artifact.updatedAt = nowISO();
   saveStateDebounced();
-  return { ok: true, bookmarked: true };
+  return { ok: true, bookmarked: !has, bookmarkCount: next.length };
+});
+registerLensAction("feed", "bookmarks", (ctx, _artifact, _params) => {
+  // The caller's own bookmarked feed posts (CB-1069): the caller-scoped
+  // read for the per-actor store above. Visibility is re-checked per
+  // artifact even though feed is a social domain.
+  const userId = ctx.actor?.userId || "anon";
+  const out = [];
+  for (const art of _lensDomainArtifacts("feed")) {
+    const list = Array.isArray(art.data?.bookmarks) ? art.data.bookmarks : [];
+    if (!list.includes(userId)) continue;
+    if (!_lensArtifactVisible(ctx, art)) continue;
+    out.push({ id: art.id, title: art.title || "" });
+  }
+  return { ok: true, bookmarks: out, total: out.length };
 });
 registerLensAction("feed", "rank", (ctx, artifact, _params) => {
   const likes = artifact.data?.likes || 0;
   const reposts = (artifact.data?.reposts || []).length;
-  const bookmarks = artifact.data?.bookmarked ? 1 : 0;
+  const bookmarks = Array.isArray(artifact.data?.bookmarks) ? artifact.data.bookmarks.length : (artifact.data?.bookmarked ? 1 : 0);
   const comments = artifact.data?.commentCount || 0;
   const ageHours = (Date.now() - new Date(artifact.createdAt || 0).getTime()) / 3600000;
   const decayFactor = 1 / (1 + ageHours / 48);
@@ -54017,7 +54044,7 @@ registerLensAction("feed", "personalize", (ctx, artifact, _params) => {
       if (author) authorAffinity[author] = (authorAffinity[author] || 0) + 5;
       totalInteractions += 5;
     }
-    if (art.data?.bookmarked && art.meta?.lastBookmarkedBy === userId) {
+    if (art.data?.bookmarks?.includes(userId) || (art.data?.bookmarked && art.meta?.lastBookmarkedBy === userId)) {
       artTags.forEach(t => { tagFrequency[t] = (tagFrequency[t] || 0) + 4; });
       if (author) authorAffinity[author] = (authorAffinity[author] || 0) + 4;
       totalInteractions += 4;
