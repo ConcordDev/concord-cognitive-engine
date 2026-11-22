@@ -2,6 +2,7 @@
 
 /** Shared calls and helpers for the Production Office. */
 import { lensRun } from '@/lib/api/client';
+import { safeLocalMediaUrl } from '@/lib/safe-media-url';
 
 export interface Res<T> { ok: boolean; result: T | null; error: string | null }
 export async function fs<T>(action: string, input: Record<string, unknown> = {}): Promise<Res<T>> {
@@ -66,7 +67,9 @@ function probeDuration(file: File): Promise<number> {
       el.preload = 'metadata';
       el.onloadedmetadata = () => done(el.duration);
       el.onerror = () => done(0);
-      el.src = url;
+      const safeUrl = safeLocalMediaUrl(url);
+      if (!safeUrl) { done(0); return; }
+      el.src = safeUrl;
     } catch { resolve(0); }
   });
 }

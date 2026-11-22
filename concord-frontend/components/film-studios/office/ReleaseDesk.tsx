@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { FsDistributionPanel } from '@/components/film-studios/FsDistributionPanel';
 import { cc, fs, runtime, uploadPoster, type Footage, type Release } from './fo';
+import { safeLocalMediaUrl } from '@/lib/safe-media-url';
 
 export function ReleaseDesk({ projectId, onOpenCinema }: { projectId: string; onOpenCinema?: (releaseId: string) => void }) {
   const [mine, setMine] = useState<Release[] | null>(null);
@@ -86,7 +87,7 @@ export function ReleaseDesk({ projectId, onOpenCinema }: { projectId: string; on
           <div className="mt-3 grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
             <button type="button" className="fo-onesheet flex items-center justify-center text-[#bbb]" onClick={() => posterRef.current?.click()} aria-label={poster ? 'Change the poster' : 'Add a poster'} data-testid="fo-poster-pick">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {poster ? <img src={poster.url} alt="" /> : <span className="flex flex-col items-center gap-1 text-[12px]"><ImagePlus className="h-5 w-5" /> Poster</span>}
+              {poster ? <img src={safeLocalMediaUrl(poster.url) || undefined} alt="" /> : <span className="flex flex-col items-center gap-1 text-[12px]"><ImagePlus className="h-5 w-5" /> Poster</span>}
             </button>
             <input ref={posterRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { void pickPoster(e.target.files?.[0]); }} data-testid="fo-poster-input" />
             <div className="space-y-2.5">
