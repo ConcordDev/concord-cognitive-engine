@@ -11,7 +11,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ImagePlus, Brush } from 'lucide-react';
 import { an, cc, secs, uploadMedia, type Release } from './lt';
 import { drawFrame, type Anim } from './draw';
-import { safeLocalMediaUrl } from '@/lib/safe-media-url';
 
 const PREVIEWS = [3, 5, 10, 15, 30, 60, 90];
 
@@ -88,7 +87,8 @@ export function PublishDesk({ anim, mediaId, runtimeSec, openDrawing, onOpenScre
           <div className="space-y-1.5">
             <div className="lt-reel !aspect-[4/5] flex items-center justify-center text-[11px] text-[#a9a39a]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {poster ? <img src={safeLocalMediaUrl(poster.url) || undefined} alt="Poster" /> : 'No poster'}
+              {/* Inline allowlist guard at the sink (CB-1280): CodeQL recognises the check here, not behind a helper call. */}
+              {poster && (poster.url.startsWith('blob:') || poster.url.startsWith('data:image/png;base64,') || poster.url.startsWith('data:image/jpeg;base64,') || poster.url.startsWith('data:image/webp;base64,')) ? <img src={poster.url} alt="Poster" /> : 'No poster'}
             </div>
             <button type="button" className="lt-btn lt-btn-quiet w-full !min-h-[30px] text-[12px]" onClick={() => { void posterFromDrawing(); }} data-testid="lt-poster-drawing"><Brush className="h-3.5 w-3.5" /> Drawing {openDrawing + 1}</button>
             <button type="button" className="lt-btn lt-btn-quiet w-full !min-h-[30px] text-[12px]" onClick={() => fileRef.current?.click()}><ImagePlus className="h-3.5 w-3.5" /> Upload</button>

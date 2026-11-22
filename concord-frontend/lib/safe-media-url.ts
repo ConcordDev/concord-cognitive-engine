@@ -12,6 +12,14 @@
  * and the caller renders no image / treats the probe as failed.
  * Pattern precedent: safeLinkUrl in lib/safe-url.ts and sanitizeUrl in
  * app/messages/page.tsx.
+ *
+ * CB-1280 note: the three original sinks (PublishDesk, ReleaseDesk,
+ * fo.ts probeDuration) no longer call this helper — CodeQL closed the
+ * first alerts and re-raised them (#6014–6016) because it does not
+ * treat a helper's return value as sanitized, so those sinks carry the
+ * same allowlist as an inline guard on the sink value itself. This
+ * helper keeps the policy for non-analyzer contexts, and its vitest
+ * (tests/safe-media-url.test.ts) pins the policy the guards mirror.
  */
 
 const DATA_IMAGE = /^data:image\/(png|jpeg|webp);base64,/;

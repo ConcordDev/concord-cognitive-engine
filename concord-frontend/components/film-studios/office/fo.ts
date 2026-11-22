@@ -2,7 +2,6 @@
 
 /** Shared calls and helpers for the Production Office. */
 import { lensRun } from '@/lib/api/client';
-import { safeLocalMediaUrl } from '@/lib/safe-media-url';
 
 export interface Res<T> { ok: boolean; result: T | null; error: string | null }
 export async function fs<T>(action: string, input: Record<string, unknown> = {}): Promise<Res<T>> {
@@ -67,9 +66,9 @@ function probeDuration(file: File): Promise<number> {
       el.preload = 'metadata';
       el.onloadedmetadata = () => done(el.duration);
       el.onerror = () => done(0);
-      const safeUrl = safeLocalMediaUrl(url);
-      if (!safeUrl) { done(0); return; }
-      el.src = safeUrl;
+      // Inline guard at the sink (CB-1280): the object URL minted above
+      // is the only value ever assigned here, and only as a blob: URL.
+      if (url.startsWith('blob:')) { el.src = url; } else { done(0); }
     } catch { resolve(0); }
   });
 }
