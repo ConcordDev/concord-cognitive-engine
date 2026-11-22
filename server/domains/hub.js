@@ -18,6 +18,7 @@
 // Macros: activity-feed, activity-record, district-stats, hub-totals.
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { registerLensExportProvider } from "../lib/lens-export.js";
 export default function registerHubActions(registerLensAction) {
   registerLensAction = guardAnonWrites(registerLensAction); // anonymous callers can read, not write (lib/lens-authz.js)
   // ── STATE plumbing ───────────────────────────────────────────────
@@ -288,5 +289,27 @@ export default function registerHubActions(registerLensAction) {
         },
       };
     } catch (e) { return { ok: false, error: String(e?.message || e) }; }
+  });
+  // export.no_file.hub (§D remainder, B11): the hub's recorded activity
+  // lives in STATE.hubActivity — a flat event array, not a <domain>Lens
+  // bag — so the shared STATE gather cannot reach it and the Export menu
+  // produced no file for the hub at all. The provider emits the caller's
+  // OWN recorded activity events (actor === the caller, the attribution
+  // activity-record itself stamps). World-generated rows carry no caller
+  // actor and never ride a personal export; another user's events never
+  // leak. An anonymous caller has no takeout.
+  registerLensExportProvider("hub", (ctx) => {
+    const userId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null;
+    if (!userId || userId === "anon") return [];
+    const events = store().hubActivity;
+    if (!Array.isArray(events)) return [];
+    return events
+      .filter((e) => e && e.actor != null && String(e.actor) === String(userId))
+      .map((e) => ({
+        id: e.id, type: "activity",
+        title: e.summary || e.id,
+        createdAt: e.at || null, updatedAt: e.at || null,
+        data: e,
+      }));
   });
 }

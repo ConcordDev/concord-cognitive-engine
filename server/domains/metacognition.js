@@ -1138,6 +1138,7 @@ export default function registerMetacognitionActions(registerLensAction) {
     const rows = [];
     for (const d of mcDecisions(m, userId)) {
       rows.push({
+        id: d.id,
         type: "decision",
         title: d.title,
         domain: d.domain,
@@ -1149,6 +1150,7 @@ export default function registerMetacognitionActions(registerLensAction) {
     }
     for (const r of mcReflections(m, userId)) {
       rows.push({
+        id: r.id,
         type: "reflection",
         title: r.title,
         note: r.note || "",
