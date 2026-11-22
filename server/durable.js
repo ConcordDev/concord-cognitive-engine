@@ -298,11 +298,22 @@ export function registerDurableEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   // POST /api/marketplace/listings — create draft
+  // Ownership (CB-1279 ticket A): the listing's owner is the session
+  // caller (actorFromReq), never the request body — before this fix any
+  // caller, signed in or not, could create a listing owned by any user
+  // id they named in owner_user_id. A body-supplied owner is ignored.
+  // There is no create-on-behalf capability in this module (the attach
+  // gate below treats admins as exempt callers acting under their own
+  // id, and the distribution release insert writes under its caller's
+  // own flow), so admins likewise own the listings they create.
   app.post("/api/marketplace/listings", (req, res) => {
     try {
-      const { owner_user_id, title, description = "", price_cents = 0, currency = "USD", license_id } = req.body;
-      if (!owner_user_id) return res.status(400).json({ error: "owner_user_id required" });
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
+      const { title, description = "", price_cents = 0, currency = "USD", license_id } = req.body;
       if (!title) return res.status(400).json({ error: "title required" });
+      const owner_user_id = actor.userId;
 
       const id = uid("lst");
       const now = nowISO();
