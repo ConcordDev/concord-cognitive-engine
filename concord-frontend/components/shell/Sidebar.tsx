@@ -105,16 +105,26 @@ export function Sidebar() {
     }
   }, [pathname]);
 
-  // Close mobile sidebar on escape
+  // Escape closes the innermost open layer (CB-1271): an expanded
+  // sub-lens expander first — collapsing it and returning focus to its
+  // button, the contract keyboard users expect — then the mobile
+  // sidebar itself.
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
+      if (e.key !== 'Escape') return;
+      if (expandedCore) {
+        const id = expandedCore;
+        setExpandedCore(null);
+        requestAnimationFrame(() => {
+          document.getElementById(`sidebar-expand-${id}`)?.focus();
+        });
+      } else if (sidebarOpen) {
         setSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [sidebarOpen, setSidebarOpen]);
+  }, [expandedCore, sidebarOpen, setSidebarOpen]);
 
   const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => {
@@ -409,6 +419,7 @@ const CoreLensNavItem = memo(function CoreLensNavItem({
         {/* Expand toggle for absorbed lenses */}
         {showLabel && absorbed.length > 0 && (
           <button
+            id={`sidebar-expand-${core.id}`}
             onClick={onToggleExpand}
             className="p-1.5 text-gray-400 hover:text-gray-300 transition-colors rounded"
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${core.name} sub-lenses`}
