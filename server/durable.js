@@ -381,10 +381,25 @@ export function registerDurableEndpoints(app, db) {
   });
 
   // POST /api/marketplace/listings/:id/publish
+  // Ownership gate (CB-1279 ticket B): the same gate as the attach
+  // route (CB-1258) — the caller comes from the authenticated session
+  // (actorFromReq), never the request body. Before this gate any
+  // caller, signed in or not, could publish any listing that had an
+  // asset, and the publish was logged under the listing owner's id.
+  // Order follows the attach gate: 401 -> 404 -> 403, nothing written
+  // on refusal, and the publish event is logged under the caller.
   app.post("/api/marketplace/listings/:id/publish", (req, res) => {
     try {
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
       const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(req.params.id);
       if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+      const admin = isLogAdmin(actor);
+      if (!admin && listing.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this listing" });
+      }
       if (listing.visibility === "published") return res.json({ ok: true, message: "Already published" });
 
       // Must have at least one asset
@@ -395,7 +410,7 @@ export function registerDurableEndpoints(app, db) {
 
       const tx = db.transaction(() => {
         db.prepare("UPDATE marketplace_listings SET visibility = 'published', updated_at = ? WHERE id = ?").run(nowISO(), req.params.id);
-        logEvent(db, "marketplace.listing_published", listing.owner_user_id, { listingId: req.params.id }, req.headers["x-request-id"]);
+        logEvent(db, "marketplace.listing_published", actor.userId, { listingId: req.params.id }, req.headers["x-request-id"]);
       });
       tx();
 
