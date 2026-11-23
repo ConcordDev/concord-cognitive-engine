@@ -2118,7 +2118,7 @@ import {
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
-import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed } from "./lib/dtu-ownership.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed, DTU_ADMIN_ROLES } from "./lib/dtu-ownership.js";
 import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
 import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
@@ -38881,7 +38881,24 @@ register("paper","create", (ctx, input) => {
 register("paper","build", (ctx, input) => {
   const id = String(input.paperId||"");
   const p = STATE.papers.get(id);
-  if (!p) return { ok:false, error:"paper not found" };
+  if (!p) return { ok:false, error:"paper not found", status:404 };
+  // CB-1324 F2: papers are org-owned (create stamps orgId from the session
+  // actor) and build OVERWRITES outline/sections/refs — the caller must be
+  // the owning org or an admin-class role. Secured modes: signed-out 401,
+  // foreign-org or org-less paper 403 for non-admins, nothing written on
+  // refusal. AUTH_MODE=public keeps the local-first exception, mirroring
+  // dtuMutationDenial.
+  if (AUTH_MODE !== "public") {
+    const actor = ctx?.actor || null;
+    const callerId = actor?.userId || actor?.id || actor?.odId || null;
+    if (!callerId) return { ok:false, error:"Authentication required", status:401, code:"AUTH_REQUIRED" };
+    if (!DTU_ADMIN_ROLES.has(String(actor?.role || ""))) {
+      const callerOrg = actor?.orgId || null;
+      if (!p.orgId || !callerOrg || p.orgId !== callerOrg) {
+        return { ok:false, error:"unauthorized: you can only build papers owned by your org", status:403, code:"FORBIDDEN" };
+      }
+    }
+  }
   // Minimal build: pick top DTUs by tags/topic and build a markdown-ish outline.
   const topic = p.topic;
   const { top } = retrieveDTUs(topic, { topK: 8, minScore: 0.06, randomK: 0, oppositeK: 0 });
