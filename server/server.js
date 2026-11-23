@@ -40847,6 +40847,17 @@ allowMacro("dtu", "shadow_access", _ACL_ADMIN);
 allowMacro("goals", "approve", _ACL_OWNER);
 allowMacro("goals", "activate", _ACL_OWNER);
 allowMacro("goals", "config", _ACL_OWNER);
+// CB-1324 machinery tagging: platform operator machinery that predates
+// the ACL matrix and carried no tag, so the human gate passed members —
+// the DTU merge sweeps, the MEGA promotion engine, the synthesis
+// heartbeat, and emergent-agent control. Admin-tier per-macro entries:
+// the human gate now denies members; internal callers bypass as before.
+allowMacro("dtu", "dedupeSweep", _ACL_ADMIN);
+allowMacro("evolution", "dedupe", _ACL_ADMIN);
+allowMacro("system", "promotionTick", _ACL_ADMIN);
+allowMacro("heartbeat", "tick", _ACL_ADMIN);
+allowMacro("agent", "enable", _ACL_ADMIN);
+allowMacro("agent", "tick", _ACL_ADMIN);
 allowMacro("chicken3", "meta_propose", _ACL_OWNER);
 allowMacro("chicken3", "meta_commit_quiet", _ACL_OWNER);
 allowMacro("entity", "terminal_approve", _ACL_ADMIN);
