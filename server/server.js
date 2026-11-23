@@ -39286,7 +39286,19 @@ register("verify","lineageLink", (ctx, input) => {
   if (!childId || !parents.length) return { ok:false, reason:"missing_child_or_parents" };
   // Only link regular DTUs - shadow DTUs are internal
   const child = STATE.dtus.get(childId);
-  if (!child || isShadowDTU(child)) return { ok:false, reason:"child_not_found" };
+  if (!child || isShadowDTU(child)) return { ok:false, reason:"child_not_found", status:404 };
+  // CB-1324 F3: lineage is the provenance record — appending parents to a
+  // DTU is a mutation of that DTU and rides the canonical gate (the
+  // dtu.update shape): signed-out 401, another user's or an
+  // ownerless/system DTU 403 for non-admins, nothing written on refusal.
+  // Parent back-links stay ungated by design: they only record the claim
+  // this (now owner-gated) call makes.
+  const denial = dtuMutationDenial(child, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null,
+  });
+  if (denial) return { ok:false, reason:"forbidden_not_owner", error: denial.error, status: denial.status, code: denial.code };
   child.lineage = child.lineage || { parents:[], children:[] };
   child.lineage.parents = Array.from(new Set([...(child.lineage.parents||[]), ...parents]));
   child.updatedAt = nowISO();
