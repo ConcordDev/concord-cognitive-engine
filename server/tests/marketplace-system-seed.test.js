@@ -152,7 +152,7 @@ describe("purchase of a system or missing listing is refused", () => {
 
     const refused = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: system.body.listing.id }),
     });
     assert.equal(refused.status, 403);
@@ -161,7 +161,7 @@ describe("purchase of a system or missing listing is refused", () => {
 
     const missing = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: "does-not-exist" }),
     });
     assert.equal(missing.status, 404);
@@ -170,7 +170,7 @@ describe("purchase of a system or missing listing is refused", () => {
 
     const bought = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: real.body.listing.id }),
     });
     assert.equal(bought.status, 201);
@@ -311,7 +311,7 @@ describe("seed cleanup is non-destructive and dry-run by default", () => {
 
       const orderOther = await json(`${app.url}/api/marketplace/orders`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-test-member": "buyer" },
         body: JSON.stringify({ userId: "buyer", listingId: otherSystem.body.listing.id }),
       });
       assert.equal(orderOther.status, 403);

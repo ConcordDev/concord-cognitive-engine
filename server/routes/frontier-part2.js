@@ -383,8 +383,19 @@ export default function createFrontierRoutesPart2({ requireAuth, db, mediaListin
   }));
 
   router.post("/marketplace/orders", auth, wrap((req, res) => {
-    const { userId, listingId } = req.body;
-    if (!userId || !listingId) throw new Error("userId and listingId are required");
+    // CB-1357(b) (the CB-1279-C follow-on): the buyer is the authenticated
+    // session caller (req.user, set by the global session layer / this
+    // router's auth) — never a userId from the request body, which let
+    // anyone place an order under another user's id. A body-supplied
+    // userId is ignored; there is no order-on-behalf capability in this
+    // route family, so an admin likewise orders under their own id.
+    const userId = req.user?.id ?? req.user?.userId ?? null;
+    if (!userId || userId === "anon") {
+      res.status(401).json({ ok: false, error: "authentication_required" });
+      return;
+    }
+    const { listingId } = req.body;
+    if (!listingId) throw new Error("listingId is required");
     const listing = marketplaceListings.get(listingId);
     if (!listing) {
       res.status(404).json({ ok: false, error: "Listing not found", reason: "listing_not_found" });
