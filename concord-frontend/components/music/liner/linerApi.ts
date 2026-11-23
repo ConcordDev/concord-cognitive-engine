@@ -204,6 +204,16 @@ function csrf(): Record<string, string> {
 }
 
 /**
+ * Cloudflare's edge rejects a request body over 100 MB with a bare 413.
+ * Stop a little under that, in words, instead of sending a file the edge will drop.
+ */
+export const MAX_TRACK_UPLOAD_BYTES = 95 * 1024 * 1024;
+
+export function trackTooLargeMessage(filename: string): string {
+  return `${filename} is over 95 MB, so it was not uploaded. The network limit is 100 MB.`;
+}
+
+/**
  * Upload one audio file as a private media DTU (it becomes public when its
  * release is published). Returns the media id.
  */
@@ -213,15 +223,22 @@ export async function uploadTrackFile(
   durationSec: number,
   onProgress?: (fraction: number) => void,
 ): Promise<Envelope<{ mediaId: string }>> {
+  if (file.size > MAX_TRACK_UPLOAD_BYTES) {
+    return { ok: false, error: trackTooLargeMessage(file.name) };
+  }
   const q = new URLSearchParams({
     title,
     filename: file.name,
     mediaType: 'audio',
-    duration: String(Math.max(1, Math.round(durationSec || 1))),
     privacy: 'private',
     previewStart: '0',
     previewDuration: '0',
   });
+  // No measured length: omit duration. Sending 1 would store a made-up length
+  // (the server trusts a positive declared duration over the file itself).
+  if (Number.isFinite(durationSec) && durationSec > 0) {
+    q.set('duration', String(Math.max(1, Math.round(durationSec))));
+  }
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api/media/upload-raw?${q.toString()}`);
@@ -235,8 +252,15 @@ export async function uploadTrackFile(
       try { body = JSON.parse(xhr.responseText || '{}'); } catch { /* non-JSON */ }
       const id = body.mediaDTU?.id || body.id || body.media?.id;
       if (xhr.status >= 200 && xhr.status < 300 && id) resolve({ ok: true, result: { mediaId: id } });
-      else if (xhr.status === 413) resolve({ ok: false, error: `${file.name} is too large for one upload.` });
-      else resolve({ ok: false, error: body.message || body.error || `Upload failed (${xhr.status}).` });
+      else if (xhr.status === 413) {
+        const detail = typeof body.message === 'string' && body.message.trim() ? body.message.trim() : '';
+        resolve({
+          ok: false,
+          error: detail
+            ? `${file.name} is too large to upload. ${detail}`
+            : `${file.name} was rejected as too large (HTTP 413). The network limit is 100 MB.`,
+        });
+      } else resolve({ ok: false, error: body.message || body.error || `Upload failed (${xhr.status}).` });
     };
     xhr.send(file);
   });
