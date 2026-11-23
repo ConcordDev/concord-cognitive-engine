@@ -2,7 +2,9 @@
 //
 // The declaration of record after the build: the lens's tracked
 // substrate (mood / sleep / practice / gratitude, per-user STATE) is
-// REAL_LIVE with liveFromSubstrate, and NIH MedlinePlus remains the
+// REAL_WORKSPACE with liveFromSubstrate (FIX-mental-health-004 moved it
+// from REAL_LIVE: personal tracking data is the user's workspace, not a
+// live-polled feed; the frontend manifest and its tests already said so), and NIH MedlinePlus remains the
 // declared source for the reference side (crisis/resource content),
 // scoped to the resource browser — the scoping R3's first pass
 // determined (F1: the old REAL_FREE/"Real" declaration mis-scoped the
@@ -21,11 +23,11 @@ const manifestSrc = readFileSync(
 );
 
 describe("mental-health — declaration (S-MH-4)", () => {
-  it("both registry keys declare REAL_LIVE from the user's own substrate", () => {
+  it("both registry keys declare REAL_WORKSPACE from the user's own substrate", () => {
     for (const key of ["mental_health", "mental-health"]) {
       const entry = REGISTRY[key];
       assert.ok(entry, `registry entry '${key}' missing`);
-      assert.equal(entry.tier, TIER.REAL_LIVE, `${key} tier`);
+      assert.equal(entry.tier, TIER.REAL_WORKSPACE, `${key} tier`);
       assert.equal(entry.liveFromSubstrate, true, `${key} liveFromSubstrate`);
     }
   });
@@ -41,12 +43,12 @@ describe("mental-health — declaration (S-MH-4)", () => {
     }
   });
 
-  it("manifest dataTier for mental-health is REAL_LIVE", () => {
+  it("manifest dataTier for mental-health is REAL_WORKSPACE", () => {
     const i = manifestSrc.indexOf("domain: 'mental-health'");
     assert.ok(i >= 0, "manifest entry present");
     const block = manifestSrc.slice(i, i + 1400);
-    assert.match(block, /dataTier: 'REAL_LIVE'/);
-    assert.doesNotMatch(block, /dataTier: 'REAL_FREE'/);
+    assert.match(block, /dataTier: 'REAL_WORKSPACE'/);
+    assert.doesNotMatch(block, /dataTier: 'REAL_(FREE|LIVE)'/);
   });
 
   it("the substrate the declaration claims is actually registered", () => {

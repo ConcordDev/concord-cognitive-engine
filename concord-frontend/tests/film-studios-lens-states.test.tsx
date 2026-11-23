@@ -283,7 +283,8 @@ describe('film studios production', () => {
     fireEvent.change(view.getByTestId('film-edit-location'), { target: { value: 'Hallway' } });
     fireEvent.click(view.getByRole('button', { name: 'Save' }));
     expect(await view.findByRole('heading', { name: 'INT. Hallway - DAY' })).toBeInTheDocument();
-    const deleteButtons = view.getAllByRole('button', { name: 'Delete' });
+    // the scene's own Delete (not a room's), the last one outside the production desk
+    const deleteButtons = view.getAllByRole('button', { name: 'Delete' }).filter((b) => !b.closest('[aria-label="Production desk"]'));
     fireEvent.click(deleteButtons[deleteButtons.length - 1]);
     expect(await view.findByRole('button', { name: 'Delete this scene?' })).toBeInTheDocument();
     fireEvent.click(view.getByRole('button', { name: 'Delete this scene?' }));

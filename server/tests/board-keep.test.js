@@ -34,7 +34,7 @@ describe("board keep + thread draft", () => {
         description: "Real card created by the board keep proof.",
         labels: ["frontend"],
         dueDate: "2026-11-01",
-        assignee: "alex",
+        // (an assignee must be someone on the board, so none is set here)
       },
     }, ctx);
     assert.equal(cardR.ok, true, "card-create should succeed");

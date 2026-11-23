@@ -159,7 +159,8 @@ describe("graph — auto-layout algorithms", () => {
 
 describe("graph — bidirectional DTU sync", () => {
   it("links a node to a DTU then syncs edits back", () => {
-    globalThis._concordSTATE.dtus.set("dtu-1", { id: "dtu-1", title: "old", content: "old" });
+    // The DTU is graph_a's own: only your own DTU follows your map edits.
+    globalThis._concordSTATE.dtus.set("dtu-1", { id: "dtu-1", title: "old", content: "old", author: "graph_a" });
     const { map, a } = seedMap(ctxA);
     const link = call("link-node-dtu", ctxA, { mapId: map.id, nodeId: a.id, dtuId: "dtu-1" });
     assert.equal(link.ok, true);
@@ -169,6 +170,33 @@ describe("graph — bidirectional DTU sync", () => {
     const dtu = globalThis._concordSTATE.dtus.get("dtu-1");
     assert.equal(dtu.title, "Renamed");
     assert.equal(dtu.content, "new body");
+  });
+
+  it("someone else's DTU can be referenced from a map but never rewritten by it", () => {
+    const theirs = { id: "dtu-pub", title: "Their essay", content: "their words", author: "graph_b" };
+    globalThis._concordSTATE.dtus.set("dtu-pub", theirs);
+    const { map, a } = seedMap(ctxA);
+    assert.equal(call("link-node-dtu", ctxA, { mapId: map.id, nodeId: a.id, dtuId: "dtu-pub" }).ok, true);
+    const upd = call("node-update", ctxA, { mapId: map.id, nodeId: a.id, label: "Defaced", notes: "spam" });
+    assert.equal(upd.ok, true); // the map node itself changes
+    const sync = call("sync-to-dtu", ctxA, { mapId: map.id, nodeId: a.id });
+    assert.equal(sync.ok, false);
+    assert.match(sync.error, /only sync to a DTU you made/);
+    assert.deepEqual([theirs.title, theirs.content], ["Their essay", "their words"]);
+  });
+
+  it("a private DTU of someone else can't be linked (answers like a missing id)", () => {
+    globalThis._concordSTATE.dtus.set("dtu-priv", { id: "dtu-priv", title: "diary", author: "graph_b", privacy: "private" });
+    globalThis._concordSTATE.dtus.set("dtu-int", { id: "dtu-int", title: "sys", visibility: "internal" });
+    const { map, a } = seedMap(ctxA);
+    for (const id of ["dtu-priv", "dtu-int", "nope"]) {
+      const r = call("link-node-dtu", ctxA, { mapId: map.id, nodeId: a.id, dtuId: id });
+      assert.equal(r.ok, false, id);
+      assert.match(r.error, /doesn't exist/);
+    }
+    // its owner can
+    const mine = seedMap(ctxB);
+    assert.equal(call("link-node-dtu", ctxB, { mapId: mine.map.id, nodeId: mine.a.id, dtuId: "dtu-priv" }).ok, true);
   });
 
   it("rejects sync for a node with no linked DTU", () => {

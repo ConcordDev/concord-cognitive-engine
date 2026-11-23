@@ -24,11 +24,7 @@ describe('CB-0454 count-vs-list genus', () => {
     expect(src).toContain("'No patients yet.'");
   });
 
-  it('FIX-board-017: prioritization buckets are labelled as WSJF quartiles, not priorities', () => {
-    const src = read('components/board/TasksPanel.tsx');
-    expect(src).toContain('Top quartile');
-    expect(src).toContain('Bottom quartile');
-    expect(src).toContain('split into quartiles — not task priority');
-    expect(src).not.toContain('<p className="text-[10px] capitalize mb-1 opacity-80">{tier}</p>');
-  });
+  // FIX-board-017 pinned the old task panel's WSJF quartile labels; that panel is
+  // gone (the Cork Wall measures flow from real column moves instead), so the
+  // pin left with it.
 });

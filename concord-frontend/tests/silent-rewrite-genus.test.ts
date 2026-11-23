@@ -18,10 +18,11 @@ const read = (rel: string) =>
   fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
 
 describe('code-003: a blank rename is cancelled in words, not in silence', () => {
-  const src = read('components/code/FileExplorer.tsx');
+  // The file tree moved into Proof's side panes when the Code lens became Proof.
+  const src = read('components/code/proof/SidePanes.tsx');
   it('blank commit names the cancellation and keeps the name', () => {
     expect(src).toContain('The rename was cancelled — a file name cannot be empty.');
-    expect(src).toContain('setRenameError');
+    expect(src).toContain("if (!to) { ps.setError(");
   });
 });
 

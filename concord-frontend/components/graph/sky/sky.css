@@ -1,0 +1,69 @@
+/* The Star Chart — the Graph lens.
+   The knowledge lattice as an engraved star atlas at night: deep indigo
+   sky, stars coloured by spectral class (the DTU's shelf) and sized by
+   magnitude (real links + citations), constellation figures in pale gold,
+   a faint coordinate grid, names set like an old atlas. Panels are
+   parchment-on-night. One action colour: the atlas gold. */
+
+.sk {
+  --sk-night: #070d1f;
+  --sk-night-2: #0d1733;
+  --sk-night-3: #15214a;
+  --sk-ink: #e9e3d0;        /* parchment text on night */
+  --sk-ink-2: #c2bba5;
+  --sk-muted: #8e8a7c;
+  --sk-faint: #5d6582;
+  --sk-rule: rgba(201, 178, 124, 0.22);
+  --sk-gold: #d8b766;       /* the one action colour; constellation figures */
+  --sk-gold-2: #f0d48b;
+  --sk-grid: rgba(120, 150, 220, 0.14);
+  --sk-route: #f0d48b;
+  --sk-mine: #8fd3c7;       /* your own constellations */
+  --sk-bad: #ff9a8a;
+  --sk-good: #9be2b2;
+  background: radial-gradient(120% 90% at 50% 10%, var(--sk-night-3) 0%, var(--sk-night-2) 35%, var(--sk-night) 75%), var(--sk-night);
+  color: var(--sk-ink);
+  font-family: var(--sk-font-sans), system-ui, sans-serif;
+}
+.sk ::selection { background: rgba(216, 183, 102, 0.3); }
+.sk-atlas { font-family: var(--sk-font-atlas), Georgia, serif; }
+.sk-mono { font-family: var(--sk-font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.sk-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sk-muted); }
+
+.sk-panel { background: rgba(10, 17, 40, 0.86); border: 1px solid var(--sk-rule); border-radius: 10px; backdrop-filter: blur(6px); box-shadow: 0 18px 40px -20px rgba(0, 0, 0, 0.8); }
+.sk-card { background: linear-gradient(180deg, rgba(233, 227, 208, 0.06), rgba(233, 227, 208, 0.02)); border: 1px solid var(--sk-rule); border-radius: 10px; }
+
+.sk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(233, 227, 208, 0.28); background: transparent; color: var(--sk-ink); font-size: 12.5px; font-weight: 600; transition: background 140ms, border-color 140ms, color 140ms; }
+.sk-btn:hover:not(:disabled) { border-color: var(--sk-gold); color: var(--sk-gold-2); }
+.sk-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.sk-btn[aria-pressed='true'] { background: rgba(216, 183, 102, 0.16); border-color: var(--sk-gold); color: var(--sk-gold-2); }
+.sk-btn-gold { background: var(--sk-gold); border-color: var(--sk-gold); color: #1a1405; }
+.sk-btn-gold:hover:not(:disabled) { background: var(--sk-gold-2); border-color: var(--sk-gold-2); color: #1a1405; }
+.sk-btn:focus-visible, .sk-tab:focus-visible, .sk-link:focus-visible { outline: 2px solid var(--sk-gold); outline-offset: 2px; }
+@media (pointer: coarse) { .sk-btn { min-height: 44px; } }
+.sk-input { width: 100%; min-height: 36px; padding: 6px 12px; border-radius: 999px; border: 1px solid rgba(233, 227, 208, 0.25); background: rgba(7, 13, 31, 0.7); color: var(--sk-ink); font-size: 13.5px; }
+.sk-input::placeholder { color: var(--sk-faint); }
+.sk-input:focus { outline: none; border-color: var(--sk-gold); }
+
+.sk-tab { padding: 7px 4px; font-size: 12.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sk-muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.sk-tab:hover { color: var(--sk-ink); }
+.sk-tab[aria-selected='true'] { color: var(--sk-gold-2); border-bottom-color: var(--sk-gold); }
+
+.sk-link { color: var(--sk-ink); text-align: left; text-decoration: underline; text-decoration-color: rgba(216, 183, 102, 0.35); text-underline-offset: 3px; }
+.sk-link:hover { color: var(--sk-gold-2); text-decoration-color: var(--sk-gold); }
+.sk-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+
+.sk-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.sk-canvas:active { cursor: grabbing; }
+.sk-tip { position: absolute; pointer-events: none; padding: 4px 8px; border-radius: 6px; background: rgba(7, 13, 31, 0.92); border: 1px solid var(--sk-rule); font-size: 12px; color: var(--sk-ink); white-space: nowrap; transform: translate(10px, -50%); }
+
+.sk-error { border-left: 2px solid var(--sk-bad); padding: 6px 10px; background: rgba(255, 154, 138, 0.08); color: var(--sk-bad); font-size: 12.5px; border-radius: 0 6px 6px 0; }
+.sk-ok { border-left: 2px solid var(--sk-good); padding: 6px 10px; background: rgba(155, 226, 178, 0.08); color: var(--sk-good); font-size: 12.5px; border-radius: 0 6px 6px 0; }
+.sk-skeleton { border-radius: 8px; background: linear-gradient(90deg, rgba(233, 227, 208, 0.04), rgba(233, 227, 208, 0.1), rgba(233, 227, 208, 0.04)); background-size: 200% 100%; animation: sk-shimmer 1.6s ease-in-out infinite; }
+@keyframes sk-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.sk-rise { animation: sk-rise 200ms ease-out; }
+@keyframes sk-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .sk-skeleton, .sk-rise { animation: none; } }
+
+/* the Chart room panels (maps & mind maps) sit on night with parchment text */
+.sk-room { color: var(--sk-ink); }

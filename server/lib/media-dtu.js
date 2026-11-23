@@ -446,6 +446,10 @@ export function canAccessMediaDTU(STATE, mediaDTU, viewerId) {
 
   if (!viewerId) return { allowed: false, reason: "Authentication required" };
   if (mediaDTU.author === viewerId) return { allowed: true };
+  // A buyer keeps their copy even after the author takes it down, and a
+  // guest the author invited to a screening may watch while it runs.
+  if (Array.isArray(mediaDTU.licensedUserIds) && mediaDTU.licensedUserIds.includes(viewerId)) return { allowed: true };
+  if (Array.isArray(mediaDTU.screeningUserIds) && mediaDTU.screeningUserIds.includes(viewerId)) return { allowed: true };
 
   if (privacy === "followers-only") {
     const social = STATE._social;
@@ -526,9 +530,34 @@ function draftMediaHiddenFromViewer(STATE, mediaDTU, viewerId) {
  * @param {string|null} viewerId
  * @returns {{ ok: boolean, mediaDTU?: object, status?: number, error?: string }}
  */
-export function getMediaDTUForViewer(STATE, mediaId, viewerId) {
+/**
+ * May a share link's token open this media? A maker who shares a piece of
+ * work (an animation with its soundtrack, say) puts that link's token on the
+ * media it needs; whoever holds the link may stream exactly those files, and
+ * revoking the link takes the token off again.
+ */
+const SHARE_TOKEN_RE = /^[A-Za-z0-9_-]{16,80}$/;
+export function mediaShareTokenOk(mediaDTU, token) {
+  if (!mediaDTU || typeof token !== "string" || !SHARE_TOKEN_RE.test(token)) return false;
+  return Array.isArray(mediaDTU.shareTokens) && mediaDTU.shareTokens.includes(token);
+}
+export function setMediaShareToken(STATE, mediaId, token, allowed) {
+  if (!mediaId || typeof token !== "string" || !SHARE_TOKEN_RE.test(token)) return { ok: false, error: "mediaId and a share token are required" };
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  const list = Array.isArray(dtu.shareTokens) ? dtu.shareTokens : [];
+  dtu.shareTokens = allowed ? (list.includes(token) ? list : [...list, token].slice(-20)) : list.filter((t) => t !== token);
+  rememberMedia(STATE, dtu);
+  return { ok: true };
+}
+
+export function getMediaDTUForViewer(STATE, mediaId, viewerId, opts = {}) {
   const result = getMediaDTU(STATE, mediaId);
   if (!result.ok) return { ok: false, status: 404, error: "Media not found" };
+  if (opts.shareToken && mediaShareTokenOk(result.mediaDTU, opts.shareToken)) {
+    return { ok: true, mediaDTU: result.mediaDTU, viaShare: true };
+  }
 
   if (draftMediaHiddenFromViewer(STATE, result.mediaDTU, viewerId)) {
     const status = !viewerId ? 401 : 404;
@@ -1224,7 +1253,10 @@ export function setMediaSaleTerms(STATE, mediaId, authorId, { streaming = "full"
     { tier: "commercial", enabled: gated, price: gated ? Number(price) : 0, currency: "CC" },
   ];
   dtu.previewStart = 0;
-  dtu.previewDuration = gated ? Math.max(15, Math.min(90, Math.round(Number(previewSec) || 30))) : 0;
+  // The caller validates its own floor (music/film 15 s, animation 3 s); this
+  // never stretches a short preview past what the maker chose.
+  // previewSec 0 means no preview at all: only buyers get any bytes.
+  dtu.previewDuration = gated ? (Number(previewSec) === 0 ? 0 : Math.max(1, Math.min(90, Math.round(Number(previewSec) || 30)))) : 0;
   dtu.privacy = "public";
   dtu.scope = "global";
   dtu.updatedAt = new Date().toISOString();
@@ -1234,6 +1266,18 @@ export function setMediaSaleTerms(STATE, mediaId, authorId, { streaming = "full"
 }
 
 /** A purchase entitles the buyer to the full stream of a track (read by viewerMayStreamFull). Idempotent; persisted. */
+/** Let (or stop letting) a screening guest watch the author's private media. */
+export function setMediaScreeningGuest(STATE, mediaId, userId, allowed) {
+  if (!mediaId || !userId) return { ok: false, error: "mediaId and userId are required" };
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
+  if (!dtu) return { ok: false, error: "Media not found" };
+  const list = Array.isArray(dtu.screeningUserIds) ? dtu.screeningUserIds : [];
+  dtu.screeningUserIds = allowed ? (list.includes(userId) ? list : [...list, userId]) : list.filter((u) => u !== userId);
+  rememberMedia(STATE, dtu);
+  return { ok: true };
+}
+
 export function grantMediaEntitlement(STATE, mediaId, userId) {
   if (!mediaId || !userId) return { ok: false, error: "mediaId and userId are required" };
   const media = getMediaState(STATE);

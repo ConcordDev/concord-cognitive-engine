@@ -2456,7 +2456,9 @@ export const LENS_MANIFESTS: LensManifest[] = [
     exports: ['json', 'csv', 'pdf'],
     actions: ['analyze', 'generate', 'validate', 'export', 'summarize'],
     category: 'creative',
-    dataTier: 'SIM_GRADE_A',
+    // The animator's own drawings, soundtrack and releases (server/domains/
+    // animation.js, persisted per user) — real work, not a simulation.
+    dataTier: 'REAL_WORKSPACE',
     emptyState: {
       headline: "Animate.",
       caption: "Keyframes, timelines, sprites, sequences, rigs \u2014 SIM_GRADE_A engine renders against the lens schema.",

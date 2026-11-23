@@ -136,7 +136,7 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-[var(--fo-muted,#a1a1aa)]"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (loadError) {
@@ -153,45 +153,45 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
   return (
     <div className="space-y-4">
       {/* New sequence */}
-      <section className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+      <section className="flex items-center gap-2 bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl p-3">
         <input placeholder="Sequence name" value={seqForm.name} onChange={(e) => setSeqForm({ ...seqForm, name: e.target.value })}
-          className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+          className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
         <select value={seqForm.fps} onChange={(e) => setSeqForm({ ...seqForm, fps: e.target.value })}
-          className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+          className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
           {FPS.map((f) => <option key={f} value={f}>{f} fps</option>)}
         </select>
         <button type="button" onClick={addSeq}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-lg">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white rounded-lg">
           <Plus className="w-3.5 h-3.5" /> Sequence
         </button>
       </section>
 
       {sequences.length === 0 ? (
-        <p className="text-[11px] text-zinc-400 italic py-6 text-center">Create a sequence to start cutting.</p>
+        <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic py-6 text-center">Create a sequence to start cutting.</p>
       ) : (
         <>
           <select value={activeSeq} onChange={(e) => setActiveSeq(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-2 text-xs text-zinc-100">
+            className="w-full bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-2 text-xs text-[var(--fo-ink,#f4f4f5)]">
             {sequences.map((q) => <option key={q.id} value={q.id}>{q.name} · {q.fps} fps · {q.clipCount} clips</option>)}
           </select>
 
           {/* New clip */}
-          <section className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-zinc-900/70 border border-zinc-800 rounded-xl p-3">
+          <section className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-xl p-3">
             <input placeholder="Clip name" value={clipForm.name} onChange={(e) => setClipForm({ ...clipForm, name: e.target.value })}
-              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
             <select value={clipForm.track} onChange={(e) => setClipForm({ ...clipForm, track: e.target.value })}
-              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
               {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
             <input placeholder="Duration (s)" inputMode="decimal" value={clipForm.durationSec}
               onChange={(e) => setClipForm({ ...clipForm, durationSec: e.target.value })}
-              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100" />
+              className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]" />
             <select value={clipForm.transition} onChange={(e) => setClipForm({ ...clipForm, transition: e.target.value })}
-              className="bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100">
+              className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]">
               {TRANSITIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
             </select>
             <button type="button" onClick={addClip}
-              className="flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg">
+              className="flex items-center justify-center gap-1 bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white text-xs font-medium rounded-lg">
               <Plus className="w-3.5 h-3.5" /> Clip
             </button>
           </section>
@@ -199,79 +199,79 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
           {/* Timeline / cut list */}
           {cut && (
             <section>
-              <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-                <Scissors className="w-3.5 h-3.5 text-fuchsia-400" /> Timeline
-                <span className="text-zinc-400 font-normal">· runtime {cut.totalRuntime}</span>
+              <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+                <Scissors className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Timeline
+                <span className="text-[var(--fo-muted,#a1a1aa)] font-normal">· runtime {cut.totalRuntime}</span>
               </h3>
               {Object.keys(cut.tracks).length === 0 ? (
-                <p className="text-[11px] text-zinc-400 italic py-4 text-center">No clips on the timeline yet.</p>
+                <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic py-4 text-center">No clips on the timeline yet.</p>
               ) : (
                 <div className="space-y-2">
                   {Object.entries(cut.tracks).map(([track, clips]) => (
                     <div key={track}>
-                      <p className="text-[10px] font-mono text-zinc-400 mb-1">{track}</p>
+                      <p className="text-[10px] font-mono text-[var(--fo-muted,#a1a1aa)] mb-1">{track}</p>
                       <ul className="space-y-1">
                         {clips.map((c, idx) => (
                           <li key={c.id}
-                            className={cn('bg-zinc-900/70 border-l-4 rounded px-2.5 py-1.5 space-y-1.5', TRACK_COLOR[track] || 'border-zinc-600',
-                              editingClip === c.id && 'ring-1 ring-fuchsia-600/50')}>
+                            className={cn('bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border-l-4 rounded px-2.5 py-1.5 space-y-1.5', TRACK_COLOR[track] || 'border-[var(--fo-rule-2,#52525b)]',
+                              editingClip === c.id && 'ring-1 ring-[rgba(214,58,47,0.45)]')}>
                             <div className="flex items-center gap-2">
-                              <Film className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                              <Film className="w-3.5 h-3.5 text-[var(--fo-muted,#a1a1aa)] shrink-0" />
                               <button type="button" onClick={() => setEditingClip(editingClip === c.id ? null : c.id)}
-                                className="text-xs text-zinc-100 flex-1 truncate text-left hover:text-fuchsia-300">{c.name}</button>
-                              <span className="text-[10px] text-zinc-400">{c.transition.replace(/_/g, ' ')}</span>
-                              <span className="text-[10px] font-mono text-fuchsia-300">{c.startTimecode}–{c.endTimecode}</span>
+                                className="text-xs text-[var(--fo-ink,#f4f4f5)] flex-1 truncate text-left hover:text-[var(--fo-tape,#e879f9)]">{c.name}</button>
+                              <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{c.transition.replace(/_/g, ' ')}</span>
+                              <span className="text-[10px] font-mono text-[var(--fo-tape,#e879f9)]">{c.startTimecode}–{c.endTimecode}</span>
                               <button type="button" onClick={() => moveClip(track, clips, idx, -1)} disabled={idx === 0}
-                                className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20" title="Move up">
+                                className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-ink,#e4e4e7)] disabled:opacity-20" title="Move up">
                                 <ChevronUp className="w-3.5 h-3.5" />
                               </button>
                               <button type="button" onClick={() => moveClip(track, clips, idx, 1)} disabled={idx === clips.length - 1}
-                                className="text-zinc-600 hover:text-zinc-300 disabled:opacity-20" title="Move down">
+                                className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-ink,#e4e4e7)] disabled:opacity-20" title="Move down">
                                 <ChevronDown className="w-3.5 h-3.5" />
                               </button>
                               <button type="button" onClick={() => rippleDelClip(c.id)}
-                                className="text-zinc-600 hover:text-amber-400" title="Ripple delete (close gap)">
+                                className="text-[var(--fo-faint,#52525b)] hover:text-amber-400" title="Ripple delete (close gap)">
                                 <ScissorsLineDashed className="w-3.5 h-3.5" />
                               </button>
-                              <button type="button" onClick={() => delClip(c.id)} className="text-zinc-600 hover:text-rose-400" title="Delete">
+                              <button type="button" onClick={() => delClip(c.id)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]" title="Delete">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                             {editingClip === c.id && (
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1 border-t border-zinc-800">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-1 border-t border-[var(--fo-rule,#27272a)]">
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-400 uppercase">In frame</span>
+                                  <span className="text-[9px] text-[var(--fo-muted,#a1a1aa)] uppercase">In frame</span>
                                   <input inputMode="numeric" defaultValue="0"
                                     onBlur={(e) => updateClip(c.id, { inFrame: Number(e.target.value) || 0, outFrame: Number(e.target.value) + c.durationFrames })}
-                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                                    className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]" />
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-400 uppercase">Out frame</span>
+                                  <span className="text-[9px] text-[var(--fo-muted,#a1a1aa)] uppercase">Out frame</span>
                                   <input inputMode="numeric" defaultValue={String(c.durationFrames)}
                                     onBlur={(e) => updateClip(c.id, { inFrame: 0, outFrame: Number(e.target.value) || c.durationFrames })}
-                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100" />
+                                    className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]" />
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-400 uppercase">Transition</span>
+                                  <span className="text-[9px] text-[var(--fo-muted,#a1a1aa)] uppercase">Transition</span>
                                   <select defaultValue={c.transition}
                                     onChange={(e) => updateClip(c.id, { transition: e.target.value })}
-                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]">
                                     {TRANSITIONS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
                                   </select>
                                 </label>
                                 <label className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] text-zinc-400 uppercase">Track</span>
+                                  <span className="text-[9px] text-[var(--fo-muted,#a1a1aa)] uppercase">Track</span>
                                   <select defaultValue={track}
                                     onChange={(e) => updateClip(c.id, { track: e.target.value })}
-                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]">
                                     {TRACKS.map((t) => <option key={t} value={t}>{t}</option>)}
                                   </select>
                                 </label>
                                 <label className="flex flex-col gap-0.5 col-span-2">
-                                  <span className="text-[9px] text-zinc-400 uppercase">Source media</span>
+                                  <span className="text-[9px] text-[var(--fo-muted,#a1a1aa)] uppercase">Source media</span>
                                   <select defaultValue={c.mediaId || ''}
                                     onChange={(e) => setClipMedia(c.id, e.target.value)}
-                                    className="bg-zinc-950 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-100">
+                                    className="bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-1.5 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]">
                                     <option value="">Unlinked (freeform name only)</option>
                                     {media.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.kind})</option>)}
                                   </select>
@@ -286,28 +286,28 @@ export function FsEditPanel({ projectId, onChange }: { projectId: string; onChan
                 </div>
               )}
               {/* Markers */}
-              <div className="mt-3 pt-2 border-t border-zinc-800">
-                <p className="text-[11px] font-semibold text-zinc-400 mb-1.5">Markers</p>
+              <div className="mt-3 pt-2 border-t border-[var(--fo-rule,#27272a)]">
+                <p className="text-[11px] font-semibold text-[var(--fo-muted,#a1a1aa)] mb-1.5">Markers</p>
                 <div className="flex items-center gap-2 mb-1.5">
                   <input placeholder="Marker label" value={markerForm.label}
                     onChange={(e) => setMarkerForm({ ...markerForm, label: e.target.value })}
-                    className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                    className="flex-1 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-2 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]" />
                   <input placeholder="frame" inputMode="numeric" value={markerForm.frame}
                     onChange={(e) => setMarkerForm({ ...markerForm, frame: e.target.value })}
-                    className="w-20 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-100" />
+                    className="w-20 bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded px-2 py-1 text-[11px] text-[var(--fo-ink,#f4f4f5)]" />
                   <button type="button" onClick={addMarker}
-                    className="px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded">Add</button>
+                    className="px-2.5 py-1 text-[11px] bg-[var(--fo-paper-2,#27272a)] hover:bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink,#e4e4e7)] rounded">Add</button>
                 </div>
                 {markers.length > 0 && (
                   <ul className="space-y-0.5">
                     {markers.map((mk) => (
-                      <li key={mk.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <li key={mk.id} className="flex items-center gap-2 text-[11px] text-[var(--fo-ink-2,#d4d4d8)]">
                         <span className="w-2 h-2 rounded-full bg-amber-400" />
-                        <span className="font-mono text-zinc-400">f{mk.frame}</span>
+                        <span className="font-mono text-[var(--fo-muted,#a1a1aa)]">f{mk.frame}</span>
                         <span className="flex-1">{mk.label}</span>
                         <button aria-label="Delete" type="button"
                           onClick={() => lensRun('film-studios', 'marker-delete', { id: mk.id }).then(loadCut)}
-                          className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                          className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]"><Trash2 className="w-3 h-3" /></button>
                       </li>
                     ))}
                   </ul>

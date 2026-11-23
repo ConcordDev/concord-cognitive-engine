@@ -213,3 +213,32 @@ see the curve shape before committing a tween.
 - `concord-frontend/components/animation/AnimToolsPanel.tsx` — rig bone rename/resize + easing-curve preview + honest share-scope copy
 - `concord-frontend/app/share/animation/[token]/page.tsx` — new public(-for-signed-in-users) share viewer
 - No backend changes — `server/domains/animation.js` was already real and complete for the scope above; every fix here is a frontend wire onto an existing macro, plus one new consuming page for an existing macro (`share-get`) that had none.
+
+## 2026-11-20 — The Light Table redesign
+
+The lens is one app, `components/animation/table/LightTable.tsx` (page.tsx re-exports it), following `docs/LENS_REDESIGN_PLAYBOOK.md`. Rooms: the Table (your shots → the studio on a backlit disc with the X-sheet beside it), Screening (published animations), Reference (tracing images and frame templates).
+
+**Fixed (each was a real defect):**
+- **Export was partly fake.** "GIF" and "PNG sequence" downloaded a JSON file of PNG data URLs, and MP4 fell back to that same JSON in browsers that can't record MP4. Export is now real, in the browser: WebM (VP9 + Opus) and MP4 (H.264, with AAC or Opus) via WebCodecs, frame-accurate timestamps, the soundtrack mixed in offline; an animated GIF (gifenc); a ZIP of one PNG per film frame (fflate). Formats are checked against the browser's encoders first; one it can't make is shown as unavailable. The export record holds the real file size.
+- **The soundtrack was thrown away.** A dropped audio file was decoded for its waveform and never uploaded, so nothing could play it. It is now uploaded as the animator's media; `audio-track-add` takes that `mediaId` (or an http(s) link) and refuses a track with nothing to play.
+- **Share links couldn't play.** The page had only a scrub slider, and a no-download share sent no frames at all. Share-get now always sends the frames and the soundtrack; the page plays on the clock with sound; "allow download" only offers GIF/video files. Tokens are 128-bit random (were `Date.now` + 6 random chars). The soundtrack streams to the link holder through a share grant on that media (`shareTokens`, checked by the stream route), removed when the link is revoked, the track removed, or the shot deleted.
+- **Durations were rounded to whole seconds** at upload (`resolveAudioDurationSec`), so a 0.42 s render became "unknown" and a 1.6 s sound became 2 s. Now millisecond precision.
+- **Previews were stretched to 15 s** by `setMediaSaleTerms` regardless of the requested length. The caller's floor stands (film/music 15 s, animation 3 s); a priced animation may also have no preview at all (only buyers watch).
+- **The lens was badged "Simulated".** It is the animator's own persisted work: manifest and server registry now say REAL_WORKSPACE.
+- The shots gallery's open button had no accessible name when a shot had no thumbnail.
+
+**Added:** the X-sheet (`xsheet-get` / `xsheet-set`: action, dialogue, camera per drawing, laid over film frames by exposure); releases (`anim-release-create/list/get/buy/update/withdraw`) on the shared release shop `server/lib/media-release-shop.js`, which Film Studios now also uses: free or priced in CC through the marketplace (95% to the maker), the preview enforced at the stream and shorter than the piece; the screening wall. The motion-planning toolkit (keyframe interpolation, timing, FPS, storyboard macros) and the frame-templates reference were mounted nowhere; they are now the Timing charts drawer and part of Reference.
+
+**Tests:** `server/tests/depth/animation-lighttable-behavior.test.js` (soundtrack ownership, share grant lifecycle at the media gate, X-sheet layout and writes, releases: refusals, preview rules, money, withdraw); `concord-frontend/tests/animation-light-table.test.tsx` (X-sheet, export capability honesty, publishing, screening).
+
+**Browser drive (real files, three people, signed out):**
+- **Drawing and timing:** a 3-drawing shot was drawn with the mouse. Drawing 1 was held for 3 frames from the X-sheet (5 film frames at 12 fps), with an action note and a dialogue note.
+- **Soundtrack:** a 1.6 s sound was uploaded and played during playback.
+- **Exports, checked with ffprobe:**
+  - GIF: 3 images, 0.41 s.
+  - WebM: VP9 + Opus, 0.42 s.
+  - MP4: H.264 + Opus, 0.44 s.
+  - ZIP: 5 PNGs.
+- **Share link:** played signed out, and the soundtrack streamed through the token (206).
+- **Selling:** the render was published at 2 CC with no preview, since the piece is shorter than 3 s. A non-buyer's stream was refused (403) and the page showed "Buy it to watch it". The fan went 5 → 3 CC and the maker 0 → 1.9, and the full file then streamed.
+- **Phone:** no sideways scroll.

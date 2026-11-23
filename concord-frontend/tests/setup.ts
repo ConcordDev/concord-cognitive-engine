@@ -28,6 +28,36 @@ vi.mock('next/font/google', () => {
     Source_Serif_4: face('Source Serif 4'),
     Instrument_Serif: face('Instrument Serif'),
     Montserrat: face('Montserrat'),
+    // Film Studios — the Production Office (components/film-studios/office/officeFonts.ts)
+    Oswald: face('Oswald'),
+    Manrope: face('Manrope'),
+    Cutive_Mono: face('Cutive Mono'),
+    // Animation — the Light Table (components/animation/table/tableFonts.ts)
+    Josefin_Sans: face('Josefin Sans'),
+    Figtree: face('Figtree'),
+    Shadows_Into_Light: face('Shadows Into Light'),
+    Red_Hat_Mono: face('Red Hat Mono'),
+    // Board — the Cork Wall (components/board/wall/wallFonts.ts)
+    Reenie_Beanie: face('Reenie Beanie'),
+    Nunito_Sans: face('Nunito Sans'),
+    Overpass_Mono: face('Overpass Mono'),
+    // Photos — the Darkroom (components/photos/darkroom/darkroomFonts.ts)
+    IBM_Plex_Sans_Condensed: face('IBM Plex Sans Condensed'),
+    Hanken_Grotesk: face('Hanken Grotesk'),
+    Chivo_Mono: face('Chivo Mono'),
+    Spectral: face('Spectral'),
+    // Graph — the Star Chart (components/graph/sky/skyFonts.ts)
+    IM_Fell_English: face('IM Fell English'),
+    Sora: face('Sora'),
+    Space_Mono: face('Space Mono'),
+    // DTUs — the Binder (components/dtus/binder/binderFonts.ts)
+    Bricolage_Grotesque: face('Bricolage Grotesque'),
+    Outfit: face('Outfit'),
+    Fragment_Mono: face('Fragment Mono'),
+    // Podcast — the Transcript Page (components/podcast/press/pressFonts.ts)
+    DM_Serif_Display: face('DM Serif Display'),
+    Archivo: face('Archivo'),
+    DM_Mono: face('DM Mono'),
     // ConKay — the Workshop (components/conkay/workshop/workshopFonts.ts)
     Chakra_Petch: face('Chakra Petch'),
     // Retail — The Stall (components/retail/app/stallFonts.ts)
