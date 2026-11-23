@@ -32391,6 +32391,25 @@ register("chat", "forge.message", (ctx, input) => {
 register("chat", "forge.save", (ctx, input) => {
   const dtu = input.dtu;
   if (!dtu?.id) return { ok: false, error: "dtu required" };
+  // CB-1323 F1: overwriting an existing DTU rides the canonical mutation
+  // gate (dtu.update/dtu.delete shape) — signed-out 401, ownerless/system
+  // or another user's DTU 403 for non-admins, nothing written on refusal.
+  const existing = STATE.dtus.get(dtu.id);
+  const callerId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  if (existing) {
+    const denial = dtuMutationDenial(existing, ctx, {
+      authMode: AUTH_MODE,
+      verb: "update",
+      actorUserId: callerId,
+    });
+    if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
+  } else {
+    if (!callerId && AUTH_MODE !== "public") return { ok: false, error: "Authentication required", status: 401, code: "AUTH_REQUIRED" };
+    // First save: stamp ownership from the session caller (the forge
+    // creation shape) when the object carries none, so the substrate
+    // row is owned from birth.
+    if (callerId && !dtu.ownerId && !dtu.createdBy) { dtu.ownerId = callerId; dtu.createdBy = callerId; }
+  }
   const result = saveForgedDTU(STATE, dtu);
   if (result.ok) recordForgeMetric("saveCount");
   saveStateDebounced();
@@ -32400,6 +32419,18 @@ register("chat", "forge.save", (ctx, input) => {
 register("chat", "forge.delete", (ctx, input) => {
   const dtuId = input.dtuId || input.id;
   if (!dtuId) return { ok: false, error: "dtuId required" };
+  // CB-1323 F1: the delete rides the canonical mutation gate before the
+  // forged-only rule — another user's (or an ownerless/system) DTU is
+  // 403 for non-admins and survives; signed-out is 401.
+  const existing = STATE.dtus.get(dtuId);
+  if (existing) {
+    const denial = dtuMutationDenial(existing, ctx, {
+      authMode: AUTH_MODE,
+      verb: "delete",
+      actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null,
+    });
+    if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
+  }
   const result = deleteForgedDTU(STATE, dtuId);
   if (result.ok) recordForgeMetric("deleteCount");
   saveStateDebounced();
@@ -32409,6 +32440,21 @@ register("chat", "forge.delete", (ctx, input) => {
 register("chat", "forge.list", (ctx, input) => {
   const dtu = input.dtu;
   if (!dtu?.id) return { ok: false, error: "dtu required" };
+  // CB-1323 F1: saveAndList saves first — the same mutation gate as
+  // forge.save applies before any write.
+  const existing = STATE.dtus.get(dtu.id);
+  const callerId = ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null;
+  if (existing) {
+    const denial = dtuMutationDenial(existing, ctx, {
+      authMode: AUTH_MODE,
+      verb: "update",
+      actorUserId: callerId,
+    });
+    if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
+  } else {
+    if (!callerId && AUTH_MODE !== "public") return { ok: false, error: "Authentication required", status: 401, code: "AUTH_REQUIRED" };
+    if (callerId && !dtu.ownerId && !dtu.createdBy) { dtu.ownerId = callerId; dtu.createdBy = callerId; }
+  }
   const result = saveAndList(STATE, dtu, { price: input.price || null });
   if (result.ok) recordForgeMetric("listCount");
   saveStateDebounced();
