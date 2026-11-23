@@ -32405,10 +32405,10 @@ register("chat", "forge.save", (ctx, input) => {
     if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
   } else {
     if (!callerId && AUTH_MODE !== "public") return { ok: false, error: "Authentication required", status: 401, code: "AUTH_REQUIRED" };
-    // First save: stamp ownership from the session caller (the forge
-    // creation shape) when the object carries none, so the substrate
-    // row is owned from birth.
-    if (callerId && !dtu.ownerId && !dtu.createdBy) { dtu.ownerId = callerId; dtu.createdBy = callerId; }
+    // First save: ownership comes from the SESSION ACTOR ONLY (CB-1369
+    // rework) — body-supplied ownerId/userId/createdBy are overwritten,
+    // never honored, so a member cannot plant a DTU under another user.
+    if (callerId) { dtu.ownerId = callerId; dtu.createdBy = callerId; if (dtu.userId) dtu.userId = callerId; }
   }
   const result = saveForgedDTU(STATE, dtu);
   if (result.ok) recordForgeMetric("saveCount");
@@ -32453,7 +32453,7 @@ register("chat", "forge.list", (ctx, input) => {
     if (denial) return { ok: false, error: denial.error, status: denial.status, code: denial.code };
   } else {
     if (!callerId && AUTH_MODE !== "public") return { ok: false, error: "Authentication required", status: 401, code: "AUTH_REQUIRED" };
-    if (callerId && !dtu.ownerId && !dtu.createdBy) { dtu.ownerId = callerId; dtu.createdBy = callerId; }
+    if (callerId) { dtu.ownerId = callerId; dtu.createdBy = callerId; if (dtu.userId) dtu.userId = callerId; }
   }
   const result = saveAndList(STATE, dtu, { price: input.price || null });
   if (result.ok) recordForgeMetric("listCount");

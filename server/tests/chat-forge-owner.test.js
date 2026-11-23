@@ -130,3 +130,22 @@ test("stranger cannot list over another user's DTU (403, nothing written)", () =
   assert.equal(out.status, 403);
   assert.equal(STATE.dtus.get("dtu_victim").title, "victim");
 });
+
+test("CB-1369 spoof: body-supplied owner fields are overwritten by the session actor", () => {
+  freshState();
+  const save = extractHandler("forge.save");
+  const out = save(bob, { dtu: { id: "dtu_spoof", title: "planted", ownerId: "alice", createdBy: "alice", userId: "alice", meta: {} } });
+  assert.equal(out.ok, true);
+  const stored = STATE.dtus.get("dtu_spoof");
+  assert.equal(stored.ownerId, "bob");
+  assert.equal(stored.createdBy, "bob");
+  assert.equal(stored.userId, "bob");
+});
+
+test("CB-1369 spoof via list: body owner is overwritten too", () => {
+  freshState();
+  const list = extractHandler("forge.list");
+  const out = list(bob, { dtu: { id: "dtu_spoof2", title: "planted", ownerId: "alice", meta: {} } });
+  assert.equal(out.ok, true);
+  assert.equal(STATE.dtus.get("dtu_spoof2").ownerId, "bob");
+});
