@@ -149,9 +149,34 @@ describe("profile targetUserId — peer view surfaces REAL data for another real
     assert.equal(r.result.isSelf, false);
     assert.equal(r.result.dtuCount, 1);
     assert.equal(r.result.totalCitations, 9);
-    assert.equal(r.result.reputation.length, 8);
+    // This fixture's dtus table has no lens_id, so the split is not recorded.
+    assert.deepEqual(r.result.reputation, []);
+    assert.equal(r.result.reputationReason, "not_recorded");
     assert.equal(r.result.totalRoyalties, null);
     assert.equal(r.result.royaltyReason, "not_shared");
+  });
+
+  it("reputation-summary scores each recorded lens from its own rows", () => {
+    DB.exec("ALTER TABLE dtus ADD COLUMN lens_id TEXT");
+    insertDtu(DB, { id: "m1", creatorId: "u2", title: "Alloy" });
+    insertDtu(DB, { id: "m2", creatorId: "u2", title: "Ceramic" });
+    insertDtu(DB, { id: "e1", creatorId: "u2", title: "Array" });
+    insertDtu(DB, { id: "u1row", creatorId: "u2", title: "Untagged" });
+    DB.prepare("UPDATE dtus SET lens_id = ? WHERE id = ?").run("materials", "m1");
+    DB.prepare("UPDATE dtus SET lens_id = ? WHERE id = ?").run("materials", "m2");
+    DB.prepare("UPDATE dtus SET lens_id = ? WHERE id = ?").run("energy", "e1");
+    DB.prepare("UPDATE dtus SET lens_id = 'unknown' WHERE id = ?").run("u1row");
+    insertCitations(DB, "m1", 5);
+    insertCitations(DB, "m2", 1);
+
+    const r = run("reputation-summary", "u1", { targetUserId: "u2" });
+    assert.equal(r.result.dtuCount, 4);
+    assert.equal(r.result.reputationReason, null);
+    // materials = 2*8 + (5+1)*3 = 34. energy = 1*8. unknown is not a domain.
+    assert.deepEqual(r.result.reputation, [
+      { domain: "energy", score: 8 },
+      { domain: "materials", score: 34 },
+    ]);
   });
 
   it("reputation-summary sums the caller's completed royalty credits", () => {

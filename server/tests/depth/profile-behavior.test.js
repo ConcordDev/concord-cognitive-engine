@@ -223,7 +223,7 @@ describe("profile — badges/portfolio/reputation read REAL data when a DB is pr
     assert.ok(!r.result.portfolio.some((x) => x.id === "d3")); // never another user's
   });
 
-  it("reputation-summary derives exact totals + a deterministic polygon from REAL activity", () => {
+  it("reputation-summary derives exact totals and does not invent a domain polygon when lens_id is absent", () => {
     const db = fakeDb({
       dtus: [
         { id: "d1", creator_id: "u1", title: "A", created_at: "2026-01-01Z", visibility: "public" },
@@ -236,11 +236,9 @@ describe("profile — badges/portfolio/reputation read REAL data when a DB is pr
     assert.equal(r.result.dtuCount, 2);
     assert.equal(r.result.totalCitations, 6); // 5 + 1
     assert.equal(r.result.worldsOwned, 2);
-    // 8 domains, all 0..100, deterministic (same input → same output).
-    assert.equal(r.result.reputation.length, 8);
-    for (const s of r.result.reputation) {
-      assert.ok(s.score >= 0 && s.score <= 100);
-    }
+    // These rows have no lens_id, so the handler does not invent eight spokes.
+    assert.deepEqual(r.result.reputation, []);
+    assert.equal(r.result.reputationReason, "not_recorded");
     const again = run("reputation-summary", {}, {}, { actor: { userId: "u1" }, db });
     assert.deepEqual(again.result.reputation, r.result.reputation);
   });

@@ -16,8 +16,8 @@ type ReputationDomain =
   | 'architecture' | 'mentorship' | 'governance' | 'exploration';
 
 interface ReputationScore {
-  domain: ReputationDomain;
-  score: number; // 0-100
+  domain: string;
+  score: number | null; // 0-100 when the lens was recorded
 }
 
 interface DTUPortfolioItem {
@@ -60,6 +60,7 @@ interface ProfileData {
   isFollowing?: boolean;
   isFriend?: boolean;
   reputation: ReputationScore[];
+  reputationReason?: string | null;
   joinDate: string;
 }
 
@@ -91,7 +92,7 @@ interface PlayerProfileProps {
 
 const panel = 'bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg';
 
-const DOMAIN_META: Record<ReputationDomain, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = {
+const DOMAIN_META: Partial<Record<ReputationDomain, { label: string; icon: React.ComponentType<{ className?: string }>; color: string }>> = {
   structural:     { label: 'Structural',     icon: Hammer,         color: '#F59E0B' },
   materials:      { label: 'Materials',      icon: FlaskConical,   color: '#22C55E' },
   infrastructure: { label: 'Infrastructure', icon: Building2,      color: '#3B82F6' },
@@ -101,6 +102,16 @@ const DOMAIN_META: Record<ReputationDomain, { label: string; icon: React.Compone
   governance:     { label: 'Governance',     icon: Shield,         color: '#06B6D4' },
   exploration:    { label: 'Exploration',    icon: Compass,        color: '#F97316' },
 };
+
+function domainMeta(domain: string) {
+  const known = DOMAIN_META[domain as ReputationDomain];
+  if (known) return known;
+  return { label: domain, icon: Compass, color: '#a1a1aa' };
+}
+
+function scoreLabel(score: number | null): string {
+  return score == null || !Number.isFinite(score) ? '—' : String(score);
+}
 
 /* ── Empty defaults ────────────────────────────────────────────── */
 // Shown only until the real fetch resolves (or when a caller passes data via
@@ -143,7 +154,7 @@ function ReputationRadar({ scores }: { scores: ReputationScore[] }) {
     };
   };
 
-  const dataPoints = scores.map((s, i) => pointAt(i, (s.score / 100) * maxR));
+  const dataPoints = scores.map((s, i) => pointAt(i, ((Number.isFinite(s.score) ? Number(s.score) : 0) / 100) * maxR));
   const polygon = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
 
   return (
@@ -175,7 +186,7 @@ function ReputationRadar({ scores }: { scores: ReputationScore[] }) {
       {scores.map((s, i) => {
         const dp = dataPoints[i];
         const lp = pointAt(i, maxR + 18);
-        const meta = DOMAIN_META[s.domain];
+        const meta = domainMeta(s.domain);
         return (
           <g key={s.domain}>
             <circle cx={dp.x} cy={dp.y} r={2.5} fill={meta.color} />
@@ -267,6 +278,7 @@ export default function PlayerProfile({
             followerCount: 0,
             followingCount: 0,
             reputation: Array.isArray(rep.reputation) ? (rep.reputation as ReputationScore[]) : [],
+            reputationReason: rep.reputationReason == null ? null : String(rep.reputationReason),
             // updatedAt is stripped from the peer-view profile shape entirely
             // (server/domains/profile.js redaction) — joinDate honestly
             // blanks for a peer view rather than fabricating one.
@@ -318,18 +330,20 @@ export default function PlayerProfile({
       <div>
         <h4 className="text-xs text-white/50 uppercase tracking-wider mb-2">Reputation</h4>
         {profile.reputation.length === 0 ? (
-          <p className="text-center text-white/30 text-xs py-6">No reputation data yet</p>
+          <p className="text-center text-white/30 text-xs py-6">
+            {profile.reputationReason ? `Not recorded: ${profile.reputationReason}` : 'No reputation data yet'}
+          </p>
         ) : (
           <ReputationRadar scores={profile.reputation} />
         )}
         <div className="grid grid-cols-4 gap-2 mt-3">
           {profile.reputation.map(r => {
-            const meta = DOMAIN_META[r.domain];
+            const meta = domainMeta(r.domain);
             return (
               <div key={r.domain} className="flex flex-col items-center gap-0.5">
                 <span style={{ color: meta.color }}>{React.createElement(meta.icon, { className: 'w-3.5 h-3.5' })}</span>
                 <span className="text-[9px] text-white/40">{meta.label}</span>
-                <span className="text-[10px] font-medium text-white/70">{r.score}</span>
+                <span className="text-[10px] font-medium text-white/70">{scoreLabel(r.score)}</span>
               </div>
             );
           })}
