@@ -61,14 +61,15 @@ function probeDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     try {
       const el = document.createElement(file.type.startsWith('audio/') ? 'audio' : 'video');
-      const url = URL.createObjectURL(file);
-      const done = (v: number) => { URL.revokeObjectURL(url); resolve(Number.isFinite(v) && v > 0 ? v : 0); };
+      let url = '';
+      const done = (v: number) => { if (url) URL.revokeObjectURL(url); resolve(Number.isFinite(v) && v > 0 ? v : 0); };
       el.preload = 'metadata';
       el.onloadedmetadata = () => done(el.duration);
       el.onerror = () => done(0);
-      // Inline guard at the sink (CB-1280): the object URL minted above
-      // is the only value ever assigned here, and only as a blob: URL.
-      if (url.startsWith('blob:')) { el.src = url; } else { done(0); }
+      // Minted at the sink from the File itself (CB-1370): no URL
+      // string arrives here from anywhere else.
+      url = URL.createObjectURL(file);
+      el.src = url;
     } catch { resolve(0); }
   });
 }

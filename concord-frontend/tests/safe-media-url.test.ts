@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { safeLocalMediaUrl } from '@/lib/safe-media-url';
+import { afterEach, describe, expect, it } from 'vitest';
+import { safeLocalMediaUrl, safeObjectUrl } from '@/lib/safe-media-url';
 
 describe('safeLocalMediaUrl', () => {
   it('allows blob: object URLs (the poster-from-file path)', () => {
@@ -31,5 +31,25 @@ describe('safeLocalMediaUrl', () => {
     expect(safeLocalMediaUrl('data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=')).toBe('');
     expect(safeLocalMediaUrl('not a url')).toBe('');
     expect(safeLocalMediaUrl('')).toBe('');
+  });
+});
+
+describe('safeObjectUrl — the poster Blob minted at the sink (CB-1370)', () => {
+  const realCreate = URL.createObjectURL;
+  afterEach(() => { URL.createObjectURL = realCreate; });
+
+  it('mints an object URL for png, jpeg and webp blobs', () => {
+    URL.createObjectURL = () => 'blob:mock-poster';
+    for (const type of ['image/png', 'image/jpeg', 'image/webp']) {
+      expect(safeObjectUrl(new Blob(['x'], { type }))).toBe('blob:mock-poster');
+    }
+  });
+
+  it('mints nothing for other blob types or no blob', () => {
+    URL.createObjectURL = () => 'blob:must-not-be-used';
+    expect(safeObjectUrl(new Blob(['x'], { type: 'text/html' }))).toBe('');
+    expect(safeObjectUrl(new Blob(['x'], { type: 'image/gif' }))).toBe('');
+    expect(safeObjectUrl(null)).toBe('');
+    expect(safeObjectUrl(undefined)).toBe('');
   });
 });

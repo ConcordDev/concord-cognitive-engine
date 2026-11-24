@@ -8,19 +8,26 @@
  * tracked below.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { FsDistributionPanel } from '@/components/film-studios/FsDistributionPanel';
 import { cc, fs, runtime, uploadPoster, type Footage, type Release } from './fo';
+import { safeObjectUrl } from '@/lib/safe-media-url';
 
 export function ReleaseDesk({ projectId, onOpenCinema }: { projectId: string; onOpenCinema?: (releaseId: string) => void }) {
   const [mine, setMine] = useState<Release[] | null>(null);
   const [videos, setVideos] = useState<Footage[]>([]);
   const [form, setForm] = useState({ mediaId: '', title: '', logline: '', priced: true, price: '3', previewSec: 90 });
-  const [poster, setPoster] = useState<{ mediaId: string; url: string } | null>(null);
+  const [poster, setPoster] = useState<{ mediaId: string; file: File } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const posterRef = useRef<HTMLInputElement>(null);
+
+  // The poster File is what state holds (CB-1370); the URL is minted
+  // here, at the sink, and revoked when the poster changes or the
+  // desk unmounts.
+  const posterUrl = useMemo(() => (poster ? safeObjectUrl(poster.file) : ''), [poster]);
+  useEffect(() => () => { if (posterUrl) URL.revokeObjectURL(posterUrl); }, [posterUrl]);
 
   const load = useCallback(async () => {
     const [r, m] = await Promise.all([
@@ -38,7 +45,7 @@ export function ReleaseDesk({ projectId, onOpenCinema }: { projectId: string; on
     setMsg(null);
     const up = await uploadPoster(file, form.title || 'Film');
     if (!up.ok) { setMsg({ kind: 'error', text: up.error }); return; }
-    setPoster({ mediaId: up.mediaId, url: URL.createObjectURL(file) });
+    setPoster({ mediaId: up.mediaId, file });
   };
 
   const release = async () => {
@@ -86,8 +93,7 @@ export function ReleaseDesk({ projectId, onOpenCinema }: { projectId: string; on
           <div className="mt-3 grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)]">
             <button type="button" className="fo-onesheet flex items-center justify-center text-[#bbb]" onClick={() => posterRef.current?.click()} aria-label={poster ? 'Change the poster' : 'Add a poster'} data-testid="fo-poster-pick">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {/* Inline allowlist guard at the sink (CB-1280): CodeQL recognises the check here, not behind a helper call. */}
-              {poster && (poster.url.startsWith('blob:') || poster.url.startsWith('data:image/png;base64,') || poster.url.startsWith('data:image/jpeg;base64,') || poster.url.startsWith('data:image/webp;base64,')) ? <img src={poster.url} alt="" /> : <span className="flex flex-col items-center gap-1 text-[12px]"><ImagePlus className="h-5 w-5" /> Poster</span>}
+              {posterUrl ? <img src={posterUrl} alt="" /> : <span className="flex flex-col items-center gap-1 text-[12px]"><ImagePlus className="h-5 w-5" /> Poster</span>}
             </button>
             <input ref={posterRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => { void pickPoster(e.target.files?.[0]); }} data-testid="fo-poster-input" />
             <div className="space-y-2.5">

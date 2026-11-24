@@ -7,10 +7,11 @@
  * or the drawing open on the table.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ImagePlus, Brush } from 'lucide-react';
 import { an, cc, secs, uploadMedia, type Release } from './lt';
 import { drawFrame, type Anim } from './draw';
+import { safeObjectUrl } from '@/lib/safe-media-url';
 
 const PREVIEWS = [3, 5, 10, 15, 30, 60, 90];
 
@@ -19,10 +20,16 @@ export function PublishDesk({ anim, mediaId, runtimeSec, openDrawing, onOpenScre
 }) {
   const [mine, setMine] = useState<Release[] | null>(null);
   const [form, setForm] = useState({ title: anim.title, logline: '', priced: false, price: '1', previewSec: 3 });
-  const [poster, setPoster] = useState<{ mediaId: string; url: string } | null>(null);
+  const [poster, setPoster] = useState<{ mediaId: string; blob: Blob } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // The poster Blob is what state holds (CB-1370); the URL is minted
+  // here, at the sink, and revoked when the poster changes or the
+  // desk unmounts.
+  const posterUrl = useMemo(() => (poster ? safeObjectUrl(poster.blob) : ''), [poster]);
+  useEffect(() => () => { if (posterUrl) URL.revokeObjectURL(posterUrl); }, [posterUrl]);
 
   const load = useCallback(async () => {
     const r = await an<{ releases: Release[] }>('anim-release-list', { mine: true, animId: anim.id });
@@ -35,11 +42,11 @@ export function PublishDesk({ anim, mediaId, runtimeSec, openDrawing, onOpenScre
   const previews = [...PREVIEWS.filter((p) => !runtimeSec || p < runtimeSec), 0];
   useEffect(() => { if (!previews.includes(form.previewSec)) setForm((f) => ({ ...f, previewSec: previews[0] })); }, [runtimeSec]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const setPosterFrom = async (blob: Blob, name: string, url: string) => {
+  const setPosterFrom = async (blob: Blob, name: string) => {
     setMsg(null);
     const up = await uploadMedia(blob, { title: `${anim.title} poster`, filename: name, mediaType: 'image', tags: ['animation-poster'] });
     if (!up.ok) { setMsg({ kind: 'error', text: up.error }); return; }
-    setPoster({ mediaId: up.mediaId, url });
+    setPoster({ mediaId: up.mediaId, blob });
   };
   const posterFromDrawing = async () => {
     const cv = document.createElement('canvas');
@@ -47,12 +54,12 @@ export function PublishDesk({ anim, mediaId, runtimeSec, openDrawing, onOpenScre
     const c = cv.getContext('2d'); if (!c) return;
     drawFrame(c, anim.frames[openDrawing], anim.background);
     const blob = await new Promise<Blob | null>((r) => cv.toBlob(r, 'image/png'));
-    if (blob) await setPosterFrom(blob, `drawing-${openDrawing + 1}.png`, cv.toDataURL('image/png'));
+    if (blob) await setPosterFrom(blob, `drawing-${openDrawing + 1}.png`);
   };
   const posterFromFile = async (f?: File) => {
     if (!f) return;
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) { setMsg({ kind: 'error', text: 'The poster must be PNG, JPEG or WebP.' }); return; }
-    await setPosterFrom(f, f.name, URL.createObjectURL(f));
+    await setPosterFrom(f, f.name);
   };
 
   const publish = async () => {
@@ -87,8 +94,7 @@ export function PublishDesk({ anim, mediaId, runtimeSec, openDrawing, onOpenScre
           <div className="space-y-1.5">
             <div className="lt-reel !aspect-[4/5] flex items-center justify-center text-[11px] text-[#a9a39a]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              {/* Inline allowlist guard at the sink (CB-1280): CodeQL recognises the check here, not behind a helper call. */}
-              {poster && (poster.url.startsWith('blob:') || poster.url.startsWith('data:image/png;base64,') || poster.url.startsWith('data:image/jpeg;base64,') || poster.url.startsWith('data:image/webp;base64,')) ? <img src={poster.url} alt="Poster" /> : 'No poster'}
+              {posterUrl ? <img src={posterUrl} alt="Poster" /> : 'No poster'}
             </div>
             <button type="button" className="lt-btn lt-btn-quiet w-full !min-h-[30px] text-[12px]" onClick={() => { void posterFromDrawing(); }} data-testid="lt-poster-drawing"><Brush className="h-3.5 w-3.5" /> Drawing {openDrawing + 1}</button>
             <button type="button" className="lt-btn lt-btn-quiet w-full !min-h-[30px] text-[12px]" onClick={() => fileRef.current?.click()}><ImagePlus className="h-3.5 w-3.5" /> Upload</button>
