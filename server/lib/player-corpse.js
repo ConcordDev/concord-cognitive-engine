@@ -40,13 +40,14 @@ export function dropCorpseOnDeath(db, opts) {
   const z = Number(position.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return { ok: false, reason: "bad_position" };
 
-  // Fetch wallet balance. Concord Coin balances live in
-  // users.concordia_credits; fall back gracefully if absent so this
-  // still works on test deployments.
+  // Fetch wallet balance. The death penalty debits the legacy
+  // users.concordia_credits column (classified GAMEPLAY in
+  // currency-map.js, SB-30 — it moves to Sparks in SB-33); fall back
+  // gracefully if absent so this still works on test deployments.
   let balance = 0;
   try {
-    const w = db.prepare(`SELECT concordia_credits AS concord_coins FROM users WHERE id = ?`).get(userId);
-    balance = Math.max(0, Number(w?.concord_coins ?? 0));
+    const w = db.prepare(`SELECT concordia_credits FROM users WHERE id = ?`).get(userId);
+    balance = Math.max(0, Number(w?.concordia_credits ?? 0));
   } catch { /* no wallets — coins lost = 0 */ }
 
   const coinsLost = Math.min(
