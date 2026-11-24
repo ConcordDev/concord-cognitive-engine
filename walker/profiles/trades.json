@@ -1,0 +1,55 @@
+{
+  "slug": "trades",
+  "name": "Trades",
+  "url": "https://concord-os.org/lenses/trades",
+  "category": "superlens",
+  "group": {
+    "master_parent": "MST-W2-17",
+    "walk_ticket": "LC-44",
+    "fpv_tickets": 11,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "create-opener-no-dialog",
+  "block_reason": "A create opener exists on the main view but opening it shows no dialog/form the walker can drive: create_delete NOT_RUN ('opener showed no dialog/form', screenshot evidence in the run packet). The write/exercise leg is blocked on the opener's shape; the read phases walk normally and the replay population is NEEDS_HUMAN-dominated.",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 164,
+    "reach": {
+      "status": "PASS",
+      "gate": null,
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://concord-os.org/lenses/trades"
+    },
+    "phases_not_exercised": [
+      "create_delete",
+      "tabs_reachable"
+    ],
+    "create_delete": {
+      "status": "NOT_RUN",
+      "reason": "opener showed no dialog/form"
+    },
+    "replay": {
+      "tickets": 13,
+      "counts": {
+        "NEEDS_HUMAN": 13
+      },
+      "skipped": 0
+    },
+    "findings": 2,
+    "high_findings": [],
+    "packet": "runs/20261117-080754/lens-trades.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": false,
+    "write_skip": false
+  },
+  "unblock": [
+    "Determine whether the opener's target is an inline panel the walker can learn (the U13 interaction-asserts shape) or a lens-side create flow that opens nothing — the packet's screenshot evidence is the starting record.",
+    "With the opener drivable, the create/delete phase arms under the C28 write lane (tw account, own-fixture cleanup).",
+    "Its NEEDS_HUMAN replay rows ride the C2 rewrite pass."
+  ],
+  "walk2_disposition": "Read walk proceeds; write leg arms when the opener is drivable."
+}

@@ -1,0 +1,56 @@
+{
+  "slug": "chat",
+  "name": "Chat",
+  "url": "https://concord-os.org/lenses/chat",
+  "category": "core",
+  "group": {
+    "master_parent": "MST-W2-16",
+    "walk_ticket": "LC-36",
+    "fpv_tickets": 10,
+    "milestone": "LC-G3: The 17 lenses never walked"
+  },
+  "block_class": "write-lane-read-only",
+  "block_reason": "The lens sits in the walker's write_skip_lenses config, so the run walks it read-only: create_delete NOT_RUN ('read-only run') and its write-bearing tickets cannot be exercised. Its replay population is NEEDS_HUMAN-dominated — the checks are conversational / two-party or judgement-shaped, so even the read walk produces few machine verdicts.",
+  "nov17_run": {
+    "run_id": "20261117-080754",
+    "live_sha": "f4f1f77ff610252fba82f35ec0b83da0829d53c6",
+    "account": "t1",
+    "elapsed_s": 85,
+    "reach": {
+      "status": "PASS",
+      "gate": null,
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://concord-os.org/lenses/chat"
+    },
+    "phases_not_exercised": [
+      "create_delete",
+      "tabs_reachable"
+    ],
+    "create_delete": {
+      "status": "NOT_RUN",
+      "reason": "read-only run"
+    },
+    "replay": {
+      "tickets": 16,
+      "counts": {
+        "FIXED": 1,
+        "NEEDS_HUMAN": 14,
+        "STILL_FAILING": 1
+      },
+      "skipped": 0
+    },
+    "findings": 2,
+    "high_findings": [],
+    "packet": "runs/20261117-080754/lens-chat.json (Mac walker-runs/capture-20261117)"
+  },
+  "config_state": {
+    "admin_lens": false,
+    "write_skip": true
+  },
+  "unblock": [
+    "Decide the walk-2 write disposition for this lens: move it from write_skip_lenses to the C28 labelled write lane (tw account, own-fixture create/delete with cleanup), or record read-only coverage as its accepted disposition.",
+    "Its NEEDS_HUMAN replay rows ride the C2 rewrite pass (C3 vocabulary + the C16 two-account isolation phase) — no per-lens build is owed."
+  ],
+  "walk2_disposition": "Read walk proceeds; write leg per the recorded walk-2 disposition decision."
+}

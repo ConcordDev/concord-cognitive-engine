@@ -1,0 +1,42 @@
+{
+  "ticket": "C41 (LC-07)",
+  "title": "Per-lens block-reason profiles for the 17 never-walked lenses, rebuilt from scratch (the Nov 13 logs are lost with the box copy)",
+  "set_source": "MASTER-V1-FULL.jsonl milestone \"LC-G3: The 17 lenses never walked\" — the 17 walk tickets LC-30..LC-46; the union of their lens groups is exactly these 17. This set is NOT the Nov 17 run arithmetic (270 inventory − 249 attempted = 21): that figure is this run's packet-completeness count, a different set; both stand, named, never collapsed.",
+  "evidence_run": "capture walk 20261117-080754 against f4f1f77ff610252fba82f35ec0b83da0829d53c6; per-lens packets on the Mac at walker-runs/capture-20261117/runs/20261117-080754/",
+  "derivation": "Each profile's block reason is RE-DERIVED from that lens's own Nov 17 packet (reach, phases, create_delete, replay, findings) plus the walker config at the build head (admin_lenses, write_skip_lenses) — not recovered from the lost Nov 13 logs, which no longer exist.",
+  "block_classes": [
+    "admin-session-absent",
+    "route-absent",
+    "error-boundary-on-load",
+    "write-lane-read-only",
+    "no-create-control",
+    "create-opener-no-dialog"
+  ],
+  "census": {
+    "admin-session-absent": 5,
+    "create-opener-no-dialog": 2,
+    "error-boundary-on-load": 1,
+    "no-create-control": 4,
+    "route-absent": 1,
+    "write-lane-read-only": 4
+  },
+  "profiles": {
+    "admin": "admin.json",
+    "affect": "affect.json",
+    "audit": "audit.json",
+    "chat": "chat.json",
+    "council": "council.json",
+    "courtship": "courtship.json",
+    "detective": "detective.json",
+    "ghost-tracker": "ghost-tracker.json",
+    "household": "household.json",
+    "marketplace": "marketplace.json",
+    "ops": "ops.json",
+    "psyops": "psyops.json",
+    "repair-telemetry": "repair-telemetry.json",
+    "spectate": "spectate.json",
+    "system": "system.json",
+    "trades": "trades.json",
+    "whiteboard": "whiteboard.json"
+  }
+}
