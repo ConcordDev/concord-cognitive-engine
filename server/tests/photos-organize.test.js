@@ -1,6 +1,7 @@
 // Photos lens organize layer (migration 468): caption/favorite edits and
 // albums, exercised through the registered macros against the real lib and
-// an in-memory DB with migrations 243 + 468.
+// an in-memory DB with migrations 243 + 468 + 496 (savePhoto writes the
+// width/height/size columns 496 added; without it every save failed).
 
 import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
@@ -13,6 +14,7 @@ import registerPhotosMacros from "../domains/photos.js";
 import { savePhoto, deletePhoto, listMyPhotos } from "../lib/photo-gallery.js";
 import { up as upPhotos } from "../migrations/243_photo_gallery.js";
 import { up as upOrganize } from "../migrations/468_photo_gallery_organize.js";
+import { up as upPhotoMetadata } from "../migrations/496_photo_metadata.js";
 
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), "concord-photos-org-"));
 process.env.CONCORD_PHOTO_DIR = TMP_DIR;
@@ -27,6 +29,7 @@ let db;
 beforeEach(() => {
   db = new Database(":memory:");
   upPhotos(db);
+  upPhotoMetadata(db);
   upOrganize(db);
   upOrganize(db); // idempotent
 });

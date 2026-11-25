@@ -1,0 +1,129 @@
+/* The Transcript Page — the Podcast lens.
+   Episodes read like magazine features: cool newsprint grey, black ink, and
+   one signal orange that means "this is what is being said right now" (and
+   the one action that matters on a screen). Nothing else is coloured. */
+
+.tp {
+  --tp-paper: #e7e6e1;
+  --tp-sheet: #f3f2ee;
+  --tp-sheet-2: #ecebe6;
+  --tp-ink: #141414;
+  --tp-ink-2: #3b3b3b;
+  --tp-muted: #6c6b67;
+  --tp-faint: #9a9994;
+  --tp-rule: #cfcec8;
+  --tp-rule-2: #b5b4ad;
+  --tp-signal: #ff5a1f;
+  --tp-signal-ink: #c43e0c;
+  --tp-signal-wash: rgba(255, 90, 31, 0.12);
+  --tp-good: #2f6b3a;
+  --tp-bad: #b3261e;
+  --tp-on-ink: #f3f2ee;
+  --tp-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 10px 30px -18px rgba(0, 0, 0, 0.35);
+  background: var(--tp-paper);
+  color: var(--tp-ink);
+  font-family: var(--tp-font-sans), system-ui, sans-serif;
+  /* Newsprint: the faintest halftone grain, no texture image. */
+  background-image: radial-gradient(rgba(0, 0, 0, 0.035) 0.6px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .tp {
+    --tp-paper: #1b1b1a; --tp-sheet: #232321; --tp-sheet-2: #2a2a27; --tp-ink: #ecebe6; --tp-ink-2: #cfcec8;
+    --tp-muted: #9a9994; --tp-faint: #6c6b67; --tp-rule: #353532; --tp-rule-2: #4a4a46;
+    --tp-signal: #ff6a33; --tp-signal-ink: #ff8a5c; --tp-signal-wash: rgba(255, 106, 51, 0.16); --tp-on-ink: #141414;
+    --tp-good: #7fbf8a; --tp-bad: #f28b82;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.03) 0.6px, transparent 0.7px);
+  }
+}
+:root[data-theme='dark'] .tp {
+  --tp-paper: #1b1b1a; --tp-sheet: #232321; --tp-sheet-2: #2a2a27; --tp-ink: #ecebe6; --tp-ink-2: #cfcec8;
+  --tp-muted: #9a9994; --tp-faint: #6c6b67; --tp-rule: #353532; --tp-rule-2: #4a4a46;
+  --tp-signal: #ff6a33; --tp-signal-ink: #ff8a5c; --tp-signal-wash: rgba(255, 106, 51, 0.16); --tp-on-ink: #141414;
+  --tp-good: #7fbf8a; --tp-bad: #f28b82;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 0.6px, transparent 0.7px);
+}
+.tp ::selection { background: var(--tp-signal-wash); }
+
+.tp-display { font-family: var(--tp-font-display), Georgia, serif; font-weight: 400; letter-spacing: -0.01em; }
+.tp-read { font-family: var(--tp-font-read), Georgia, serif; }
+.tp-mono { font-family: var(--tp-font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.tp-kicker { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tp-signal-ink); }
+.tp-label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tp-muted); }
+.tp-rule { border-top: 1px solid var(--tp-ink); }
+.tp-hair { border-top: 1px solid var(--tp-rule); }
+
+/* Masthead + section rail */
+.tp-mast { border-bottom: 3px double var(--tp-ink); }
+.tp-section { position: relative; padding: 10px 2px; font-size: 13px; font-weight: 600; color: var(--tp-muted); white-space: nowrap; }
+.tp-section:hover { color: var(--tp-ink); }
+.tp-section[aria-current='page'] { color: var(--tp-ink); }
+.tp-section[aria-current='page']::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 3px; background: var(--tp-signal); }
+
+/* Controls */
+.tp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 14px; border: 1px solid var(--tp-ink); border-radius: 2px; background: transparent; color: var(--tp-ink); font-size: 13px; font-weight: 600; transition: background 120ms, color 120ms, transform 80ms; }
+.tp-btn:hover:not(:disabled) { background: var(--tp-ink); color: var(--tp-on-ink); }
+.tp-btn:active:not(:disabled) { transform: translateY(1px); }
+.tp-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.tp-btn-signal { background: var(--tp-signal); border-color: var(--tp-signal); color: #141414; }
+.tp-btn-signal:hover:not(:disabled) { background: var(--tp-signal-ink); border-color: var(--tp-signal-ink); color: #fff; }
+.tp-btn-quiet { border-color: transparent; }
+.tp-btn-quiet:hover:not(:disabled) { background: var(--tp-sheet-2); color: var(--tp-ink); }
+.tp-btn:focus-visible, .tp-section:focus-visible, .tp-seg:focus-visible, .tp-chip:focus-visible { outline: 2px solid var(--tp-signal); outline-offset: 2px; }
+@media (pointer: coarse) { .tp-btn { min-height: 44px; } }
+.tp-input { width: 100%; min-height: 38px; padding: 6px 10px; border: 1px solid var(--tp-rule-2); border-radius: 2px; background: var(--tp-sheet); color: var(--tp-ink); font-size: 14px; }
+.tp-input:focus { outline: none; border-color: var(--tp-ink); box-shadow: 0 0 0 1px var(--tp-ink); }
+.tp-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border: 1px solid var(--tp-rule-2); border-radius: 999px; font-size: 12px; color: var(--tp-ink-2); background: transparent; }
+.tp-chip[aria-pressed='true'] { background: var(--tp-ink); color: var(--tp-on-ink); border-color: var(--tp-ink); }
+
+.tp-card { background: var(--tp-sheet); border: 1px solid var(--tp-rule); box-shadow: var(--tp-shadow); }
+.tp-skeleton { background: linear-gradient(90deg, var(--tp-sheet-2), var(--tp-sheet), var(--tp-sheet-2)); background-size: 200% 100%; animation: tp-shimmer 1.4s ease-in-out infinite; }
+@keyframes tp-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.tp-error { border-left: 3px solid var(--tp-bad); padding: 6px 10px; background: var(--tp-sheet); color: var(--tp-bad); font-size: 13px; }
+.tp-ok { border-left: 3px solid var(--tp-good); padding: 6px 10px; background: var(--tp-sheet); color: var(--tp-good); font-size: 13px; }
+.tp-cover { background: var(--tp-sheet-2); object-fit: cover; aspect-ratio: 1; }
+
+/* Episode rows on a front page */
+.tp-story { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 0; border-top: 1px solid var(--tp-rule); }
+.tp-story:first-child { border-top: 0; }
+.tp-story h3 { font-family: var(--tp-font-display), Georgia, serif; font-size: 20px; line-height: 1.15; }
+.tp-progress { height: 2px; background: var(--tp-rule); }
+.tp-progress > span { display: block; height: 100%; background: var(--tp-ink); }
+
+/* The page: the transcript as an article */
+.tp-article { max-width: 720px; margin: 0 auto; }
+.tp-dek { font-family: var(--tp-font-read), Georgia, serif; font-size: 19px; line-height: 1.5; color: var(--tp-ink-2); }
+.tp-body { font-family: var(--tp-font-read), Georgia, serif; font-size: 19px; line-height: 1.65; }
+.tp-seg { position: relative; display: block; width: 100%; text-align: left; padding: 4px 0 4px 0; border-radius: 1px; color: var(--tp-ink-2); transition: color 160ms; cursor: pointer; }
+.tp-seg:hover { color: var(--tp-ink); }
+.tp-seg .tp-tc { position: absolute; left: -84px; top: 9px; width: 70px; text-align: right; font-size: 11px; color: var(--tp-faint); }
+.tp-seg[data-past='true'] { color: var(--tp-ink); }
+.tp-seg[data-now='true'] { color: var(--tp-ink); }
+/* The one signal: an underline that draws across what is being said. */
+.tp-seg[data-now='true'] .tp-said { background-image: linear-gradient(var(--tp-signal), var(--tp-signal)); background-repeat: no-repeat; background-position: 0 100%; background-size: var(--tp-said, 0%) 3px; transition: background-size 250ms linear; }
+.tp-seg[data-now='true'] .tp-tc { color: var(--tp-signal-ink); }
+.tp-seg[data-hit='true'] .tp-said { background-color: var(--tp-signal-wash); }
+.tp-untimed { cursor: default; color: var(--tp-ink); }
+.tp-speaker { display: block; margin-top: 10px; font-family: var(--tp-font-sans); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tp-muted); }
+.tp-chapter { margin: 28px 0 8px; padding-top: 10px; border-top: 1px solid var(--tp-ink); font-family: var(--tp-font-display), Georgia, serif; font-size: 24px; }
+.tp-lock { margin-top: 18px; padding: 18px; border: 1px solid var(--tp-ink); background: var(--tp-sheet); }
+@media (max-width: 860px) { .tp-seg .tp-tc { position: static; display: block; width: auto; text-align: left; margin-bottom: 2px; } }
+
+/* The press bar: the player along the foot of the page */
+.tp-bar { background: var(--tp-ink); color: var(--tp-on-ink); }
+.tp-bar .tp-btn { border-color: var(--tp-on-ink); color: var(--tp-on-ink); }
+.tp-bar .tp-btn:hover:not(:disabled) { background: var(--tp-on-ink); color: var(--tp-ink); }
+.tp-bar .tp-btn-quiet { border-color: transparent; }
+.tp-scrub { position: relative; height: 18px; cursor: pointer; }
+.tp-scrub::before { content: ''; position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: rgba(243, 242, 238, 0.25); }
+.tp-scrub .tp-fill { position: absolute; left: 0; top: 8px; height: 2px; background: var(--tp-signal); }
+.tp-scrub .tp-tick { position: absolute; top: 4px; width: 1px; height: 10px; background: rgba(243, 242, 238, 0.6); }
+.tp-scrub .tp-head { position: absolute; top: 3px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--tp-signal); }
+.tp-scrub .tp-preview-end { position: absolute; top: 2px; height: 14px; border-left: 2px dashed var(--tp-signal); }
+
+.tp-drawer { background: var(--tp-sheet); border-left: 1px solid var(--tp-ink); }
+.tp-scrim { background: rgba(20, 20, 20, 0.35); }
+.tp-rise { animation: tp-rise 180ms ease-out; }
+@keyframes tp-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tp-rise, .tp-skeleton { animation: none; } .tp-seg[data-now='true'] .tp-said { transition: none; } }
+.tp-scroll { scrollbar-width: thin; scrollbar-color: var(--tp-rule-2) transparent; }

@@ -2,6 +2,7 @@
 // macros (shows, episodes, playback, queue, downloads, playlists,
 // reviews, stats). iTunes + compute macros covered elsewhere.
 
+import { __setPublicFetchTestTransport } from "../lib/public-fetch.js";
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import registerPodcastActions from "../domains/podcast.js";
@@ -184,8 +185,7 @@ describe("podcast.rss-refresh", () => {
         <pubDate>Tue, 12 May 2026 09:00:00 GMT</pubDate>
       </item>
     </channel></rss>`;
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => xml });
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => xml }));
     try {
       const r = await call("rss-refresh", ctxA, { showId: show.id });
       assert.equal(r.ok, true);
@@ -196,7 +196,7 @@ describe("podcast.rss-refresh", () => {
       assert.equal(pilot.audioUrl, "https://cdn.example.com/1.mp3");
       assert.equal(pilot.chapters.length, 2);
     } finally {
-      globalThis.fetch = realFetch;
+      __setPublicFetchTestTransport(null);
     }
   });
 });
@@ -216,12 +216,11 @@ describe("podcast.episode-stream", () => {
         <itunes:duration>600</itunes:duration>
         <psc:chapter start="0" title="Start"/>
       </item></channel></rss>`;
-    const realFetch = globalThis.fetch;
-    globalThis.fetch = async () => ({ ok: true, status: 200, text: async () => xml });
+    __setPublicFetchTestTransport(async () => ({ ok: true, status: 200, text: async () => xml }));
     try {
       await call("rss-refresh", ctxA, { showId: show.id });
     } finally {
-      globalThis.fetch = realFetch;
+      __setPublicFetchTestTransport(null);
     }
     const ep = call("episode-list", ctxA, { showId: show.id }).result.episodes[0];
     call("playback-update", ctxA, { episodeId: ep.id, positionSec: 120 });

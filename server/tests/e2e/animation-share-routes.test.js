@@ -324,15 +324,14 @@ describe('E2E — animation public share viewer (/api/animation/share/:token)', 
       `expected views to increment: first=${first.body.result.share.views} second=${second.body.result.share.views}`);
   });
 
-  it('allowDownload:false is honored end-to-end — frames are redacted, thumbnail/metadata still present', async function () {
+  it('allowDownload:false still plays — frames are sent (a share is for watching); only the download offer is off', async function () {
     const { status, body } = await getJSON(base, '/api/animation/share/' + encodeURIComponent(noDownloadToken));
     assert.equal(status, 200, JSON.stringify(body));
     assert.equal(body?.ok, true);
     assert.equal(body?.result?.animation?.id, noDownloadAnimId);
     assert.equal(body?.result?.share?.allowDownload, false);
-    assert.equal(body?.result?.animation?.frames, undefined, 'frames must be redacted when the owner disabled downloads');
-    // frameCount (metadata) is still exposed — only raw stroke data is withheld.
-    assert.equal(typeof body?.result?.animation?.frameCount, 'number');
+    assert.ok(Array.isArray(body?.result?.animation?.frames) && body.result.animation.frames.length > 0, 'a share must carry the frames it plays');
+    assert.equal(body?.result?.animation?.frameCount, body.result.animation.frames.length);
   });
 
   // ── (b) an invalid/unknown token is rejected, never a fabricated 200 ────
@@ -415,13 +414,16 @@ describe('E2E — animation public share viewer (/api/animation/share/:token)', 
 });
 
 describe('Static source checks — the animation share route stays narrowly scoped', function () {
-  it('publicReadDomains was NOT widened to include "animation" (the doc\'s wrong fix was not taken)', async function () {
+  it('publicReadDomains opens only the public release reads for "animation" — never share-get or an editor macro', async function () {
     const { readFileSync } = await import('node:fs');
     const src = readFileSync(SERVER_JS, 'utf8');
     const m = src.match(/const publicReadDomains = \{[\s\S]*?\n {2}\};/);
     assert.ok(m, 'publicReadDomains block not found');
-    assert.ok(!/\n\s*animation:\s*new Set/.test(m[0]),
-      'publicReadDomains must NOT gain an "animation" key — that would expose every animation macro to anon callers, not just share-get');
+    // The gate is per macro name, so the key only opens what its Set lists.
+    const entry = m[0].match(/\n\s*animation:\s*new Set\(\[([^\]]*)\]\)/);
+    const names = entry ? [...entry[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]) : [];
+    assert.deepEqual(names.sort(), ['anim-release-get', 'anim-release-list'],
+      'anonymous callers may browse published animations and nothing else in the animation domain; share-get stays behind its own token route');
   });
 
   it('the new helper hardcodes "animation.share-get" and never reads an action name from the request', async function () {

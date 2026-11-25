@@ -167,3 +167,29 @@ this pass's scope — left as a recommendation for a future dedicated unit.
 ---
 
 *Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
+
+
+## 2026-11-20 — The Cork Wall (redesign; supersedes the dispositions above)
+
+- **Sharing is real.** Before, `collaborator-add` stored any string and the
+  board lookup only searched the caller's own boards, so a collaborator
+  could never open a shared board. Now collaborators are accounts found by
+  username with a role, shared boards appear in their list, and one access
+  wrapper in `server/domains/board.js` checks the role every action needs
+  (viewer: read + comment; editor: cards/columns/labels; admin: people,
+  automations, rename; owner: delete) and refuses in words.
+- **Live.** Every change is recorded on the board's activity with who did it
+  and sent to each member's user room (`board:changed` / `board:shared` /
+  `board:removed`); presence (`board-presence`) shows who has it open.
+  User/org/session-targeted emits no longer land on the shared event
+  timeline (`server.js#realtimeEmit`) — they were readable by anyone.
+- **Automations run on every move** (they only ran through the separate
+  `card-move-auto` before), plus new triggers (card added, checklist
+  finished) and actions (set due in N days, move to column).
+- **One model.** The personal task list (lens artifacts) and the separate
+  Trello workspace are one board model now; My tasks gathers a person's
+  cards from every board, and `import-tasks` brings the old tasks in once.
+  The BoardGameGeek hot list left this lens (its macro stays registered).
+- Tests: `server/tests/depth/board-cork-wall-behavior.test.js` (13),
+  `concord-frontend/tests/board-cork-wall.test.tsx` (7); older board tests
+  updated where they pinned the fake sharing.

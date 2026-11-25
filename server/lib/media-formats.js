@@ -30,6 +30,12 @@ export const AV_FORMATS = Object.freeze([
     sniff: (b) => b.length >= 12 && b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 12) === "WAVE",
   },
   {
+    mime: "audio/aiff", ext: "aiff", exts: ["aiff", "aif", "aifc"], kind: "audio",
+    aliases: ["audio/x-aiff", "audio/aifc", "audio/x-aifc"],
+    // FORM chunk, then AIFF (uncompressed) or AIFC (compressed AIFF).
+    sniff: (b) => b.length >= 12 && b.toString("latin1", 0, 4) === "FORM" && (b.toString("latin1", 8, 12) === "AIFF" || b.toString("latin1", 8, 12) === "AIFC"),
+  },
+  {
     mime: "audio/flac", ext: "flac", exts: ["flac"], kind: "audio",
     aliases: ["audio/x-flac"],
     sniff: (b) => b.length >= 4 && b.toString("latin1", 0, 4) === "fLaC",

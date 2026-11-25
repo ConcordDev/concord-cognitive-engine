@@ -563,7 +563,9 @@ describe("film-studios — watch party and chat", () => {
     const p = await lensRun("film-studios", "party-create", { params: { projectId, title: "Dailies watch" } }, ctx);
     assert.equal(p.ok, true);
     partyId = p.result.party.id;
-    assert.match(p.result.party.code, /^FILM-\d{4}$/);
+    // The code is what a guest joins with (party-join), so it is 8 random
+    // characters, not the old 4-digit number anyone could guess in 9,000 tries.
+    assert.match(p.result.party.code, /^FILM-[0-9A-F]{8}$/);
   });
 
   it("party-state reports the host as sole participant, paused at zero", async () => {
@@ -599,7 +601,12 @@ describe("film-studios — watch party and chat", () => {
     const list = await lensRun("film-studios", "party-chat-list", { params: { id: partyId } }, ctx);
     assert.equal(list.result.count, 2);
     assert.equal(list.result.messages[0].text, "That cut works");
-    assert.equal(list.result.messages[1].author, "Guest"); // default author
+    // The author is the signed-in poster, never the name the caller typed:
+    // "Ana" above is ignored (this test user has no username row, so the
+    // host is labelled "Host").
+    assert.equal(list.result.messages[0].author, "Host");
+    assert.equal(list.result.messages[1].author, "Host");
+    assert.ok(list.result.messages.every((m) => m.authorId === ctx.actor.userId));
     const ghost = await lensRun("film-studios", "party-chat-list", { params: { id: "pty_nope" } }, ctx);
     assert.equal(ghost.error, "party not found");
   });

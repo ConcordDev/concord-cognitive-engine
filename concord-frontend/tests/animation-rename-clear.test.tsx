@@ -43,7 +43,7 @@ describe('AnimStudio rename + clear', () => {
     await screen.findByText('Bounce');
     fireEvent.click(screen.getByRole('button', { name: /clear layer/i }));
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('animation', 'frame-clear', { animId: 'anm_1', frameId: 'frm_1', layerId: 'lyr_1', allLayers: false }));
-    fireEvent.click(screen.getByRole('button', { name: /clear frame/i }));
+    fireEvent.click(screen.getByRole('button', { name: /clear drawing/i }));
     await waitFor(() => expect(lensRunMock).toHaveBeenCalledWith('animation', 'frame-clear', expect.objectContaining({ allLayers: true })));
   });
 });

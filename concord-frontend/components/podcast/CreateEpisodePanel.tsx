@@ -3,59 +3,32 @@
 /**
  * CreateEpisodePanel — new episode form + mic recording + media upload.
  * Extracted from former podcast/page.tsx Create tab. Recording uploads
- * through POST /api/media/upload (real media id — no fake local-recording-*).
+ * through POST /api/media/upload-raw (the file as the body; real media id — no fake local-recording-*).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Play, Pause, Plus, Check, X, Trash2, Square, CircleDot,
 } from 'lucide-react';
-import { api } from '@/lib/api/client';
 import { showToast } from '@/components/common/Toasts';
 import { DraftedTextarea } from '@/components/lens/DraftedTextarea';
 import { MediaUpload } from '@/components/media/MediaUpload';
 import { useLensCommand } from '@/hooks/useLensCommand';
 import { probeAudioFileDuration } from '@/lib/podcast/probe-audio-duration';
+import { uploadMediaRaw } from './press/upload';
 import { useMyPodcastShow } from './useMyPodcastShow';
 import { notifyPodcastChanged } from './podcast-events';
 import { formatDuration } from './types';
 
 const UPLOAD_AUDIO_FIRST = 'Upload the audio first';
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = '';
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
-}
-
 async function uploadAudioBlob(blob: Blob, opts: { title: string; filename: string; durationHint: number }) {
   const probed = opts.durationHint > 0 ? opts.durationHint : await probeAudioFileDuration(blob);
-  const mimeType = (blob.type || 'audio/webm').split(';')[0] || 'audio/webm';
-  const r = await api.post('/api/media/upload', {
-    title: opts.title,
-    mediaType: 'audio',
-    mimeType,
-    fileSize: blob.size,
-    originalFilename: opts.filename,
-    duration: probed > 0 ? probed : undefined,
-    tags: ['podcast'],
-    privacy: 'private',
-    tier: 'regular',
-    data: await blobToBase64(blob),
-  });
-  const body = r.data as { mediaDTU?: { id?: string; duration?: number }; id?: string; error?: string } | undefined;
-  const mediaDTU = body?.mediaDTU;
-  const mediaId = mediaDTU?.id ?? body?.id;
-  const serverDur = Number(mediaDTU?.duration);
-  const duration = serverDur > 0 ? Math.round(serverDur) : probed;
-  if (!mediaId) {
-    throw new Error(body?.error || UPLOAD_AUDIO_FIRST);
-  }
-  return { mediaId: String(mediaId), duration };
+  // The file is the request body (upload-raw). The JSON base64 path was cut
+  // at ~7.5 KB by the request sanitizer, so no real episode ever fit.
+  const up = await uploadMediaRaw(blob, { title: opts.title, filename: opts.filename, mediaType: 'audio', privacy: 'private', duration: probed > 0 ? probed : undefined, tags: ['podcast'] });
+  if (!up.ok) throw new Error(up.error || UPLOAD_AUDIO_FIRST);
+  return { mediaId: up.mediaId, duration: up.duration > 0 ? Math.round(up.duration) : probed };
 }
 
 export function CreateEpisodePanel({ onCreated }: { onCreated?: () => void }) {

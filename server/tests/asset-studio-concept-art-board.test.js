@@ -111,8 +111,15 @@ describe("art.concept-art-list — the concept board reads real persisted DTUs",
   it("returns an honest empty board for an anon/unauthenticated caller", async () => {
     const anonCtx = { ...freshCtx, actor: { ...freshCtx.actor, userId: "anon" } };
     const listed = await lensRun("art", "concept-art-list", { params: {} }, anonCtx);
-    assert.equal(listed.result.count, 0);
-    assert.deepEqual(listed.result.conceptArt, []);
+    // lens.run now refuses an anonymous caller before the action runs; the
+    // handler's own guard still answers empty. Either way nothing leaks.
+    if (listed.ok === false) {
+      assert.ok(listed.error || listed.reason, JSON.stringify(listed));
+      assert.equal(listed.result?.conceptArt, undefined);
+    } else {
+      assert.equal(listed.result.count, 0);
+      assert.deepEqual(listed.result.conceptArt, []);
+    }
   });
 
   it("filters to concept-art rows only — an unrelated dtu owned by the creator is excluded", async () => {

@@ -437,7 +437,10 @@ describe("animation — pressure / rig / audio / export / share (shared ctx)", (
   it("audio-track-add → list → waveform-set → sync-map maps a track onto frame range", async () => {
     const a = await lensRun("animation", "anim-create", { params: { title: "Audio", fps: 10 } }, ctx);
     const aAnimId = a.result.animation.id;
-    const noName = await lensRun("animation", "audio-track-add", { params: { animId: aAnimId, name: "" } }, ctx);
+    const noSource = await lensRun("animation", "audio-track-add", { params: { animId: aAnimId, name: "Silent" } }, ctx);
+    assert.equal(noSource.result.ok, false);
+    assert.match(noSource.result.error, /upload the audio file/); // a track with nothing to play is refused, not kept silent
+    const noName = await lensRun("animation", "audio-track-add", { params: { animId: aAnimId, name: "", url: "https://cdn.x/a.mp3" } }, ctx);
     assert.equal(noName.result.ok, false);
     assert.match(noName.result.error, /track name required/);
     const add = await lensRun("animation", "audio-track-add", { params: { animId: aAnimId, name: "Theme", url: "https://cdn.x/a.mp3", startSec: 2 } }, ctx);

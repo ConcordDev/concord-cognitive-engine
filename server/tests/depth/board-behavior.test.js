@@ -13,7 +13,7 @@
 // A handler's {ok:false,error} (no result key) is wrapped → r.result.ok===false.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
-import { lensRun, depthCtx } from "./_harness.js";
+import { lensRun, depthCtx, load } from "./_harness.js";
 
 describe("board — calc contracts (exact computed values)", () => {
   it("workflowAnalysis: WIP per column + over-limit detection is exact", async () => {
@@ -224,7 +224,12 @@ describe("board — CRUD round-trips + validation (shared ctx)", () => {
 
 describe("board — extended CRUD round-trips (uncovered macros, shared ctx)", () => {
   let ctx;
-  before(async () => { ctx = await depthCtx("board-crud-ext"); });
+  before(async () => {
+    ctx = await depthCtx("board-crud-ext");
+    // Collaborators are real accounts now (found by username).
+    const { STATE } = await load();
+    for (const u of ["alice", "bob"]) STATE.db.prepare("INSERT OR IGNORE INTO users (id, username, email, password_hash, created_at) VALUES (?, ?, ?, 'x', datetime('now'))").run(u, u, `${u}@example.com`);
+  });
 
   it("column-add appends a column; column-delete removes it AND orphaned cards", async () => {
     const board = (await lensRun("board", "board-create", { params: { name: "Col Board" } }, ctx)).result.board;

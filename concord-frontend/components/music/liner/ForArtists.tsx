@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * For Artists: put music out. Upload songs (each is analysed in the browser
- * for real tempo, key and loudness before it uploads), gather them into a
- * single, EP or album with a cover, liner note, credits and a Concord Coin
- * price, and publish. Publishing mints the release DTU and lists it on the
- * marketplace (music.release-publish). Your page, sales and profile live here.
+ * For Artists: put music out. Upload songs (tempo, key and loudness are
+ * measured on the device when that finishes in time; the file still uploads
+ * when it does not), gather them into a single, EP or album with a cover,
+ * liner note, credits and a Concord Coin price, and publish. Publishing mints
+ * the release DTU and lists it on the marketplace (music.release-publish).
+ * Your page, sales and profile live here.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -13,11 +14,45 @@ import { ArrowDown, ArrowUp, ImagePlus, Loader2, Plus, Trash2, Upload, X, Extern
 import { cn } from '@/lib/utils';
 import { showToast } from '@/components/common/Toasts';
 import { analyzeFile } from '@/lib/music/analyze';
-import { fmtCC, fmtDuration, music, TYPE_LABEL, uploadCover, uploadTrackFile, type ArtistCard, type Release } from './linerApi';
+import { fmtCC, fmtDuration, MAX_TRACK_UPLOAD_BYTES, music, trackTooLargeMessage, TYPE_LABEL, uploadCover, uploadTrackFile, type ArtistCard, type Release } from './linerApi';
 import { Cover, Empty } from './parts';
 
 interface Mine { releases: Release[]; artist: ArtistCard | null; salesGrossCC: number; creatorPoolCC: number }
 interface Upload { name: string; stage: 'analysing' | 'uploading' | 'adding' | 'done' | 'error'; progress: number; note?: string }
+
+/** How long measuring may delay an upload. Past this, the file goes up without numbers. */
+export const ANALYSIS_BUDGET_MS = 8_000;
+
+const AUDIO_EXT = /\.(wav|mp3|flac|m4a|aac|ogg|opus|aif|aiff)$/i;
+const SONG_ACCEPT = 'audio/*,.mp3,.wav,.flac,.m4a,.aac,.ogg,.opus,.aif,.aiff';
+const COVER_ACCEPT = 'image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp';
+const UNMEASURED = "Couldn't measure on this device. Tempo, key and loudness were left blank.";
+
+/**
+ * Measure tempo, key and loudness, but never block the upload on it.
+ * decodeAudioData has no timeout of its own and can hang on iOS; a throw
+ * (or a null decode) is the same outcome: upload with no measurements.
+ */
+async function measureForUpload(file: File): Promise<Awaited<ReturnType<typeof analyzeFile>>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      analyzeFile(file).catch(() => null),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), ANALYSIS_BUDGET_MS);
+      }),
+    ]);
+  } catch {
+    return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
+function measurementNote(analysis: Awaited<ReturnType<typeof analyzeFile>>): string {
+  if (!analysis) return UNMEASURED;
+  return [analysis.bpm ? `${analysis.bpm} BPM` : 'no clear tempo', analysis.key || 'no clear key', analysis.lufs != null ? `${analysis.lufs} LUFS` : null].filter(Boolean).join(' · ');
+}
 
 const GENRES = ['pop', 'hip-hop', 'r&b', 'rock', 'indie', 'electronic', 'house', 'techno', 'lo-fi', 'ambient', 'jazz', 'soul', 'folk', 'country', 'classical', 'metal', 'punk', 'reggae', 'afrobeats', 'latin', 'soundtrack', 'experimental'];
 
@@ -166,14 +201,18 @@ function Editor({ release, onChange, onView, onDeleted, onPublished }: {
   };
 
   const addFiles = async (list: FileList | null) => {
-    const picked = Array.from(list || []).filter((f) => f.type.startsWith('audio/') || /\.(wav|mp3|flac|m4a|aac|ogg|aiff?)$/i.test(f.name));
-    if (!picked.length) { showToast('warning', 'Choose audio files (WAV, MP3, FLAC, M4A, AAC, OGG or AIFF).'); return; }
+    const picked = Array.from(list || []).filter((f) => f.type.startsWith('audio/') || AUDIO_EXT.test(f.name));
+    if (!picked.length) { showToast('warning', 'Choose audio files (WAV, MP3, FLAC, M4A, AAC, OGG, Opus or AIFF).'); return; }
     for (const file of picked) {
       const name = file.name;
       const set = (u: Partial<Upload>) => setUploads((all) => all.map((x) => (x.name === name ? { ...x, ...u } : x)));
+      if (file.size > MAX_TRACK_UPLOAD_BYTES) {
+        setUploads((all) => [...all.filter((x) => x.name !== name), { name, stage: 'error', progress: 0, note: trackTooLargeMessage(name) }]);
+        continue;
+      }
       setUploads((all) => [...all.filter((x) => x.name !== name), { name, stage: 'analysing', progress: 0 }]);
-      const analysis = await analyzeFile(file);
-      set({ stage: 'uploading', note: analysis ? [analysis.bpm ? `${analysis.bpm} BPM` : 'no clear tempo', analysis.key || 'no clear key', analysis.lufs != null ? `${analysis.lufs} LUFS` : null].filter(Boolean).join(' · ') : 'This browser could not decode it, so tempo, key and loudness are left blank.' });
+      const analysis = await measureForUpload(file);
+      set({ stage: 'uploading', note: measurementNote(analysis) });
       const title = name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').trim() || 'Untitled';
       const up = await uploadTrackFile(file, title, analysis?.durationSec || 0, (f) => set({ progress: f }));
       if (!up.ok || !up.result) { set({ stage: 'error', note: up.error }); continue; }
@@ -237,8 +276,11 @@ function Editor({ release, onChange, onView, onDeleted, onPublished }: {
       <div className="flex flex-col gap-5 sm:flex-row">
         <div className="flex flex-col items-start gap-2">
           <Cover url={r.coverUrl} title={form.title || r.title} size="lg" />
-          <button type="button" onClick={() => cover.current?.click()} className="ln-btn ln-btn-quiet h-8 px-3 text-xs"><ImagePlus className="h-3.5 w-3.5" /> {r.coverUrl ? 'Change cover' : 'Add cover'}</button>
-          <input ref={cover} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" aria-label="Cover image" onChange={(e) => { void setCover(e.target.files?.[0]); e.target.value = ''; }} />
+          {/* sr-only, not hidden: iOS Safari ignores a programmatic click on a display:none file input. The label opens the picker. */}
+          <label className="ln-btn ln-btn-quiet ln-file-label h-8 cursor-pointer px-3 text-xs">
+            <ImagePlus className="h-3.5 w-3.5" /> {r.coverUrl ? 'Change cover' : 'Add cover'}
+            <input ref={cover} type="file" accept={COVER_ACCEPT} className="sr-only" aria-label="Cover image" data-testid="ln-cover-file" onChange={(e) => { void setCover(e.target.files?.[0]); e.target.value = ''; }} />
+          </label>
         </div>
         <div className="min-w-0 flex-1 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -288,9 +330,15 @@ function Editor({ release, onChange, onView, onDeleted, onPublished }: {
           onDrop={(e) => { e.preventDefault(); void addFiles(e.dataTransfer.files); }}
         >
           <Upload className="mx-auto h-6 w-6 text-[color:var(--ln-muted)]" aria-hidden />
-          <p className="mt-1 text-sm">Drop songs here, or <button type="button" onClick={() => files.current?.click()} className="ln-link font-semibold text-[color:var(--ln-accent)]">choose files</button></p>
-          <p className="text-xs text-[color:var(--ln-muted)]">Each song is measured for tempo, key and loudness on your device before it uploads.</p>
-          <input ref={files} type="file" accept="audio/*" multiple className="hidden" aria-label="Song files" onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} data-testid="ln-song-files" />
+          <p className="mt-1 text-sm">
+            Drop songs here, or{' '}
+            {/* sr-only, not hidden: iOS Safari ignores a programmatic click on a display:none file input. The label opens the picker. */}
+            <label className="ln-link ln-file-label cursor-pointer font-semibold text-[color:var(--ln-accent)]">
+              choose files
+              <input ref={files} type="file" accept={SONG_ACCEPT} multiple className="sr-only" aria-label="Song files" onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} data-testid="ln-song-files" />
+            </label>
+          </p>
+          <p className="text-xs text-[color:var(--ln-muted)]">Tempo, key and loudness are measured on your device when it can. If measuring does not finish, the song still uploads and those numbers stay blank.</p>
         </div>
       ) : <p className="text-xs text-[color:var(--ln-muted)]">The songs on a release are fixed once it is out, because people bought exactly these.</p>}
       {uploads.length > 0 && (

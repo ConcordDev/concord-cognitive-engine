@@ -375,6 +375,10 @@ export type SocketEvent =
   | 'resonance:update'
   // Public timeline feed
   | 'timeline:post'
+  // Board (the Cork Wall): a shared board changed / was shared with you / went away
+  | 'board:changed'
+  | 'board:shared'
+  | 'board:removed'
   // Character sheet (bars + skill levels) refresh signal
   | 'character:updated'
   // DTU lifecycle

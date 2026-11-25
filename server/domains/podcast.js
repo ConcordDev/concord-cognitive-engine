@@ -6,6 +6,9 @@
 
 import { guardAnonWrites } from "../lib/lens-authz.js";
 import { readMediaDurationSec, setMediaPrivacy } from "../lib/media-dtu.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
+import { parseTranscript } from "../lib/podcast-transcript.js";
+import registerPodcastStudio, { accessView, lockedTranscript } from "./podcast-studio.js";
 
 const ITUNES_SEARCH = "https://itunes.apple.com/search";
 const ITUNES_LOOKUP = "https://itunes.apple.com/lookup";
@@ -133,6 +136,14 @@ export default function registerPodcastActions(registerLensAction) {
     }
     return null;
   };
+  // Who may change an episode: the person who made it, or for an episode
+  // with no maker (an RSS import) the person who owns the show. Before this,
+  // an RSS episode had no createdBy and anyone could edit or delete it.
+  const mayEditEpisode = (s, ep, userId) => {
+    if (!ep || !userId || userId === "anon") return false;
+    if (ep.createdBy) return ep.createdBy === userId;
+    return s.shows.get(ep.showId)?.addedBy === userId;
+  };
 
   // ── Shows / subscriptions ───────────────────────────────────────────
   registerLensAction("podcast", "show-add", (ctx, _a, params = {}) => {
@@ -154,6 +165,8 @@ export default function registerPodcastActions(registerLensAction) {
       category: pcclean(params.category, 60).toLowerCase() || "general",
       description: pcclean(params.description, 1000) || null,
       feedUrl,
+      // Directory artwork (Apple's image CDN gives https URLs); never anything else.
+      artworkUrl: /^https:\/\/[^\s"'<>]{4,490}$/.test(String(params.artworkUrl || "")) ? String(params.artworkUrl) : null,
       addedBy: pcaid(ctx), createdAt: pcnow(),
     };
     s.shows.set(show.id, show);
@@ -176,6 +189,7 @@ export default function registerPodcastActions(registerLensAction) {
     const subs = s.subscriptions.get(userId) || [];
     return {
       ...show,
+      coverUrl: show.coverMediaId ? `/api/media/${encodeURIComponent(show.coverMediaId)}/stream` : (show.artworkUrl || null),
       // The count must agree with what this viewer can open in the show's
       // detail (episode-list filters by canSeeEpisode): a show whose only
       // episode is another creator's draft reads "No episodes yet." there,
@@ -277,6 +291,8 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const show = s.shows.get(String(params.showId));
     if (!show) return { ok: false, error: "show not found" };
+    // Only the show's owner adds episodes to it (anyone could, before).
+    if (show.addedBy !== pcaid(ctx)) return { ok: false, error: "only the show's owner can add episodes" };
     const title = pcclean(params.title, 200);
     if (!title) return { ok: false, error: "episode title required" };
     const status = EPISODE_STATUSES.includes(params.status) ? params.status : "draft";
@@ -315,7 +331,7 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
-    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can change this episode's status" };
+    if (!mayEditEpisode(s, ep, pcaid(ctx))) return { ok: false, error: "only the creator can change this episode's status" };
     if (!EPISODE_STATUSES.includes(params.status)) return { ok: false, error: `status must be one of ${EPISODE_STATUSES.join(", ")}` };
     ep.status = params.status;
     syncEpisodeMediaPrivacy(ep);
@@ -332,7 +348,7 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
-    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can edit this episode" };
+    if (!mayEditEpisode(s, ep, pcaid(ctx))) return { ok: false, error: "only the creator can edit this episode" };
     if (params.title !== undefined) {
       const title = pcclean(params.title, 200);
       if (!title) return { ok: false, error: "episode title required" };
@@ -359,7 +375,7 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
-    if (ep.createdBy && ep.createdBy !== pcaid(ctx)) return { ok: false, error: "only the creator can delete this episode" };
+    if (!mayEditEpisode(s, ep, pcaid(ctx))) return { ok: false, error: "only the creator can delete this episode" };
     const list = s.episodes.get(ep.showId) || [];
     const i = list.findIndex((x) => x.id === ep.id);
     if (i >= 0) list.splice(i, 1);
@@ -441,6 +457,15 @@ export default function registerPodcastActions(registerLensAction) {
       view.mediaId = null;
       view.audioUrl = null;
     }
+    // Supporters-only: the listing says so; the audio route itself enforces it.
+    Object.assign(view, accessView(s, ep, userId, mayEditEpisode));
+    view.hasTranscript = s.transcripts instanceof Map && s.transcripts.has(ep.id);
+    view.canEdit = mayEditEpisode(s, ep, userId);
+    delete view.transcriptSource;
+    view.feedTranscript = !!ep.transcriptSource;
+    // The show's cover rides on every episode so lists can show it.
+    const sh = s.shows.get(ep.showId);
+    view.coverUrl = sh?.coverMediaId ? `/api/media/${encodeURIComponent(sh.coverMediaId)}/stream` : (sh?.artworkUrl || null);
     return view;
   }
 
@@ -779,6 +804,21 @@ export default function registerPodcastActions(registerLensAction) {
     }
     return out.sort((a, b) => a.startSec - b.startSec);
   }
+  // <podcast:transcript url="…" type="text/vtt"/>: prefer a timed format.
+  function rssTranscriptSource(itemXml) {
+    const rank = (t) => (/vtt/.test(t) ? 0 : /srt|subrip/.test(t) ? 1 : /json/.test(t) ? 2 : /text\/plain/.test(t) ? 3 : 9);
+    let best = null;
+    const re = /<podcast:transcript\b([^>]*)\/?>/gi;
+    let m;
+    while ((m = re.exec(itemXml)) !== null) {
+      const url = /\burl=["']([^"']+)["']/i.exec(m[1])?.[1];
+      const type = (/\btype=["']([^"']+)["']/i.exec(m[1])?.[1] || "").toLowerCase();
+      if (!url || !/^https?:\/\//i.test(url) || rank(type) === 9) continue;
+      const cand = { url: rssDecode(url).slice(0, 500), type: type.slice(0, 60) };
+      if (!best || rank(type) < rank(best.type)) best = cand;
+    }
+    return best;
+  }
 
   /**
    * rss-refresh — fetch a subscribed show's RSS feed and ingest its
@@ -790,19 +830,28 @@ export default function registerPodcastActions(registerLensAction) {
     const s = getPodState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const show = s.shows.get(String(params.showId));
     if (!show) return { ok: false, error: "show not found" };
-    const feedUrl = pcclean(params.feedUrl, 500) || show.feedUrl;
+    // A show published from Concord is its own source; a feed must not
+    // replace its episodes.
+    if (show.isCreatorShow) return { ok: false, error: "this show is published from Concord; it has no feed to refresh" };
+    // Anyone may refresh a show from its own stored feed; only the person who
+    // added the show may point it at a different one.
+    const override = pcclean(params.feedUrl, 500);
+    if (override && override !== show.feedUrl && show.addedBy !== pcaid(ctx)) {
+      return { ok: false, error: "only the person who added this show can change its feed" };
+    }
+    const feedUrl = override || show.feedUrl;
     if (!feedUrl || !/^https?:\/\//i.test(feedUrl)) {
       return { ok: false, error: "show has no valid feedUrl" };
     }
     let xml;
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 9000);
-      const r = await fetch(feedUrl, { signal: ctrl.signal });
-      clearTimeout(t);
+      // The SSRF-guarded fetch: public addresses only, pinned to the checked
+      // IP, redirects re-checked, body capped.
+      const r = await fetchPublicUrl(feedUrl, { timeoutMs: 9000, maxBytes: 8 * 1024 * 1024 });
       if (!r.ok) throw new Error(`feed HTTP ${r.status}`);
       xml = await r.text();
     } catch (e) {
+      if (e?.code === "SSRF_BLOCKED") return { ok: false, error: "feed unreachable: that address is not a public web address" };
       return { ok: false, error: `feed unreachable: ${e instanceof Error ? e.message : String(e)}` };
     }
     // Channel-level metadata refresh
@@ -832,6 +881,9 @@ export default function registerPodcastActions(registerLensAction) {
         guid: String(guid).slice(0, 400),
         audioUrl: enclosure || null,
         chapters: rssChapters(raw),
+        // Podcasting 2.0 <podcast:transcript url type>: the publisher's own
+        // timed transcript, imported on demand by transcript-import.
+        transcriptSource: rssTranscriptSource(raw),
         createdAt: pcnow(),
       });
     }
@@ -871,6 +923,7 @@ export default function registerPodcastActions(registerLensAction) {
         playbackSpeed: pcnum(prefs.playbackSpeed, 1) || 1,
         trimSilence: prefs.trimSilence === true,
         skipIntroSec: pcnum(prefs.skipIntroSec, 0),
+        ...accessView(s, ep, userId, mayEditEpisode),
       },
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
@@ -938,38 +991,49 @@ export default function registerPodcastActions(registerLensAction) {
     if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
+    // Only whoever may edit the episode sets its transcript (anyone could).
+    if (!mayEditEpisode(s, ep, pcaid(ctx))) return { ok: false, error: "only the episode's creator can set its transcript" };
     let segments = [];
+    let timing = "timed";
     if (Array.isArray(params.segments) && params.segments.length) {
       segments = params.segments
-        .map((seg) => ({
-          startSec: Math.max(0, Math.round(pcnum(seg.startSec))),
-          text: pcclean(seg.text, 500),
-        }))
-        .filter((seg) => seg.text)
-        .sort((a, b) => a.startSec - b.startSec);
+        .map((seg) => {
+          const start = Number(seg?.startSec);
+          const end = Number(seg?.endSec);
+          return {
+            startSec: Number.isFinite(start) && start >= 0 ? Math.round(start * 100) / 100 : null,
+            endSec: Number.isFinite(end) && end > start ? Math.round(end * 100) / 100 : null,
+            text: pcclean(seg?.text, 1000),
+          };
+        })
+        .filter((seg) => seg.text);
+      if (segments.some((seg) => seg.startSec == null)) return { ok: false, error: "every timed segment needs a startSec of 0 or more" };
+      segments.sort((a, b) => a.startSec - b.startSec);
     } else {
-      const text = String(params.text == null ? "" : params.text).trim();
-      if (!text) return { ok: false, error: "transcript text or segments required" };
-      // Split plain text into sentence-ish segments; distribute timestamps
-      // proportionally across the episode duration.
-      const sentences = text.split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter(Boolean);
-      const dur = ep.durationSec > 0 ? ep.durationSec : sentences.length * 12;
-      segments = sentences.map((sentence, i) => ({
-        startSec: Math.round((i / Math.max(1, sentences.length)) * dur),
-        text: sentence.slice(0, 500),
-      }));
+      // A caption file (vtt / srt / json) carries real times; plain text has
+      // none and is stored untimed. Times are never made up.
+      const body = String(params.vtt ?? params.srt ?? params.json ?? params.text ?? "");
+      const format = params.vtt != null ? "vtt" : params.srt != null ? "srt" : params.json != null ? "json" : (params.format || "text");
+      if (!body.trim()) return { ok: false, error: "transcript text or segments required" };
+      if (body.length > 2_000_000) return { ok: false, error: "transcript is too large (2 MB at most)" };
+      const parsed = parseTranscript(body, format);
+      if (!parsed.ok) return { ok: false, error: parsed.error };
+      segments = parsed.segments;
+      timing = parsed.timing;
     }
     if (segments.length === 0) return { ok: false, error: "transcript produced no segments" };
     const transcript = {
       episodeId: ep.id,
       segments,
+      timing,
+      source: params.source === "feed" ? "feed" : "creator",
       wordCount: segments.reduce((a, seg) => a + seg.text.split(/\s+/).length, 0),
       updatedAt: pcnow(),
       updatedBy: pcaid(ctx),
     };
     s.transcripts.set(ep.id, transcript);
     savePodState();
-    return { ok: true, result: { episodeId: ep.id, segmentCount: segments.length, wordCount: transcript.wordCount } };
+    return { ok: true, result: { episodeId: ep.id, segmentCount: segments.length, wordCount: transcript.wordCount, timing } };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
@@ -978,9 +1042,19 @@ export default function registerPodcastActions(registerLensAction) {
     if (!(s.transcripts instanceof Map)) s.transcripts = new Map();
     const ep = findEpisode(s, String(params.episodeId));
     if (!ep) return { ok: false, error: "episode not found" };
+    if (!canSeeEpisode(ep, pcaid(ctx))) return { ok: false, error: "episode not found" };
     const transcript = s.transcripts.get(ep.id);
-    if (!transcript) return { ok: true, result: { episodeId: ep.id, hasTranscript: false, segments: [] } };
-    return { ok: true, result: { episodeId: ep.id, hasTranscript: true, ...transcript } };
+    if (!transcript) return { ok: true, result: { episodeId: ep.id, hasTranscript: false, timing: null, segments: [], feedTranscript: !!ep.transcriptSource } };
+    const access = accessView(s, ep, pcaid(ctx), mayEditEpisode);
+    const segments = access.locked ? lockedTranscript(transcript.segments) : transcript.segments;
+    return {
+      ok: true,
+      result: {
+        episodeId: ep.id, hasTranscript: true, ...transcript, segments,
+        timing: transcript.timing || "timed", source: transcript.source || "creator",
+        locked: access.locked, totalSegments: transcript.segments.length,
+      },
+    };
   });
 
   /**
@@ -997,7 +1071,9 @@ export default function registerPodcastActions(registerLensAction) {
     if (!query) return { ok: false, error: "query required" };
     const transcript = s.transcripts.get(ep.id);
     if (!transcript) return { ok: true, result: { episodeId: ep.id, query, matches: [], count: 0 } };
-    const matches = transcript.segments
+    if (!canSeeEpisode(ep, pcaid(ctx))) return { ok: false, error: "episode not found" };
+    const readable = accessView(s, ep, pcaid(ctx), mayEditEpisode).locked ? lockedTranscript(transcript.segments) : transcript.segments;
+    const matches = readable
       .filter((seg) => seg.text.toLowerCase().includes(query))
       .map((seg) => ({ startSec: seg.startSec, text: seg.text }));
     return { ok: true, result: { episodeId: ep.id, query, matches, count: matches.length } };
@@ -1203,4 +1279,12 @@ export default function registerPodcastActions(registerLensAction) {
     };
     } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
+
+  // The creator side and the listener's money: show profile, public feed,
+  // tips, supporter pass and supporters-only episodes, feed transcripts.
+  registerPodcastStudio(registerLensAction, {
+    getPodState, savePodState, pcaid, pcclean, pcnum, pcnow, findEpisode, mayEditEpisode, canSeeEpisode,
+    syncEpisodeMediaPrivacy,
+  });
+
 }

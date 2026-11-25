@@ -160,6 +160,8 @@ export async function savePhoto(db, userId, opts = {}) {
       id, userId, worldId || null, caption || null, blobPath, visibility,
       blob.width ?? null, blob.height ?? null, blob.bytes ?? null, filename,
     );
+    // The Darkroom (mig 516) tells in-game captures from imports.
+    if (worldId) { try { db.prepare(`UPDATE user_photos SET source = 'concordia' WHERE id = ?`).run(id); } catch { /* pre-516 DB */ } }
     logger.info?.("photo-gallery", "saved", { id, userId, bytes: blob.bytes });
     return { ok: true, id, blobPath, bytes: blob.bytes, width: blob.width, height: blob.height, format: format.label };
   } catch (err) {
@@ -282,14 +284,15 @@ export function listMyPhotos(db, userId, limit = 50) {
       ORDER BY taken_at DESC LIMIT ?
     `).all(userId, Math.max(1, Math.min(500, limit))).map((r) => ({ ...r, tags: parseTags(r.tags) }));
   } catch {
-    // favorite column absent (pre-468 DB) — fall back to the base shape.
-    try {
-      return db.prepare(`
-        SELECT id, world_id, caption, taken_at, dtu_id, visibility
-        FROM user_photos WHERE user_id = ?
-        ORDER BY taken_at DESC LIMIT ?
-      `).all(userId, Math.max(1, Math.min(500, limit)));
-    } catch { return []; }
+    // alt_text/tags absent (pre-504 DB) or favorite absent too (pre-468):
+    // fall back one column set at a time, never dropping a column that exists.
+    const n = Math.max(1, Math.min(500, limit));
+    for (const cols of ["id, world_id, caption, taken_at, dtu_id, visibility, favorite", "id, world_id, caption, taken_at, dtu_id, visibility"]) {
+      try {
+        return db.prepare(`SELECT ${cols} FROM user_photos WHERE user_id = ? ORDER BY taken_at DESC LIMIT ?`).all(userId, n);
+      } catch { /* try the smaller shape */ }
+    }
+    return [];
   }
 }
 
@@ -308,12 +311,20 @@ export function listPublicPhotosInWorld(db, worldId, limit = 50) {
 export function deletePhoto(db, userId, photoId) {
   if (!db || !userId || !photoId) return { ok: false, error: "missing_inputs" };
   try {
-    const p = db.prepare(`SELECT user_id, blob_path FROM user_photos WHERE id = ?`).get(photoId);
+    const p = db.prepare(`SELECT * FROM user_photos WHERE id = ?`).get(photoId);
     if (!p) return { ok: false, error: "no_photo" };
     if (p.user_id !== userId) return { ok: false, error: "not_owner" };
+    // The Darkroom (mig 516): a released photo's original is what buyers'
+    // downloads are rendered from. A live release must be withdrawn first,
+    // and a photo someone has bought stays so they keep their copy.
+    try {
+      if (db.prepare(`SELECT 1 FROM photo_releases WHERE photo_id = ? AND status = 'published'`).get(photoId)) return { ok: false, error: "release_live" };
+      if (db.prepare(`SELECT 1 FROM photo_release_owners o JOIN photo_releases r ON r.id = o.release_id WHERE r.photo_id = ?`).get(photoId)) return { ok: false, error: "release_owned" };
+    } catch { /* pre-516 DB: no releases */ }
     db.prepare(`DELETE FROM user_photos WHERE id = ?`).run(photoId);
     try { db.prepare(`DELETE FROM photo_album_items WHERE photo_id = ?`).run(photoId); } catch { /* pre-468 */ }
-    try { fs.unlinkSync(p.blob_path); } catch { /* may be gone */ }
+    try { db.prepare(`DELETE FROM photo_edit_history WHERE photo_id = ?`).run(photoId); } catch { /* pre-516 */ }
+    for (const f of [p.blob_path, p.preview_path, p.thumb_path]) { if (!f) continue; try { fs.unlinkSync(f); } catch { /* may be gone */ } }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err?.message };

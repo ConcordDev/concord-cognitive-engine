@@ -1,9 +1,9 @@
 /**
  * Audit sweep CB-0447, cluster D — FE pins for the missing edit/clear
  * controls: FIX-carpentry-010 (time-entry + invoice edit in JobOps),
- * FIX-parenting-010 (child edit in ParentingSection),
- * FIX-photography-001 (shoot edit in LightroomCollectionsPanel) and
- * FIX-sync-009 (clear history in SyncDashboard). Each edit loads the
+ * FIX-parenting-010 (child edit in ParentingSection) and
+ * FIX-sync-009 (clear history in SyncDashboard). FIX-photography-001's pin
+ * left with the unmounted Lightroom panel when Photos became the Darkroom. Each edit loads the
  * record into the lens's own create form and saves through the new
  * update verb; the sync clear rides the family's two-step confirm and
  * fires nothing until confirmed.
@@ -42,7 +42,6 @@ vi.mock('@/hooks/useSmartPolling', () => ({ useSmartPolling: () => {} }));
 
 import { JobOps } from '@/components/carpentry/JobOps';
 import { ParentingSection } from '@/components/parenting/ParentingSection';
-import { LightroomCollectionsPanel } from '@/components/photography/LightroomCollectionsPanel';
 import { SyncDashboard } from '@/components/sync/SyncDashboard';
 
 function wrap(ui: React.ReactElement) {
@@ -128,28 +127,6 @@ describe('parenting child edit (FIX-parenting-010)', () => {
       const call = calls.find((c) => c.action === 'child-update');
       expect(call).toBeTruthy();
       expect(call?.input).toMatchObject({ id: 'kid_1', name: 'Ada L', birthDate: '2024-01-15', sex: 'girl' });
-    });
-  });
-});
-
-describe('photography shoot edit (FIX-photography-001)', () => {
-  it('a shoot row Edit loads the shoot form and Save fires shoot-update', async () => {
-    const SHOOT = { id: 'sht_1', name: 'Roll 1', date: '2026-10-01', location: 'Studio', photoCount: 3 };
-    handler = (_d, action) => {
-      if (action === 'album-list') return ok({ albums: [] });
-      if (action === 'shoot-list') return ok({ shoots: [SHOOT], count: 1 });
-      if (action === 'photo-list') return ok({ photos: [] });
-      return ok({});
-    };
-    wrap(<LightroomCollectionsPanel onChange={() => {}} />);
-    await screen.findByText('Roll 1');
-    fireEvent.click(screen.getByRole('button', { name: 'Edit shoot Roll 1' }));
-    fireEvent.change(screen.getByPlaceholderText('Shoot name'), { target: { value: 'Roll 1 — selects' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => {
-      const call = calls.find((c) => c.action === 'shoot-update');
-      expect(call).toBeTruthy();
-      expect(call?.input).toMatchObject({ rollId: 'sht_1', name: 'Roll 1 — selects', date: '2026-10-01', location: 'Studio' });
     });
   });
 });

@@ -140,7 +140,12 @@ export function Sidebar() {
           aria-hidden="true" role="button" tabIndex={0} onKeyDown={activateOnEnterOrSpace} />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar. CB-1261: while the mobile drawer is closed it must also
+          leave the accessibility tree and the tab order — translate alone
+          left its controls (Close sidebar + the RailAccount cluster)
+          focusable and measurable off-screen on every lens at 390 px.
+          visibility:hidden does both; the lg:visible keeps the desktop
+          rail (where sidebarOpen is not the governing state) shown. */}
       <aside
         role="navigation"
         aria-label="Main navigation"
@@ -150,6 +155,7 @@ export function Sidebar() {
           transition-all duration-300 flex flex-col
           ${sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'}
           ${sidebarOpen ? 'w-72 translate-x-0' : 'w-72 -translate-x-full lg:translate-x-0'}
+          ${sidebarOpen ? 'visible' : 'invisible lg:visible'}
         `}
       >
         {/* Logo */}

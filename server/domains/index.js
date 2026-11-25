@@ -179,6 +179,7 @@ import ocean from './ocean.js';
 import pharmacy from './pharmacy.js';
 import philosophy from './philosophy.js';
 import photography from './photography.js';
+import photosDarkroom from './photos-darkroom.js';
 import plumbing from './plumbing.js';
 import podcast from './podcast.js';
 import poetry from './poetry.js';
@@ -509,6 +510,7 @@ export default [
   pharmacy,
   philosophy,
   photography,
+  photosDarkroom,
   plumbing,
   podcast,
   poetry,

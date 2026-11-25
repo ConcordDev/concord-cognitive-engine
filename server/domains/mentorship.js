@@ -395,7 +395,11 @@ export default function registerMentorshipActions(registerLensAction) {
         if (sort === "availability") return (a.menteeCount / a.capacity) - (b.menteeCount / b.capacity);
         return b.rating - a.rating || b.reviewCount - a.reviewCount;
       });
-      const allSkills = [...new Set([...s.mentors.values()].flatMap((m) => m.skills))].sort();
+      // FIX-mentorship-008 residual: the aggregate skills list feeds the
+      // public filter dropdown, where a fixture skill cannot be labelled —
+      // sample (QA harness) profiles' skills stay out of it. The profiles
+      // themselves remain listed and labelled above.
+      const allSkills = [...new Set([...s.mentors.values()].filter((m) => !isSampleMentor(m)).flatMap((m) => m.skills))].sort();
       return { ok: true, result: { mentors, count: mentors.length, skills: allSkills, sort } };
     } catch (e) { return { ok: false, error: e.message }; }
   });

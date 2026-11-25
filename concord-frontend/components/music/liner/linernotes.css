@@ -95,7 +95,7 @@
   transition: transform 90ms ease, background 150ms ease, opacity 150ms ease;
 }
 .ln-btn:active { transform: scale(0.97); }
-.ln-btn:focus-visible, .ln-link:focus-visible, .ln-row:focus-visible { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
+.ln-btn:focus-visible, .ln-link:focus-visible, .ln-row:focus-visible, .ln-file-label:has(:focus-visible) { outline: 2px solid var(--ln-accent); outline-offset: 2px; }
 .ln-btn-primary { background: var(--ln-accent); color: #fff; }
 .ln-btn-primary:hover { opacity: 0.92; }
 .ln-btn-quiet { background: var(--ln-paper-2); color: var(--ln-ink); }

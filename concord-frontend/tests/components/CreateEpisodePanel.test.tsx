@@ -1,4 +1,9 @@
-/** Create Episode uploads a selected file instead of saving mediaId null. */
+/**
+ * Create Episode uploads a selected file instead of saving mediaId null. The
+ * file goes to POST /api/media/upload-raw as the request body (the JSON
+ * base64 path was cut at ~7.5 KB by the request sanitizer, so no real
+ * episode ever uploaded through it).
+ */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -6,12 +11,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
 const lensRunMock = vi.fn();
-const postMock = vi.fn();
+const postMock = vi.fn(); // the fetch to /api/media/upload-raw
 const toastMock = vi.fn();
 
 vi.mock('@/lib/api/client', () => ({
   lensRun: (...args: unknown[]) => lensRunMock(...args),
-  api: { post: (...args: unknown[]) => postMock(...args) },
 }));
 vi.mock('@/components/common/Toasts', () => ({
   showToast: (...args: unknown[]) => toastMock(...args),
@@ -48,6 +52,7 @@ function makeFile(name = 'pilot.mp3', type = 'audio/mpeg', content = 'not-really
 }
 
 beforeEach(() => {
+  vi.stubGlobal('fetch', (...args: unknown[]) => postMock(...args));
   lensRunMock.mockReset();
   postMock.mockReset();
   toastMock.mockReset();
@@ -75,7 +80,7 @@ beforeEach(() => {
     }
     return Promise.resolve({ data: { ok: true, result: {} } });
   });
-  postMock.mockResolvedValue({ data: { mediaDTU: { id: 'media_1', duration: 12.4 } } });
+  postMock.mockResolvedValue({ ok: true, status: 201, json: async () => ({ mediaDTU: { id: 'media_1', duration: 12.4 } }) });
 });
 
 describe('CreateEpisodePanel', () => {
@@ -97,6 +102,11 @@ describe('CreateEpisodePanel', () => {
     expect(add?.[2].mediaId).toBe('media_1');
     expect(add?.[2].durationSec).toBeGreaterThan(0);
     expect(postMock).toHaveBeenCalled();
+    const [url, init] = postMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/^\/api\/media\/upload-raw\?/);
+    expect(new URLSearchParams(url.split('?')[1]).get('mediaType')).toBe('audio');
+    expect(init.body).toBeInstanceOf(File);
+    expect((init.body as File).name).toBe('pilot.mp3');
     const uploadOrder = postMock.mock.invocationCallOrder[0];
     const addOrder = lensRunMock.mock.invocationCallOrder[
       lensRunMock.mock.calls.findIndex((c) => c[1] === 'episode-add')
@@ -106,7 +116,7 @@ describe('CreateEpisodePanel', () => {
   });
 
   it('blocks Create when the selected file does not upload', async () => {
-    postMock.mockResolvedValue({ data: {} });
+    postMock.mockResolvedValue({ ok: false, status: 400, json: async () => ({ error: 'File type not allowed' }) });
     const { container } = renderPanel();
     fireEvent.change(await screen.findByPlaceholderText('Episode title'), { target: { value: 'Pilot' } });
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
