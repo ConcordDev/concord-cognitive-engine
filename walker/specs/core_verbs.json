@@ -2079,25 +2079,31 @@
   "transfer": {
    "name": "Transfer",
    "category": "ai",
-   "verb": "schedule due",
+   "verb": "create a transfer pipeline",
    "action": {
     "domain": "transfer",
-    "name": "schedule-due"
+    "name": "pipeline-upsert"
    },
    "visibility": "private",
-   "args": null,
-   "cleanup_action": null,
-   "expect": "After the verb, the result exists in the writer's Transfer data, survives a reload, and is not visible to other accounts.",
+   "args": {
+    "name": "{label}",
+    "sourceConnectorId": "ulw-probe-source"
+   },
+   "cleanup_action": {
+    "domain": "transfer",
+    "name": "pipeline-delete"
+   },
+   "expect": "After the verb, the result exists in the writer's Transfer data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Transfer lens as the writer account.",
-    "Perform the core verb: schedule due (via transfer.schedule-due).",
+    "Perform the core verb: create a transfer pipeline (via transfer.pipeline-upsert).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
     "Delete the created data via the write account (cleanup)."
    ],
    "status": "draft",
    "source": "registry-draft",
-   "note": "Draft derived from the registerLensAction registry scan (domain transfer); the defining-verb choice and the private default are unreviewed."
+   "note": "Slice S re-pin (B3, 2026-11-25; CB-1245 scope): the draft pin named transfer.schedule-due, a pure read over the caller's pipelines (handler verified, server/domains/transfer.js @ 21303b4672 — it writes nothing). Re-pinned to the domain's defining write: pipeline-upsert creates a per-actor pipeline (name + sourceConnectorId required; returns result.pipeline with its id; pipeline-list reads it back) and pipeline-delete removes it by the default id arg — handler-verified at the same build. The transfer domain is data pipelines/connectors, not money movement; the action name carries no money-class word."
   },
   "grounding": {
    "name": "Grounding",
@@ -4522,25 +4528,31 @@
   "space": {
    "name": "Space",
    "category": "science",
-   "verb": "track a iss",
+   "verb": "track a satellite",
    "action": {
     "domain": "space",
-    "name": "iss-track"
+    "name": "satellite-track"
    },
    "visibility": "private",
-   "args": null,
-   "cleanup_action": null,
-   "expect": "After the verb, the result exists in the writer's Space data, survives a reload, and is not visible to other accounts.",
+   "args": {
+    "name": "{label}",
+    "altitudeKm": 420
+   },
+   "cleanup_action": {
+    "domain": "space",
+    "name": "satellite-untrack"
+   },
+   "expect": "After the verb, the result exists in the writer's Space data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Space lens as the writer account.",
-    "Perform the core verb: track a iss (via space.iss-track).",
+    "Perform the core verb: track a satellite (via space.satellite-track).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
     "Delete the created data via the write account (cleanup)."
    ],
    "status": "draft",
    "source": "registry-draft",
-   "note": "Draft derived from the registerLensAction registry scan (domain space); the defining-verb choice and the private default are unreviewed."
+   "note": "Slice S re-pin (B3, 2026-11-25; CB-1245 scope): the draft pin named space.iss-track, a live telemetry read — its handler (server/domains/space.js @ 21303b4672) fetches wheretheiss.at and writes nothing, so the persistence-judged core-verb check could only misjudge it. Re-pinned to the lens's writing track verb: satellite-track stores a per-actor tracked satellite (name + altitudeKm required; returns result.satellite with its id) and satellite-untrack removes it by the default id arg — both handler-verified at the same build. Visibility private: the satellite store is per-actor."
   },
   "marketing": {
    "name": "Marketing",
@@ -6081,25 +6093,32 @@
   "meditation": {
    "name": "Meditation",
    "category": "progression",
-   "verb": "track a pick",
+   "verb": "log a meditation session",
    "action": {
     "domain": "meditation",
-    "name": "pickTrack"
+    "name": "sessionLog"
    },
    "visibility": "private",
-   "args": null,
-   "cleanup_action": null,
-   "expect": "After the verb, the result exists in the writer's Meditation data, survives a reload, and is not visible to other accounts.",
+   "args": {
+    "minutes": 1,
+    "title": "{label}"
+   },
+   "cleanup_action": {
+    "domain": "meditation",
+    "name": "sessionDelete"
+   },
+   "expect": "After the verb, the result exists in the writer's Meditation data, survives a reload, and its visibility matches the spec.",
    "steps": [
     "Open the Meditation lens as the writer account.",
-    "Perform the core verb: track a pick (via meditation.pickTrack).",
+    "Perform the core verb: log a meditation session (via meditation.sessionLog).",
     "Reload the lens and re-read through the API: the result must still be there (persistence).",
     "Open the same surface as the observer account: the result must NOT be visible to them (spec visibility: private).",
     "Delete the created data via the write account (cleanup)."
    ],
    "status": "draft",
    "source": "registry-draft",
-   "note": "Draft derived from the registerLensAction registry scan (domain meditation); the defining-verb choice and the private default are unreviewed."
+   "note": "Slice S re-pin (B3, 2026-11-25; CB-1245 scope): the draft pin named meditation.pickTrack, a deterministic compute over a static track table (handler verified, server/domains/meditation.js @ 21303b4672 — it touches no state). Re-pinned to the lens's defining write: sessionLog appends a per-actor practice entry (returns result.entry with its id; history reads it back) and sessionDelete removes it under the entryId arg (cleanup_id_arg pinned accordingly) — handler-verified at the same build.",
+   "cleanup_id_arg": "entryId"
   },
   "mesh": {
    "name": "Mesh",
