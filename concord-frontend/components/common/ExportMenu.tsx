@@ -116,6 +116,23 @@ export function ExportMenu({ domain }: ExportMenuProps) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // FIX-nonprofit-009: while the menu is open, Escape closes it from
+  // anywhere on the page. The toggle's and the menu's own key handlers
+  // only see the key when focus sits inside the menu's subtree, so an
+  // Escape pressed after a keyboard open (Ctrl+E) with focus elsewhere
+  // left the menu open with no way to dismiss it from the keyboard.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      setIsOpen(false);
+      buttonRef.current?.focus();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isOpen]);
+
   const exportConkay = async (format: 'json' | 'csv') => {
     let lensItems: unknown[] = [];
     let lensItemsError: string | null = null;
