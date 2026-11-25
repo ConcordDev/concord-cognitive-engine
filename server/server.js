@@ -2122,7 +2122,7 @@ import {
 } from "./plugins/loader.js";
 import { initDTUStore, createDTUStore } from "./lib/dtu-store.js";
 import { configureWriteSpill, waitForWriteQuiet, replaySpill, spilledIsNewer, spillStats } from "./lib/shutdown-write-gate.js";
-import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed } from "./lib/dtu-ownership.js";
+import { assignDtuCustody, dtuMutationDenial, normalizeOwnerlessDtus, founderSeedCustody, stampFounderSeed, DTU_ADMIN_ROLES } from "./lib/dtu-ownership.js";
 import { dtuReadDenial, credibilityAdminDenial, collabParticipantDenial } from "./lib/dtu-macro-guards.js";
 import { exportableDtus, exportBulkDenial } from "./lib/export-filter.js";
 import { dtuImportDecision, importAuthDenial, stampImportedDtu } from "./lib/dtu-import-guard.js";
@@ -38904,7 +38904,7 @@ register("market","library", (ctx, _input) => {
 register("paper","create", (ctx, input) => {
   const topic = normalizeText(input.topic || "Untitled Paper");
   const id = uid("paper");
-  const paper = { id, orgId: ctx.actor.orgId, topic, outline: [], sections: [], refs: [], status:"draft", createdAt: nowISO(), updatedAt: nowISO() };
+  const paper = { id, orgId: ctx.actor.orgId, createdBy: ctx.actor.userId || ctx.actor.id || null, ownerId: ctx.actor.userId || ctx.actor.id || null, topic, outline: [], sections: [], refs: [], status:"draft", createdAt: nowISO(), updatedAt: nowISO() };
   STATE.papers.set(id, paper);
   saveStateDebounced();
   return { ok:true, paper };
@@ -38913,7 +38913,27 @@ register("paper","create", (ctx, input) => {
 register("paper","build", (ctx, input) => {
   const id = String(input.paperId||"");
   const p = STATE.papers.get(id);
-  if (!p) return { ok:false, error:"paper not found" };
+  if (!p) return { ok:false, error:"paper not found", status:404 };
+  // CB-1324 F2, reworked CB-1369: papers are USER-owned (create stamps
+  // createdBy/ownerId from the session actor) and build OVERWRITES
+  // outline/sections/refs — the caller must be the owning user or an
+  // admin-class role. The org comparison this replaces was vacuous:
+  // orgId defaults to "default" for every member, so any member passed
+  // it. Secured modes: signed-out 401, non-owner (incl. ownerless
+  // pre-stamp papers) 403 for non-admins, nothing written on refusal.
+  // AUTH_MODE=public keeps the local-first exception, mirroring
+  // dtuMutationDenial.
+  if (AUTH_MODE !== "public") {
+    const actor = ctx?.actor || null;
+    const callerId = actor?.userId || actor?.id || actor?.odId || null;
+    if (!callerId) return { ok:false, error:"Authentication required", status:401, code:"AUTH_REQUIRED" };
+    if (!DTU_ADMIN_ROLES.has(String(actor?.role || ""))) {
+      const paperOwner = p.createdBy || p.ownerId || null;
+      if (paperOwner !== callerId) {
+        return { ok:false, error:"unauthorized: you can only build your own papers", status:403, code:"FORBIDDEN" };
+      }
+    }
+  }
   // Minimal build: pick top DTUs by tags/topic and build a markdown-ish outline.
   const topic = p.topic;
   const { top } = retrieveDTUs(topic, { topK: 8, minScore: 0.06, randomK: 0, oppositeK: 0 });
