@@ -37,6 +37,7 @@ vi.mock('@/components/animation/AnimationStudioSection', () => ({
     React.createElement('div', { 'data-testid': 'anim-studio-section' },
       React.createElement('input', { id: 'anim-new-title', placeholder: 'Title' })),
 }));
+vi.mock('@/components/animation/AnimationReference', () => ({ AnimationReference: () => <div data-testid="anim-frame-templates" /> }));
 vi.mock('@/components/animation/AnimationReferenceImages', () => ({
   AnimationReferenceImages: () =>
     React.createElement('div', { 'data-testid': 'anim-reference-section' }, 'Reference images panel'),
@@ -95,10 +96,10 @@ describe('animation studio shell', () => {
     lensRun.mockResolvedValue(listed(true));
     const view = render(<AnimationPage />);
     await view.findByTestId('anim-studio-section');
-    fireEvent.click(view.getByRole('tab', { name: 'Reference images' }));
+    fireEvent.click(view.getByRole('tab', { name: 'Reference' }));
     expect(await view.findByTestId('anim-reference-section')).toBeInTheDocument();
     expect(view.queryByTestId('anim-studio-section')).toBeNull();
-    fireEvent.click(view.getByRole('tab', { name: 'Studio' }));
+    fireEvent.click(view.getByRole('tab', { name: 'The table' }));
     expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();
     expect(view.queryByTestId('anim-reference-section')).toBeNull();
   });
@@ -107,7 +108,7 @@ describe('animation studio shell', () => {
     lensRun.mockResolvedValue(listed(true));
     const view = render(<AnimationPage />);
     await view.findByTestId('anim-studio-section');
-    fireEvent.click(view.getByRole('tab', { name: 'Reference images' }));
+    fireEvent.click(view.getByRole('tab', { name: 'Reference' }));
     await view.findByTestId('anim-reference-section');
     fireEvent.click(view.getByRole('button', { name: '+ New shot' }));
     expect(await view.findByTestId('anim-studio-section')).toBeInTheDocument();

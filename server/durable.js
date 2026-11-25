@@ -14,7 +14,7 @@
  */
 
 import { randomUUID } from "crypto";
-import { gateLogRead, sendGate, isLogAdmin, redactLogValue } from "./lib/log-access.js";
+import { gateLogRead, sendGate, isLogAdmin, redactLogValue, actorFromReq } from "./lib/log-access.js";
 import { createStorageAdapter } from "./storage/index.js";
 
 const storage = createStorageAdapter();
@@ -298,11 +298,22 @@ export function registerDurableEndpoints(app, db) {
   // ═══════════════════════════════════════════════════════════════
 
   // POST /api/marketplace/listings — create draft
+  // Ownership (CB-1279 ticket A): the listing's owner is the session
+  // caller (actorFromReq), never the request body — before this fix any
+  // caller, signed in or not, could create a listing owned by any user
+  // id they named in owner_user_id. A body-supplied owner is ignored.
+  // There is no create-on-behalf capability in this module (the attach
+  // gate below treats admins as exempt callers acting under their own
+  // id, and the distribution release insert writes under its caller's
+  // own flow), so admins likewise own the listings they create.
   app.post("/api/marketplace/listings", (req, res) => {
     try {
-      const { owner_user_id, title, description = "", price_cents = 0, currency = "USD", license_id } = req.body;
-      if (!owner_user_id) return res.status(400).json({ error: "owner_user_id required" });
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
+      const { title, description = "", price_cents = 0, currency = "USD", license_id } = req.body;
       if (!title) return res.status(400).json({ error: "title required" });
+      const owner_user_id = actor.userId;
 
       const id = uid("lst");
       const now = nowISO();
@@ -323,22 +334,45 @@ export function registerDurableEndpoints(app, db) {
   });
 
   // POST /api/marketplace/listings/:id/assets — attach artifacts
+  // Ownership gate (CB-1258): only the listing's owner or an admin-class
+  // role may attach. The caller comes from the authenticated session
+  // (req.user, read via actorFromReq), never from the request body —
+  // before this gate any caller could attach any artifact to any
+  // listing, and the attach was logged under the listing owner's id.
+  // Order follows log-access's reasoningTraceAccess: 401 -> 404 -> 403.
   app.post("/api/marketplace/listings/:id/assets", (req, res) => {
     try {
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
       const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(req.params.id);
       if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+      const admin = isLogAdmin(actor);
+      if (!admin && listing.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this listing" });
+      }
 
       const { artifact_id } = req.body;
       if (!artifact_id) return res.status(400).json({ error: "artifact_id required" });
 
-      const artifact = db.prepare("SELECT id FROM artifacts WHERE id = ?").get(artifact_id);
+      const artifact = db.prepare("SELECT id, owner_user_id FROM artifacts WHERE id = ?").get(artifact_id);
       if (!artifact) return res.status(404).json({ error: "Artifact not found" });
+
+      // The artifact leg of the same hole (CB-1258, discretionary): a
+      // listing owner attaching someone else's artifact would publish
+      // that person's work under this listing. Rows with no recorded
+      // owner stay attachable (the distribution route's precedent);
+      // admins are exempt.
+      if (!admin && artifact.owner_user_id && artifact.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this artifact" });
+      }
 
       db.prepare(
         "INSERT OR IGNORE INTO marketplace_listing_assets (listing_id, artifact_id) VALUES (?, ?)"
       ).run(req.params.id, artifact_id);
 
-      logEvent(db, "marketplace.asset_attached", listing.owner_user_id, { listingId: req.params.id, artifactId: artifact_id }, req.headers["x-request-id"]);
+      logEvent(db, "marketplace.asset_attached", actor.userId, { listingId: req.params.id, artifactId: artifact_id }, req.headers["x-request-id"]);
 
       res.json({ ok: true });
     } catch (e) {
@@ -347,10 +381,25 @@ export function registerDurableEndpoints(app, db) {
   });
 
   // POST /api/marketplace/listings/:id/publish
+  // Ownership gate (CB-1279 ticket B): the same gate as the attach
+  // route (CB-1258) — the caller comes from the authenticated session
+  // (actorFromReq), never the request body. Before this gate any
+  // caller, signed in or not, could publish any listing that had an
+  // asset, and the publish was logged under the listing owner's id.
+  // Order follows the attach gate: 401 -> 404 -> 403, nothing written
+  // on refusal, and the publish event is logged under the caller.
   app.post("/api/marketplace/listings/:id/publish", (req, res) => {
     try {
+      const actor = actorFromReq(req);
+      if (!actor.userId) return res.status(401).json({ error: "authentication_required" });
+
       const listing = db.prepare("SELECT * FROM marketplace_listings WHERE id = ?").get(req.params.id);
       if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+      const admin = isLogAdmin(actor);
+      if (!admin && listing.owner_user_id !== actor.userId) {
+        return res.status(403).json({ error: "You do not own this listing" });
+      }
       if (listing.visibility === "published") return res.json({ ok: true, message: "Already published" });
 
       // Must have at least one asset
@@ -361,7 +410,7 @@ export function registerDurableEndpoints(app, db) {
 
       const tx = db.transaction(() => {
         db.prepare("UPDATE marketplace_listings SET visibility = 'published', updated_at = ? WHERE id = ?").run(nowISO(), req.params.id);
-        logEvent(db, "marketplace.listing_published", listing.owner_user_id, { listingId: req.params.id }, req.headers["x-request-id"]);
+        logEvent(db, "marketplace.listing_published", actor.userId, { listingId: req.params.id }, req.headers["x-request-id"]);
       });
       tx();
 

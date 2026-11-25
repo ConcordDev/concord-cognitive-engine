@@ -42,8 +42,6 @@ vi.mock('framer-motion', () => ({
   motion: new Proxy({}, { get: () => (p: Record<string, unknown>) => <div>{p.children as React.ReactNode}</div> }),
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
-vi.mock('../PodcastStreamPlayer', () => ({ PodcastStreamPlayer: ({ onClose }: { onClose: () => void }) => <button onClick={onClose}>stream-close</button> }));
-vi.mock('../PodcastTranscriptPanel', () => ({ PodcastTranscriptPanel: () => <div>transcript-panel</div> }));
 vi.mock('@/components/media/MediaUpload', () => ({
   MediaUpload: ({ onPendingFileChange, onUploadComplete }: { onPendingFileChange: (f: File | null) => void; onUploadComplete: (m: unknown) => void }) => (
     <div>
@@ -55,9 +53,6 @@ vi.mock('@/components/media/MediaUpload', () => ({
 vi.mock('@/lib/podcast/probe-audio-duration', () => ({ probeAudioFileDuration: async () => 42 }));
 
 import { CreateEpisodePanel } from '../CreateEpisodePanel';
-import { ItunesSearch } from '../ItunesSearch';
-import { PodcastBrowsePanel } from '../PodcastBrowsePanel';
-import { PodcastListeningHub } from '../PodcastListeningHub';
 
 const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
@@ -75,118 +70,6 @@ beforeEach(() => {
       ? { podcasts: [{ collectionId: 11, trackId: 11, title: 'The Show', artist: 'Ann', genre: 'History', artwork: '', feedUrl: 'https://example.org/feed2.xml', episodeCount: 12 }] }
       : resultFor(action) },
   }));
-});
-
-describe('listening hub flows', () => {
-  it('rejects a non-URL feed, then ingests a valid feed and subscribes it', async () => {
-    render(<PodcastListeningHub />);
-    await settle();
-    const inputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
-    const urlBox = inputs.find((i) => /http|feed|rss/i.test(i.placeholder)) ?? inputs[inputs.length - 1];
-    fireEvent.change(urlBox, { target: { value: 'nope' } });
-    await click(byText(/ingest feed/i));
-    expect(screen.getByText(/valid RSS feed URL/i)).toBeTruthy();
-    fireEvent.change(urlBox, { target: { value: 'https://example.org/new.xml' } });
-    await click(byText(/ingest feed/i));
-    expect(sent()).toEqual(expect.arrayContaining(['show-add', 'rss-refresh', 'show-subscribe']));
-    expect(screen.getByText(/Ingested 4 episodes/)).toBeTruthy();
-  });
-
-  it('surfaces a failed ingest and a failed show-add', async () => {
-    render(<PodcastListeningHub />);
-    await settle();
-    const inputs = Array.from(document.querySelectorAll('input')) as HTMLInputElement[];
-    const urlBox = inputs.find((i) => /http|feed|rss/i.test(i.placeholder)) ?? inputs[inputs.length - 1];
-    lensRunMock.mockImplementation(async (...a: unknown[]) => {
-      const act_ = actionOf(a);
-      if (act_ === 'rss-refresh') return { data: { ok: false, error: 'Feed could not be parsed' } };
-      return { data: { ok: true, result: resultFor(act_) } };
-    });
-    fireEvent.change(urlBox, { target: { value: 'https://example.org/bad.xml' } });
-    await click(byText(/ingest feed/i));
-    expect(screen.getByText(/could not be parsed/i)).toBeTruthy();
-    lensRunMock.mockImplementation(async () => ({ data: { ok: false, error: 'nope' } }));
-    await click(byText(/ingest feed/i));
-    expect(screen.getByText(/nope|Could not add show/)).toBeTruthy();
-  });
-
-  it('opens a show, streams and reads a transcript, refreshes the feed', async () => {
-    render(<PodcastListeningHub />);
-    await settle();
-    await click(screen.getByText('The Show'));
-    expect(sent()).toContain('episode-list');
-    await click(byText(/^\s*Play/));
-    expect(screen.getByText('stream-close')).toBeTruthy();
-    await click(screen.getByText('stream-close'));
-    await click(byText(/Transcript/));
-    expect(screen.getByText('transcript-panel')).toBeTruthy();
-    await click(byText(/Refresh/));
-    expect(sent().filter((x) => x === 'rss-refresh').length).toBeGreaterThan(0);
-    await click(screen.getByText('The Show'));
-  });
-
-  it('shows an empty drill-down when a show has no episodes', async () => {
-    render(<PodcastListeningHub />);
-    await settle();
-    lensRunMock.mockImplementation(async (...a: unknown[]) => ({ data: { ok: true, result: actionOf(a) === 'episode-list' ? { episodes: [] } : resultFor(actionOf(a)) } }));
-    await click(screen.getByText('Bare Show'));
-    expect(screen.getByText(/No episodes/)).toBeTruthy();
-  });
-
-  it('subscribes from For You, reads Sync, and runs the auto-download rules', async () => {
-    render(<PodcastListeningHub />);
-    await settle();
-    await click(byText(/For You/));
-    expect(screen.getByText(/Because you like history/)).toBeTruthy();
-    await click(byText(/^\s*Subscribe/));
-    expect(sent()).toContain('show-subscribe');
-    await click(byText(/Sync/));
-    expect(screen.getByText(/Resume here/)).toBeTruthy();
-    expect(screen.getByText(/1.5×/)).toBeTruthy();
-    await click(byText(/Auto-download/));
-    await click(byText(/Run rules now/));
-    expect(sent()).toContain('download-rule-run');
-    expect(screen.getByText(/Smart download: \+2 downloaded, 1 pruned/)).toBeTruthy();
-    const select = document.querySelector('select') as HTMLSelectElement;
-    await act(async () => { fireEvent.change(select, { target: { value: '10' } }); });
-    await settle();
-    const ruleCall = lensRunMock.mock.calls.find((c) => actionOf(c) === 'download-rule-set');
-    expect(JSON.stringify(ruleCall)).toContain('"keepRecent":10');
-    const toggle = screen.getAllByRole('button').filter((b) => /auto|on|off|enable|disable/i.test(b.textContent || '')).pop() as HTMLElement;
-    await click(toggle);
-  });
-
-  it('empty states render when there is nothing to show', async () => {
-    lensRunMock.mockImplementation(async () => ({ data: { ok: true, result: {} } }));
-    render(<PodcastListeningHub />);
-    await settle();
-    expect(screen.getByText(/No shows yet/)).toBeTruthy();
-    await click(byText(/For You/));
-    expect(screen.getByText(/No recommendations yet/)).toBeTruthy();
-    await click(byText(/Sync/));
-    expect(screen.getByText(/No playback positions yet/)).toBeTruthy();
-    await click(byText(/Auto-download/));
-    expect(screen.getByText(/Add shows in the Feeds tab first/)).toBeTruthy();
-  });
-});
-
-describe('browse panel flows', () => {
-  it('lists shows, toggles subscribe and opens a show with reviews', async () => {
-    render(<PodcastBrowsePanel onChange={vi.fn()} />);
-    await settle();
-    await click(screen.getByText('The Show'));
-    const subs = screen.getAllByRole('button').filter((b) => /subscribe|subscribed/i.test(b.textContent || ''));
-    if (subs.length) await click(subs[0]);
-    expect(sent()).toContain('show-list');
-    const q = screen.getAllByRole('button').find((b) => b.getAttribute('aria-label') === 'Add to queue');
-    if (q) await click(q);
-    const d = screen.getAllByRole('button').find((b) => b.getAttribute('aria-label') === 'Download');
-    if (d) await click(d);
-    const a = sent();
-    expect(a.some((x) => /subscribe/.test(x))).toBe(true);
-    expect(a.some((x) => /queue/.test(x))).toBe(true);
-    expect(a.some((x) => /download/.test(x))).toBe(true);
-  });
 });
 
 describe('create episode flows', () => {
@@ -239,28 +122,3 @@ describe('create episode flows', () => {
   });
 });
 
-describe('itunes add-to-library flow', () => {
-  it('searches, adds a result to the library (show-add, rss-refresh, subscribe) and marks it added', async () => {
-    render(<ItunesSearch />);
-    await settle();
-    const box = document.querySelector('input') as HTMLInputElement;
-    fireEvent.change(box, { target: { value: 'history' } });
-    await click(byText(/^\s*Search/));
-    await click(byText(/Add to Library/));
-    const a = runDomain.mock.calls.map((c) => c[1]);
-    expect(a).toEqual(expect.arrayContaining(['itunes-search', 'show-add', 'rss-refresh', 'show-list', 'show-subscribe']));
-    expect(screen.getAllByText('Added').length).toBeGreaterThan(0);
-  });
-
-  it('shows an error toast path when the add fails', async () => {
-    render(<ItunesSearch />);
-    await settle();
-    fireEvent.change(document.querySelector('input') as HTMLInputElement, { target: { value: 'history' } });
-    await click(byText(/^\s*Search/));
-    runDomain.mockImplementation(async (_d: string, action: string) => action === 'show-add'
-      ? { data: { ok: false, error: 'could not add show' } }
-      : { data: { ok: true, result: resultFor(action) } });
-    await click(byText(/Add to Library/));
-    expect(runDomain.mock.calls.map((c) => c[1])).toContain('show-add');
-  });
-});

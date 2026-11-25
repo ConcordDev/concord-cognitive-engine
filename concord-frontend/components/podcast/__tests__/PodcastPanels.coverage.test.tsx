@@ -38,11 +38,10 @@ vi.mock('framer-motion', () => ({
 }));
 
 import { CreateEpisodePanel } from '../CreateEpisodePanel';
-import { ItunesSearch } from '../ItunesSearch';
-import { PodcastBrowsePanel } from '../PodcastBrowsePanel';
-import { PodcastListenPanel } from '../PodcastListenPanel';
-import { PodcastListeningHub } from '../PodcastListeningHub';
-import { PodcastPlayerSection } from '../PodcastPlayerSection';
+import { PlayerProvider } from '../press/PressBar';
+import { FrontPage, ShowsRoom } from '../press/Rooms';
+import { LibraryRoom } from '../press/Library';
+import { StudioRoom } from '../press/Studio';
 import { PODCAST_CHANGED_EVENT, notifyPodcastChanged, onPodcastChanged } from '../podcast-events';
 
 const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
@@ -62,11 +61,11 @@ beforeEach(() => {
 
 const PANELS: Array<[string, () => React.ReactElement]> = [
   ['CreateEpisodePanel', () => <CreateEpisodePanel onCreated={vi.fn()} />],
-  ['ItunesSearch', () => <ItunesSearch />],
-  ['PodcastBrowsePanel', () => <PodcastBrowsePanel onChange={vi.fn()} />],
-  ['PodcastListenPanel', () => <PodcastListenPanel onChange={vi.fn()} />],
-  ['PodcastListeningHub', () => <PodcastListeningHub />],
-  ['PodcastPlayerSection', () => <PodcastPlayerSection />],
+  ['Front page', () => <PlayerProvider><FrontPage /></PlayerProvider>],
+  ['Shows', () => <PlayerProvider><ShowsRoom showId={null} /></PlayerProvider>],
+  ['Show page', () => <PlayerProvider><ShowsRoom showId="sh1" /></PlayerProvider>],
+  ['Library', () => <PlayerProvider><LibraryRoom /></PlayerProvider>],
+  ['Your show', () => <PlayerProvider><StudioRoom /></PlayerProvider>],
 ];
 
 describe('podcast panels', () => {
@@ -92,27 +91,6 @@ describe('podcast panels', () => {
 });
 
 describe('podcast flows', () => {
-  it('the browse panel loads shows and episodes through the podcast macros', async () => {
-    render(<PodcastBrowsePanel onChange={vi.fn()} />);
-    await settle();
-    await exercise({ passes: 3 });
-    await settle();
-    const a = sent();
-    expect(a.some((x) => /show|episode/.test(x))).toBe(true);
-  });
-
-  it('the listen panel asks for continue-listening and new episodes', async () => {
-    render(<PodcastListenPanel onChange={vi.fn()} />);
-    await settle();
-    expect(sent()).toEqual(expect.arrayContaining(['continue-listening', 'new-episodes']));
-  });
-
-  it('the player section loads its dashboard', async () => {
-    render(<PodcastPlayerSection />);
-    await settle();
-    expect(sent()).toContain('podcast-dashboard');
-  });
-
   it('the change-event bus notifies and unsubscribes', () => {
     const handler = vi.fn();
     const off = onPodcastChanged(handler);
@@ -129,15 +107,4 @@ describe('podcast flows', () => {
     window.removeEventListener(PODCAST_CHANGED_EVENT, viaWindow);
   });
 
-  it('typing in iTunes search sends a podcast search request', async () => {
-    render(<ItunesSearch />);
-    await settle();
-    const box = screen.getAllByRole('textbox')[0] ?? document.querySelector('input');
-    fireEvent.change(box as HTMLInputElement, { target: { value: 'history' } });
-    fireEvent.keyDown(box as HTMLInputElement, { key: 'Enter' });
-    const btn = screen.queryAllByRole('button').find((b) => /search/i.test(b.textContent || b.getAttribute('aria-label') || ''));
-    if (btn) await act(async () => { fireEvent.click(btn); });
-    await settle();
-    expect(runDomain.mock.calls.length).toBeGreaterThan(0);
-  });
 });

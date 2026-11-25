@@ -138,3 +138,40 @@ page (not scaffold) with honest 4-state handling and real wiring for list/share/
 world-feed. This pass found and fixed one genuine gap — the missing image-serving route
 — which is now closed. No rebuild needed; `photos.get`'s unsurfaced single-photo detail
 view is a legitimate but low-priority follow-on, not a defect blocking this disposition.
+
+
+## 2026-11-20 — The Darkroom (redesign; supersedes the disposition above)
+
+Owner direction: Photos is a photo editor, not primarily Concordia. It is now
+the Darkroom (Library / Develop / Prints), and it absorbs the Photography
+lens's Lightroom catalog, which had been metadata only (filenames and slider
+numbers that were never applied to any pixels) and was mounted nowhere.
+
+- **One pipeline.** `server/lib/darkroom/develop.js` (pure, no imports) runs
+  the preview in the browser (`concord-frontend/lib/photos/develop.js`, a
+  byte-identical copy pinned by `server/tests/darkroom-develop.test.js`) and
+  the export on the server (`lib/darkroom/render-worker.js`, sharp decode →
+  develop → encode, off the main thread). Browser drive: preview vs export of
+  the same edit at the same size differ by 0.75/255 on average.
+- **Develop:** white balance, exposure, contrast, highlights/shadows (local),
+  whites/blacks, clarity, dehaze (dark-channel), vibrance/saturation, tone
+  curve (RGB + per channel), 8-band HSL, sharpening, noise reduction,
+  vignette, crop/rotate/flip/straighten, radial/linear/brush masks, spot
+  heal/clone. Non-destructive: the original file is never rewritten
+  (`edit_json` + `photo_edit_history`, migration 516).
+- **Library:** real imports (JPEG/PNG/WebP/TIFF/GIF/AVIF up to 40 MB / 80 MP;
+  HEIC and camera RAW are refused with the reason), EXIF read, ratings,
+  pick/reject, colour labels, keywords, filters, smart albums, batch presets
+  and pasted settings. Concordia's photo mode still lands here, marked as
+  from Concordia.
+- **Prints:** releases free or for sale in CC through dtu.create →
+  marketplace.list → purchaseWithRoyalties; a watermarked proof for everyone,
+  the full file for the photographer, buyers (who keep it after a withdraw)
+  and anyone when free. Deleting a released or bought photo is refused.
+- **Not built (honest gaps):** HEIC/RAW decoding (needs libheif/libraw in the
+  server image), lens profile corrections, AI masks (subject/sky selection),
+  printing to paper.
+- Tests: `server/tests/darkroom-develop.test.js` (pixel-level, 29),
+  `server/tests/depth/photos-darkroom-behavior.test.js` (19),
+  `server/tests/e2e/photos-darkroom-routes.test.js` (6),
+  `concord-frontend/tests/photos-darkroom.test.tsx` (11).

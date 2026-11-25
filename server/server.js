@@ -13,6 +13,8 @@
 
 // Must stay the first import: it wraps node:fs's sync calls before the later modules bind them,
 // so a blocking syscall that stalls the event loop is named (slow_sync_io / event_loop_block.syncIo).
+import { publishGateDenial } from "./lib/dtu-publish-gate.js";
+import { mountPodcastPublicRoutes } from "./domains/podcast-studio.js";
 import { installSlowSyncIoOnce, installSlowNativeOnce, setSlowSyncIoReporter, slowSyncIoSince } from "./lib/slow-sync-io.js";
 import { persistToolCall as _persistToolCall } from "./lib/chat/tool-call-normalize.js";
 import { getBalance as ledgerBalanceOf } from "./economy/balances.js";
@@ -56,6 +58,8 @@ import {
 import { isQuietLensAction, lensActivityLabel, lensActivityObject } from "./lib/lens-activity-labels.js";
 import { dtuSkipsAutoTag } from "./lib/dtu-auto-tag.js";
 import { relationEdges as dtuRelationEdges } from "./lib/dtu-relations.js";
+import { shelfOf as _skyShelfOf } from "./lib/dtu-shelf.js";
+import { buildSky as _buildSky, route as _skyRoute, magnitude as _skyMagnitude, SPECTRAL as _SKY_SPECTRAL } from "./lib/star-chart.js";
 import { substrateCounts, derivedLayerCounts } from "./lib/substrate-counts.js";
 import { hasUsableBrainInput, needsInputError } from "./lib/brain-action-input.js";
 import { aggregateTopicCounts } from "./lib/trending-topics.js";
@@ -8652,6 +8656,9 @@ function authMiddleware(req, res, next) {
     "/api/detective/open", "/api/detective/crime",
     // Phase BE1 — photos public feed.
     "/api/photos/world",
+    // The Darkroom — a published photo release's watermarked proof (and, when
+    // free, its download). Each route checks the release itself (lib/darkroom/releases.js).
+    "/api/photos/releases",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -8901,6 +8908,11 @@ function authMiddleware(req, res, next) {
   // only (domains/market-house.js PUBLIC_READS — catalogue, lot, trending,
   // showcase, pay board), run with no actor. Nothing here can write.
   if (req.method === "GET" && /^\/api\/market\/house\/public\/[a-z-]{3,40}$/.test(req.path)) return next();
+  // Podcast public feed + its WebVTT transcripts (domains/podcast-studio.js):
+  // GET-only, read-only, built from published for-everyone episodes of a show
+  // made on Concord. Podcast apps (Apple Podcasts, Spotify) fetch these with
+  // no account, so they cannot sit behind auth.
+  if (req.method === "GET" && /^\/api\/podcast\/(shows\/[A-Za-z0-9_:-]{3,120}\/feed\.xml|episodes\/[A-Za-z0-9_:-]{3,120}\/transcript\.vtt)$/.test(req.path)) return next();
   // No-login ConKay demo: GET-only, compute-only beam FEA, plus the results
   // page's precomputed showcase snapshots (routes/conkay-demo.js).
   // Nothing under this prefix reads or writes user data.
@@ -10925,7 +10937,11 @@ function realtimeEmit(event, payload, { sessionId = "", orgId = "", userId = "",
   // history. Best-effort; failures silently swallow so emit path stays
   // open. Skipped for tick-fast meta-events (heartbeat ack, etc.).
   try {
-    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event)) {
+    // Only broadcast events belong on the shared timeline. An event sent to
+    // one user, one org or one session is private to them (a shared board's
+    // card titles, a trade request, a mail) and the timeline is readable by
+    // anyone, so those never land there.
+    if (_timelineRecordFn && !event.startsWith("_") && !_TIMELINE_SKIP_EVENTS.has(event) && !userId && !orgId && !sessionId) {
       const tdb = STATE?.db || globalThis._concordDB;
       if (tdb) {
         _timelineRecordFn(tdb, event, payload || {}, {
@@ -13761,6 +13777,13 @@ globalThis._concordSaveStateDebounced = saveStateDebounced;
 // music release publishing its cover) persists it through the normal DTU write
 // path instead of mutating STATE.dtus in memory only.
 globalThis._concordUpsertDTU = (dtu) => upsertDTU(dtu, { broadcast: false });
+// The Binder (domains/dtus-binder.js) reads with the same visibility rule as
+// the DTU list routes and publishes through the gated lattice publish.
+globalThis._concordUserVisibleDTUs = (viewerId) => userVisibleDTUs(viewerId);
+globalThis._concordPublishDTU = (id) => publishDTU(id);
+globalThis._concordUnpublishDTU = (id) => unpublishDTU(id);
+globalThis._concordIsPublishedDTU = (id) => PUBLIC_LATTICE.publishedDTUs.has(id);
+globalThis._concordPublishedDTUIds = () => [...PUBLIC_LATTICE.publishedDTUs];
 
 /**
  * Synchronous state save — bypasses debounce entirely.
@@ -15446,6 +15469,11 @@ async function runMacro(domain, name, input, ctx) {
   // publicReadDomains: domain+name allowlist for read-only macros (Gate 2 of 3)
   // CRITICAL: Every frontend macro call domain must be listed here
   const publicReadDomains = {
+    // Released films and animations are public pages: anyone may browse the
+    // gallery and open one. What they can WATCH is decided at the media
+    // stream (signed-out: the platform preview; priced: the sale preview).
+    animation: new Set(["anim-release-list", "anim-release-get"]),
+    "film-studios": new Set(["film-release-list", "film-release-get"]),
     // Wave 8b — the authored cosmology is the player-facing canon (hidden_truth
     // stripped in the lib); the codex reads it without auth.
     lore: new Set(["list", "get", "facets", "spine"]),
@@ -15473,7 +15501,7 @@ async function runMacro(domain, name, input, ctx) {
     "move-builder": new Set(["compose", "catalog", "list", "get"]),
     // Photos — only the public world gallery feed is world-visible; mine/get/share
     // are per-user / owner-gated and intentionally NOT listed.
-    photos: new Set(["world"]),
+    photos: new Set(["world", "release-list", "release-get"]),
     // Society — World Bank open-data reads (anonymous-safe; the handlers require
     // no auth). The per-user saved-chart macros (wb-save-chart/wb-list-charts/
     // wb-load-chart) are intentionally NOT listed — they self-scope by actor.
@@ -15579,7 +15607,7 @@ async function runMacro(domain, name, input, ctx) {
     scope: new Set(["metrics", "status", "dtus", "promote", "checkCitations", "royaltyPreview", "overrides"]),
     lattice: new Set(["resonance", "status", "stats"]),
     guidance: new Set(["suggestions", "status"]),
-    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search"]),
+    graph: new Set(["visual", "visualData", "forceGraph", "edges", "stats", "neighbors", "search", "sky", "star", "route"]),
     // events.list/recent/log/paginated read the process-wide STATE.logs ring
     // (other sessions' chat). Not a public read — handlers require an actor
     // and return only that caller's rows. See lib/log-access.js.
@@ -15937,7 +15965,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
     // "/api/evo-asset" — see Gate 1's matching addition + comment.
     "/api/evo-asset",
-    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world",
+    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world", "/api/photos/releases",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
     // "/api/settings" restored — see Gate 1's matching correction comment.
@@ -26075,6 +26103,10 @@ function publishDTU(dtuId) {
   const dtu = STATE.dtus.get(dtuId);
   if (!dtu) return { ok: false, error: "DTU not found" };
   if (isQuarantined(dtu)) return { ok: false, error: "quarantined", message: "Quarantined DTUs cannot be published." };
+  // Knowledge must carry a current, non-refuted check receipt; personal and
+  // system rows are never published (lib/dtu-publish-gate.js).
+  const gate = publishGateDenial(dtu);
+  if (gate) return { ok: false, ...gate };
 
   PUBLIC_LATTICE.publishedDTUs.add(dtuId);
   PUBLIC_LATTICE.enabled = true;
@@ -39286,7 +39318,19 @@ register("verify","lineageLink", (ctx, input) => {
   if (!childId || !parents.length) return { ok:false, reason:"missing_child_or_parents" };
   // Only link regular DTUs - shadow DTUs are internal
   const child = STATE.dtus.get(childId);
-  if (!child || isShadowDTU(child)) return { ok:false, reason:"child_not_found" };
+  if (!child || isShadowDTU(child)) return { ok:false, reason:"child_not_found", status:404 };
+  // CB-1324 F3: lineage is the provenance record — appending parents to a
+  // DTU is a mutation of that DTU and rides the canonical gate (the
+  // dtu.update shape): signed-out 401, another user's or an
+  // ownerless/system DTU 403 for non-admins, nothing written on refusal.
+  // Parent back-links stay ungated by design: they only record the claim
+  // this (now owner-gated) call makes.
+  const denial = dtuMutationDenial(child, ctx, {
+    authMode: AUTH_MODE,
+    verb: "update",
+    actorUserId: ctx?.actor?.userId || ctx?.actor?.id || ctx?.actor?.odId || null,
+  });
+  if (denial) return { ok:false, reason:"forbidden_not_owner", error: denial.error, status: denial.status, code: denial.code };
   child.lineage = child.lineage || { parents:[], children:[] };
   child.lineage.parents = Array.from(new Set([...(child.lineage.parents||[]), ...parents]));
   child.updatedAt = nowISO();
@@ -40847,6 +40891,17 @@ allowMacro("dtu", "shadow_access", _ACL_ADMIN);
 allowMacro("goals", "approve", _ACL_OWNER);
 allowMacro("goals", "activate", _ACL_OWNER);
 allowMacro("goals", "config", _ACL_OWNER);
+// CB-1324 machinery tagging: platform operator machinery that predates
+// the ACL matrix and carried no tag, so the human gate passed members —
+// the DTU merge sweeps, the MEGA promotion engine, the synthesis
+// heartbeat, and emergent-agent control. Admin-tier per-macro entries:
+// the human gate now denies members; internal callers bypass as before.
+allowMacro("dtu", "dedupeSweep", _ACL_ADMIN);
+allowMacro("evolution", "dedupe", _ACL_ADMIN);
+allowMacro("system", "promotionTick", _ACL_ADMIN);
+allowMacro("heartbeat", "tick", _ACL_ADMIN);
+allowMacro("agent", "enable", _ACL_ADMIN);
+allowMacro("agent", "tick", _ACL_ADMIN);
 allowMacro("chicken3", "meta_propose", _ACL_OWNER);
 allowMacro("chicken3", "meta_commit_quiet", _ACL_OWNER);
 allowMacro("entity", "terminal_approve", _ACL_ADMIN);
@@ -46477,6 +46532,7 @@ let _vgIter = null;
 function getVerifyGate() {
   if (_verifyGateSvc) return _verifyGateSvc;
   _verifyGateSvc = createVerifyGateService({
+    // (deps are also handed to the Binder's on-demand check: see _concordVerifyDeps below)
     store: {
       get: (id) => STATE.dtus.get(id) || null,
       annotate: (id, v) => { const d = STATE.dtus.get(id); if (!d) return; d.meta = { ...(d.meta || {}), verification: v }; upsertDTU(d, { broadcast: false }); },
@@ -46520,6 +46576,18 @@ function getVerifyGate() {
   });
   return _verifyGateSvc;
 }
+// The same checker dependencies the background gate uses, for an on-demand
+// check of one DTU (dtus.card-check). Lazily built with the gate.
+let _vgDepsRef = null;
+globalThis._concordVerifyDeps = () => {
+  if (_vgDepsRef) return _vgDepsRef;
+  _vgDepsRef = {
+    dtuExists: async (id) => STATE.dtus.has(id) || Boolean(db?.prepare?.("SELECT 1 FROM dtus WHERE id = ? LIMIT 1").get(id)),
+    yieldNow: () => new Promise((resolve) => { setImmediate(resolve); }),
+    proveClaim: _vgProveClaim,
+  };
+  return _vgDepsRef;
+};
 
 async function _promoteClusterBatch(ctx, clusters, { tier, minCluster, budgetMs, startedAt }) {
   let attempted = 0;
@@ -48450,6 +48518,9 @@ register("marketplace", "list", async (ctx, input) => {
   if (dtu.ownerId && dtu.ownerId !== userId) {
     return { ok: false, error: "not_your_dtu" };
   }
+  // Same rule as the public lattice: knowledge is checked before it goes on sale.
+  const publishGate = publishGateDenial(dtu);
+  if (publishGate) return { ok: false, ...publishGate };
   // Owner private work may be local (dtu.create default) or personal (locker).
   // Block already-global / already-marketplace scopes from a second list path.
   // (Uploaded media DTUs are global/user by design — free listen-only path.)
@@ -49808,14 +49879,27 @@ function _graphVisibleEdge(e, viewerId) {
   return _graphCanSeeId(e.source, viewerId) && _graphCanSeeId(e.target, viewerId);
 }
 
+// A DTU's lineage comes in two shapes: dtu.create with `parents` writes
+// { parents: [...] }, with `lineage: [...]` it keeps the bare array of
+// parent refs (ids or { id }). Both are real lineage; the index used to
+// read only the first, so every array-form child was missing its edge.
+function _lineageParentsOf(d) {
+  const l = d?.lineage;
+  const raw = Array.isArray(l) ? l : (Array.isArray(l?.parents) ? l.parents : []);
+  return raw.map((p) => (typeof p === "string" ? p : p?.id)).filter((p) => typeof p === "string" && p);
+}
+function _lineageChildrenOf(d) {
+  const l = d?.lineage;
+  return !Array.isArray(l) && Array.isArray(l?.children) ? l.children.filter((c) => typeof c === "string" && c) : [];
+}
+
 function rebuildGraphIndex() {
   GRAPH_INDEX.nodes.clear();
   GRAPH_INDEX.edges.clear();
   for (const [id, dtu] of STATE.dtus.entries()) {
     GRAPH_INDEX.nodes.set(id, { id, title: dtu.title, tier: dtu.tier, tags: dtu.tags || [], lineageDepth: 0 });
-    const lineage = dtu.lineage || {};
-    for (const parentId of (lineage.parents || [])) { GRAPH_INDEX.edges.set(`${parentId}->${id}`, { id: `${parentId}->${id}`, source: parentId, target: id, type: "parent" }); }
-    for (const childId of (lineage.children || [])) { GRAPH_INDEX.edges.set(`${id}->${childId}`, { id: `${id}->${childId}`, source: id, target: childId, type: "child" }); }
+    for (const parentId of _lineageParentsOf(dtu)) { GRAPH_INDEX.edges.set(`${parentId}->${id}`, { id: `${parentId}->${id}`, source: parentId, target: id, type: "parent" }); }
+    for (const childId of _lineageChildrenOf(dtu)) { GRAPH_INDEX.edges.set(`${id}->${childId}`, { id: `${id}->${childId}`, source: id, target: childId, type: "child" }); }
     for (const tag of (dtu.tags || [])) {
       const tagNodeId = `tag:${tag}`;
       if (!GRAPH_INDEX.nodes.has(tagNodeId)) GRAPH_INDEX.nodes.set(tagNodeId, { id: tagNodeId, type: "tag", label: tag });
@@ -49828,7 +49912,7 @@ function rebuildGraphIndex() {
     for (const e of dtuRelationEdges(dtu)) { GRAPH_INDEX.edges.set(e.id, e); }
   }
   // Compute lineage depths
-  const roots = Array.from(STATE.dtus.values()).filter(d => !d.lineage?.parents?.length || d.tier === "core");
+  const roots = Array.from(STATE.dtus.values()).filter(d => !_lineageParentsOf(d).length || d.tier === "core");
   const visited = new Set();
   const queue = roots.map(r => ({ id: r.id, depth: 0 }));
   while (queue.length > 0) {
@@ -49838,7 +49922,7 @@ function rebuildGraphIndex() {
     const node = GRAPH_INDEX.nodes.get(id);
     if (node) node.lineageDepth = depth;
     const dtu = STATE.dtus.get(id);
-    for (const childId of (dtu?.lineage?.children || [])) { if (!visited.has(childId)) queue.push({ id: childId, depth: depth + 1 }); }
+    for (const childId of _lineageChildrenOf(dtu)) { if (!visited.has(childId)) queue.push({ id: childId, depth: depth + 1 }); }
   }
   GRAPH_INDEX.dirty = false;
 }
@@ -50008,6 +50092,125 @@ app.get("/api/graph/search", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: String(e?.message || e), results: [] });
   }
+});
+
+// ── The star chart (Graph lens) ──────────────────────────────────────────
+// The lattice as a sky: lib/star-chart.js does the astronomy (magnitude from
+// real links + citations, class from the shelf, constellations by modularity,
+// a stable seeded layout). These read the same privacy-filtered
+// GRAPH_INDEX as the force graph; personal records and system rows never
+// chart. A sky is cached briefly per viewer and index version.
+const _SKY_CACHE = new Map();
+function _skyCitations() {
+  const counts = new Map();
+  try {
+    const db = STATE.db || globalThis._concordDB;
+    if (db?.prepare) for (const r of db.prepare("SELECT dtu_id, citation_count FROM dtu_citations WHERE citation_count > 0").all()) counts.set(r.dtu_id, Number(r.citation_count) || 0);
+  } catch { /* table optional: no citations recorded */ }
+  return counts;
+}
+function _skyGraph(ctx) {
+  _ensureGraphIndex();
+  const viewer = _graphViewer(ctx);
+  const cites = _skyCitations();
+  return {
+    viewer,
+    nodes: GRAPH_INDEX.nodes,
+    edges: [...GRAPH_INDEX.edges.values()].filter((e) => _graphVisibleEdge(e, viewer)),
+    dtu: (id) => STATE.dtus.get(id) || null,
+    canSee: (id) => _graphCanSeeId(id, viewer) && !!STATE.dtus.get(id),
+    shelfOf: (d) => _skyShelfOf(d).shelf,
+    citations: (id) => cites.get(id) || 0,
+  };
+}
+function _skyMaps(userId) {
+  const maps = userId ? (STATE.graphLens?.maps?.get?.(userId) || []) : [];
+  return Array.isArray(maps) ? maps : [];
+}
+register("graph", "sky", (ctx, input = {}) => {
+  try {
+    const include = Array.isArray(input.include) ? input.include.map(String).filter((x) => /^[A-Za-z0-9_:.-]{1,120}$/.test(x)).slice(0, 200) : [];
+    const limit = Math.max(20, Math.min(1500, Math.round(Number(input.limit) || 400)));
+    const viewer = _graphViewer(ctx);
+    _ensureGraphIndex();
+    const key = `${viewer || "anon"}|${GRAPH_INDEX.builtVersion}|${limit}|${include.join(",")}`;
+    const hit = _SKY_CACHE.get(key);
+    if (hit && Date.now() - hit.at < 30_000 && !GRAPH_INDEX.dirty) return { ok: true, ...hit.sky, cached: true };
+    const sky = _buildSky(_skyGraph(ctx), { limit, include });
+    _SKY_CACHE.set(key, { at: Date.now(), sky });
+    if (_SKY_CACHE.size > 200) _SKY_CACHE.delete(_SKY_CACHE.keys().next().value);
+    return { ok: true, ...sky, classes: _SKY_SPECTRAL };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+register("graph", "route", (ctx, input = {}) => {
+  try {
+    const from = String(input.from || ""); const to = String(input.to || "");
+    if (!from || !to) return { ok: false, error: "choose two stars" };
+    const g = _skyGraph(ctx);
+    const r = _skyRoute(g, from, to, Math.max(1, Math.min(10, Math.round(Number(input.maxHops) || 8))));
+    if (!r.ok) return r;
+    const named = (id) => ({ id, title: String(STATE.dtus.get(id)?.title || "Untitled").slice(0, 120) });
+    return { ...r, stops: r.path ? r.path.map(named) : [] };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+// One star's catalogue card: what it is, how bright and why, where it came
+// from (lineage — the old Genome view), what it's linked to, and which of
+// your own charts it's in.
+register("graph", "star", (ctx, input = {}) => {
+  try {
+    const id = String(input.id || "");
+    const g = _skyGraph(ctx);
+    const dtu = g.dtu(id);
+    if (!dtu || !g.canSee(id)) return { ok: false, error: "star not found" };
+    const shelf = _skyShelfOf(dtu).shelf;
+    const linked = new Map();
+    const relations = [];
+    for (const e of g.edges) {
+      if (e.type === "tagged" || e.source === e.target) continue;
+      if (e.source !== id && e.target !== id) continue;
+      const other = e.source === id ? e.target : e.source;
+      if (!g.canSee(other)) continue;
+      linked.set(other, true);
+      if (relations.length < 40) relations.push({ id: other, title: String(STATE.dtus.get(other)?.title || "Untitled").slice(0, 120), type: e.type, direction: e.source === id ? "out" : "in" });
+    }
+    const vis = (ids) => (Array.isArray(ids) ? ids : []).filter((x) => g.canSee(x)).slice(0, 12).map((x) => ({ id: x, title: String(STATE.dtus.get(x)?.title || "Untitled").slice(0, 120) }));
+    const parents = vis(_lineageParentsOf(dtu));
+    const children = vis([..._lineageChildrenOf(dtu), ...[...linked.keys()].filter((o) => _lineageParentsOf(STATE.dtus.get(o)).includes(id))].filter((v, i, a) => a.indexOf(v) === i));
+    const citations = g.citations(id);
+    const owner = dtu.author || dtu.ownerId || dtu.userId || dtu.createdBy || null;
+    let ownerName = null;
+    try { ownerName = owner ? (STATE.db?.prepare?.("SELECT username FROM users WHERE id = ?").get(String(owner))?.username || null) : null; } catch { ownerName = null; }
+    const charts = _skyMaps(g.viewer).filter((m) => (m.nodes || []).some((n) => n.dtuId === id)).map((m) => ({ id: m.id, title: m.title }));
+    const sp = _SKY_SPECTRAL[shelf] || null;
+    return {
+      ok: true,
+      star: {
+        id, title: String(dtu.title || "Untitled").slice(0, 200), shelf, spectral: sp?.letter || null, colour: sp?.colour || null,
+        charted: !!sp, magnitude: _skyMagnitude(linked.size, citations), links: linked.size, citations,
+        tier: dtu.tier || null, createdAt: dtu.createdAt || null, tags: (dtu.tags || []).slice(0, 10),
+        summary: String(dtu.human?.summary || dtu.cretiHuman || "").slice(0, 600),
+        owner: ownerName, isMine: !!g.viewer && owner === g.viewer,
+        parents, children, relations, charts,
+      },
+    };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
+});
+// Your own constellations: each of your maps, drawn between the stars its
+// nodes stand for (the DTUs they link to). Lines from a map stay yours —
+// they are drawn from the map, never written into anyone else's star.
+register("graph", "my-constellations", (ctx) => {
+  try {
+    const g = _skyGraph(ctx);
+    if (!g.viewer) return { ok: true, constellations: [] };
+    const out = [];
+    for (const m of _skyMaps(g.viewer)) {
+      const byNode = new Map((m.nodes || []).filter((n) => n.dtuId && g.canSee(n.dtuId)).map((n) => [n.id, n.dtuId]));
+      const stars = [...new Set(byNode.values())];
+      const lines = (m.edges || []).map((e) => [byNode.get(e.from), byNode.get(e.to)]).filter(([a, b]) => a && b && a !== b);
+      out.push({ id: m.id, title: m.title, stars, lines, nodes: (m.nodes || []).length });
+    }
+    return { ok: true, constellations: out };
+  } catch (e) { return { ok: false, error: "handler_error", message: String(e?.message || e) }; }
 });
 
 app.get("/api/graph/force", async (req, res) => {
@@ -63144,8 +63347,9 @@ app.post("/api/esign/:token/sign", perEndpointRateLimit("write.esign"), async (r
 // owner/animation from its own server-side `shares` Map keyed by the
 // token — a valid token for animation A can only ever resolve animation
 // A's frames, never anyone else's. `share-get`'s own logic (unchanged
-// here) already redacts `frames` when the owner disabled downloads, and
-// never returns anything beyond the single share record + its animation.
+// here) returns the frames and the soundtrack (streamed through the share
+// token) so the page can play it, and never anything beyond the single
+// share record + its animation.
 function _runAnimationShareAction(token) {
   const handler = LENS_ACTIONS.get("animation.share-get");
   if (!handler) return { ok: false, error: "portal_unavailable" };
@@ -63156,6 +63360,9 @@ function _runAnimationShareAction(token) {
 }
 
 // GET — anyone with the share link opens it. Public, no auth.
+// Podcast: a show's public RSS feed and its episodes' WebVTT transcripts.
+mountPodcastPublicRoutes(app);
+
 app.get("/api/animation/share/:token", async (req, res) => {
   try {
     const result = await _runAnimationShareAction(req.params.token);

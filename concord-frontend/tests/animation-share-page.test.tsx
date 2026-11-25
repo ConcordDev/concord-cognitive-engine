@@ -77,12 +77,13 @@ describe('/share/animation/[token] — public share viewer', () => {
     await waitFor(() => expect(getByText(/share link not found/i)).toBeInTheDocument());
   });
 
-  it('allowDownload:false renders without frames but still shows the thumbnail-only notice', async () => {
+  it('allowDownload:false still plays (frames are sent) and only drops the download offer', async () => {
     const noDownloadShare = { ...SHARE, allowDownload: false };
-    const noDownloadAnim = { ...ANIM, frames: undefined, thumbnail: null };
+    const noDownloadAnim = { ...ANIM, thumbnail: null };
     vi.stubGlobal('fetch', vi.fn(() => jsonOk({ ok: true, result: { share: noDownloadShare, animation: noDownloadAnim } })));
     const { getByText } = render(<AnimationSharePage />);
     await waitFor(() => expect(getByText('Bouncing Ball')).toBeInTheDocument());
-    expect(getByText(/owner disabled frame downloads/i)).toBeInTheDocument();
+    expect(getByText(/turned off downloads for this link/i)).toBeInTheDocument();
+    expect(document.querySelector('[data-testid="share-play"]')).not.toBeNull();
   });
 });

@@ -141,17 +141,21 @@ function mp3DurationSec(buf) {
  * @returns {Promise<number>}
  */
 export async function resolveAudioDurationSec(opts = {}) {
+  // Millisecond precision: a short clip (a half-second animation render, a
+  // 1.6 s sound effect) keeps its real length instead of rounding to 0 or 2,
+  // which would hide it from duration-based checks and preview cutting.
+  const ms = (n) => Math.round(n * 1000) / 1000;
   const declaredN = Number(opts.declared);
-  if (Number.isFinite(declaredN) && declaredN > 0) return Math.round(declaredN);
+  if (Number.isFinite(declaredN) && declaredN > 0) return ms(declaredN);
   try {
     const fromBuf = opts.buffer ? durationFromAudioBuffer(opts.buffer, opts.mimeType) : null;
-    if (fromBuf > 0) return Math.max(1, Math.round(fromBuf));
+    if (fromBuf > 0) return ms(fromBuf);
   } catch (err) {
     logger.error('durationFromAudioBuffer failed', { error: err?.message || String(err) });
   }
   if (opts.filePath) {
     const probed = await probeMedia(opts.filePath);
-    if (probed?.duration > 0) return Math.max(1, Math.round(probed.duration));
+    if (probed?.duration > 0) return ms(probed.duration);
   }
   return 0;
 }

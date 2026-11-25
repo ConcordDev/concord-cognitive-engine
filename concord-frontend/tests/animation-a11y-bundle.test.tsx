@@ -38,7 +38,8 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 import { AnimationStudioSection } from '@/components/animation/AnimationStudioSection';
-import { AnimToolsPanel } from '@/components/animation/AnimToolsPanel';
+import { CanvasPanel, RigPanel, TweenPanel, BrushPanel } from '@/components/animation/AnimToolsPanel';
+import { ExportDesk } from '@/components/animation/table/ExportDesk';
 import { AnimationReferenceImages } from '@/components/animation/AnimationReferenceImages';
 
 const ANIM = {
@@ -52,28 +53,33 @@ describe('FIX-animation-006 — animation a11y bundle', () => {
   it('studio gallery: the canvas preset select is named; the section title is h2', async () => {
     render(<AnimationStudioSection />);
     expect(await screen.findByLabelText('Canvas preset')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Animation Studio' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Your shots' })).toBeTruthy();
   });
 
-  it('tools panel: export/easing/rig/brush selects are named and section titles are h3', async () => {
-    render(<AnimToolsPanel anim={ANIM} onChange={() => {}} />);
+  it('tool drawers: export/easing/rig/brush selects are named and section titles are h3', async () => {
+    const { unmount } = render(<ExportDesk anim={ANIM} />);
     expect(screen.getByLabelText('Export format')).toBeTruthy();
+    expect(screen.getByLabelText('Export size')).toBeTruthy();
+    unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: /Canvas/ }));
+    const canvas = render(<CanvasPanel anim={ANIM} onChange={() => {}} />);
     expect(screen.getByLabelText(/Symmetry/)).toBeTruthy();
     const h3s = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
     expect(h3s).toContain('Canvas size presets');
     expect(h3s).toContain('Frame rate');
     expect(screen.queryByRole('heading', { level: 4 })).toBeNull();
+    canvas.unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: /Rig/ }));
+    const rig = render(<RigPanel anim={ANIM} onChange={() => {}} />);
     expect(await screen.findByLabelText('Parent bone')).toBeTruthy();
     expect(screen.getByLabelText('Pose frame')).toBeTruthy();
+    rig.unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: /Tween/ }));
+    const tween = render(<TweenPanel anim={ANIM} onChange={() => {}} />);
     expect(await screen.findByLabelText('Easing')).toBeTruthy();
+    tween.unmount();
 
-    fireEvent.click(screen.getByRole('button', { name: /Brushes/ }));
+    render(<BrushPanel />);
     expect(await screen.findByLabelText(/Tool/)).toBeTruthy();
   });
 

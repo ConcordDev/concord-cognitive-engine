@@ -88,7 +88,9 @@ export function FilesPane({ ps, projectId, onReveal, changed }: { ps: ProjectSta
   const rename = async (from: string) => {
     const to = renameTo.trim();
     setRenaming(null);
-    if (!to || to === from) return;
+    // code-003: a blank name is a cancellation said in words, never a silent no-op.
+    if (!to) { ps.setError('The rename was cancelled — a file name cannot be empty.'); return; }
+    if (to === from) return;
     const r = await code('files-rename', { projectId, from, to });
     if (!r.ok) { ps.setError(r.message); return; }
     ps.close(from);

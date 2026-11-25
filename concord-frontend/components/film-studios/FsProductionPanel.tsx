@@ -18,8 +18,8 @@ interface DoodRow { castId: string; name: string; character: string | null; work
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const CODE_COLOR: Record<string, string> = {
-  S: 'bg-emerald-700 text-white', W: 'bg-fuchsia-800 text-white',
-  H: 'bg-zinc-700 text-zinc-300', F: 'bg-amber-700 text-white', SWF: 'bg-sky-700 text-white',
+  S: 'bg-emerald-700 text-white', W: 'bg-[#b72d23] text-white',
+  H: 'bg-[var(--fo-rule,#3f3f46)] text-[var(--fo-ink-2,#d4d4d8)]', F: 'bg-amber-700 text-white', SWF: 'bg-sky-700 text-white',
 };
 
 export function FsProductionPanel({ projectId }: { projectId: string }) {
@@ -99,7 +99,7 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
   const daysInMonth = new Date(year, month, 0).getUTCDate();
 
   if (loading) {
-    return <div className="flex items-center justify-center py-10 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-10 text-[var(--fo-muted,#a1a1aa)]"><Loader2 className="w-5 h-5 animate-spin" /></div>;
   }
 
   if (loadError) {
@@ -110,8 +110,8 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
     <div className="space-y-5">
       {/* Locations */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-          <MapPin className="w-3.5 h-3.5 text-fuchsia-400" /> Locations
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+          <MapPin className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Locations
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           <input placeholder="Name" value={locForm.name} onChange={(e) => setLocForm({ ...locForm, name: e.target.value })} className={inp} />
@@ -122,25 +122,25 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
         {locations.length === 0 ? <Empty text="No locations." /> : (
           <ul className="space-y-1">
             {locations.map((l) => (
-              <li key={l.id} className="bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+              <li key={l.id} className="bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-lg px-3 py-1.5">
                 {editingLoc === l.id ? (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 items-center">
                     <input placeholder="Name" value={editLocForm.name} onChange={(e) => setEditLocForm({ ...editLocForm, name: e.target.value })} className={inp} />
                     <input placeholder="Address" value={editLocForm.address} onChange={(e) => setEditLocForm({ ...editLocForm, address: e.target.value })} className={inp} />
                     <input placeholder="Contact" value={editLocForm.contact} onChange={(e) => setEditLocForm({ ...editLocForm, contact: e.target.value })} className={inp} />
                     <div className="flex items-center gap-1.5">
-                      <button aria-label="Save" type="button" onClick={() => saveEditLoc(l.id)} className="text-emerald-400 hover:text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
-                      <button aria-label="Cancel" type="button" onClick={() => setEditingLoc(null)} className="text-zinc-600 hover:text-zinc-300"><X className="w-3.5 h-3.5" /></button>
+                      <button aria-label="Save" type="button" onClick={() => saveEditLoc(l.id)} className="text-[var(--fo-good,#34d399)] hover:text-emerald-300"><Check className="w-3.5 h-3.5" /></button>
+                      <button aria-label="Cancel" type="button" onClick={() => setEditingLoc(null)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-ink,#e4e4e7)]"><X className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-zinc-100 flex-1">{l.name}
-                      {l.address && <span className="text-zinc-400"> · {l.address}</span>}</span>
-                    {l.contact && <span className="text-[10px] text-zinc-400">{l.contact}</span>}
-                    <button aria-label="Edit" type="button" onClick={() => startEditLoc(l)} className="text-zinc-600 hover:text-fuchsia-400"><Pencil className="w-3.5 h-3.5" /></button>
+                    <span className="text-xs text-[var(--fo-ink,#f4f4f5)] flex-1">{l.name}
+                      {l.address && <span className="text-[var(--fo-muted,#a1a1aa)]"> · {l.address}</span>}</span>
+                    {l.contact && <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{l.contact}</span>}
+                    <button aria-label="Edit" type="button" onClick={() => startEditLoc(l)} className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-tape,#e879f9)]"><Pencil className="w-3.5 h-3.5" /></button>
                     <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'location-delete', { id: l.id }).then(refresh)}
-                      className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                      className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
               </li>
@@ -151,8 +151,8 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
 
       {/* Tasks */}
       <section>
-        <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-          <CheckSquare className="w-3.5 h-3.5 text-fuchsia-400" /> Production tasks
+        <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+          <CheckSquare className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Production tasks
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
           <input placeholder="Task" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} className={inp} />
@@ -163,17 +163,17 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
         {tasks.length === 0 ? <Empty text="No tasks." /> : (
           <ul className="space-y-1">
             {tasks.map((t) => (
-              <li key={t.id} className="flex items-center gap-2 bg-zinc-900/70 border border-zinc-800 rounded-lg px-3 py-1.5">
+              <li key={t.id} className="flex items-center gap-2 bg-[var(--fo-paper-2,rgba(24,24,27,0.7))] border border-[var(--fo-rule,#27272a)] rounded-lg px-3 py-1.5">
                 <button type="button" onClick={() => cycleTask(t)}
                   className={cn('text-[9px] uppercase px-1.5 py-0.5 rounded',
                     t.status === 'done' ? 'bg-emerald-900 text-emerald-300'
-                      : t.status === 'in_progress' ? 'bg-amber-900 text-amber-300' : 'bg-zinc-800 text-zinc-400')}>
+                      : t.status === 'in_progress' ? 'bg-amber-900 text-amber-300' : 'bg-[var(--fo-paper-2,#27272a)] text-[var(--fo-muted,#a1a1aa)]')}>
                   {t.status.replace(/_/g, ' ')}
                 </button>
-                <span className="text-xs text-zinc-100 flex-1">{t.title}</span>
-                <span className="text-[10px] text-zinc-400">{t.department}{t.dueDate && ` · ${t.dueDate}`}</span>
+                <span className="text-xs text-[var(--fo-ink,#f4f4f5)] flex-1">{t.title}</span>
+                <span className="text-[10px] text-[var(--fo-muted,#a1a1aa)]">{t.department}{t.dueDate && ` · ${t.dueDate}`}</span>
                 <button aria-label="Delete" type="button" onClick={() => lensRun('film-studios', 'task-delete', { id: t.id }).then(refresh)}
-                  className="text-zinc-600 hover:text-rose-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                  className="text-[var(--fo-faint,#52525b)] hover:text-[var(--fo-bad,#fb7185)]"><Trash2 className="w-3.5 h-3.5" /></button>
               </li>
             ))}
           </ul>
@@ -183,13 +183,13 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
       {/* Calendar */}
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300">
-            <CalendarDays className="w-3.5 h-3.5 text-fuchsia-400" /> Production calendar
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)]">
+            <CalendarDays className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Production calendar
           </h3>
           <div className="flex items-center gap-2">
-            <button aria-label="Previous" type="button" onClick={() => shiftMonth(-1)} className="text-zinc-400 hover:text-zinc-200"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-[11px] text-zinc-300">{MONTHS[month - 1]} {year}</span>
-            <button aria-label="Next" type="button" onClick={() => shiftMonth(1)} className="text-zinc-400 hover:text-zinc-200"><ChevronRight className="w-4 h-4" /></button>
+            <button aria-label="Previous" type="button" onClick={() => shiftMonth(-1)} className="text-[var(--fo-muted,#a1a1aa)] hover:text-[var(--fo-ink,#e4e4e7)]"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-[11px] text-[var(--fo-ink-2,#d4d4d8)]">{MONTHS[month - 1]} {year}</span>
+            <button aria-label="Next" type="button" onClick={() => shiftMonth(1)} className="text-[var(--fo-muted,#a1a1aa)] hover:text-[var(--fo-ink,#e4e4e7)]"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
         <div className="grid grid-cols-7 gap-1">
@@ -198,10 +198,10 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
             const items = cal[d] || [];
             return (
               <div key={d} className={cn('min-h-[44px] rounded border p-1',
-                items.length ? 'border-fuchsia-900/50 bg-fuchsia-950/20' : 'border-zinc-800 bg-zinc-900/40')}>
-                <p className="text-[9px] text-zinc-400">{i + 1}</p>
+                items.length ? 'border-[rgba(214,58,47,0.35)] bg-[rgba(214,58,47,0.06)]' : 'border-[var(--fo-rule,#27272a)] bg-[var(--fo-paper-2,rgba(24,24,27,0.7))]')}>
+                <p className="text-[9px] text-[var(--fo-muted,#a1a1aa)]">{i + 1}</p>
                 {items.slice(0, 2).map((it, j) => (
-                  <p key={j} className={cn('text-[8px] truncate', it.type === 'shoot_day' ? 'text-fuchsia-300' : 'text-zinc-400')}>
+                  <p key={j} className={cn('text-[8px] truncate', it.type === 'shoot_day' ? 'text-[var(--fo-tape,#e879f9)]' : 'text-[var(--fo-muted,#a1a1aa)]')}>
                     {it.label}
                   </p>
                 ))}
@@ -214,21 +214,21 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
       {/* DOOD */}
       {dood && dood.rows.length > 0 && (
         <section>
-          <h3 className="flex items-center gap-1 text-xs font-semibold text-zinc-300 mb-2">
-            <Grid3x3 className="w-3.5 h-3.5 text-fuchsia-400" /> Day Out of Days
+          <h3 className="flex items-center gap-1 text-xs font-semibold text-[var(--fo-ink-2,#d4d4d8)] mb-2">
+            <Grid3x3 className="w-3.5 h-3.5 text-[var(--fo-tape,#e879f9)]" /> Day Out of Days
           </h3>
           <div className="overflow-x-auto">
             <table className="text-[10px]">
               <thead>
                 <tr>
-                  <th className="text-left text-zinc-400 px-2 py-1">Cast</th>
-                  {dood.days.map((d) => <th key={d} className="text-zinc-400 px-1 py-1 w-7">{d}</th>)}
+                  <th className="text-left text-[var(--fo-muted,#a1a1aa)] px-2 py-1">Cast</th>
+                  {dood.days.map((d) => <th key={d} className="text-[var(--fo-muted,#a1a1aa)] px-1 py-1 w-7">{d}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {dood.rows.map((r) => (
                   <tr key={r.castId}>
-                    <td className="text-zinc-200 px-2 py-1 whitespace-nowrap">{r.name}</td>
+                    <td className="text-[var(--fo-ink,#e4e4e7)] px-2 py-1 whitespace-nowrap">{r.name}</td>
                     {r.cells.map((c, i) => (
                       <td key={i} className="px-0.5 py-0.5">
                         {c.code && <span className={cn('block text-center rounded font-bold', CODE_COLOR[c.code])}>{c.code}</span>}
@@ -239,13 +239,13 @@ export function FsProductionPanel({ projectId }: { projectId: string }) {
               </tbody>
             </table>
           </div>
-          <p className="text-[9px] text-zinc-400 mt-1">S start · W work · H hold · F finish · SWF single day</p>
+          <p className="text-[9px] text-[var(--fo-muted,#a1a1aa)] mt-1">S start · W work · H hold · F finish · SWF single day</p>
         </section>
       )}
     </div>
   );
 }
 
-const inp = 'bg-zinc-950 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-100';
-const btn = 'flex items-center justify-center gap-1 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-medium rounded-lg';
-function Empty({ text }: { text: string }) { return <p className="text-[11px] text-zinc-400 italic">{text}</p>; }
+const inp = 'bg-[var(--fo-input,#09090b)] border border-[var(--fo-rule-2,#3f3f46)] rounded-lg px-2 py-1.5 text-xs text-[var(--fo-ink,#f4f4f5)]';
+const btn = 'flex items-center justify-center gap-1 bg-[var(--fo-tape,#c026d3)] hover:bg-[#b72d23] text-white text-xs font-medium rounded-lg';
+function Empty({ text }: { text: string }) { return <p className="text-[11px] text-[var(--fo-muted,#a1a1aa)] italic">{text}</p>; }

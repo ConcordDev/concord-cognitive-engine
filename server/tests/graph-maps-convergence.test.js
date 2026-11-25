@@ -108,6 +108,21 @@ describe("S3 maps convergence", () => {
     assert.equal(STATE.dtus.get("dtu_real").title, "Real content", "the real DTU is never rewritten by convergence");
   });
 
+  it("a line FROM someone else's DTU is never written onto it; one written earlier is pruned", () => {
+    STATE.dtus.set("dtu_theirs", { id: "dtu_theirs", title: "Their star", author: "someoneelse", relations: [
+      // what an earlier version wrote from this user's map
+      { to: "dtu_other", type: "map-link", source: "map", attributes: { mapIds: ["map_gone_u1"], label: "" } },
+    ] });
+    const m = call("map-create", "u1", { title: "Over theirs" }).result.map;
+    const n = call("node-add", "u1", { mapId: m.id, label: "Pointer" }).result.node;
+    call("link-node-dtu", "u1", { mapId: m.id, nodeId: n.id, dtuId: "dtu_theirs" });
+    call("edge-add", "u1", { mapId: m.id, fromNodeId: n.id, toNodeId: m.nodes[0].id, label: "explains" });
+    const rels = STATE.dtus.get("dtu_theirs").relations;
+    assert.deepEqual(rels, [], "nothing from u1's map sits on someoneelse's DTU");
+    // the line still exists in u1's own map
+    assert.ok(call("map-detail", "u1", { id: m.id }).result.map.edges.some((e) => e.from === n.id));
+  });
+
   it("node-update carries label/notes onto the backing DTU; repeated converges are no-ops", () => {
     const { map, child } = makeMap();
     call("node-update", "u1", { mapId: map.id, nodeId: child.id, label: "Renamed", notes: "field notes" });

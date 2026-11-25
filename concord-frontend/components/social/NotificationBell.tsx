@@ -147,7 +147,7 @@ export function NotificationBell({ userId, className, placement = 'below', onVie
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
-              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-neon-pink text-[10px] text-white font-bold flex items-center justify-center leading-none"
+              className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-pink-700 text-[10px] text-white font-bold flex items-center justify-center leading-none"
             >
               {unreadCount > 99 ? '99+' : unreadCount}
             </motion.span>

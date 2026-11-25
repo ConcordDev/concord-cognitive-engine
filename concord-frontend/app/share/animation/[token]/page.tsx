@@ -1,166 +1,139 @@
 'use client';
 
 /**
- * Public animation share viewer — /share/animation/[token]
+ * Public animation share page — /share/animation/[token]
  *
- * Wires the `animation.share-get` macro (already real: token generation,
- * copy-link, revoke were all built and working in `AnimToolsPanel`'s
- * SharePanel) to an actual consuming page. Before this page existed, the
- * "Create share link" button produced a real token and a real URL
- * (`/share/animation/{token}`) that pointed at nothing — no route in the
- * app rendered it, so every generated link 404'd. That's a real gap the
- * capability map documents: a working share generator with no way to ever
- * open the link.
- *
- * Genuinely public (2026-07, Wave 4 gap closure): this page now calls the
- * dedicated public REST route `GET /api/animation/share/:token`
- * (server.js) with a plain, unauthenticated `fetch` — no cookie, no
- * Authorization header, no dependency on `useAuth()`. The route invokes
- * the `animation.share-get` LENS_ACTIONS handler directly (bypassing the
- * authenticated `/api/lens/run` surface entirely, the same pattern already
- * used for the welding client portal), so a genuinely logged-out visitor
- * with the link can view the animation. The token itself is the only
- * access control — it's an unguessable id scoped server-side to exactly
- * one animation.
+ * Anyone with the link watches the animation: it plays on the clock at its
+ * own frame rate with each drawing held for its exposure, and with its
+ * soundtrack (streamed through this link's token, so a private soundtrack
+ * plays here and nowhere else). The page calls the public REST route
+ * `GET /api/animation/share/:token` with a plain unauthenticated fetch; the
+ * token is the only access control. When the animator allowed downloads,
+ * the page can render a real GIF or video file in the browser.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Loader2, Eye, Download, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Download, Eye, Pause, Play } from 'lucide-react';
+import { drawFrame, filmSequence, type Anim, type AudioTrack } from '@/components/animation/table/draw';
+import { exportAnimation, type ExportFormat } from '@/components/animation/table/encode';
+import { tableFontVars } from '@/components/animation/table/tableFonts';
+import '@/components/animation/table/table.css';
 
-interface Stroke { tool: string; color: string; size: number; opacity: number; points: number[][] }
-interface FLayer { visible: boolean; strokes: Stroke[] }
-interface Frame { id: string; exposure: number; layers?: FLayer[]; strokes?: Stroke[] }
-interface SharedAnimation {
-  id: string; title: string; width: number; height: number; fps: number; background: string;
-  thumbnail: string | null; frameCount: number; frames?: Frame[];
-}
-
-function drawFrame(c: CanvasRenderingContext2D, frame: Frame | undefined, background: string) {
-  if (!frame) return;
-  c.fillStyle = background;
-  c.fillRect(0, 0, c.canvas.width, c.canvas.height);
-  const strokes = Array.isArray(frame.layers) && frame.layers.length
-    ? frame.layers.filter((l) => l.visible).flatMap((l) => l.strokes)
-    : frame.strokes || [];
-  for (const st of strokes) {
-    const pts = st.points;
-    if (!pts.length) continue;
-    c.save();
-    c.lineJoin = 'round';
-    c.lineCap = 'round';
-    c.lineWidth = st.size;
-    c.strokeStyle = st.color;
-    c.fillStyle = st.color;
-    c.globalAlpha = st.opacity;
-    if (pts.length === 1) {
-      c.beginPath();
-      c.arc(pts[0][0], pts[0][1], Math.max(0.5, st.size / 2), 0, Math.PI * 2);
-      c.fill();
-    } else {
-      c.beginPath();
-      c.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
-      c.stroke();
-    }
-    c.restore();
-  }
-}
+interface SharedAnimation extends Omit<Anim, 'frames' | 'audio'> { frameCount: number; frames?: Anim['frames']; audio?: AudioTrack[] }
+interface ShareMeta { token: string; title: string; views: number; allowDownload: boolean }
 
 export default function AnimationSharePage() {
   const params = useParams<{ token: string }>();
-  const token = (params?.token as string) || '';
-  const [share, setShare] = useState<{ token: string; title: string; views: number; allowDownload: boolean } | null>(null);
+  const token = String(params?.token || '');
   const [anim, setAnim] = useState<SharedAnimation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [frameIdx, setFrameIdx] = useState(0);
+  const [share, setShare] = useState<ShareMeta | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [pos, setPos] = useState(0); // film frame, 0-based
+  const [playing, setPlaying] = useState(false);
+  const [dl, setDl] = useState<{ busy: boolean; msg: string | null }>({ busy: false, msg: null });
+  const canvas = useRef<HTMLCanvasElement>(null);
 
-  const load = useCallback(async () => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/animation/share/${encodeURIComponent(token)}`);
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error || 'This share link is invalid or has been revoked.');
-        setShare(null);
-        setAnim(null);
-        return;
-      }
-      const result = data.result as { share: typeof share; animation: SharedAnimation };
-      setShare(result.share);
-      setAnim(result.animation);
-    } catch {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/animation/share/${encodeURIComponent(token)}`);
+        const body = await res.json().catch(() => null);
+        if (!live) return;
+        if (!res.ok || !body?.ok) { setErr(body?.error || 'This share link could not be opened.'); return; }
+        setAnim(body.result.animation); setShare(body.result.share);
+      } catch { if (live) setErr('This share link could not be opened.'); }
+    })();
+    return () => { live = false; };
   }, [token]);
 
+  const seq = anim?.frames ? filmSequence(anim.frames) : [];
+  const draw = useCallback((p: number) => {
+    const c = canvas.current?.getContext('2d');
+    if (!c || !anim?.frames?.length) return;
+    drawFrame(c, anim.frames[seq[Math.min(p, seq.length - 1)] ?? 0], anim.background);
+  }, [anim, seq]);
+  useEffect(() => { if (!playing) draw(pos); }, [draw, pos, playing]);
+
+  // Playback on the clock, with the soundtrack from each track's start time.
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!playing || !anim?.frames?.length || !seq.length) return;
+    const fps = Math.max(1, anim.fps || 12);
+    const startAt = pos >= seq.length - 1 ? 0 : pos;
+    const t0 = performance.now() - (startAt / fps) * 1000;
+    const timers: number[] = [];
+    const players = (anim.audio || []).map((t) => ({ a: new Audio(t.src || ''), start: t.startSec || 0 }));
+    for (const { a, start } of players) {
+      const at = startAt / fps - start;
+      if (at >= 0) { a.currentTime = at; void a.play().catch(() => {}); }
+      else timers.push(window.setTimeout(() => { void a.play().catch(() => {}); }, -at * 1000));
+    }
+    const id = window.setInterval(() => {
+      const p = Math.floor(((performance.now() - t0) / 1000) * fps);
+      if (p >= seq.length) { setPos(seq.length - 1); setPlaying(false); return; }
+      draw(p); setPos(p);
+    }, Math.max(8, 500 / fps));
+    return () => { window.clearInterval(id); timers.forEach((x) => window.clearTimeout(x)); players.forEach(({ a }) => { a.pause(); a.src = ''; }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing]);
 
-  useEffect(() => {
-    if (!anim?.frames?.length) return;
-    const cv = document.getElementById('share-anim-canvas') as HTMLCanvasElement | null;
-    const c = cv?.getContext('2d');
-    if (!c) return;
-    drawFrame(c, anim.frames[frameIdx], anim.background);
-  }, [anim, frameIdx]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">
-        <Loader2 className="w-6 h-6 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !anim) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-        <div className="max-w-sm text-center space-y-3">
-          <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-          <p className="text-sm text-zinc-300">{error || 'Animation not found.'}</p>
-        </div>
-      </div>
-    );
-  }
+  const download = async (format: ExportFormat) => {
+    if (!anim?.frames) return;
+    setDl({ busy: true, msg: null });
+    try {
+      const r = await exportAnimation({ ...anim, frames: anim.frames, audio: anim.audio || [] } as Anim, format, {});
+      const url = URL.createObjectURL(r.blob);
+      const a = document.createElement('a'); a.href = url; a.download = `${anim.title.replace(/[^\w-]+/g, '_') || 'animation'}.${r.ext}`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      setDl({ busy: false, msg: null });
+    } catch (e) { setDl({ busy: false, msg: e instanceof Error ? e.message : 'The download could not be made.' }); }
+  };
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-4 px-6 py-10">
-      <header className="text-center">
-        <h1 className="text-lg font-semibold text-zinc-100">{anim.title}</h1>
-        <p className="text-xs text-zinc-500 flex items-center justify-center gap-3 mt-1">
-          <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> {share?.views ?? 0} views</span>
-          <span>{anim.width}×{anim.height} · {anim.fps} fps · {anim.frameCount} frames</span>
-        </p>
-      </header>
-      <div className="bg-[repeating-conic-gradient(#3f3f46_0%_25%,#27272a_0%_50%)] bg-[length:16px_16px] rounded-xl p-2">
-        {anim.frames?.length ? (
-          <canvas id="share-anim-canvas" width={anim.width} height={anim.height}
-            className="rounded shadow-lg" style={{ maxWidth: '80vw', maxHeight: '55vh' }} />
-        ) : anim.thumbnail ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={anim.thumbnail} alt={anim.title} className="rounded shadow-lg" style={{ maxWidth: '80vw', maxHeight: '55vh' }} />
+    <main className={`lt ${tableFontVars} min-h-screen px-4 py-8 sm:px-8`}>
+      <div className="mx-auto max-w-4xl space-y-4">
+        {err ? (
+          <div className="lt-sheet flex items-start gap-3 p-5" role="alert"><AlertTriangle className="h-5 w-5 text-[var(--lt-red)]" /><p className="text-[14px]">{err}</p></div>
+        ) : !anim || !share ? (
+          <div className="lt-skeleton h-80" role="status" aria-label="Opening the animation" />
         ) : (
-          <p className="text-xs text-zinc-500 p-8">The owner disabled frame downloads for this link — only the thumbnail is shareable.</p>
+          <>
+            <header className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h1 className="lt-title text-[2rem] leading-tight text-[#fbfaf6]">{anim.title}</h1>
+                <p className="lt-mono text-[12px] text-[#c9c2b5]">{anim.width}×{anim.height} · {anim.fps} fps · {anim.frameCount} drawings{seq.length ? ` · ${(seq.length / Math.max(1, anim.fps)).toFixed(1)} s` : ''}{(anim.audio || []).length ? ' · with sound' : ''}</p>
+              </div>
+              <span className="flex items-center gap-1 text-[12px] text-[#c9c2b5]"><Eye className="h-3.5 w-3.5" /> {share.views} views</span>
+            </header>
+            {anim.frames?.length ? (
+              <div className="lt-stage">
+                <div className="lt-paperframe w-full">
+                  <canvas ref={canvas} width={anim.width} height={anim.height} className="block h-auto w-full" aria-label={`${anim.title}, drawing ${(seq[pos] ?? 0) + 1}`} data-testid="share-canvas" />
+                </div>
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              anim.thumbnail ? <img src={anim.thumbnail} alt={anim.title} className="w-full rounded" /> : null
+            )}
+            {seq.length > 0 && (
+              <div className="flex items-center gap-3">
+                <button type="button" className="lt-btn lt-btn-red" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'} data-testid="share-play">{playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}{playing ? 'Pause' : 'Play'}</button>
+                <input type="range" min={0} max={Math.max(0, seq.length - 1)} value={pos} onChange={(e) => { setPlaying(false); setPos(Number(e.target.value)); }} className="flex-1 accent-[#d2382a]" aria-label="Frame" />
+                <span className="lt-mono w-14 text-right text-[12px] text-[#c9c2b5]">{pos + 1}/{seq.length}</span>
+              </div>
+            )}
+            {share.allowDownload ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" className="lt-btn lt-desk-btn" onClick={() => { void download('gif'); }} disabled={dl.busy}><Download className="h-4 w-4" /> GIF</button>
+                <button type="button" className="lt-btn lt-desk-btn" onClick={() => { void download('webm'); }} disabled={dl.busy}><Download className="h-4 w-4" /> Video</button>
+                {dl.busy && <span className="text-[12px] text-[#c9c2b5]" role="status">Making the file…</span>}
+                {dl.msg && <span className="lt-error" role="alert">{dl.msg}</span>}
+              </div>
+            ) : <p className="text-[12.5px] text-[#c9c2b5]">The animator turned off downloads for this link: you can watch it here.</p>}
+          </>
         )}
       </div>
-      {anim.frames && anim.frames.length > 1 && (
-        <div className="flex items-center gap-2">
-          <input type="range" min={0} max={anim.frames.length - 1} value={frameIdx}
-            onChange={(e) => setFrameIdx(Number(e.target.value))} className="w-64 accent-orange-500"
-            aria-label="Scrub frames" />
-          <span className="text-[11px] text-zinc-500 tabular-nums">{frameIdx + 1}/{anim.frames.length}</span>
-        </div>
-      )}
-      {share?.allowDownload && anim.frames?.length ? (
-        <p className="flex items-center gap-1.5 text-[11px] text-zinc-500"><Download className="w-3 h-3" /> Frame download enabled by the owner</p>
-      ) : null}
-    </div>
+    </main>
   );
 }

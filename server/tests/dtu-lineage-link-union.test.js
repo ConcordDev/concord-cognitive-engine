@@ -7,7 +7,10 @@
  * Extraction harness: the macro + its ref helper are lifted verbatim
  * from server.js and registered against stubs.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+// (Was written against vitest, which the server suite does not have, so it
+// never ran; ported to node:test.)
 import { readFileSync } from "node:fs";
 import { compileFunction } from "node:vm";
 import { fileURLToPath } from "node:url";
@@ -40,9 +43,9 @@ describe("dtu lineage link union", () => {
       { id: "p1", title: "P1" }, { id: "p2", title: "P2" }, { id: "c1", title: "C1" },
     ]);
     const r = lineage({}, { id: "kid" });
-    expect(r.ok).toBe(true);
-    expect(r.parents.map((p) => p.id).sort()).toEqual(["p1", "p2"]);
-    expect(r.children.map((c) => c.id)).toEqual(["c1"]);
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.parents.map((p) => p.id).sort(), ["p1", "p2"]);
+    assert.deepEqual(r.children.map((c) => c.id), ["c1"]);
   });
   it("a legacy-only record still reports its parents", () => {
     const lineage = loadLineage([
@@ -50,7 +53,7 @@ describe("dtu lineage link union", () => {
       { id: "p9", title: "P9" },
     ]);
     const r = lineage({}, { id: "old" });
-    expect(r.parents.map((p) => p.id)).toEqual(["p9"]);
+    assert.deepEqual(r.parents.map((p) => p.id), ["p9"]);
   });
   it("dedupes a parent stamped in both fields", () => {
     const lineage = loadLineage([
@@ -58,6 +61,6 @@ describe("dtu lineage link union", () => {
       { id: "p1", title: "P1" },
     ]);
     const r = lineage({}, { id: "x" });
-    expect(r.parents).toHaveLength(1);
+    assert.equal(r.parents.length, 1);
   });
 });

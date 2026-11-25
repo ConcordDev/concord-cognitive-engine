@@ -205,7 +205,7 @@ export function WhiteboardStudio({
     (((trashData?.result?.boards as Array<{ id: string }> | undefined) ?? []).map((b) => b.id)),
   );
 
-  const { data: selectedWb, isError: isError3, error: error3, refetch: refetch3,} = useQuery({
+  const { data: selectedWb, refetch: refetch3,} = useQuery({
     queryKey: ['whiteboard', selectedWbId],
     queryFn: async () => {
       try {
@@ -223,9 +223,13 @@ export function WhiteboardStudio({
 
   // Sidebar board list: prefer the real whiteboard.list() result; fall back to
   // the lens-artifact record only when the server list is genuinely empty.
+  // CB-1070 seam fix: a shadow record's own id is the ARTIFACT id (lart_...),
+  // which the DTU-only GET /api/whiteboard/:id can never resolve — the record
+  // carries the board's DTU id at data.whiteboardId (server _wbWriteShadow),
+  // so key the fallback item by THAT id and the pick opens the real board.
   const boardListItems: Record<string, unknown>[] = ((whiteboards?.whiteboards && whiteboards.whiteboards.length > 0)
     ? whiteboards.whiteboards
-    : boardArtifacts.map(a => ({ id: a.id, title: a.title, elementCount: Array.isArray((a as { data?: { elements?: unknown[] } }).data?.elements) ? ((a as { data?: { elements?: unknown[] } }).data!.elements as unknown[]).length : 0 })))
+    : boardArtifacts.map(a => ({ id: (a as { data?: { whiteboardId?: string } }).data?.whiteboardId || a.id, title: a.title, elementCount: Array.isArray((a as { data?: { elements?: unknown[] } }).data?.elements) ? ((a as { data?: { elements?: unknown[] } }).data!.elements as unknown[]).length : 0 })))
     .filter((b: Record<string, unknown>) => !trashedBoardIds.has(String(b.id)));
 
   // North star: the canvas is the page, so open the most recent board instead
@@ -305,7 +309,7 @@ export function WhiteboardStudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presentIdx]);
 
-  const { data: dtus, isError: isError4, error: error4, refetch: refetch4,} = useQuery({
+  const { data: dtus, refetch: refetch4,} = useQuery({
     queryKey: ['dtus-whiteboard'],
     queryFn: () => apiHelpers.dtus.paginated({ limit: 100 }).then(r => r.data),
   });
@@ -1409,10 +1413,15 @@ export function WhiteboardStudio({
     );
   }
 
-  if (isError || isError2 || isError3 || isError4) {
+  // CB-1070 gate fix: the whole-lens error state fires only when the board
+  // LIST itself cannot load — both list sources (the lens-artifact list and
+  // the DTU list) failed. A per-board GET failure degrades to an empty canvas
+  // (its 404 is already absorbed in the query above), and the DTU-library
+  // query's failure must never take the lens down with it.
+  if (isError && isError2) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <ErrorState error={error?.message || error2?.message || error3?.message || error4?.message} onRetry={() => { refetch(); refetch2(); refetch3(); refetch4(); }} />
+        <ErrorState error={error?.message || error2?.message} onRetry={() => { refetch(); refetch2(); refetch3(); refetch4(); }} />
       </div>
     );
   }

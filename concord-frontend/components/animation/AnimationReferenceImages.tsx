@@ -149,13 +149,13 @@ export function AnimationReferenceImages() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-100">Reference images</h2>
-          <p className="text-[11px] text-zinc-400">Upload photos or sketches, then import one onto the frame open in Studio as a tracing underlay — you still draw the real artwork by hand on top of it.</p>
+          <h2 className="text-sm font-semibold text-[var(--lt-graphite,#f4f4f5)]">Reference images</h2>
+          <p className="text-[11px] text-[var(--lt-muted,#a1a1aa)]">Upload photos or sketches, then import one onto the frame open in Studio as a tracing underlay — you still draw the real artwork by hand on top of it.</p>
         </div>
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadMutation.mutate(f); if (fileRef.current) fileRef.current.value = ''; }} />
         <button type="button" onClick={() => fileRef.current?.click()} disabled={uploadMutation.isPending || !user?.id}
-          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-cyan-700 hover:bg-cyan-500 disabled:opacity-50 text-white rounded-lg shrink-0">
+          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-[var(--lt-red,#0e7490)] hover:bg-[#b42c20] disabled:opacity-50 text-white rounded-lg shrink-0">
           {uploadMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImagePlus className="w-3.5 h-3.5" />}
           Upload reference
         </button>
@@ -165,22 +165,22 @@ export function AnimationReferenceImages() {
           on, or explains why the action is unavailable — never implies a
           target exists when it doesn't. */}
       {target ? (
-        <p className="flex items-center gap-1.5 text-[11px] text-cyan-300 bg-cyan-950/30 border border-cyan-900/40 rounded-lg px-2.5 py-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-[var(--lt-blue,#22d3ee)] bg-cyan-950/30 border border-[var(--lt-blue,#0891b2)] rounded-lg px-2.5 py-1.5">
           <Layers className="w-3.5 h-3.5 shrink-0" />
-          Import target: <span className="font-medium text-cyan-100 truncate">{target.animTitle}</span>
-          <span className="text-cyan-400/70">· frame {target.frameIndex + 1}/{target.frameCount}</span>
+          Import target: <span className="font-medium text-[var(--lt-blue,#22d3ee)] truncate">{target.animTitle}</span>
+          <span className="text-[var(--lt-blue,#22d3ee)]">· frame {target.frameIndex + 1}/{target.frameCount}</span>
         </p>
       ) : (
-        <p className="flex items-center gap-1.5 text-[11px] text-zinc-400 bg-zinc-900/40 border border-zinc-800 rounded-lg px-2.5 py-1.5">
+        <p className="flex items-center gap-1.5 text-[11px] text-[var(--lt-muted,#a1a1aa)] bg-zinc-900/40 border border-[var(--lt-line-2,#27272a)] rounded-lg px-2.5 py-1.5">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           Open a frame in the Studio tab first — import needs a real target frame.
         </p>
       )}
 
-      {error && <p className="text-xs text-rose-400" role="alert">{error}</p>}
+      {error && <p className="text-xs text-[var(--lt-bad,#fb7185)]" role="alert">{error}</p>}
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-zinc-400"><Loader2 className="w-5 h-5 animate-spin" /></div>
+        <div className="flex items-center justify-center py-8 text-[var(--lt-muted,#a1a1aa)]"><Loader2 className="w-5 h-5 animate-spin" /></div>
       ) : items.length === 0 ? (
         <EmptyState
           icon={<ImageOff className="h-5 w-5" />}
@@ -193,28 +193,28 @@ export function AnimationReferenceImages() {
           {items.map((m) => {
             const status = importStatus[m.id] || { state: 'idle' as const };
             return (
-              <figure key={m.id} className="rounded-lg overflow-hidden border border-zinc-800 bg-zinc-950">
+              <figure key={m.id} className="rounded-lg overflow-hidden border border-[var(--lt-line-2,#27272a)] bg-[var(--lt-input,#09090b)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`/api/media/${m.id}/stream`} alt={m.title} className="w-full aspect-square object-cover" loading="lazy" />
-                <figcaption className="px-1.5 py-1 text-[10px] text-zinc-400 truncate">{m.title}</figcaption>
+                <figcaption className="px-1.5 py-1 text-[10px] text-[var(--lt-muted,#a1a1aa)] truncate">{m.title}</figcaption>
                 <button
                   type="button"
                   onClick={() => void importOntoFrame(m)}
                   disabled={!target || status.state === 'pending'}
                   title={target ? `Import onto frame ${target.frameIndex + 1} as a tracing reference` : 'Open a frame in Studio first'}
-                  className="flex items-center justify-center gap-1 w-full px-1.5 py-1 text-[10px] border-t border-zinc-800 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-40 disabled:hover:bg-zinc-900 text-zinc-300"
+                  className="flex items-center justify-center gap-1 w-full px-1.5 py-1 text-[10px] border-t border-[var(--lt-line-2,#27272a)] bg-[var(--lt-paper-2,#18181b)] hover:bg-[var(--lt-hover,#3f3f46)] disabled:opacity-40 disabled:hover:bg-[var(--lt-hover,#3f3f46)] text-[var(--lt-graphite-2,#d4d4d8)]"
                 >
                   {status.state === 'pending' ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : status.state === 'done' ? (
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <CheckCircle2 className="w-3 h-3 text-[var(--lt-good,#4ade80)]" />
                   ) : (
                     <Layers className="w-3 h-3" />
                   )}
                   {status.state === 'done' ? 'Imported' : 'Import onto frame'}
                 </button>
                 {status.state === 'error' && (
-                  <p role="alert" className="px-1.5 py-1 text-[9px] text-rose-400 bg-rose-950/40 truncate" title={status.message}>
+                  <p role="alert" className="px-1.5 py-1 text-[9px] text-[var(--lt-bad,#fb7185)] bg-[#fff2ef] truncate" title={status.message}>
                     {status.message}
                   </p>
                 )}

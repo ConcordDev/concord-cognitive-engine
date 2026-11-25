@@ -120,6 +120,14 @@ export function convergeUserMaps(state, userId, mintId) {
       const from = nodeDtu(map, edge.from);
       const to = nodeDtu(map, edge.to);
       if (!from || !to || from === to) continue;
+      // A map's lines go onto the substrate only from DTUs this user
+      // authored. A line from someone else's DTU stays in the map (the
+      // user's own constellation) and is never written onto their DTU,
+      // so one person's map can't draw into everyone's lattice. Any such
+      // relation an earlier version wrote is pruned below (it is no
+      // longer desired, and its asserting maps are this user's).
+      const fromDtu = dtus.get(from);
+      if (!fromDtu || !authoredBy(fromDtu, userId)) continue;
       const type = relationTypeForLabel(edge.label);
       const key = `${from}->${to}#${type}`;
       if (!desired.has(key)) {

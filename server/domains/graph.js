@@ -892,6 +892,19 @@ export default function registerGraphActions(registerLensAction) {
 
   function findMap(s, ctx, id) { return gphMaps(s, gphActor(ctx)).find((x) => x.id === id); }
 
+  // Whose is a DTU, and may this user see it? (Same rule the lattice reads
+  // use: private / user-scoped / followers-only DTUs are their owner's
+  // only; internal ones are nobody's.) A map may LINK any DTU the user can
+  // see, but only ever WRITES to a DTU the user authored.
+  const gphOwner = (d) => d?.author || d?.ownerId || d?.userId || d?.createdBy || null;
+  const gphOwns = (d, userId) => !!d && !!userId && gphOwner(d) === userId;
+  function gphCanSee(d, userId) {
+    if (!d || d.visibility === "internal") return false;
+    const isPrivate = d.privacy === "private" || d.privacy === "followers-only" || d.scope === "user" || d.visibility === "private";
+    return !isPrivate || gphOwns(d, userId);
+  }
+  const gphPersist = (d) => { try { globalThis._concordUpsertDTU?.(d); } catch { /* in-memory copy still serves */ } };
+
   // #1715 S3: reconcile the caller's maps onto the DTU substrate
   // (backing DTUs for standalone nodes; map edges as typed relations).
   // A convergence failure must never fail the map operation itself —
@@ -981,7 +994,9 @@ export default function registerGraphActions(registerLensAction) {
       const STATE = globalThis._concordSTATE;
       if (STATE && typeof STATE.dtus?.get === "function") {
         const dtu = STATE.dtus.get(node.dtuId);
-        if (dtu) {
+        // Only your own DTU follows your map edits; a linked DTU someone
+        // else made is referenced, never rewritten.
+        if (dtu && gphOwns(dtu, gphActor(ctx))) {
           dtu.title = node.label;
           if (node.notes) {
             dtu.content = node.notes;
@@ -989,6 +1004,7 @@ export default function registerGraphActions(registerLensAction) {
           }
           dtu.updatedAt = new Date().toISOString();
           node.syncedAt = dtu.updatedAt;
+          gphPersist(dtu);
         }
       }
     }
@@ -1640,6 +1656,7 @@ export default function registerGraphActions(registerLensAction) {
     if (typeof STATE.dtus?.get !== "function") return { ok: false, error: "DTU store unavailable" };
     const dtu = STATE.dtus.get(node.dtuId);
     if (!dtu) return { ok: false, error: "linked DTU not found" };
+    if (!gphOwns(dtu, gphActor(ctx))) return { ok: false, error: "you can only sync to a DTU you made" };
 
     // Apply the graph-side edits to the DTU's human-readable layers.
     dtu.title = node.label;
@@ -1649,6 +1666,7 @@ export default function registerGraphActions(registerLensAction) {
     }
     dtu.updatedAt = new Date().toISOString();
     node.syncedAt = dtu.updatedAt;
+    gphPersist(dtu);
     saveGraph();
     return {
       ok: true,
@@ -1674,7 +1692,8 @@ export default function registerGraphActions(registerLensAction) {
     // sync-to-dtu's store access; when the store is unavailable the
     // link proceeds — validation degrades, it does not fabricate.
     const linkState = globalThis._concordSTATE;
-    if (typeof linkState?.dtus?.get === "function" && !linkState.dtus.get(dtuId)) {
+    // Someone's private DTU answers exactly like a missing one: no probe.
+    if (typeof linkState?.dtus?.get === "function" && !gphCanSee(linkState.dtus.get(dtuId), gphActor(ctx))) {
       return { ok: false, error: "That DTU doesn't exist — check the id and try again." };
     }
     node.dtuId = dtuId;

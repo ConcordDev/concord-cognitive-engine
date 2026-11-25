@@ -11,6 +11,10 @@
 // ownership ("a real user's listing is kept", "no system-owned row is listed") read the listings as a
 // signed-in member, where `userId` is present, and the anonymous read is asserted separately to be
 // redacted. An anonymous `userId === "system"` filter would pass vacuously (userId is always absent).
+//
+// Listing creates authenticate with x-test-member matching the intended seller: since
+// CB-1279-C the create route takes the seller from the session and ignores a body userId,
+// so a signed-out create is refused (401) instead of recording the body's claimed owner.
 
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -92,7 +96,7 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
   it("keeps a real user's listing, including one that reuses a seed title", async () => {
     const created = await json(`${app.url}/api/marketplace/listings`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "alice" },
       body: listingBody("alice", SEED_TITLE),
     });
     assert.equal(created.status, 201);
@@ -113,7 +117,7 @@ describe("GET /api/marketplace/listings — no seeded system listings", () => {
   it("does not list a system-owned row even if one is inserted after boot", async () => {
     const created = await json(`${app.url}/api/marketplace/listings`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "system" },
       body: listingBody("system", "Physics Sandbox Pro", "simulation"),
     });
     assert.equal(created.status, 201);
@@ -139,20 +143,20 @@ describe("purchase of a system or missing listing is refused", () => {
   it("refuses a system listing and a nonexistent id, and still sells a real one", async () => {
     const system = await json(`${app.url}/api/marketplace/listings`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "system" },
       body: listingBody("system", "Operator scratch", "ai"),
     });
     assert.equal(system.status, 201);
     const real = await json(`${app.url}/api/marketplace/listings`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "bob" },
       body: listingBody("bob", "Bob's DTU", "ai"),
     });
     assert.equal(real.status, 201);
 
     const refused = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: system.body.listing.id }),
     });
     assert.equal(refused.status, 403);
@@ -161,7 +165,7 @@ describe("purchase of a system or missing listing is refused", () => {
 
     const missing = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: "does-not-exist" }),
     });
     assert.equal(missing.status, 404);
@@ -170,7 +174,7 @@ describe("purchase of a system or missing listing is refused", () => {
 
     const bought = await json(`${app.url}/api/marketplace/orders`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-test-member": "buyer" },
       body: JSON.stringify({ userId: "buyer", listingId: real.body.listing.id }),
     });
     assert.equal(bought.status, 201);
@@ -272,17 +276,17 @@ describe("seed cleanup is non-destructive and dry-run by default", () => {
     try {
       const real = await json(`${app.url}/api/marketplace/listings`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-test-member": "carol" },
         body: listingBody("carol", SEED_TITLE),
       });
       const seeded = await json(`${app.url}/api/marketplace/listings`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-test-member": "system" },
         body: listingBody("system", SEED_TITLE),
       });
       const otherSystem = await json(`${app.url}/api/marketplace/listings`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-test-member": "system" },
         body: listingBody("system", "Not from the seed"),
       });
 
@@ -311,7 +315,7 @@ describe("seed cleanup is non-destructive and dry-run by default", () => {
 
       const orderOther = await json(`${app.url}/api/marketplace/orders`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-test-member": "buyer" },
         body: JSON.stringify({ userId: "buyer", listingId: otherSystem.body.listing.id }),
       });
       assert.equal(orderOther.status, 403);

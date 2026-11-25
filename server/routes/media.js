@@ -543,7 +543,8 @@ export default function createMediaRouter({ STATE }) {
    */
   router.get("/:id/stream", asyncHandler(async (req, res) => {
     const viewerId = req.user?.id || null;
-    const gated = getMediaDTUForViewer(STATE, req.params.id, viewerId);
+    const shareToken = typeof req.query.share === "string" ? req.query.share : null;
+    const gated = getMediaDTUForViewer(STATE, req.params.id, viewerId, { shareToken });
     if (!gated.ok) {
       if (gated.status === 401) return res.status(401).json({ ok: false, error: gated.error });
       throw new NotFoundError("Media", req.params.id);
@@ -571,6 +572,11 @@ export default function createMediaRouter({ STATE }) {
         // or repeated request can reach the rest. Signed-in viewers fall through
         // to the normal (owner / license / priced-tier) logic unchanged.
         res.set("Vary", "Authorization, Cookie");
+        // A share link the maker made for this file: the whole file, to
+        // whoever holds the link, never cached by anything shared.
+        if (gated.viaShare && !pricedCreateOrCommercial(mediaDTU)) {
+          return sendRangedBuffer(res, buffer, contentType, req.headers.range, { privateCache: true });
+        }
         if (!viewerId) {
           const anon = sliceAnonymousPreview(buffer, mediaDTU);
           res.set({
