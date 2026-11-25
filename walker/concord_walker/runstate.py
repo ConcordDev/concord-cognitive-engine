@@ -115,8 +115,11 @@ class LensBudget:
 class ReplayBudget:
     """Per-lens time budget for the REPLAY of original tickets, separate from the sweep's budget.
 
-    for_lens(n) = override_s when given, else min(cap_s, base_s + per_ticket_s * n). Replay's clock
-    starts when replay starts (ReplayRun), so a sweep that used its whole 240 s never starves replay."""
+    for_lens(n) = min(cap_s, max(override_s, base_s + per_ticket_s * n)): the configured
+    replay_budget_s override is a per-lens FLOOR, never a flat total (GB-1581 item 5c — Walk 2's
+    flat 180 s override starved 501 tickets in 94 lenses: a lens with many tickets scales by the
+    formula past the floor, capped). Replay's clock starts when replay starts (ReplayRun), so a
+    sweep that used its whole 240 s never starves replay."""
     DEFAULT_BASE_S, DEFAULT_PER_TICKET_S, DEFAULT_CAP_S = 60, 25, 900
 
     def __init__(self, base_s=None, per_ticket_s=None, cap_s=None, override_s=None):
@@ -135,9 +138,14 @@ class ReplayBudget:
                    override_s=pick("replay_budget_s", "replay_budget_s"))
 
     def for_lens(self, n_tickets):
+        scaled = self.base_s + self.per_ticket_s * max(0, n_tickets)
         if self.override_s is not None:
-            return self.override_s
-        return min(self.cap_s, self.base_s + self.per_ticket_s * max(0, n_tickets))
+            if self.override_s <= 0:
+                # A non-positive override is an exhausted/disabled budget
+                # (e.g. --replay-budget-s 0), not a floor to scale up from.
+                return min(self.cap_s, self.override_s)
+            scaled = max(scaled, self.override_s)
+        return min(self.cap_s, scaled)
 
 
 def _pid_alive(pid):

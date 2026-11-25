@@ -108,8 +108,10 @@ check("frontend: src format accepted", R.SRC_RE.match("frontend:concord-frontend
 FEP = "concord-frontend/app/lenses/food/page.tsx"
 if subprocess.run(["git", "-C", REPO, "cat-file", "-e", SHA], capture_output=True).returncode == 0:
     check("frontend: label literally at that line of the fold source verifies", R.frontend_label_at(FEP, 39, "Recipes", REPO))
-    check("frontend: wrong label / wrong line / missing path / out-of-range line all fail closed",
-          not R.frontend_label_at(FEP, 39, "Cookbook", REPO) and not R.frontend_label_at(FEP, 64, "zzz", REPO)
+    check("GB1581 5d: label on a DIFFERENT line of the same file verifies (the pin's line is provenance, not the gate)",
+          R.frontend_label_at(FEP, 40, "Recipes", REPO))
+    check("frontend: label nowhere in the file / missing path / out-of-range line all fail closed",
+          not R.frontend_label_at(FEP, 39, "zzz-no-such-label", REPO) and not R.frontend_label_at(FEP, 64, "zzz", REPO)
           and not R.frontend_label_at("concord-frontend/app/lenses/food/nope.tsx", 1, "x", REPO) and not R.frontend_label_at(FEP, 10 ** 7, "Recipes", REPO))
     tf = {"id": "X-2", "lens": "food", "repro_steps": ["Open the Recipes tab"], "expected": "No console errors"}
     mk = lambda line, lab: {"ticket_id": "X-2", "lens": "food", "fold_sha": SHA, "orig_hash": R.orig_hash(tf), "author": "sonnet", "date": "2026-11-16", "schema": 1, "status": "rewritten",
@@ -117,7 +119,7 @@ if subprocess.run(["git", "-C", REPO, "cat-file", "-e", SHA], capture_output=Tru
     ok, why = R.agree(tf, mk(39, "Recipes"), None, None, REPO)
     check("agree: a frontend: src whose label is on that line passes", ok, why)
     ok, why = R.agree(tf, mk(40, "Recipes"), None, None, REPO)
-    check("agree: a frontend: src whose line does not carry the label fails closed (src_not_live)", (not ok) and any("src_not_live" in w for w in why), why)
+    check("GB1581 5d: agree: a frontend: src whose label sits on another line of the file passes (not src_not_live)", ok, why)
 else:
     print("SKIP frontend: checks: %s not in this clone" % SHA)
 
@@ -242,6 +244,26 @@ check("cross-account mention still detected (t2)", bool(_D._CROSS.search("sign i
 check("plain step not cross-account", not _D._CROSS.search("plain single account step"))
 check("t1 prefix stripped (lens form)", _D._PFX.sub("", "On /lenses/chat as zuko_qa_t1, open the menu") == "open the menu")
 check("t1 prefix stripped (paren form)", _D._PFX.sub("", "on zuko_qa_t1 (admin), click Save") == "click Save")
+
+# ---- GB-1581 item 4: value / count / order compare kinds ----
+from concord_walker import expected as _X
+from concord_walker import repro as _RP
+for _c in [{"kind": "value_equals", "args": {"value": "42"}},
+           {"kind": "value_equals", "args": {"name": "Title", "value": "Hello"}},
+           {"kind": "count_equals", "args": {"count": 3, "of": "items"}},
+           {"kind": "order_matches", "args": {"names": ["Alpha", "Beta", "Gamma"]}},
+           {"kind": "order_matches", "args": {"sorted": "alpha"}}]:
+    _text, _why = R.compile_clause(_c)
+    check("GB1581 compare kind %s compiles and re-classifies to exactly itself" % _c["kind"],
+          _text is not None and R._clause_kinds(_text) == [_c["kind"]], (_text, _why, R._clause_kinds(_text) if _text else None))
+_snap = {"controls": [{"name": "Alpha"}, {"name": "Beta"}, {"name": "Gamma"}], "texts": ["42"], "list_items": ["Alpha", "Beta", "Gamma"], "dialogs": [], "errors": 0, "url": "x"}
+check("GB1581 value_equals passes when the value is shown", _RP.check_expected('the value is "42"', _snap)["state"] == "pass", _RP.check_expected('the value is "42"', _snap))
+check("GB1581 value_equals fails when the value is absent", _RP.check_expected('the value is "99"', _snap)["state"] == "fail", _RP.check_expected('the value is "99"', _snap))
+check("GB1581 count_equals passes on the shown count", _RP.check_expected("shows 3 items", _snap)["state"] == "pass", _RP.check_expected("shows 3 items", _snap))
+check("GB1581 count_equals fails on a different count", _RP.check_expected("shows 4 items", _snap)["state"] == "fail", _RP.check_expected("shows 4 items", _snap))
+check("GB1581 order_matches passes in the stated order", _RP.check_expected("in order Alpha, Beta and Gamma", _snap)["state"] == "pass", _RP.check_expected("in order Alpha, Beta and Gamma", _snap))
+_snap_rev = dict(_snap, list_items=["Gamma", "Beta", "Alpha"])
+check("GB1581 order_matches fails out of order", _RP.check_expected("in order Alpha, Beta and Gamma", _snap_rev)["state"] == "fail", _RP.check_expected("in order Alpha, Beta and Gamma", _snap_rev))
 
 print("\n%d failed" % len(FAILS))
 sys.exit(1 if FAILS or len(H.FAILS) > HFAILS_BEFORE else 0)

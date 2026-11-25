@@ -202,10 +202,24 @@ class DeployGuard:
     start(): records the sha the walk runs against; refuses a resume onto a different build (prior_sha = the sha the run's
     finished lenses were walked on). check(): called before and after each lens; returns a reason string when the walk must
     STOP (DEPLOY_DETECTED), else None. With no readable sha at start the guard is OFF (logged) - the existing sha_status
-    stamping still records `missing` on every row; once a sha is known, an unreadable one later is NOT trusted."""
+    stamping still records `missing` on every row.
 
-    def __init__(self, fetch_sha, log=lambda *a: None):
+    ULW v3 W4 (the 05:15 false abort): an unreadable /health alone never declares a deploy. check() first retries
+    inside a confirm window (~60 s of backoff): a recovered read with the SAME sha clears the pause; a DIFFERENT
+    sha is a deploy. If the window expires unreadable, the second witness decides: `fetch_uptime()` (backend
+    uptime seconds) continuous since start() means the same process is alive - not a deploy, the walk proceeds
+    with the pause logged; an uptime RESET proves a restart and is treated as a deploy. Only when neither witness
+    can be read does the old fail-closed stop fire."""
+
+    def __init__(self, fetch_sha, log=lambda *a: None, fetch_uptime=None, confirm_window_s=60,
+                 sleep=None, clock=None):
+        import time as _time
         self.fetch_sha, self.log, self.sha, self.active = fetch_sha, log, None, False
+        self.fetch_uptime = fetch_uptime
+        self.confirm_window_s = confirm_window_s
+        self.sleep = sleep or _time.sleep
+        self.clock = clock or _time.monotonic
+        self.uptime0 = None
 
     def _read(self):
         for _ in range(2):
@@ -217,9 +231,19 @@ class DeployGuard:
                 return s
         return None
 
+    def _uptime(self):
+        if self.fetch_uptime is None:
+            return None
+        try:
+            v = self.fetch_uptime()
+        except Exception:
+            return None
+        return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
     def start(self, prior_sha=None, known=None):
         """-> (ok, reason). `known`: a sha the caller already read this instant (avoids a second poll)."""
         self.sha = known or self._read()
+        self.uptime0 = self._uptime()
         if not self.sha:
             self.log("deploy guard OFF: /health reports no buildSha at start")
             return True, None
@@ -232,11 +256,37 @@ class DeployGuard:
         if not self.active:
             return None
         now = known or self._read()
-        if now is None:
-            return "cannot read /health buildSha %s %s (twice): cannot prove no deploy happened" % (phase, lens)
-        if now != self.sha:
-            return "buildSha changed %s %s: %s -> %s" % (phase, lens, self.sha[:12], now[:12])
-        return None
+        if now is not None:
+            if now != self.sha:
+                return "buildSha changed %s %s: %s -> %s" % (phase, lens, self.sha[:12], now[:12])
+            return None
+        # /health unreadable: PAUSE and confirm inside the window - never abort on silence alone.
+        self.log("deploy guard: /health buildSha unreadable %s %s - pausing up to %ss to confirm (not a deploy yet)"
+                 % (phase, lens, self.confirm_window_s))
+        deadline = self.clock() + max(0, self.confirm_window_s)
+        delay = 2
+        while self.clock() < deadline:
+            self.sleep(min(delay, max(0, deadline - self.clock())))
+            delay = min(delay * 2, 20)
+            now = self._read()
+            if now is not None:
+                if now != self.sha:
+                    return "buildSha changed %s %s: %s -> %s (confirmed after a /health pause)" % (phase, lens, self.sha[:12], now[:12])
+                self.log("deploy guard: /health recovered %s %s with the same buildSha %s - no deploy; resuming"
+                         % (phase, lens, self.sha[:12]))
+                return None
+        # Window expired unreadable: the uptime witness decides.
+        up = self._uptime()
+        if up is not None and self.uptime0 is not None:
+            if up < self.uptime0:
+                return "backend restarted %s %s while /health was unreadable (uptime %ss -> %ss): treating as a deploy" % (
+                    phase, lens, int(self.uptime0), int(up))
+            self.log("deploy guard: /health still unreadable after %ss %s %s, but backend uptime is continuous (%ss -> %ss): "
+                     "same process, not a deploy; proceeding with this lens's stamp untrusted"
+                     % (self.confirm_window_s, phase, lens, int(self.uptime0), int(up)))
+            return None
+        return "cannot read /health buildSha %s %s after a %ss confirm window, and no uptime witness: cannot prove no deploy happened" % (
+            phase, lens, self.confirm_window_s)
 
 
 def lens_state(res, gate=False):

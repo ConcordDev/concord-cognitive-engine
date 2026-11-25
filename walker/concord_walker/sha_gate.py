@@ -85,6 +85,28 @@ def live_sha(base_url, fetch=None):
     return sha, ("health" if sha else None), fb
 
 
+_UPTIME_KEYS = ("uptime", "uptime_s", "uptimeSec", "uptimeSeconds", "uptime_seconds")
+
+
+def health_uptime(base_url, fetch=None):
+    """Backend uptime in seconds from /health, or None when /health does not
+    carry a readable uptime. ULW v3 W4: the deploy guard's second witness —
+    uptime never decreases while a process lives, so a smaller later value
+    proves a restart even when the buildSha cannot be read."""
+    fetch = fetch or _get
+    try:
+        payload = json.loads(fetch(base_url.rstrip("/") + "/health"))
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    for key in _UPTIME_KEYS:
+        v = payload.get(key)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0:
+            return float(v)
+    return None
+
+
 def gate(expect_sha, base_url, fetch=None):
     """{'ok': bool, 'live': sha|None, 'source': str|None, 'frontend_build': str|None, 'reason': str}.
     ok only when expect_sha is a hex sha AND /health reports a hex sha that matches it."""

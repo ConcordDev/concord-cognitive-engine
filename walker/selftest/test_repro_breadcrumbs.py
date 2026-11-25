@@ -205,5 +205,42 @@ d = FakeDriver([btn("Upgrade plan"), btn("Delete account")])
 r = repro.run_repro(T(["Upgrade plan"], "x"), d, lens_slug="global")
 check("click on a payment control is refused (read-only mode)", r["verdict"] == repro.HUMAN and r["steps"][-1]["executed"] is False, r)
 
+# ---- GB-1581 item 4: generic verb forms, first-of-role, attempts, overlays ----
+class RoleDriver(FakeDriver):
+    def names_of_role(self, role):
+        return [c["name"] for c in self.controls if c.get("role") == role]
+
+
+def acts(step, lens="global"):
+    r = repro.expand_step(step, lens)
+    return r["mapped"], [(x.get("action"), x.get("name"), x.get("first_of_role"), bool(x.get("attempt"))) for x in r["substeps"]]
+
+check("GB1581: 'Type into a field' maps to a first-of-role fill", acts("Type into a field") == (True, [("fill", None, "textbox", False)]), acts("Type into a field"))
+check("GB1581: 'Attempt to tap the button' maps to an attempt first-of-role click", acts("Attempt to tap the button") == (True, [("click", None, "button", True)]), acts("Attempt to tap the button"))
+check("GB1581: 'Open each overlay' maps to the overlay loop", acts("Open each overlay") == (True, [("open_each_overlay", None, None, False)]), acts("Open each overlay"))
+check("GB1581: 'Click the button' maps to a first-of-role click", acts("Click the button") == (True, [("click", None, "button", False)]), acts("Click the button"))
+check("GB1581: 'Click the first link' maps to a first-of-role click", acts("Click the first link") == (True, [("click", None, "link", False)]), acts("Click the first link"))
+
+d = RoleDriver([btn("Alpha"), btn("Beta")])
+r = repro.run_repro(T(["Click the button"], "No console errors"), d, lens_slug="global")
+check("GB1581: first-of-role click targets the first button on the page", r["verdict"] == repro.FIXED and ("click", "Alpha", "Alpha") in d.calls, (r["notes"], d.calls))
+
+d = RoleDriver([])
+r = repro.run_repro(T(["Click the button"], "No console errors"), d, lens_slug="global")
+check("GB1581: first-of-role with no such control -> NEEDS_HUMAN", r["verdict"] == repro.HUMAN, r)
+
+d = RoleDriver([btn("Title", role="textbox")])
+r = repro.run_repro(T(["Type into a field"], "No console errors"), d, lens_slug="global")
+check("GB1581: 'type into a field' fills the first field on the page", r["verdict"] == repro.FIXED and any(c[0] == "type" and c[1] == "Title" for c in d.calls), (r["notes"], d.calls))
+
+d = RoleDriver([btn("Other")])
+r = repro.run_repro(T(["Attempt to tap Help"], "No console errors"), d, lens_slug="demo")
+check("GB1581: an attempt whose target is absent is recorded, not failed", r["verdict"] == repro.FIXED and "attempt recorded" in r["steps"][-1]["result"], (r["notes"], r["steps"]))
+
+d = RoleDriver([btn("Share"), btn("Export"), btn("Delete account")])
+r = repro.run_repro(T(["Open each overlay"], "No console errors"), d, lens_slug="global")
+check("GB1581: open-each-overlay opens only safe openers and Escapes each", r["verdict"] == repro.FIXED
+      and [c[1] for c in d.calls if c[0] == "click"] == ["Share", "Export"] and d.calls.count(("press", "Escape")) == 2, (r["notes"], d.calls))
+
 print("\n%d failure(s)" % len(FAILS))
 sys.exit(1 if FAILS else 0)

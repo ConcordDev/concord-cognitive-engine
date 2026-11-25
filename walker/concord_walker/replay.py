@@ -98,6 +98,9 @@ class ReplayRun:
             if "PENDING_CAPTURE" in str(res.get("notes") or ""):
                 block["pending_capture"] = block.get("pending_capture", 0) + 1
         block["second_walks"] = self.rv.live_walk_count - walks_before
+        # ULW v3 W4: recipe-reported NOT_RUN items for this lens (e.g. formfuzz
+        # budget cuts) ride the block; the sweep queues them as carry-over.
+        block["not_run"] = [it for it in getattr(self.rv, "not_run", []) if it.get("slug") == slug]
         self.blocks[slug] = block
         self.log("  replay %s: %s%s" % (slug, block["counts"] or "-", (" skipped %d" % len(block["skipped"])) if block["skipped"] else ""))
         return block
@@ -126,11 +129,21 @@ class ReplayRun:
 
     # ------------------------------------------------------------ coverage
     def coverage_rows(self, inv_slugs, walked_slugs, resumed=()):
-        """One row for EVERY in-scope ticket in the fold (not only the lenses walked)."""
+        """One row for EVERY in-scope ticket in the fold (not only the lenses walked).
+
+        GB-1581 item 1: on --resume the earlier attempts' verdict rows (this
+        run dir's reverify.jsonl, appended by every attempt) merge in, so a
+        resumed lens's tickets carry their real verdicts into coverage
+        instead of a bare R_RESUMED. A resumed lens whose ticket has NO row
+        anywhere is not done: it is named R_RESUMED_NO_ROWS."""
         scope = [(tid, self.store.get(tid)) for tid in self.store.base if tid in self.baseline]
+        results = dict(self.results)
+        for tid, res in cov.load_prior_results(self.run_dir).items():
+            if tid in self.baseline and tid not in results:
+                results[tid] = res
         skipped = dict(self.skipped)
         for tid, t in scope:
-            if t is None or str(t.get("status") or "").upper() not in cov.SCOPE_STATUSES or tid in self.results or tid in skipped:
+            if t is None or str(t.get("status") or "").upper() not in cov.SCOPE_STATUSES or tid in results or tid in skipped:
                 continue
             lens = t.get("lens")
             if self.store.lane(tid) == "ci":
@@ -140,7 +153,7 @@ class ReplayRun:
             elif self.no_replay:
                 skipped[tid] = cov.R_NO_REPLAY
             elif lens in resumed:
-                skipped[tid] = cov.R_RESUMED
+                skipped[tid] = cov.R_RESUMED_NO_ROWS
             elif lens not in walked_slugs:
                 skipped[tid] = cov.R_NOT_WALKED + " (%s)" % lens
-        return cov.build_rows(scope, self.results, skipped)
+        return cov.build_rows(scope, results, skipped)

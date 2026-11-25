@@ -499,6 +499,29 @@ class LensWalk:
                     self.mark("create_delete", "ERROR", error=scrub(repr(e), 200))
             else:
                 self.mark("create_delete", "NOT_RUN", reason="read-only run" if not self.allow_write else "write-skip lens / admin / no session")
+        # ULW v3 (GB-1576 W5c): DURABILITY rides the write phase — after the
+        # lens's writes, before isolation. Best-effort; never fails the lens.
+        if "write" in self.phases and self.allow_write and self.acct:
+            if not self.over_budget():
+                try:
+                    self._begin_phase("durability")
+                    self.durability_phase()
+                    self._end_phase("durability")
+                except AccountMismatch:
+                    self._end_phase("durability")
+                    raise
+                except Exception as e:
+                    self._end_phase("durability")
+                    self.log("  phase durability error: %s" % scrub(repr(e), 200))
+                    self.result["durability"] = {"status": "ERROR",
+                                                 "reason": scrub(repr(e), 160),
+                                                 "probes": 0, "failed": 0,
+                                                 "unverified": 0, "rows": []}
+            else:
+                self.result["durability"] = {"status": "SKIPPED",
+                                             "reason": "lens time budget exceeded",
+                                             "probes": 0, "failed": 0,
+                                             "unverified": 0, "rows": []}
         self.console_network()
         try:
             self.isolation_phase()
@@ -536,7 +559,13 @@ class LensWalk:
         t0 = time.time()
         read_only = self.slug in self.cfg.get("write_skip_lenses", [])
         ax = cdp.ax()
+        # GB-1580 item 4: the sweep covers the lens MAIN-CONTENT region only.
+        # Shell chrome (app sidebar Expand/Collapse, nav, top bar, global
+        # search) is noted once per control as shell_chrome — auditable in
+        # the record, never clicked, never counted as a lens control.
+        scope = region_scope(ax)
         cands, seen = [], set()
+        counts = {"clicked": 0, "reused": 0, "skipped": 0, "shell": 0}
         for n in ax.by_role(*self.SWEEP_ROLES):
             if not (n.name or "").strip():
                 continue
@@ -544,13 +573,17 @@ class LensWalk:
             if key in seen:
                 continue
             seen.add(key)
+            if not in_main_region(ax, n, scope):
+                self.net.note_control("sweep", n.role, control_label(n.name), False, reason="shell_chrome",
+                                      cid=control_id("sweep", n.role, control_label(n.name)))
+                counts["shell"] += 1
+                continue
             cands.append((n.role, control_label(n.name), n.name, n.disabled))
         prior = {}
         for cid, m in self.net.meta.items():
             if m["phase"] in self.REUSE_PHASES and m.get("exercised"):
                 prior.setdefault(m["name"], cid)
         cap = self.th.get("max_sweep_controls", 120)
-        counts = {"clicked": 0, "reused": 0, "skipped": 0}
         for i, (role, label, raw, disabled) in enumerate(cands):
             cid = control_id("sweep", role, label)
             if i >= cap:
@@ -615,8 +648,8 @@ class LensWalk:
                 page.keyboard.press("Escape")
             self.reset_page(page, cdp)
         self.net.close_window()
-        self.mark("premap_sweep", "PASS", controls=len(cands), budget_s=self.premap_budget_s,
-                  elapsed_s=int(time.time() - t0), **counts)
+        self.mark("premap_sweep", "PASS", controls=len(cands), region=scope[0], controls_seen=len(cands) + counts["shell"],
+                  budget_s=self.premap_budget_s, elapsed_s=int(time.time() - t0), **counts)
 
     def isolation_phase(self):
         """C16 (ULW-43, Gate section 14): the two-account isolation phase as a
@@ -636,7 +669,8 @@ class LensWalk:
         plan = _iso.phase_plan(acct=self.acct, admin=self.admin,
                                allow_write=self.allow_write,
                                has_t2=has_session(self.cfg, observer),
-                               two_account_flag=self.two_account, observer=observer)
+                               two_account_flag=self.two_account, observer=observer,
+                               reader=self.cfg.get("reader_account") or "t1")
         if not plan["run"]:
             self.result["isolation"] = {"status": "SKIPPED", "reason": plan["reason"],
                                         "checks": 0, "findings": 0, "leaks": []}
@@ -662,20 +696,592 @@ class LensWalk:
                 self._close(ctx)
         else:
             probe_skip = pp["reason"] if not pp["run"] else "lens time budget exceeded"
+        # ULW v3 trust probes (GB-1575 scope addition): OWNER-MUTATION +
+        # ACTOR-SPOOF ride the isolation phase as standard legs.
+        if not self.over_budget():
+            self.trust_phase(owner, observer)
+        # ULW v3 (GB-1576 W5a): the core-verb drive rides the same phase.
+        if not self.over_budget():
+            self.core_verb_phase(owner, observer)
         self.result["isolation"] = _iso.packet_block(self.result.get("two_account"),
                                                       probe_row, probe_skip)
+
+    def trust_phase(self, owner, observer):
+        """ULW v3 (GB-1575 scope addition): the trust probes as standard legs
+        of the isolation phase — OWNER-MUTATION (the observer re-issues the
+        owner's recorded object-writes with its own identity correct, plus
+        DELETE attempts on the objects this walk created) and ACTOR-SPOOF
+        (the observer re-issues recorded writes with an actor-shaped field
+        set to the owner's id, plus the route-variant leg). Planning and
+        verdicts live in concord_walker.trust_probes (pure); this method
+        only drives contexts. A landed attempt files an ownership finding
+        through the standing machinery; a landed update/spoof is restored
+        best-effort by re-issuing the owner's original recorded call as the
+        owner. Bodies and ids live only in memory; stored rows keep field
+        names and verdicts only."""
+        from . import trust_probes as _tp
+        from urllib.parse import urlsplit, urlunsplit
+        import json as _json
+        cap = self.th.get("trust_probe_max_calls", 12)
+        _leg = getattr(self.net, "leg_calls", None)
+        calls = _leg() if _leg else list(self.net.replay or [])
+        own_writes = [r for r in calls if (r.get("method") or "") in _tp.WRITE_METHODS
+                      and (r.get("acct") or self.acct) in (owner, self.acct)]
+        actor_hits = sum(len(_tp.actor_fields_in(r.get("post"))) for r in own_writes)
+        m_attempts = _tp.mutation_plan(calls, owner_acct=owner, walk_acct=self.acct, cap=cap)
+        s_attempts = _tp.spoof_plan(calls, owner_acct=owner, walk_acct=self.acct, cap=cap)
+        created = sum(1 for a in m_attempts if a["kind"] == "delete")
+        m_plan = _tp.leg_plan("mutation", write_calls=len(own_writes), created_objects=created)
+        s_plan = _tp.leg_plan("spoof", write_calls=len(own_writes), actor_fields=actor_hits)
+        if not m_attempts:
+            m_plan = {"run": False, "reason": m_plan["reason"] if not m_plan["run"] else "no mutation attempts derivable from the recorded calls"}
+        if not s_attempts:
+            s_plan = {"run": False, "reason": s_plan["reason"] if not s_plan["run"] else "no spoof attempts derivable from the recorded calls"}
+        # W5b: the private-broadcast leg's inputs — a live labelled fixture
+        # (the private object) and a recorded owner write that can carry the
+        # run's marker in a string field.
+        b_label = None
+        for f in (self.rec.fixtures or {}).values():
+            if f.get("lens") == self.slug and f.get("state") not in ("deleted", "never_created"):
+                b_label = f.get("label")
+        b_candidates = []
+        for r in own_writes:
+            obj = _tp.body_obj(r.get("post"))
+            if obj and any(isinstance(v, str) and v for v in obj.values()):
+                b_candidates.append(r)
+        if not b_label:
+            b_skip = "no live labelled fixture for this lens in this run"
+        elif not b_candidates:
+            b_skip = "no recorded owner write can carry the marker"
+        else:
+            b_skip = None
+        if not (m_plan["run"] or s_plan["run"] or b_skip is None):
+            self.result["trust"] = _tp.trust_block(None, None, m_plan["reason"], s_plan["reason"],
+                                                   broadcast_skip=b_skip)
+            return
+        vp = self.cfg["viewport_desktop"]
+        base_host = urlsplit(self.cfg["base_url"]).netloc
+        octx, _opage, _ocdp = self.open(account=owner)
+        fctx = new_context(self.b, self.cfg, observer, vp)
+        try:
+            assert_account(fctx, self.cfg, observer, "trust probes", self.log)
+
+            def owner_read(url):
+                try:
+                    resp = octx.request.get(url, timeout=15000)
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = None
+                    return resp.status, (_json.dumps(body, sort_keys=True, default=str) if body is not None else None)
+                except Exception:
+                    return None, None
+
+            def fire(attempt, post):
+                kw = {"timeout": 15000}
+                if post is not None:
+                    kw["data"] = post
+                    kw["headers"] = {"Content-Type": "application/json"}
+                try:
+                    resp = fctx.request.fetch(attempt["url"], method=attempt["method"], **kw)
+                    try:
+                        body = resp.json()
+                    except Exception:
+                        body = None
+                    return resp.status, body
+                except Exception:
+                    return None, None
+
+            def restore(attempt):
+                """Best-effort: re-issue the owner's original recorded call as
+                the owner, undoing a landed update/spoof. Deletes cannot be
+                restored (the object was this walk's own creation)."""
+                if attempt["kind"] == "delete" or attempt.get("orig_post") is None:
+                    return "not_restorable"
+                kw = {"timeout": 15000, "data": attempt["orig_post"],
+                      "headers": {"Content-Type": "application/json"}}
+                try:
+                    resp = octx.request.fetch(attempt.get("orig_url") or attempt["url"],
+                                              method=attempt["method"], **kw)
+                    return "restored" if 200 <= resp.status < 300 else "restore_failed_%d" % resp.status
+                except Exception:
+                    return "restore_error"
+
+            def run_attempts(attempts, leg):
+                rows = []
+                for a in attempts:
+                    if urlsplit(a["url"]).netloc != base_host:
+                        continue
+                    post = _tp.strip_actor_fields(a.get("post")) if leg == "mutation" else a.get("post")
+                    before = owner_read(a["url"])
+                    st, body = fire(a, post)
+                    after = owner_read(a["url"])
+                    if a["kind"] == "delete":
+                        changed = (after[0] in (404, 410)) or (before[1] is not None and after[1] != before[1])
+                    elif before[1] is not None and after[1] is not None:
+                        changed = before[1] != after[1]
+                    else:
+                        changed = None
+                    verdict = _tp.attempt_verdict(st, body, changed)
+                    row = {"kind": a["kind"], "method": a["method"], "path": a["path"],
+                           "status": st, "verdict": verdict}
+                    if a.get("field"):
+                        row["field"] = a["field"]
+                    if a.get("variant"):
+                        row["variant"] = True
+                    if verdict == "LANDED":
+                        row["restore"] = restore(a)
+                        cid = self.net._cid_at(a["t"]) if a.get("t") is not None else None
+                        sid = (self.net.meta.get(cid) or {}).get("sid") if cid else None
+                        if cid:
+                            self.net.annotate(cid, ownership=["%s %s %s %s -> %s (trust probe: %s)" % (
+                                observer, leg, a["method"], a["path"], st, a["kind"])])
+                        self._premap_finding("ownership", cid, sid,
+                                             "Second account can %s the first account's object: %s %s -> %s (trust probe %s)" % (
+                                                 "mutate" if leg == "mutation" else "spoof-write to",
+                                                 a["method"], a["path"], st, a["kind"]),
+                                             [self.result.get("initial_evidence")], severity="high")
+                    rows.append(row)
+                return rows
+
+            m_rows = run_attempts(m_attempts, "mutation") if m_plan["run"] else None
+            s_rows = None
+            if s_plan["run"]:
+                s_rows = run_attempts(s_attempts, "spoof")
+                # ACTOR-SPOOF-VARIANTS: each spoof repeats against the route's
+                # case-variant and trailing-slash forms (X-02's bypass shape).
+                variant_attempts = []
+                for a in s_attempts:
+                    for vpath in _tp.variant_paths(a["path"]):
+                        parts = urlsplit(a["url"])
+                        va = dict(a)
+                        va["url"] = urlunsplit((parts.scheme, parts.netloc, vpath, parts.query, ""))
+                        va["path"] = vpath
+                        va["variant"] = True
+                        variant_attempts.append(va)
+                if variant_attempts and not self.over_budget():
+                    s_rows += run_attempts(variant_attempts[:cap], "spoof")
+            b_outcome = None
+            if b_skip is None and not self.over_budget():
+                b_outcome, b_skip = self._broadcast_leg(owner, observer, octx, b_label, b_candidates)
+            self.result["trust"] = _tp.trust_block(
+                m_rows if m_plan["run"] else None,
+                s_rows if s_plan["run"] else None,
+                None if m_plan["run"] else m_plan["reason"],
+                None if s_plan["run"] else s_plan["reason"],
+                broadcast=b_outcome, broadcast_skip=b_skip)
+            tb = self.result["trust"]
+            self.log("  trust probes %s: %d attempt(s), %d landed (mutation %s / spoof %s)" % (
+                self.slug, tb["checks"], tb["findings"],
+                (tb["legs"].get("mutation") or {}).get("attempts", tb["legs"].get("mutation", {}).get("skip", "-")),
+                (tb["legs"].get("spoof") or {}).get("attempts", tb["legs"].get("spoof", {}).get("skip", "-"))))
+        finally:
+            try:
+                fctx.close()
+            except Exception:
+                pass
+            self._close(octx)
+
+    def core_verb_phase(self, owner, observer):
+        """ULW v3 (GB-1576 W5a): the core-verb drive — the lens's ONE
+        defining verb, exercised end to end with the phase's two accounts.
+        The spec (walker/specs/core_verbs.json, via concord_walker.
+        core_verbs) names the verb and its lens action; this leg performs
+        it through POST /api/lens/run as the writer (owner) with the
+        walk's labelled marker in the args, verifies the result persisted
+        by a fresh read-back (the reload witness: the artifact object GET
+        and list, PLUS the domain witness — the lens's own recorded read
+        calls re-issued, CB-1099 slice W: most lenses keep their verb
+        objects in a domain store the artifact reads never see), checks the
+        observer's visibility both ways against the spec, and cleans the
+        created data up via the write account. Planning and verdicts live
+        in core_verbs (pure); this method only drives contexts. A FAIL
+        files a finding; anything the probe itself could not establish
+        verdicts UNSPECIFIED with the reason named — never a silent skip,
+        never a PASS. Money-class actions are never driven."""
+        from . import core_verbs as _cv
+        from .auth import has_session
+        import json as _json
+        doc = _cv.load_spec_doc()
+        spec = _cv.spec_for(doc, self.slug)
+        p = _cv.plan(spec, has_observer=has_session(self.cfg, observer))
+        if not p["run"]:
+            # No log call here: the trust legs' not-run paths are silent
+            # for the same reason — a harness may drive the phase with
+            # log=None (the C28 runtime suite does), and the block in the
+            # result is the report.
+            self.result["core_verb"] = _cv.core_verb_block(
+                spec, "CORE_VERB_UNSPECIFIED", p["reason"])
+            return
+        base = self.cfg["base_url"].rstrip("/")
+        run_url = base + "/api/lens/run"
+        domain = spec["action"]["domain"]
+        label = "%s-cv-%s-%s" % (self.cfg["fixture_prefix"], self.slug, self.rec.rid[-6:])
+        vp = self.cfg["viewport_desktop"]
+        wctx, _wp, _wc = self.open(account=owner)
+        fctx = new_context(self.b, self.cfg, observer, vp)
+        try:
+            assert_account(fctx, self.cfg, observer, "core verb", self.log)
+
+            def run_as(ctx, body):
+                try:
+                    resp = ctx.request.post(run_url, data=_json.dumps(body),
+                                            headers={"Content-Type": "application/json"},
+                                            timeout=20000)
+                    try:
+                        rbody = resp.json()
+                    except Exception:
+                        rbody = None
+                    return resp.status, rbody, None
+                except Exception as e:
+                    return None, None, type(e).__name__
+
+            try:
+                _leg = self.net.leg_calls()
+            except Exception:
+                _leg = getattr(self.net, "replay", [])
+            dom_reads = _cv.domain_read_calls(_leg, domain, spec["action"]["name"])
+
+            def _seen_in(resp):
+                try:
+                    text = resp.text() or ""
+                except Exception:
+                    try:
+                        text = _json.dumps(resp.json())
+                    except Exception:
+                        text = ""
+                return (label in text) or (oid is not None and str(oid) in text)
+
+            def read_as(ctx):
+                """(object_seen, list_seen, domain_seen): the artifact
+                object GET, the artifact list search, and the domain
+                witness (the lens's own recorded read calls re-issued
+                through this context). Each is True/False when its read
+                answered, None when it could not."""
+                obj_seen = None
+                if oid is not None:
+                    try:
+                        resp = ctx.request.get("%s/api/lens/%s/%s" % (base, domain, oid),
+                                               timeout=15000)
+                        if 200 <= resp.status < 300:
+                            obj_seen = True
+                        elif resp.status in (401, 403, 404):
+                            obj_seen = False
+                    except Exception:
+                        obj_seen = None
+                list_seen = None
+                try:
+                    resp = ctx.request.get("%s/api/lens/%s" % (base, domain), timeout=15000)
+                    if 200 <= resp.status < 300:
+                        list_seen = _seen_in(resp)
+                    elif resp.status in (401, 403, 404):
+                        list_seen = False
+                except Exception:
+                    list_seen = None
+                domain_seen = None
+                dom_answered = False
+                for call in dom_reads:
+                    try:
+                        if call["method"] == "POST":
+                            resp = ctx.request.post(
+                                run_url, data=call["post"],
+                                headers={"Content-Type": "application/json"},
+                                timeout=15000)
+                        else:
+                            resp = ctx.request.get(call["url"], timeout=15000)
+                        if 200 <= resp.status < 300:
+                            dom_answered = True
+                            seen = _seen_in(resp)
+                            domain_seen = seen if domain_seen is None else (domain_seen or seen)
+                        elif resp.status in (401, 403, 404) and not dom_answered \
+                                and domain_seen is None:
+                            domain_seen = False
+                    except Exception:
+                        pass
+                return obj_seen, list_seen, domain_seen
+
+            st, rbody, terr = run_as(wctx, _cv.verb_body(spec, label))
+            drive = _cv.classify_drive(st, rbody)
+            # GB-1579: the block carries the drive's HTTP status + a scrubbed
+            # error reason, so an UNSPECIFIED verdict is diagnosable.
+            derr = _cv.error_reason(rbody) if drive != "performed" else None
+            if derr is None and st is None and terr:
+                derr = "transport error: %s" % terr
+            oid = _cv.extract_object_id(rbody)
+            persisted = observer_sees = None
+            cleanup = "not_attempted"
+            if drive == "performed":
+                wo, wl, wd = read_as(wctx)
+                persisted = _cv.combine_witnesses(wo, wl, wd)
+                fo, fl, fd = read_as(fctx)
+                observer_sees = _cv.combine_witnesses(fo, fl, fd)
+                cbody = _cv.cleanup_body(spec, oid)
+                if cbody is not None:
+                    cst, _cb, _cterr = run_as(wctx, cbody)
+                    cleanup = "deleted" if (cst is not None and 200 <= cst < 300) \
+                        else "delete_failed_%s" % (cst,)
+                else:
+                    cleanup = "not_derived (created data carries the walk label %s)" % label
+            word, reason = _cv.verdict(spec, drive=drive, persisted=persisted,
+                                       observer_sees=observer_sees)
+            self.result["core_verb"] = _cv.core_verb_block(
+                spec, word, reason, drive=drive, persisted=persisted,
+                observer_sees=observer_sees, cleanup=cleanup,
+                http_status=st, error=derr)
+            if drive == "performed":
+                self.result["core_verb"]["witness"] = {
+                    "writer": {"object": wo, "list": wl, "domain": wd},
+                    "observer": {"object": fo, "list": fl, "domain": fd}}
+            if word == "CORE_VERB_FAIL":
+                self.finding("core_verb", "high",
+                             "Core verb fails end to end: %s" % spec.get("verb"),
+                             _cv.repro_steps(spec, word, reason),
+                             "The lens's defining verb works for its own user, persists on reload, and is visible per spec (%s)" % spec.get("visibility"),
+                             reason, [self.result.get("initial_evidence")],
+                             defect_class="greeting-dead-surfaces")
+            self.log("  core verb %s: %s (%s)" % (self.slug, word, reason))
+        finally:
+            try:
+                fctx.close()
+            except Exception:
+                pass
+            self._close(wctx)
+    def durability_phase(self):
+        """ULW v3 (GB-1576 W5c): DURABILITY — re-issue up to
+        thresholds.durability_max_probes of the lens's recorded creates as
+        the write account, each with a unique planted marker; wait past the
+        save debounce (thresholds.durability_wait_s), then verify each
+        marker via a FRESH session (new context, reload, durable texts)
+        and a BACKEND READ (the created object's URL, else the lens's
+        recorded read route for the collection) — POLLED (Walk 3 honesty
+        fix, CB-1053/CB-1058): re-verify every
+        thresholds.durability_poll_interval_s until every probe passes
+        or the thresholds.durability_poll_s budget expires, so a slow
+        persistence is judged at the budget, not raced at the first
+        read; verdicts, findings and cleanup run once, from the final
+        round. A probe still unverified at the budget is UNVERIFIED —
+        the block verdict says so; unverified never reads PASS.
+        Planning and verdicts live in concord_walker.durability (pure);
+        this method only drives contexts. A DURABLE_FAIL files a walk
+        finding; probe objects are deleted best-effort when their object
+        URL is known, else left carrying the run's marker (the labelled-
+        fixture discipline). No server restarts, ever."""
+        from . import durability as _dur
+        import json as _json
+        wait_s = self.th.get("durability_wait_s", 8)
+        cap = self.th.get("durability_max_probes", 3)
+        _leg = getattr(self.net, "leg_calls", None)
+        calls = _leg() if _leg else list(self.net.replay or [])
+        label = None
+        for f in (self.rec.fixtures or {}).values():
+            if f.get("lens") == self.slug and f.get("label"):
+                label = f.get("label")
+        candidates = _dur.pick_write_calls(calls, cap=cap, fixture_label=label)
+        plan = _dur.probe_plan(candidates)
+        if not plan["run"]:
+            self.result["durability"] = _dur.durability_block(None, plan["reason"])
+            return
+        wctx, _wpage, _wcdp = self.open(account=self.write_acct)
+        fired = []
+        try:
+            assert_account(wctx, self.cfg, self.write_acct, "durability probes", self.log)
+            for i, cand in enumerate(candidates):
+                marker = "%s-DUR-%s-%s-%d" % (self.cfg["fixture_prefix"], self.slug,
+                                              (self.rec.rid or "run")[-4:], i)
+                body, field = _dur.plant_marker(cand["post"], marker, label)
+                if body is None:
+                    continue
+                status, resp_obj = None, None
+                try:
+                    resp = wctx.request.fetch(cand["url"], method=cand["method"],
+                                              data=body, timeout=15000,
+                                              headers={"Content-Type": "application/json"})
+                    status = resp.status
+                    try:
+                        resp_obj = resp.json()
+                    except Exception:
+                        resp_obj = None
+                except Exception:
+                    status = None
+                fired.append({"cand": cand, "marker": marker, "field": field,
+                              "status": status, "resp_obj": resp_obj,
+                              "obj_url": _dur.object_url(cand, resp_obj)})
+        finally:
+            self._close(wctx)
+        if fired:
+            time.sleep(wait_s)
+        rows = []
+        fctx = fpage = fcdp = None
+        try:
+            fctx, fpage, fcdp = self.open(account=self.write_acct)
+            assert_account(fctx, self.cfg, self.write_acct, "durability verify", self.log)
+            self.nav(fpage, fcdp)
+
+            def backend_read(probe):
+                urls = []
+                if probe["obj_url"]:
+                    urls.append(probe["obj_url"])
+                for rc in _dur.pick_read_calls(calls, probe["cand"]):
+                    if rc.get("url") and rc["url"] not in urls:
+                        urls.append(rc["url"])
+                if not urls:
+                    return None, None
+                last_status = None
+                for u in urls:
+                    try:
+                        resp = fctx.request.get(u, timeout=15000)
+                        last_status = resp.status
+                        if not (200 <= resp.status < 300):
+                            continue
+                        try:
+                            text = resp.text()
+                        except Exception:
+                            text = None
+                        if text is None:
+                            try:
+                                text = _json.dumps(resp.json(), default=str)
+                            except Exception:
+                                text = ""
+                        return probe["marker"] in (text or ""), resp.status
+                    except Exception:
+                        continue
+                return False, last_status
+
+            def verify_round():
+                texts = fcdp.ax().durable_texts()
+                out = []
+                for probe in fired:
+                    fresh = any(probe["marker"] in t for t in texts)
+                    backend, backend_status = backend_read(probe)
+                    verdict, reason = _dur.probe_verdict(
+                        probe["status"], fresh, backend, backend_status)
+                    out.append({"write": "%s %s" % (probe["cand"]["method"],
+                                                    probe["cand"]["path"]),
+                                "field": probe["field"],
+                                "fresh": fresh, "backend": backend,
+                                "verdict": verdict, "reason": reason})
+                return out
+
+            poll_s = self.th.get("durability_poll_s", 30)
+            interval = self.th.get("durability_poll_interval_s", 5)
+            rounds, elapsed = 0, wait_s
+            while True:
+                rounds += 1
+                if rounds > 1:
+                    self.nav(fpage, fcdp)
+                rows = verify_round()
+                if _dur.all_passed(rows) or elapsed >= poll_s:
+                    break
+                time.sleep(interval)
+                elapsed += interval
+            for probe, row in zip(fired, rows):
+                row["rounds"] = rounds
+                row["wait_s"] = elapsed
+                if probe["obj_url"]:
+                    try:
+                        resp = fctx.request.fetch(probe["obj_url"], method="DELETE",
+                                                  timeout=15000)
+                        row["cleanup"] = ("deleted" if resp.status in (200, 204, 404)
+                                          else "delete_status_%s" % resp.status)
+                    except Exception:
+                        row["cleanup"] = "delete_error"
+                else:
+                    row["cleanup"] = "left_labelled"
+                if row["verdict"] == "DURABLE_FAIL":
+                    ev = self.shot(fpage, "durability-fail")
+                    self.finding("durability", "high",
+                                 "Write did not persist past the save debounce: %s" % row["write"],
+                                 ["Open %s" % self.url,
+                                  "Write via the lens (%s, marker in field '%s')" % (row["write"], probe["field"]),
+                                  "Wait %ss (past the save debounce; polled %d round(s) over %ss)" % (wait_s, rounds, elapsed),
+                                  "Reload in a fresh session and re-read the backend"],
+                                 "The written object is readable from the backend and visible in a fresh session",
+                                 row["reason"], [ev], root_cause="RCA-durability",
+                                 area="%s/durability" % self.slug)
+        finally:
+            if fctx is not None:
+                self._close(fctx)
+        self.result["durability"] = _dur.durability_block(rows)
+        db = self.result["durability"]
+        self.log("  durability %s: %s — %d probe(s), %d failed, %d unverified (wait %ss + poll to %ss, %d round(s))" % (
+            self.slug, db["verdict"], db["probes"], db["failed"], db["unverified"], wait_s, elapsed, rounds))
+    def _broadcast_leg(self, owner, observer, octx, label, candidates):
+        """W5b private-broadcast leg: the foreign context listens on this
+        lens's socket while the owner performs a private write on its own
+        labelled fixture carrying the run's unique marker. The marker in
+        the foreign frames is a LEAK. Returns (outcome, skip_reason)."""
+        from . import trust_probes as _tp
+        from .privacy_checks import FrameCapture, SOCKET_WINDOW_S
+        act_row = candidates[0]
+        obj = dict(_tp.body_obj(act_row.get("post")) or {})
+        marker = "%s-bc-%s" % (label, str(self.rec.rid)[-6:])
+        for k, v in obj.items():
+            if isinstance(v, str) and v:
+                obj[k] = marker
+                break
+        ctx2 = None
+        try:
+            ctx2 = new_context(self.b, self.cfg, observer, self.vp)
+            try:
+                assert_account(ctx2, self.cfg, observer, "broadcast leg", self.log)
+            except Exception:
+                return None, "observer guard failed for the broadcast leg"
+            page = ctx2.new_page()
+            page.goto(self.url, wait_until="load", timeout=45000)
+            cap = FrameCapture(ctx2.new_cdp_session(page))
+            try:
+                octx.request.fetch(act_row["url"], method=act_row["method"],
+                                   data=json.dumps(obj),
+                                   headers={"content-type": "application/json"},
+                                   timeout=15000)
+            except Exception:
+                return None, "the owner's marker act failed to fire"
+            frame = cap.wait_for(needle=marker, timeout=SOCKET_WINDOW_S)
+            verdict = _tp.broadcast_verdict(len(cap.frames), bool(frame))
+            if verdict == "LEAK":
+                cid = self.net._cid_at(act_row.get("t")) if act_row.get("t") is not None else None
+                sid = (self.net.meta.get(cid) or {}).get("sid") if cid else None
+                if cid:
+                    self.net.annotate(cid, ownership=[
+                        "%s broadcast %s %s -> marker in foreign frames (W5b private-broadcast)" % (
+                            observer, act_row["method"], act_row["path"])])
+                self._premap_finding("ownership", cid, sid,
+                                     "Private broadcast leak: this lens pushed the owner's private "
+                                     "fixture content to a foreign account's socket (W5b)",
+                                     ["the run's fixture marker arrived in the foreign context's "
+                                      "websocket frames after a private owner write"], severity="high")
+            try:
+                octx.request.fetch(act_row["url"], method=act_row["method"],
+                                   data=act_row.get("post"),
+                                   headers={"content-type": "application/json"},
+                                   timeout=15000)
+            except Exception:
+                pass
+            return {"verdict": verdict, "frames": len(cap.frames)}, None
+        except Exception:
+            return None, "broadcast leg errored before a verdict"
+        finally:
+            if ctx2 is not None:
+                try:
+                    ctx2.close()
+                except Exception:
+                    pass
 
     def cross_account(self):
         """Upgrade 3 (opt-in --two-account): replay t1's object calls (reads, and non-DELETE
         writes) as t2 in t2's OWN isolated context. t2 getting 2xx with a non-error body on
-        t1's object = ownership finding. Raw URLs/bodies live only in memory for this
-        replay and are never written. Never deletes; t2 credentials are never read here
-        (the saved auth/t2.json session is used)."""
+        t1's object = ownership finding, subject to the false-positive controls below:
+        GET replays get the anon-public + same-payload controls, and non-GET replays get
+        the same-payload control (CB-1056) — every lens.run action rides POST, so a bare
+        2xx cannot distinguish a foreign write into the owner's object from an
+        actor-scoped action answering with the caller's own data. Raw URLs/bodies live
+        only in memory for this replay and are never written. Never deletes; t2
+        credentials are never read here (the saved auth/t2.json session is used)."""
         from .auth import has_session, isolation_pair
         from urllib.parse import urlsplit
         cap = self.th.get("two_account_max_calls", 12)
         _owner, foreign = isolation_pair(self.cfg, self.acct)
-        if self.admin or not self.acct or self.acct != "t1":
+        if self.admin or not self.acct or self.acct != (self.cfg.get("reader_account") or "t1"):
             self.result["two_account"] = {"status": "SKIPPED", "reason": "t1 member walks only"}
             return
         if not has_session(self.cfg, foreign):
@@ -754,6 +1360,28 @@ class LensWalk:
                             row["verdict"], leak = "EMPTY", False
                         elif same is False:
                             row["verdict"], leak = "SCOPED", False
+                if leak and r["method"] != "GET":
+                    # CB-1056 false-positive control for non-GET replays, mirroring GET
+                    # control 2: every lens.run action rides POST, so the method cannot
+                    # tell a read from a write (Walk 3: thread's page-load draft-list —
+                    # an actor-scoped read — filed OWNERSHIP_FAIL on a bare 200 while
+                    # the handler keys every row to the caller). Re-issue the identical
+                    # call (method + recorded body) as the owner and compare payloads in
+                    # memory: identical non-empty payload = the owner's data crossed
+                    # (FAIL stands); a different payload = the action answered with the
+                    # caller's own data (SCOPED); an empty foreign payload = EMPTY.
+                    # An unknown comparison (owner re-issue failed) leaves the FAIL —
+                    # the conservative side for writes.
+                    same, b1 = self._same_as_owner_replay(r, body, vp, owner=r.get("acct") or self.acct)
+                    echoes = tuple(x for x in urlsplit(r["url"]).path.split("/") if x)
+                    row["same_as_owner"] = same
+                    row["t2_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(body, echoes))) if body is not None else None
+                    row["t1_shape"] = dict(zip(("leaves", "nonempty"), _payload_shape(b1, echoes))) if b1 is not None else None
+                    row["t1_contentless"] = _contentless(b1, echoes) if b1 is not None else None
+                    if _contentless(body, echoes):
+                        row["verdict"], leak = "EMPTY", False
+                    elif same is False:
+                        row["verdict"], leak = "SCOPED", False
                 if leak:
                     # product decision: route intended to be readable by any member (config/intended_public.json)
                     ip = _ip.match(ip_entries, r["method"], r["path"])
@@ -781,6 +1409,39 @@ class LensWalk:
                                       "scoped": sum(1 for x in rows if x["verdict"] in ("SCOPED", "EMPTY")),
                                       "public_intended": sum(1 for x in rows if x["verdict"] == "PUBLIC_INTENDED"),
                                       "calls": rows}
+
+    def _same_as_owner_replay(self, r, foreign_body, vp, owner="t1"):
+        """(same, owner_payload): does the owner get the identical JSON payload for this
+        exact call — same URL, method and recorded body — re-issued as the owner? The
+        non-GET sibling of _same_as_t1 (which is GET-only). Re-issuing repeats the
+        owner's own recorded action on the owner's own account, which the walk already
+        executed once as them. same is None if unknown. The payload stays in memory;
+        callers store only derived booleans/counts."""
+        import json as _json
+        if foreign_body is None:
+            return None, None
+        ctx = None
+        try:
+            ctx = new_context(self.b, self.cfg, owner, vp)  # the row's OWNER account
+            kw = {"timeout": 15000}
+            if r.get("post") is not None:
+                kw["data"] = r["post"]
+                kw["headers"] = {"Content-Type": "application/json"}
+            resp = ctx.request.fetch(r["url"], method=r["method"], **kw)
+            try:
+                b1 = resp.json()
+            except Exception:
+                return None, None
+            canon = lambda x: _json.dumps(x, sort_keys=True, default=str)
+            return canon(b1) == canon(foreign_body), b1
+        except Exception:
+            return None, None
+        finally:
+            try:
+                if ctx is not None:
+                    ctx.close()
+            except Exception:
+                pass
 
     def _same_as_t1(self, url, t2_body, vp, owner="t1"):
         """(same, t1_payload): does t1 get the identical JSON payload for this GET? same is None
@@ -969,8 +1630,20 @@ class LensWalk:
         inputs = ax.by_role("textbox", "searchbox", "combobox", "spinbutton")
         unnamed = [n for n in buttons if not n.name.strip()]
         unfocus = [n for n in buttons + tabs if not n.disabled and not n.focusable and n.name.strip()]
+        # GB-1580 item 4: the inventory also reports the lens MAIN-CONTENT
+        # region (shell chrome excluded) — the page-wide counts stay for
+        # comparability, the *_main fields are the lens's own inventory.
+        _scope = region_scope(ax)
+
+        def _in(n):
+            return in_main_region(ax, n, _scope)
+
         self.result["surface"] = {"tabs": [control_label(n.name) for n in tabs][:60], "buttons": len(buttons), "links": len(links),
                                   "inputs": len(inputs), "unnamed_buttons": len(unnamed), "non_focusable": len(unfocus),
+                                  "region": _scope[0],
+                                  "buttons_main": sum(1 for n in buttons if _in(n)), "links_main": sum(1 for n in links if _in(n)),
+                                  "inputs_main": sum(1 for n in inputs if _in(n)), "tabs_main": sum(1 for n in tabs if _in(n)),
+                                  "button_names_main": [control_label(n.name) for n in buttons if n.name.strip() and _in(n)][:80],
                                   "disabled_buttons": sum(1 for n in buttons if n.disabled),
                                   # WALK-03: names, so reverify can confirm the ticket's own control
                                   # individually instead of judging the whole surface.
@@ -1121,8 +1794,10 @@ class LensWalk:
 
     def openers(self, page, cdp):
         ax = cdp.ax()
+        # GB-1581 item 3a: open-only candidates (Share / Publish / Export /
+        # Download openers) join the Escape check — opened, never submitted.
         cands = [n for n in ax.by_role("button", "menuitem") if n.backend and not n.disabled
-                 and safety.is_opener_safe(n.name, self.admin) and not safety.EXPORT.search(n.name)]
+                 and (safety.is_opener_safe(n.name, self.admin) or safety.is_open_only_safe(n.name, self.admin))]
         seen, rows, status = set(), [], "NA"
         for n in cands:
             if len(rows) >= self.th["max_openers_per_lens"] or self.over_budget() or self.phase_over():
@@ -1150,6 +1825,8 @@ class LensWalk:
             kind = pop.role if pop else "expanded"
             ev_open = self.shot(page, "open-" + key[:20])
             row = {"opener": key, "popup": kind, "evidence": ev_open}
+            if not safety.is_opener_safe(node.name, self.admin):
+                row["open_only"] = True  # GB-1581 3a: opened for the Escape check; nothing inside was activated
             status = "PASS" if status == "NA" else status
             # focus trap (dialogs only)
             if pop is not None and pop.role in ("dialog", "alertdialog"):
@@ -1477,6 +2154,40 @@ class LensWalk:
                              ["Open %s at 390x844" % self.url, "Look for tabs/buttons past the right edge"],
                              "All tabs and buttons reachable at 390 px", "Off-screen: %s" % ", ".join(off[:8]), [ev_vp, ev_full],
                              element=off[0], area="%s/mobile layout" % self.slug)
+            # GB-1581 item 3b: FAB / bottom-nav overlap geometry at 390 — a
+            # floating action button whose box intersects the fixed bottom
+            # nav's box is covered (or covers a nav target) where they meet.
+            dev_h = self.cfg["viewport_mobile"][1]
+            nav_boxes = []
+            for n in ax.by_role("navigation"):
+                if not n.backend:
+                    continue
+                b = cdp.box(n.backend)
+                if b and b[1] + b[3] >= dev_h - 4 and b[2] >= 0.6 * dev_w:
+                    nav_boxes.append((n.backend, b))
+            fab_hits = []
+            if nav_boxes:
+                nav_backends = {be for be, _b in nav_boxes}
+                fabs = []
+                for n in ax.by_role("button"):
+                    if not n.backend or n.disabled:
+                        continue
+                    if _ancestor_backends(snap, n.backend) & nav_backends:
+                        continue  # a nav's own button is not a FAB
+                    b = cdp.box(n.backend)
+                    if b and b[3] <= 96 and b[1] + b[3] >= dev_h - 160:
+                        fabs.append((control_label(n.name), b))
+                fab_hits = fab_nav_overlaps(fabs, [b for _be, b in nav_boxes])
+            row["fab_overlap"] = fab_hits
+            if fab_hits:
+                status = "FAIL"
+                self.finding("fab_overlap", "low",
+                             "Floating action button(s) overlap the bottom navigation at 390 px: %s"
+                             % ", ".join("'%s' (%d px²)" % (h["control"], h["overlap_px"]) for h in fab_hits[:4]),
+                             ["Open %s at 390x844" % self.url, "Look at the bottom-right action button against the bottom nav"],
+                             "The floating action button sits clear of the bottom navigation",
+                             "Bounding boxes intersect the fixed bottom nav", [ev_vp, ev_full],
+                             element=fab_hits[0]["control"], area="%s/mobile layout" % self.slug)
             self.mark("mobile_390", status, **row)
         finally:
             self._nav_cid = LOAD_CONTROL
@@ -1788,6 +2499,71 @@ def _disabled_ancestor(nodes, S, ni, depth=4):
 def _attrs(nodes, S, ni):
     a = (nodes.get("attributes") or [[]])[ni] if nodes.get("attributes") else []
     return {S[a[i]]: S[a[i + 1]] for i in range(0, len(a) - 1, 2)}
+
+
+SHELL_LANDMARKS = ("navigation", "banner", "complementary", "contentinfo", "search")
+
+
+def region_scope(ax):
+    """GB-1580 item 4: the lens MAIN-CONTENT region. Returns (scope, inside_ids):
+    scope 'main' with the id set of every <main> landmark plus its descendants,
+    or scope 'page' with inside None (no main landmark on the page — the whole
+    page is in scope and the record says so; nothing is silently excluded)."""
+    mains = ax.by_role("main")
+    if not mains:
+        return "page", None
+    inside = set()
+    for m in mains:
+        inside.add(m.id)
+        inside.update(d.id for d in ax.descendants(m))
+    return "main", inside
+
+
+def is_shell_chrome(ax, node, mains=None):
+    """True when the node rides in an app-shell landmark (sidebar navigation /
+    complementary, top banner, global search, footer) that is neither inside
+    the lens <main> nor wrapping it — a landmark inside main is the lens's own
+    chrome and stays in scope."""
+    if mains is None:
+        mains = ax.by_role("main")
+    for a in [node] + ax.ancestors(node):
+        if a.role in SHELL_LANDMARKS:
+            if any(a.id == m.id or ax.is_inside(a, m) or ax.is_inside(m, a) for m in mains):
+                return False
+            return True
+    return False
+
+
+def in_main_region(ax, node, scope):
+    """scope is a region_scope() pair. In scope = inside a main landmark (when
+    the page has one) and not shell chrome riding outside/above it."""
+    name, inside = scope
+    if inside is None:
+        return True
+    if node.id not in inside:
+        return False
+    return not is_shell_chrome(ax, node)
+
+
+def rects_overlap(a, b):
+    """Positive-area intersection of two (x, y, w, h) boxes (GB-1581 3b)."""
+    x = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+    y = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
+    return x > 0 and y > 0
+
+
+def fab_nav_overlaps(fabs, navs):
+    """[{'control': label, 'overlap_px': area}] for each (label, box) FAB
+    whose box intersects any bottom-nav box (GB-1581 item 3b)."""
+    out = []
+    for label, b in fabs:
+        for nb in navs:
+            if rects_overlap(b, nb):
+                x = min(b[0] + b[2], nb[0] + nb[2]) - max(b[0], nb[0])
+                y = min(b[1] + b[3], nb[1] + nb[3]) - max(b[1], nb[1])
+                out.append({"control": label, "overlap_px": int(x * y)})
+                break
+    return out
 
 
 def overflow_offenders(snap, vw):

@@ -7,8 +7,9 @@ in the drain order.
 Covers, without a browser:
   * the walker config of record (walker/config.json) carries the three
     numbers in thresholds;
-  * ReplayBudget.from_config on that config yields a flat 180 s for any
-    ticket count (the per-lens replay cap);
+  * ReplayBudget.from_config on that config yields the 180 s as a per-lens
+    FLOOR (GB-1581 item 5c supersedes the flat reading: many-ticket lenses
+    scale by the formula past the floor, capped at 900);
   * a LensWalk built on a thresholds dict WITHOUT the keys still
     defaults to settle 30 / check 45 (the numbers are the machinery's
     own, not only the config's);
@@ -47,10 +48,13 @@ check("config thresholds: settle_budget_s is 30", th.get("settle_budget_s") == 3
 check("config thresholds: check_budget_s is 45", th.get("check_budget_s") == 45, th.get("check_budget_s"))
 check("config thresholds: replay_budget_s is 180", th.get("replay_budget_s") == 180, th.get("replay_budget_s"))
 
-# -- replay: a flat 180 s per lens at any ticket count ------------------------
+# -- replay: the configured 180 s is a per-lens FLOOR (GB-1581 item 5c
+# supersedes the flat reading of GB-1566 s4: Walk 2's flat 180 starved 501
+# tickets in 94 lenses; a many-ticket lens scales by the formula past the
+# floor, capped at 900) ------------------------------------------------------
 rb = ReplayBudget.from_config(cfg)
-check("replay budget is 180 s/lens flat (n=0, 1, 50)",
-      rb.for_lens(0) == 180 and rb.for_lens(1) == 180 and rb.for_lens(50) == 180,
+check("replay budget: 180 s floor, scaling past it for many-ticket lenses (n=0, 1, 50)",
+      rb.for_lens(0) == 180 and rb.for_lens(1) == 180 and rb.for_lens(50) == 900,
       (rb.for_lens(0), rb.for_lens(1), rb.for_lens(50)))
 
 # -- machinery defaults carry the same numbers --------------------------------

@@ -82,6 +82,11 @@ def pick_lenses(inv, args):
         lenses = [by[s] for s in want]
     if getattr(args, "category", None):
         lenses = [l for l in lenses if l.get("category") == args.category]
+    if getattr(args, "shard", None):
+        from concord_walker.shard import parse_shard, partition
+        si, sn = parse_shard(args.shard)
+        mine = set(partition([l["slug"] for l in inv], sn)[si])
+        lenses = [l for l in lenses if l["slug"] in mine]
     if getattr(args, "start_from", None):
         slugs = [l["slug"] for l in lenses]
         lenses = lenses[slugs.index(args.start_from):]
@@ -139,8 +144,27 @@ def cmd_walk(args, cfg, log):
     lenses = pick_lenses(inv, args)
     all_slugs = [l["slug"] for l in inv]
     dry = args.dry_run or args.no_auth
+    # ULW v3 W3: sharding — per-shard run id (hence run dir), account pair,
+    # lock and ledger. Unsharded runs are untouched.
+    shard = None
+    reader_key = "t1"
+    if getattr(args, "shard", None):
+        from concord_walker.shard import parse_shard, shard_accounts, shard_run_id, shard_lock_name
+        shard = parse_shard(args.shard)
+        reader_key, writer_key = shard_accounts(cfg, shard[0])
+        if writer_key:
+            cfg = dict(cfg, write_account=writer_key)
+        _pairs = cfg.get("shard_accounts") or []
+        _pair = _pairs[shard[0]] if shard[0] < len(_pairs) else None
+        cfg = dict(cfg, reader_account=reader_key,
+                   isolation_observer=((_pair or {}).get("observer") or cfg.get("isolation_observer")))
     rid = getattr(args, "resume", None) or run_id()
+    if shard and not getattr(args, "resume", None):
+        rid = shard_run_id(rid, shard[0], shard[1])
     rec = RunRecorder(cfg, rid, dry=dry)
+    if shard:
+        log("shard %d of %d: run %s, %d lens(es), reader=%s writer=%s, ledger in run dir" % (
+            shard[0], shard[1], rid, len(lenses), reader_key, cfg.get("write_account")))
     log.path = os.path.join(rec.run_dir, "walker.log")
     # Replay (replay-original-tickets): the sweep sits ON TOP of the original lens-walk tickets. A live
     # sweep loads the same pinned fold reverify --from-repo reads, and replays every OPEN /
@@ -174,9 +198,9 @@ def cmd_walk(args, cfg, log):
     phases = args.phases.split(",") if args.phases else READ_PHASES + (["write"] if args.allow_write else [])
     if premap and "sweep" not in phases:
         phases = phases + ["sweep"]
-    if not args.no_auth and not has_session(cfg, "t1"):
-        raise SystemExit("no saved session for %s (auth/t1.json). Run: walker.py login --account t1 --headed  "
-                         "(or use --no-auth for a signed-out smoke)" % cfg["accounts"]["t1"]["username"])
+    if not args.no_auth and not has_session(cfg, reader_key):
+        raise SystemExit("no saved session for %s (auth/%s.json). Run: walker.py login --account %s --headed  "
+                         "(or use --no-auth for a signed-out smoke)" % (cfg["accounts"][reader_key]["username"], reader_key, reader_key))
     manifest = Manifest(rec.run_dir, rid, len(lenses))
     done_before = manifest.walked_slugs() if getattr(args, "resume", None) else set()
     if done_before:
@@ -189,7 +213,9 @@ def cmd_walk(args, cfg, log):
     manifest.data["deploy"] = run_deploy
     # no-deploy guard: the build sha is polled at start and around every lens; a change mid-walk STOPS the sweep.
     from concord_walker import longwalk as _LW
-    guard = _LW.DeployGuard(lambda: deploy_stamp(cfg["base_url"], None)["backend_sha"], log=log)
+    from concord_walker import sha_gate as _sha_gate
+    guard = _LW.DeployGuard(lambda: deploy_stamp(cfg["base_url"], None)["backend_sha"], log=log,
+                            fetch_uptime=lambda: _sha_gate.health_uptime(cfg["base_url"]))
     g_ok, g_why = guard.start(prior_sha=manifest.prior_sha, known=run_deploy.get("backend_sha"))
     if not g_ok:
         append_text(os.path.join(rec.run_dir, "ABORTED.txt"), "%s %s: %s\n" % (human_et(), _LW.DEPLOY, g_why))
@@ -221,9 +247,11 @@ def cmd_walk(args, cfg, log):
         else:
             log("replay verdicts will NOT be written: --expect-sha %r is missing/not a hex sha (replay still runs, dry)" % (expect,))
         from concord_walker.ledger import WalkerLedger
-        ledger = WalkerLedger(os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"), "walker.jsonl"),
-                              dry=dry or live is None, expect_sha=expect)
-    with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], "run.lock")), sync_playwright() as pw:
+        ledger_path = (os.path.join(rec.run_dir, "ledger.jsonl") if shard else
+                       os.path.join(cfg.get("records_dir") or os.path.join(cfg["_walker_dir"], "records"), "walker.jsonl"))
+        ledger = WalkerLedger(ledger_path, dry=dry or live is None, expect_sha=expect)
+    lock_name = shard_lock_name(shard[0], shard[1]) if shard else "run.lock"
+    with RunLock(os.path.join(cfg.get("runs_dir") or cfg["_walker_dir"], lock_name)), sync_playwright() as pw:
         def launch():
             return pw.chromium.launch(channel="chrome", headless=True, args=["--disable-dev-shm-usage"])
         browser = launch()
@@ -245,7 +273,7 @@ def cmd_walk(args, cfg, log):
                     log("memory stayed low; stopping run before %s" % slug)
                     abort = (slug, "memory stayed low")
                     break
-                acct, admin, lphases = (None if args.no_auth else "t1"), False, phases
+                acct, admin, lphases = (None if args.no_auth else reader_key), False, phases
                 gate = False
                 if slug in cfg["admin_lenses"]:
                     if args.admin and has_session(cfg, "admin") and not args.no_auth:
@@ -333,7 +361,23 @@ def cmd_walk(args, cfg, log):
                     json.dump(res, f, indent=1)
                 manifest.lens(slug, "walked", reason="gate check (reach only)" if gate else None,
                               checks_not_run=checks_not_run(res), deploy=deploy, state=res["state"])
+                # GB-1575 W2: post-lens dossier hook — OFF unless config
+                # dossier.enabled; best-effort, never fails the lens. The
+                # canonical dossiers are (re)built offline by the dossier
+                # subcommand over the finished run.
+                if (cfg.get("dossier") or {}).get("enabled"):
+                    try:
+                        from concord_walker import dossier as _dossier_mod
+                        _dossier_mod.build_one(
+                            rec.run_dir, slug,
+                            repo=(cfg.get("dossier") or {}).get("repo") or None)
+                    except Exception as _de:
+                        log("dossier hook: %s dossier skipped (%s)" % (slug, _de))
                 summary.append(res)
+                # ULW v3 W4: recipe-reported NOT_RUN items (validation-recipe
+                # budget cuts) queue as carry-over with the walk's own NOT_RUNs.
+                for _nr in (res.get("replay") or {}).get("not_run") or []:
+                    carryover.add(slug, _nr["check"], _nr.get("reason"))
                 carryover.add_from_result(res)
                 write_root_causes(cfg["audit_dir"], log=log)
             # ULW C7: run-end revisit — every queued NOT_RUN check gets ONE
@@ -423,6 +467,25 @@ def write_summary(rec, summary, left, dry, manifest=None):
     lines.append("\nLeftover fixtures: %s\n" % (", ".join(f["label"] for f in left) if left else "none"))
     with open(os.path.join(rec.run_dir, "SUMMARY.md"), "w") as f:
         f.write("".join(lines))
+
+
+def cmd_dossier(args, cfg, log):
+    """GB-1575 W2: per-lens redesign dossiers over a FINISHED run dir —
+    offline; records + wiring + manifest + reverify.jsonl plus a read-only
+    git show of the repo at the walk build. Never walks, never signs in."""
+    from concord_walker import dossier as dossier_mod
+    lenses = None
+    if getattr(args, "lens", None):
+        lenses = [s.strip() for s in args.lens.split(",") if s.strip()]
+    out_dir = getattr(args, "out", None) or os.path.join(args.run_dir, "dossiers")
+    idx = dossier_mod.build_all(args.run_dir,
+                                repo=getattr(args, "repo", None) or None,
+                                out_dir=out_dir, lenses=lenses,
+                                misses_path=getattr(args, "misses", None) or None)
+    log("dossier: %d lens dossier(s) for run %s -> %s"
+        % (len(idx["lenses"]), idx["run_id"], out_dir))
+    for row in idx["lenses"]:
+        log("  %s score=%d" % (row["lens"], row["score"]))
 
 
 def cmd_reverify(args, cfg, log):
@@ -632,6 +695,19 @@ def cmd_reverify(args, cfg, log):
             rec.flush_leftovers()
             # Coverage table: always in the run dir; the shared audit copy only
             # when the run is not dry (same rule as tickets/queue).
+            # GB-1581 item 1: a --resume's journal-finished ids carry the earlier
+            # attempt's verdict from this run dir's reverify.jsonl — merge it;
+            # an id with no row anywhere was lost on resume, not done.
+            _prior = cov.load_prior_results(rec.run_dir)
+            for _tid, _why in list(cov_skip.items()):
+                if not str(_why).startswith(cov.R_RESUMED):
+                    continue
+                _res = _prior.get(_tid)
+                if _res is not None and _res.get("verdict") in (cov.FIXED, cov.STILL, cov.HUMAN):
+                    cov_results.setdefault(_tid, _res)
+                    del cov_skip[_tid]
+                else:
+                    cov_skip[_tid] = cov.R_RESUMED_NO_ROWS
             cov_rows = cov.build_rows(scope, cov_results, cov_skip)
             cov_dirs = [rec.run_dir] + ([] if dry else [cfg["audit_dir"]])
             cov.write(cov_dirs, cov_rows, {"run_id": rid, "live_sha": live, "dry": dry, "ts": human_et(),
@@ -760,6 +836,70 @@ def cmd_merge_runs(args, cfg, log):
             % (len(report["conflicts"]), args.out, args.report))
 
 
+def cmd_merge_shards(args, cfg, log):
+    """ULW v3 W3: fold shard run dirs into one manifest + one ledger
+    (walker.jsonl + walk-manifest.json + merge-report.json under --out).
+    Lens overlap across shards is reported and blocks activation."""
+    from concord_walker.shard import merge_shards
+    runs = []
+    for item in (args.runs or "").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if not os.path.isdir(item):
+            cand = os.path.join(cfg.get("runs_dir") or os.path.join(cfg["_walker_dir"], "runs"), item)
+            if os.path.isdir(cand):
+                item = cand
+        runs.append(item)
+    if len(runs) < 2:
+        raise SystemExit("merge-shards needs at least two shard run dirs (or run ids under runs_dir)")
+    report = merge_shards(runs, args.out)
+    log("merge-shards: %s -> %s" % (report["stats"], args.out))
+    if report["lens_overlap"]:
+        log("merge-shards: LENS OVERLAP %s — the shard partition was not disjoint; activation blocked" % report["lens_overlap"])
+    if report["conflicts"]:
+        log("merge-shards: %d conflict(s); contested ids are EXCLUDED from the merged ledger and listed in merge-report.json" % len(report["conflicts"]))
+
+
+def cmd_vision_rejudge(args, cfg, log):
+    """GB-1581 item 2: offline re-judge over a finished run's saved
+    (screenshot, expected) pairs — no browser, no new captures. Decides the
+    rows whose judge calls died (Walk 2: 233 timeouts) from vision.jsonl."""
+    from concord_walker import vision as vision_mod
+    run_dir = args.run_dir
+    if not os.path.isdir(run_dir):
+        raise SystemExit("--run-dir %s: not a run dir" % run_dir)
+    store = TicketStore(cfg["audit_dir"])
+    tickets = {tid: store.get(tid) for tid in store.base}
+    summary = vision_mod.rejudge_saved_pairs(cfg, run_dir, tickets, log, only_human=not args.all)
+    log("vision re-judge %s: %s" % (run_dir, summary))
+    if not summary["judge_enabled"]:
+        log("vision judge is not enabled/configured (vision_judge.enabled + url + model); nothing re-judged")
+
+
+def cmd_owner_scan(args, cfg, log):
+    """ULW v3 W5b (GB-1576): the offline ownership + broadcast code scan.
+    Walks a server tree and writes the ranked file:line candidate list
+    (JSONL) — id lookups with no owner check, and private events reaching
+    global emits / global logs. A census for human confirmation, never a
+    verdict."""
+    from concord_walker.ownerscan import scan_tree
+    root = args.from_repo
+    server = os.path.join(root, "server")
+    if os.path.isdir(server):
+        root = server
+    rows = scan_tree(root)
+    out = args.out or os.path.join(cfg["_walker_dir"], "analysis", "owner-scan.jsonl")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    kinds = {}
+    for r in rows:
+        kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+    log("owner-scan: %d candidate(s) %s over %s -> %s" % (len(rows), kinds, root, out))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config")
@@ -790,6 +930,7 @@ def main():
         p.add_argument("--deploy-sha", help="replay: the pinned sha the fold is read at (with --from-repo)")
         p.add_argument("--no-replay", action="store_true", help="sweep WITHOUT replaying the original lens-walk tickets (logged loudly; every ticket gets a 'replay disabled' coverage row)")
         p.add_argument("--auto-resume", type=int, default=2, help="browser crash relaunches per run (each retries the crashed lens once; default 2)")
+        p.add_argument("--shard", help="ULW v3 W3: walk shard i of N ('i/N', 0-based i) of the inventory's stable partition; per-shard run dir, run lock, ledger and account pair (cfg shard_accounts). Merge afterwards with merge-shards")
 
     p = sub.add_parser("sweep", help="walk every lens in inventory.json (or a filtered subset)")
     walk_opts(p)
@@ -819,6 +960,9 @@ def main():
     p.add_argument("--fix-commit", action="append", help="MST-W0-01: TICKET=SHA (repeatable): say whether the live build contains that fix commit")
     p.add_argument("--containment-repo", help="MST-W0-01: git checkout used for merge-base --is-ancestor (defaults to --from-repo); without one the answer is 'unknown'")
     p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("merge-shards", help="ULW v3 W3: fold shard run dirs into one manifest + one ledger (per-shard ledger.jsonl + walk-manifest.json)")
+    p.add_argument("--runs", required=True, help="comma list of shard run dirs (or run ids under runs_dir)")
+    p.add_argument("--out", required=True, help="output dir for walker.jsonl + walk-manifest.json + merge-report.json")
     p = sub.add_parser("merge-runs", help="ULW C14: merge two walker instances' record files by ticket ID, with a conflict report (machinery only)")
     p.add_argument("--a", required=True, help="first instance's records file (walker.jsonl / human.jsonl union schema)")
     p.add_argument("--b", required=True, help="second instance's records file")
@@ -836,6 +980,18 @@ def main():
     p.add_argument("--login-timeout", type=int, default=600, help="seconds to wait for /api/auth/me to show a session after submit (default 600)")
     p = sub.add_parser("whoami", help="GET /api/auth/me with a saved session")
     p.add_argument("--account", default="t1", help="any account key in config")
+    p = sub.add_parser("dossier", help="GB-1575 W2: per-lens redesign dossiers over a finished run dir (offline; read-only git show at the walk build)")
+    p.add_argument("--run-dir", required=True, help="finished walk run dir (lens-*.json + walk-manifest.json + wiring-*.json)")
+    p.add_argument("--lens", help="comma list of lens slugs (default: every walked lens)")
+    p.add_argument("--repo", help="Concord repo checkout for git show at the walk build (component/code-scan/backend sections stay empty without one)")
+    p.add_argument("--out", help="output dir (default: <run-dir>/dossiers)")
+    p.add_argument("--misses", help="W1 redesign_misses.jsonl (default: walker/analysis/redesign_misses.jsonl when present)")
+    p = sub.add_parser("vision-rejudge", help="GB-1581: offline re-judge of a finished run's saved screenshot pairs (no browser; decides rows whose judge calls timed out)")
+    p.add_argument("--run-dir", required=True, help="finished run dir holding vision.jsonl")
+    p.add_argument("--all", action="store_true", help="re-judge every saved pair, not only NEEDS_HUMAN rows")
+    p = sub.add_parser("owner-scan", help="ULW v3 W5b: offline ownership + private-broadcast code scan over a server tree (ranked file:line candidates, JSONL)")
+    p.add_argument("--from-repo", required=True, help="repo checkout (or its server/ dir) to scan")
+    p.add_argument("--out", help="ranked list path (default: walker/analysis/owner-scan.jsonl)")
     args = ap.parse_args()
     cfg = load_config(args.config)
     if getattr(args, "base_url", None):
@@ -855,6 +1011,14 @@ def main():
             cmd_reverify(args, cfg, log)
     elif args.cmd == "merge-runs":
         cmd_merge_runs(args, cfg, log)
+    elif args.cmd == "merge-shards":
+        cmd_merge_shards(args, cfg, log)
+    elif args.cmd == "dossier":
+        cmd_dossier(args, cfg, log)
+    elif args.cmd == "owner-scan":
+        cmd_owner_scan(args, cfg, log)
+    elif args.cmd == "vision-rejudge":
+        cmd_vision_rejudge(args, cfg, log)
     elif args.cmd == "preflight":
         cmd_preflight(args, cfg, log)
     elif args.cmd == "login":

@@ -69,6 +69,20 @@ _KINDS = [
     ("control_present", re.compile(r"(?i)^(?:an?\s+|the\s+|each\s+)?([A-Za-z][A-Za-z /\-]{1,30}?)\s+(?:control|button|field|action|option|link|toggle|menu)s?\s+(?:is\s+|are\s+)?(?:available|present|exists?|visible|shown|offered)\b"),
      lambda m: {"names": [x.strip() for x in re.split(r"\s*(?:/|,|\bor\b|\band\b)\s*", m.group(1)) if x.strip()]}),
     ("target_size", re.compile(r"(?i)(?:≥|>=|at least|minimum(?: of)?)\s*(\d{2})\s*(?:px|pt|css px)\b"), lambda m: {"px": int(m.group(1))}),
+    # GB-1581 item 4: value / count / order compare kinds — the expected
+    # outcome states a value, a count, or an order the snapshot must match.
+    ("value_equals", re.compile(r"(?i)\b(?:value|field|input|total|balance|result)\s+(?:is|shows?|reads?|displays?|equals?)\s+[\"'“”]([^\"'“”]{1,60})[\"'“”]"),
+     lambda m: {"value": m.group(1).strip()}),
+    ("value_equals", re.compile(r"(?i)\b([A-Z][A-Za-z0-9'&.\-]{1,30}?)\s+(?:shows?|displays?|reads?)\s+[\"'“”]([^\"'“”]{1,60})[\"'“”]"),
+     lambda m: {"name": m.group(1).strip(), "value": m.group(2).strip()}),
+    ("value_equals", re.compile(r"(?i)\bshows?\s+(?:the\s+)?value\s+[\"'“”]([^\"'“”]{1,60})[\"'“”]"),
+     lambda m: {"value": m.group(1).strip()}),
+    ("count_equals", re.compile(r"(?i)\b(?:there\s+are|shows?|lists?|displays?|contains?|has)\s+(\d{1,3})\s+([a-z][a-z\-]{2,20}(?:\s[a-z][a-z\-]{2,20})?)\b"),
+     lambda m: {"count": int(m.group(1)), "of": m.group(2).strip()}),
+    ("count_equals", re.compile(r"(?i)\bcount\s+(?:is|of)\s+(\d{1,3})\b"), lambda m: {"count": int(m.group(1)), "of": None}),
+    ("order_matches", re.compile(r"(?i)\bin\s+(?:the\s+)?order\s+([A-Z][A-Za-z0-9'&.\-]*(?:\s*(?:,|\band\b)\s+[A-Z][A-Za-z0-9'&.\- ]*)+)"),
+     lambda m: {"names": [x.strip() for x in re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", m.group(1)) if x.strip()]}),
+    ("order_matches", re.compile(r"(?i)\b(?:sorted|ordered|listed)\s+alphabetically\b"), lambda m: {"sorted": "alpha"}),
     # (kind, compiled regex, spec builder)
     # WALK-04f: media outcome clauses. The evidence is a media_probes ProbeResult gathered by the executor at the
     # end of the replay (repro._gather via the driver's probe capabilities); the regexes match only the FIXED-state
@@ -172,9 +186,20 @@ def _classify_fragment_base(f, legacy):
     return None
 
 
+_ORDER_CLAUSE = re.compile(r"(?i)^(?:(?:the\s+)?(?:items|entries|rows|results|options|values|they)\s+(?:are|appear|show|listed|displayed)\s+)?in\s+(?:the\s+)?order\s+(?P<list>[A-Z][A-Za-z0-9'&.\-]*(?:\s*(?:,|\band\b)\s+[A-Z][A-Za-z0-9'&.\- ]*)+)\s*$")
+
+
 def classify_clause(clause, legacy):
     """sentence -> list of specs (EVERY fragment classified) or None. An unclassified fragment is re-tried
     joined to its right neighbour ("Text and disabled labels meet WCAG AA contrast")."""
+    m = _ORDER_CLAUSE.match((clause or "").strip())
+    if m:
+        # GB-1581: an 'in order A, B, C' list is ONE predicate — the fragment
+        # splitter cuts it at its commas and the join-retry would settle for
+        # a two-name prefix, silently dropping the tail of the order.
+        names = [x.strip() for x in re.split(r"\s*,\s*(?:and\s+)?|\s+and\s+", m.group("list")) if x.strip()]
+        if len(names) >= 2:
+            return [{"kind": "order_matches", "names": names, "text": clause, "neg": False}]
     fr = fragments(clause)
     specs, i = [], 0
     while i < len(fr):
@@ -228,13 +253,17 @@ EVIDENCE = {
     "text_phrase": ("snapshot.texts",),
     "text_absent": ("snapshot.texts",),
     "control_present": ("snapshot.controls",),
+    "value_equals": ("snapshot.controls", "snapshot.texts"),
+    "count_equals": ("snapshot.controls", "snapshot.texts", "snapshot.list_items"),
+    "order_matches": ("snapshot.controls", "snapshot.texts", "snapshot.list_items"),
     "legacy": ("snapshot",),
     "media_canvas": ("media_canvas",),
     "media_audio": ("media_audio",),
 }
 EVIDENCE.update(_OBS.EVIDENCE)
 EVIDENCE.update(_NC.EVIDENCE)
-AUTO_EVIDENCE = {"ax_names", "contrast", "target_size", "net_class", "no_console_error", "control_present", "text_phrase", "text_absent", "legacy"}
+AUTO_EVIDENCE = {"ax_names", "contrast", "target_size", "net_class", "no_console_error", "control_present", "text_phrase", "text_absent", "legacy",
+                 "value_equals", "count_equals", "order_matches"}
 _ERR_TEXT = re.compile(r"(?i)application error|something went wrong|unexpected error|failed to load|internal server error|\b50[0-4]\b")
 _MSG = re.compile(r"(?i)\b(invalid|required|must|cannot|can't|too (?:long|short|large|small)|at least|at most|not allowed|error|between|greater than|less than|out of range|maximum|minimum|limit)\b")
 
@@ -427,6 +456,55 @@ def _spec_check(sp, snap, legacy):
     if k == "text_absent":
         gone = not any(_norm(sp["name"]) in _norm(x) for x in _pool(snap))
         return ("pass" if gone else "fail"), "text %r %s" % (sp["name"], "absent" if gone else "still present")
+    if k == "value_equals":
+        # GB-1581 item 4: the stated value must be what the surface shows —
+        # an exact pool entry, or the value inside a shown text. With a named
+        # control, that control must exist AND the value must be shown.
+        val = sp.get("value") or ""
+        pool = _pool(snap)
+        shown = any(_norm(val) == _norm(x) or _norm(val) in _norm(x) for x in pool if x)
+        if sp.get("name"):
+            named = any(_norm(sp["name"]) in _norm(c.get("name") or "") for c in snap.get("controls") or [])
+            if not named:
+                return "fail", "no control matching %r on the surface" % sp["name"]
+            return ("pass" if shown else "fail"), "%r shows %r: %s" % (sp["name"], val, "value present" if shown else "value not shown")
+        return ("pass" if shown else "fail"), "value %r %s on the surface" % (val, "shown" if shown else "not shown")
+    if k == "count_equals":
+        # GB-1581 item 4: count the shown things the clause names — list
+        # items when the driver reports a list, else pool entries carrying
+        # the named word (a bare 'count is N' counts the list/pool size).
+        want = sp.get("count")
+        of = (sp.get("of") or "").strip()
+        items = snap.get("list_items")
+        if items is not None and (not of or of.rstrip("s") in ("item", "row", "entry", "record", "result", "card")):
+            got = len(items)
+            return ("pass" if got == want else "fail"), "%d list item(s) shown, clause wants %d" % (got, want)
+        pool = _pool(snap)
+        if of:
+            stem = _norm(of.rstrip("s"))
+            got = sum(1 for x in pool if stem and stem in _norm(x))
+        else:
+            got = len(items) if items is not None else len(pool)
+        return ("pass" if got == want else "fail"), "%d shown entr(ies) matching %r, clause wants %d" % (got, of or "anything", want)
+    if k == "order_matches":
+        # GB-1581 item 4: the named things appear in the stated order in the
+        # surface sequence (list items when reported, else the pool order).
+        seq = list(snap.get("list_items") or []) or _pool(snap)
+        if sp.get("sorted") == "alpha":
+            vals = [x for x in seq if x]
+            if len(vals) < 2:
+                return "unchecked", "fewer than two shown items to order"
+            ok = [_norm(x) for x in vals] == sorted(_norm(x) for x in vals)
+            return ("pass" if ok else "fail"), "shown items %s alphabetical order" % ("are in" if ok else "are NOT in")
+        names = sp.get("names") or []
+        idx = []
+        for nm in names:
+            hit = next((i for i, x in enumerate(seq) if _norm(nm) and _norm(nm) in _norm(x)), None)
+            if hit is None:
+                return "fail", "%r not shown, so the stated order cannot hold" % nm
+            idx.append(hit)
+        ok = all(a < b for a, b in zip(idx, idx[1:]))
+        return ("pass" if ok else "fail"), "order %s at positions %s" % (names, idx)
     if k == "text_phrase":
         pool = [_norm(x) for x in _pool(snap)]
         p = _norm(sp["phrase"])

@@ -180,7 +180,13 @@ with sync_playwright() as pw:
     check("no Export control -> NO_CONTROL [failure path]", r.get("verdict") == "NO_CONTROL" and r.get("ok") is False, r)
     d.open(base + "/lenses/ambig")
     r = d.export_check(["JSON"])
-    check("two JSON options -> NO_FILE ambiguous, nothing downloaded [failure path]", r.get("verdict") == "NO_FILE" and "ambiguous" in (r.get("note") or ""), r)
+    check("GB1581: two JSON options -> BOTH exported and reported per format (no ambiguity stop)",
+          r.get("verdict") == "PASS" and r.get("ok") and len(r.get("formats") or []) == 2
+          and all(f.get("verdict") == "PASS" for f in r["formats"]), r)
+    d.open(None)
+    r = d.export_check([])
+    check("GB1581: no format named -> every format offered is exported (JSON + CSV)",
+          r.get("verdict") == "PASS" and r.get("ok") and len(r.get("formats") or []) == 2, r)
 
     # --- chat
     d.open(None)

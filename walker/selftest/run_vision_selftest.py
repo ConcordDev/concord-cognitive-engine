@@ -101,7 +101,8 @@ r = j.judge_ticket(None, TICKET, "overflow390", pair_provider=CLEAN)
 results["confident_match_fixed"] = (r["verdict"] == "FIXED" and r["vision"]["confidence"] == 0.95
                                      and r["vision"]["model"] == "fake-vision-1" and len(r["evidence"]) == 2
                                      and j.accounting() == {"calls": 1, "cap": 300, "judged": 1,
-                                                            "partial_due_to_cap": 0, "remaining": 299})
+                                                            "partial_due_to_cap": 0, "remaining": 299,
+                                                            "queued_calls": 1, "retries": 0, "max_in_flight": 1})
 ledger = [json.loads(l) for l in open(os.path.join(run_dir, "vision.jsonl"))]
 results["ledger_line"] = (len(ledger) == 1 and ledger[0]["ticket_id"] == "FIX-demo-900"
                           and ledger[0]["verdict"] == "FIXED" and ledger[0]["pair"] == r["evidence"])
@@ -172,6 +173,75 @@ results["no_demote_when_agreeing"] = evaluate_spotcheck(judged2, human2)["demote
 # 11) wants_visual routing words
 results["wants_visual"] = wants_visual(TICKET) and not wants_visual(
     {"title": "Export button does nothing", "actual": "no file", "expected": "file downloads", "repro_steps": ""})
+
+# 13) GB-1581 item 2: the queue serializes calls (one in flight) and retries once
+import threading, time as _time
+from concord_walker.vision import JudgeQueue, HttpVisionClient, rejudge_saved_pairs, load_saved_pairs
+
+_inflight = {"now": 0, "max": 0}
+
+
+def slow_client(images, prompt):
+    _inflight["now"] += 1
+    _inflight["max"] = max(_inflight["max"], _inflight["now"])
+    _time.sleep(0.05)
+    _inflight["now"] -= 1
+    return {"verdict": "MATCHES_EXPECTED", "confidence": 0.9, "rationale": "ok", "model": "fake-vision-1"}
+
+
+q = JudgeQueue()
+threads = [threading.Thread(target=q.call, args=(slow_client, [], "p")) for _ in range(6)]
+[t.start() for t in threads]
+[t.join() for t in threads]
+results["queue_one_in_flight"] = _inflight["max"] == 1 and q.max_in_flight == 1 and q.queued_calls == 6
+
+_flaky = {"n": 0}
+
+
+def flaky_client(images, prompt):
+    _flaky["n"] += 1
+    if _flaky["n"] == 1:
+        raise TimeoutError("judge timed out")
+    return {"verdict": "MATCHES_EXPECTED", "confidence": 0.95, "rationale": "second try", "model": "fake-vision-1"}
+
+
+j = VisionJudge(CFG, FakeRec(), log, client=flaky_client)
+r = j.judge_ticket(None, TICKET, "overflow390", pair_provider=CLEAN)
+results["queue_retries_once"] = r["verdict"] == "FIXED" and j.queue.retries == 1 and _flaky["n"] == 2
+
+j = VisionJudge(CFG, FakeRec(), log, client=boom_client)
+r = j.judge_ticket(None, TICKET, "overflow390", pair_provider=CLEAN)
+results["queue_retry_exhausted_is_human"] = r["verdict"] == "NEEDS_HUMAN" and j.queue.retries == 1
+
+# 14) GB-1581 item 2: the judge timeout defaults to 180 s (client + config path)
+results["timeout_default_180"] = HttpVisionClient("http://x", "k", "m").timeout_s == 180
+cfg_url = {"audit_dir": audit, "vision_judge": {"enabled": True, "model": "fake-vision-1",
+                                                "url": "http://127.0.0.1:9/v1", "api_key": "k"}}
+j = VisionJudge(cfg_url, FakeRec(), log)
+results["timeout_config_default_180"] = j.client is not None and j.client.timeout_s == 180
+
+# 15) GB-1581 item 2: offline re-judge over a saved pair decides the waiting row
+rj_dir = os.path.join(tmp, "runs", "rejudge")
+os.makedirs(rj_dir)
+pair = CLEAN(TICKET)
+saved = [
+    {"ticket_id": "FIX-demo-900", "lens": "demo", "category": "overflow390", "verdict": "NEEDS_HUMAN",
+     "pair": pair, "note": "judge error: TimeoutError"},
+    {"ticket_id": "FIX-demo-901", "lens": "demo", "category": "overflow390", "verdict": "FIXED",
+     "pair": pair, "note": "decided"},
+]
+with open(os.path.join(rj_dir, "vision.jsonl"), "w") as f:
+    for row in saved:
+        f.write(json.dumps(row) + "\n")
+results["saved_pairs_load"] = len(load_saved_pairs(rj_dir)) == 2
+summary = rejudge_saved_pairs(CFG, rj_dir, {"FIX-demo-900": TICKET, "FIX-demo-901": dict(TICKET, id="FIX-demo-901")},
+                              log, client=match_client)
+results["rejudge_decides_waiting_row"] = (summary["rejudged"] == 1 and summary["verdicts"] == {"FIXED": 1}
+                                           and summary["skipped_verdict"] == 1)
+out_rows = [json.loads(l) for l in open(os.path.join(rj_dir, "vision-rejudge.jsonl"))]
+results["rejudge_writes_outcomes"] = any(r.get("ticket_id") == "FIX-demo-900" and r.get("verdict") == "FIXED"
+                                          and r.get("prior_vision_verdict") == "NEEDS_HUMAN" for r in out_rows)
+results["rejudge_leaves_original_alone"] = len(open(os.path.join(rj_dir, "vision.jsonl")).readlines()) == 2
 
 # 12) no page JS in vision.py (the package selftest grep)
 banned = re.compile(r"\.(evaluate|evaluate_handle|locator|query_selector|query_selector_all|add_init_script|add_script_tag|expose_function|expose_binding|fill|get_by_\w+|wait_for_selector|wait_for_function|route)\(|Runtime\.evaluate|Runtime\.callFunctionOn")

@@ -99,6 +99,12 @@ def flags_of(obj):
     return f
 
 
+def _refused_body(obj):
+    """A response body that refuses despite its status: ok is False, or an
+    error key is present (the shape trust_probes.refused_body judges by)."""
+    return isinstance(obj, dict) and (obj.get("ok") is False or "error" in obj)
+
+
 def lens_action(method, path_t, post_json):
     """POST /api/lens/run {domain, action} -> {domain, action}; GET /api/lens/:domain[/:id] -> {domain, op}."""
     if method == "POST" and path_t.rstrip("/") == "/api/lens/run" and isinstance(post_json, dict):
@@ -192,6 +198,8 @@ class NetLedger:
         self.violations = []       # (t, kind, ms) long tasks / blocked handlers -- upgrade 4
         self.slow_ms, self.long_task_ms = slow_ms, long_task_ms
         self.replay = []           # IN MEMORY ONLY (never written): raw object calls for the t2 replay (upgrade 3)
+        self.write_calls = []      # IN MEMORY ONLY (never written): successful collection / body-addressed
+                                   # writes (GB-1579) — the trust legs' + durability's missing fuel
 
     # ---------------------------------------------------------------- windows
     def open_window(self, phase, role, name, sticky=False, cid=None, sid=None):
@@ -528,12 +536,6 @@ class NetLedger:
                     row["slow"] = True
         except Exception:
             pass
-        if re.search(r"/:(uuid|id|n|hex)(/|$)", path_t) and method != "DELETE" and 200 <= resp.status < 300 \
-                and row.get("type") in API_TYPES and not tele:
-            # upgrade 3: kept in memory for the t2 replay only; never serialized
-            self.replay.append({"t": t, "method": method, "url": req.url, "path": path_t,
-                                "post": (req.post_data if method in WRITE_METHODS else None),
-                                "acct": e.get("acct")})
         try:
             sz = req.sizes()
             row["resp_bytes"] = int(sz.get("responseBodySize") or 0)
@@ -545,11 +547,13 @@ class NetLedger:
             ctype = (resp.headers or {}).get("content-type", "")
         except Exception:
             ctype = ""
+        resp_obj = None
         if "json" in ctype and row.get("resp_bytes", 0) <= MAX_BODY:
             try:
                 body = resp.body()
                 if len(body) <= MAX_BODY:
                     obj = json.loads(body)
+                    resp_obj = obj
                     row["resp_bytes"] = row.get("resp_bytes") or len(body)
                     ks = key_shape(obj)
                     if ks is not None:
@@ -561,7 +565,36 @@ class NetLedger:
                         row["content_type"] = ctype.split(";")[0].strip().lower()[:60]
             except Exception:
                 pass
+        # ------------------------------------------------ leg recording
+        # Decided here, after the response body is parsed, so a refusal the
+        # body carries (ok:false / an error key) can be judged. Both lists
+        # are IN MEMORY ONLY, never serialized (the upgrade-3 discipline).
+        if 200 <= resp.status < 300 and row.get("type") in API_TYPES and not tele:
+            entry = {"t": t, "method": method, "url": req.url, "path": path_t,
+                     "post": (req.post_data if method in WRITE_METHODS else None),
+                     "acct": e.get("acct")}
+            if method != "DELETE" and re.search(r"/:(uuid|id|n|hex)(/|$)", path_t):
+                # upgrade 3: object calls, kept for the t2 replay
+                self.replay.append(entry)
+            elif method in ("POST", "PUT", "PATCH") and path_t.startswith("/api/") \
+                    and not _refused_body(resp_obj):
+                # GB-1579: collection-route writes (POST /api/<domain>) and
+                # body-addressed macro writes (POST /api/lens/run) — the
+                # writes Concord lenses actually make. They feed the trust
+                # legs + durability via leg_calls(); two-account and the
+                # foreign-row probe keep replay alone, unchanged. DELETEs
+                # are never recorded: the trust leg's delete attempts stay
+                # derived from recorded writes, never replayed deletes.
+                self.write_calls.append(entry)
         return row
+
+    def leg_calls(self):
+        """The trust legs' + durability's input set (GB-1579): the recorded
+        object calls (replay) plus the recorded collection / body-addressed
+        writes (write_calls). Two-account (cross_account) and the isolation
+        probe's path set deliberately keep replay alone — their inputs are
+        unchanged by the call-recording fix."""
+        return list(self.replay) + list(self.write_calls)
 
     # ---------------------------------------------------------------- output
     def build(self):

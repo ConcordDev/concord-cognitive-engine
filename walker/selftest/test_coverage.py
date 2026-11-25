@@ -218,7 +218,64 @@ def test_append_text_creates_parent():
         check("judgment on a fresh audit dir writes the queue md", False, e)
 
 
-for fn in (test_append_text_creates_parent, test_strict_failure_paths, test_walked_lenses_nested_dir, test_cap, test_recipe_verifies, test_keyword_still_reopens, test_rows, test_walked_lenses):
+def test_resume_merge():
+    """GB-1581 item 1: earlier-attempt verdicts merge into coverage on
+    --resume; a resumed lens with no reverify row is NOT done."""
+    from concord_walker.replay import ReplayRun
+
+    class FakeStore:
+        def __init__(self, base):
+            self.base = base
+
+        def get(self, tid):
+            return self.base.get(tid)
+
+        def lane(self, tid):
+            return "lens"
+
+        def status(self, tid):
+            return (self.base.get(tid) or {}).get("status")
+
+    d = tempfile.mkdtemp()
+    rows = [
+        {"id": "FIX-mus-001", "lens": "music", "verdict": "FIXED", "coverage_basis": "recipe",
+         "recipe_kind": "per-ticket", "method": "recipe", "prior_status": "FIXED_PENDING_VERIFY"},
+        {"id": "FIX-mus-002", "lens": "music", "verdict": "NEEDS_HUMAN", "coverage_basis": "keyword",
+         "method": "vision", "notes": "judge unsure", "prior_status": "OPEN"},
+        {"id": "FIX-mus-004", "lens": "music", "verdict": "FIXED", "coverage_basis": "recipe",
+         "recipe_kind": "per-ticket", "method": "recipe", "prior_status": "FIXED_PENDING_VERIFY"},
+        "not json",
+        {"id": "FIX-mus-002", "lens": "music", "verdict": "STILL_FAILING", "coverage_basis": "keyword",
+         "method": "check", "prior_status": "OPEN"},
+    ]
+    with open(os.path.join(d, "reverify.jsonl"), "w") as f:
+        for r in rows:
+            f.write((r if isinstance(r, str) else json.dumps(r)) + "\n")
+    prior = cov.load_prior_results(d)
+    check("prior results load, junk skipped, last row wins",
+          prior.get("FIX-mus-002", {}).get("verdict") == "STILL_FAILING" and "FIX-mus-001" in prior, list(prior))
+    check("missing run dir -> no prior results", cov.load_prior_results(os.path.join(d, "nope")) == {})
+
+    base = {t["id"]: t for t in (T("FIX-mus-001", lens="music"), T("FIX-mus-002", lens="music", status="OPEN"),
+                                 T("FIX-mus-003", lens="music"), T("FIX-mus-004", lens="music"))}
+    rr = ReplayRun(None, FakeStore(base), None, live_sha=None, run_id="r", walker_version="v",
+                   run_dir=d, tester="t", log=lambda *a: None)
+    rr.results["FIX-mus-004"] = {"id": "FIX-mus-004", "lens": "music", "verdict": "STILL_FAILING",
+                                  "coverage_basis": "keyword", "method": "check", "prior_status": "FIXED_PENDING_VERIFY"}
+    out = {r["id"]: r for r in rr.coverage_rows({"music"}, set(), resumed={"music"})}
+    check("resumed FIXED verdict reaches coverage", out["FIX-mus-001"]["verdict"] == "FIXED"
+          and out["FIX-mus-001"]["attempted"] is True, out.get("FIX-mus-001"))
+    check("resumed later-row verdict reaches coverage", out["FIX-mus-002"]["verdict"] == "STILL_FAILING",
+          out.get("FIX-mus-002"))
+    check("this attempt's result beats the prior row", out["FIX-mus-004"]["verdict"] == "STILL_FAILING"
+          and out["FIX-mus-004"]["coverage_basis"] == "keyword", out.get("FIX-mus-004"))
+    check("resumed ticket with no row is NOT done", out["FIX-mus-003"]["verdict"] == "NOT_ATTEMPTED"
+          and out["FIX-mus-003"]["reason"] == cov.R_RESUMED_NO_ROWS, out.get("FIX-mus-003"))
+    check("no coverage row hides behind bare R_RESUMED",
+          all(r["reason"] != cov.R_RESUMED for r in out.values()), [r["reason"] for r in out.values()])
+
+
+for fn in (test_append_text_creates_parent, test_strict_failure_paths, test_walked_lenses_nested_dir, test_cap, test_recipe_verifies, test_keyword_still_reopens, test_rows, test_walked_lenses, test_resume_merge):
     fn()
 print("\n%d passed, %d failed" % (len(PASSES), len(FAILS)))
 print("TEST_COVERAGE", "PASS" if not FAILS else "FAIL")

@@ -43,17 +43,31 @@ def iso_et():
 
 
 def walker_sha(walker_dir):
-    """(sha, dirty) of the walker checkout; (None, None) when git can't tell."""
+    """(sha, dirty) of the walker checkout; (None, None) when git can't tell.
+    ULW v3 W4: when the walker dir is not a git checkout (a packaged run dir),
+    fall back to a WALKER_SHA file — <walker_dir>/WALKER_SHA, then
+    <walker_dir>/code/WALKER_SHA — so the run log stops printing walker=?
+    for packaged runs. Dirty is unknown for the file form: None, never a guess."""
     try:
         sha = subprocess.run(["git", "-C", walker_dir, "rev-parse", "HEAD"], capture_output=True, text=True,
                              timeout=10).stdout.strip()
-        if not sha_gate.is_hex_sha(sha):
-            return None, None
-        st = subprocess.run(["git", "-C", walker_dir, "status", "--porcelain", "--untracked-files=no", "--", "."],
-                            capture_output=True, text=True, timeout=10).stdout.strip()
-        return sha, bool(st)
+        if sha_gate.is_hex_sha(sha):
+            st = subprocess.run(["git", "-C", walker_dir, "status", "--porcelain", "--untracked-files=no", "--", "."],
+                                capture_output=True, text=True, timeout=10).stdout.strip()
+            return sha, bool(st)
     except Exception:
-        return None, None
+        pass
+    if walker_dir:
+        for cand in (os.path.join(walker_dir, "WALKER_SHA"),
+                     os.path.join(walker_dir, "code", "WALKER_SHA")):
+            try:
+                with open(cand) as f:
+                    sha = f.read().strip()
+                if sha_gate.is_hex_sha(sha):
+                    return sha, None
+            except Exception:
+                continue
+    return None, None
 
 
 def deploy_stamp(base_url, walker_dir=None, expect_sha=None, fetch=None, previous=None):
