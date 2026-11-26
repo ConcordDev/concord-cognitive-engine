@@ -101,12 +101,18 @@ export function LessonReader({ courseId, lessonId, courseTitle, onCourse, onLess
 function Video({ src, kind, videoRef }: { src: string; kind: 'file' | 'link'; videoRef: React.MutableRefObject<HTMLVideoElement | null> }) {
   const e = kind === 'file' ? { kind: 'file' as const, src } : videoEmbed(src);
   const [failed, setFailed] = useState(false);
+  // Inline allowlist at the sink: our own media stream, or an https link (the
+  // server already refuses anything else; this keeps javascript:/data: out
+  // even if a bad value ever reached the page).
+  const playable = e.src.startsWith('/api/media/') || e.src.startsWith('https://');
+  const openable = src.startsWith('https://');
+  if (!playable) return <p className="mt-5 rounded bg-black p-6 text-center text-[14px] text-[#e8dcbc]" role="alert">This lesson's video link isn't one that can be played.</p>;
   return (
     <div className="mt-5 overflow-hidden rounded bg-black" data-testid="rr-video">
       {e.kind === 'iframe' ? (
         <iframe src={e.src} title="Lesson video" className="aspect-video w-full" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
       ) : failed ? (
-        <p className="p-6 text-center text-[14px] text-[#e8dcbc]" role="alert">This video can't be played here. {kind === 'link' ? <a href={src} target="_blank" rel="noreferrer" className="underline">Open it in a new tab</a> : 'You may need to enroll to watch it.'}</p>
+        <p className="p-6 text-center text-[14px] text-[#e8dcbc]" role="alert">This video can't be played here. {kind === 'link' && openable ? <a href={src} target="_blank" rel="noreferrer" className="underline">Open it in a new tab</a> : 'You may need to enroll to watch it.'}</p>
       ) : (
         <video ref={videoRef} src={e.src} controls preload="metadata" className="aspect-video w-full" onError={() => setFailed(true)} />
       )}
