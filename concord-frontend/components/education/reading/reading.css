@@ -1,0 +1,191 @@
+/* The Reading Room — Education's only theme file.
+   A library reading room: green walls, mahogany, brass label plates on a
+   card-catalogue cabinet, typewritten index cards, cream book pages, and
+   the green glass of a banker's lamp over the carrel where you read. */
+
+.rr {
+  --rr-wall: #1d3a2e;
+  --rr-wall-2: #183126;
+  --rr-wood: #5b2f1c;
+  --rr-wood-2: #73402a;
+  --rr-wood-edge: #3d1e11;
+  --rr-brass: #b8964a;
+  --rr-brass-2: #d9bb72;
+  --rr-paper: #f5eedb;
+  --rr-paper-2: #ebe1c6;
+  --rr-card: #f1e6c9;
+  --rr-ink: #221f19;
+  --rr-ink-2: #514a3c;
+  --rr-muted: #857b66;
+  --rr-rule: #c7d3dd;
+  --rr-red: #a8382f;
+  --rr-lamp: #2e6b4c;
+  --rr-lamp-2: #3f8a63;
+  --rr-glow: rgba(255, 226, 150, 0.22);
+  --rr-good: #2d6e45;
+  --rr-bad: #a8382f;
+  --rr-line: #d8cba9;
+  --rr-shadow: 0 1px 0 rgba(0, 0, 0, 0.08), 0 3px 10px rgba(10, 20, 14, 0.35);
+  --rr-lift: 0 12px 28px rgba(10, 20, 14, 0.45), 0 2px 6px rgba(10, 20, 14, 0.25);
+  color: var(--rr-paper);
+  font-family: var(--rr-font-sans), 'Public Sans', system-ui, sans-serif;
+  font-size: 14px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18), transparent 120px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 9px),
+    var(--rr-wall);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rr { --rr-wall: #13261e; --rr-wall-2: #0f1f18; --rr-paper: #ece3cc; --rr-card: #e6d9b8; }
+}
+:root[data-theme="dark"] .rr { --rr-wall: #13261e; --rr-wall-2: #0f1f18; --rr-paper: #ece3cc; --rr-card: #e6d9b8; }
+
+.rr-book { font-family: var(--rr-font-book), 'Libre Baskerville', Georgia, serif; }
+.rr-type { font-family: var(--rr-font-type), 'Special Elite', 'Courier New', monospace; letter-spacing: 0.01em; }
+.rr-num { font-variant-numeric: tabular-nums; }
+
+/* The room's head: a mahogany rail with a brass plaque */
+.rr-rail {
+  background: linear-gradient(180deg, var(--rr-wood-2), var(--rr-wood) 60%, var(--rr-wood-edge));
+  border-bottom: 3px solid var(--rr-wood-edge);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.rr-plaque {
+  background: linear-gradient(180deg, var(--rr-brass-2), var(--rr-brass) 55%, #8f7232);
+  color: #2b220f; border-radius: 3px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.rr-room {
+  color: #f0e6cc; border-radius: 3px; padding: 6px 12px; font-weight: 600; letter-spacing: 0.02em;
+  transition: background-color 140ms ease, color 140ms ease;
+}
+.rr-room:hover { background: rgba(255, 240, 200, 0.08); }
+.rr-room[aria-current="page"] { background: rgba(0, 0, 0, 0.28); color: var(--rr-brass-2); box-shadow: inset 0 -2px 0 var(--rr-brass); }
+
+/* The card-catalogue cabinet: drawers with brass label holders */
+.rr-cabinet { background: linear-gradient(180deg, var(--rr-wood-2), var(--rr-wood)); border: 3px solid var(--rr-wood-edge); border-radius: 4px; box-shadow: var(--rr-shadow); }
+.rr-drawer {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.12)); border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 2px; color: #f0e6cc; transition: transform 150ms ease, background-color 150ms ease;
+}
+.rr-drawer:hover { transform: translateY(-2px); background: rgba(255, 240, 200, 0.06); }
+.rr-drawer[aria-pressed="true"] { transform: translateY(3px); background: rgba(0, 0, 0, 0.22); }
+.rr-drawer-label { background: var(--rr-card); color: var(--rr-ink); border: 2px solid var(--rr-brass); border-radius: 2px; padding: 2px 8px; min-width: 86%; text-align: center; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1); }
+.rr-drawer-pull { width: 36px; height: 9px; border-radius: 0 0 9px 9px; background: linear-gradient(180deg, var(--rr-brass-2), #8f7232); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+
+/* Catalogue cards: typewritten index cards with a punched hole */
+.rr-card {
+  position: relative; display: flex; flex-direction: column; text-align: left; width: 100%; min-height: 190px; padding: 14px 16px 26px;
+  color: var(--rr-ink);
+  background:
+    linear-gradient(transparent 33px, var(--rr-red) 33px 34px, transparent 34px),
+    repeating-linear-gradient(transparent 0 21px, var(--rr-rule) 21px 22px),
+    var(--rr-card);
+  background-position: 0 0, 0 13px, 0 0;
+  border-radius: 2px; box-shadow: var(--rr-shadow); transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.rr-card:hover { transform: translateY(-2px) rotate(-0.25deg); box-shadow: var(--rr-lift); }
+.rr-card::after { content: ""; position: absolute; left: 50%; bottom: 8px; width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: var(--rr-wall-2); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6); }
+.rr-stamp { border: 2px solid currentColor; border-radius: 3px; padding: 1px 7px; white-space: nowrap; transform: rotate(-4deg); font-weight: 700; letter-spacing: 0.06em; }
+
+/* Pages: a course's title page, a lesson, a certificate */
+.rr-page { background: var(--rr-paper); color: var(--rr-ink); border-radius: 2px; box-shadow: var(--rr-shadow), inset 0 0 60px rgba(120, 90, 30, 0.08); }
+.rr-page a { color: var(--rr-lamp); text-decoration: underline; text-underline-offset: 2px; }
+.rr-leader { flex: 1; border-bottom: 1px dotted var(--rr-muted); margin: 0 8px 5px; min-width: 16px; }
+
+/* The carrel: lamp light pooled over the page */
+.rr-carrel { background: radial-gradient(ellipse 70% 220px at 50% 0, var(--rr-glow), transparent 75%); }
+.rr-lamp { width: 120px; height: 18px; border-radius: 60px 60px 6px 6px; background: linear-gradient(180deg, var(--rr-lamp-2), var(--rr-lamp) 70%, #1c4631); box-shadow: 0 10px 30px rgba(255, 220, 140, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.25); }
+
+/* Reading prose */
+.rr-prose { font-family: var(--rr-font-book), 'Libre Baskerville', Georgia, serif; font-size: 16px; line-height: 1.75; color: var(--rr-ink); }
+.rr-prose :is(h1, h2, h3, h4) { font-family: var(--rr-font-book), 'Libre Baskerville', Georgia, serif; color: var(--rr-ink); letter-spacing: 0; }
+.rr-prose h1 { font-size: 1.6em; margin: 0.4em 0 0.5em; font-weight: 700; }
+.rr-prose h2 { font-size: 1.3em; margin: 1.3em 0 0.4em; font-weight: 700; }
+.rr-prose h3 { font-size: 1.1em; margin: 1.1em 0 0.3em; font-weight: 700; }
+.rr-prose p { margin: 0.75em 0; }
+.rr-prose ul { list-style: disc; padding-left: 1.4em; margin: 0.6em 0; }
+.rr-prose ol { list-style: decimal; padding-left: 1.4em; margin: 0.6em 0; }
+.rr-prose blockquote { border-left: 3px solid var(--rr-brass); padding-left: 1em; color: var(--rr-ink-2); font-style: italic; }
+.rr-prose code { font-family: ui-monospace, monospace; font-size: 0.85em; background: var(--rr-paper-2); padding: 1px 4px; border-radius: 2px; }
+.rr-prose pre { background: var(--rr-paper-2); padding: 12px; overflow-x: auto; border-radius: 2px; }
+.rr-prose table { border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+.rr-prose th, .rr-prose td { border: 1px solid var(--rr-line); padding: 4px 8px; }
+.rr-prose img { max-width: 100%; }
+
+/* Controls */
+.rr-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: 3px;
+  font-weight: 600; font-size: 13.5px; color: var(--rr-ink); background: var(--rr-paper-2); border: 1px solid var(--rr-line);
+  transition: background-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+.rr-btn:hover:not(:disabled) { background: #fff8e6; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); }
+.rr-btn:active:not(:disabled) { transform: translateY(1px); }
+.rr-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.rr-btn-lamp { background: var(--rr-lamp); color: #f6efd9; border-color: #1c4631; }
+.rr-btn-lamp:hover:not(:disabled) { background: var(--rr-lamp-2); }
+.rr-btn-ghost { background: transparent; border-color: transparent; }
+.rr-btn-ghost:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); box-shadow: none; }
+.rr-btn-danger { color: var(--rr-bad); }
+.rr-btn-room { background: rgba(0, 0, 0, 0.25); color: #f0e6cc; border-color: rgba(255, 240, 200, 0.18); }
+.rr-btn-room:hover:not(:disabled) { background: rgba(0, 0, 0, 0.4); }
+:where(.rr-input) { width: 100%; }
+.rr-input {
+  height: 34px; padding: 0 10px; border-radius: 3px; border: 1px solid var(--rr-line); background: #fffbef; color: var(--rr-ink);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+textarea.rr-input { height: auto; padding: 8px 10px; line-height: 1.55; }
+.rr-input:focus { outline: none; border-color: var(--rr-lamp); box-shadow: 0 0 0 3px rgba(46, 107, 76, 0.2); }
+.rr-input-room { background: rgba(0, 0, 0, 0.25); color: #f0e6cc; border-color: rgba(255, 240, 200, 0.2); }
+.rr-input-room::placeholder { color: rgba(240, 230, 204, 0.55); }
+.rr-btn:focus-visible, .rr-room:focus-visible, .rr-drawer:focus-visible, .rr-card:focus-visible, .rr-tab:focus-visible { outline: 2px solid var(--rr-brass-2); outline-offset: 2px; }
+
+.rr-tab { padding: 6px 10px; border-radius: 3px 3px 0 0; font-weight: 600; font-size: 12.5px; color: var(--rr-ink-2); border-bottom: 2px solid transparent; transition: color 120ms ease, border-color 120ms ease; }
+.rr-tab[aria-selected="true"] { color: var(--rr-ink); border-bottom-color: var(--rr-lamp); }
+
+.rr-ribbon { height: 6px; border-radius: 3px; background: var(--rr-paper-2); overflow: hidden; }
+.rr-ribbon > span { display: block; height: 100%; background: linear-gradient(90deg, var(--rr-red), #c4554a); transition: width 400ms ease; }
+.rr-ribbon-room { background: rgba(0, 0, 0, 0.3); }
+
+.rr-error { color: var(--rr-bad); font-weight: 600; }
+.rr-room-error { color: #f2b3a8; font-weight: 600; }
+.rr-skeleton { border-radius: 3px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.06)); background-size: 200% 100%; animation: rr-shimmer 1.3s ease-in-out infinite; }
+.rr-page .rr-skeleton { background: linear-gradient(90deg, var(--rr-paper-2), #f7f0dd, var(--rr-paper-2)); background-size: 200% 100%; }
+@keyframes rr-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+.rr-toast {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 70; max-width: min(560px, 92vw);
+  background: var(--rr-paper); color: var(--rr-ink); border-left: 4px solid var(--rr-lamp); padding: 10px 16px; border-radius: 3px;
+  box-shadow: var(--rr-lift); animation: rr-rise 180ms ease-out;
+}
+@keyframes rr-rise { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+.rr-check-q { border-top: 1px dashed var(--rr-line); padding: 14px 0; }
+.rr-check-q > fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.rr-check-q legend { padding: 0; }
+.rr-opt { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 3px; border: 1px solid transparent; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; }
+.rr-opt:hover { background: rgba(0, 0, 0, 0.035); }
+.rr-opt[data-picked="true"] { border-color: var(--rr-lamp); background: rgba(46, 107, 76, 0.07); }
+.rr-mark-right { color: var(--rr-good); }
+.rr-mark-wrong { color: var(--rr-bad); }
+
+.rr-margin { background: var(--rr-paper-2); color: var(--rr-ink); border-radius: 2px; box-shadow: var(--rr-shadow); }
+.rr-flip { perspective: 1200px; }
+.rr-flip-inner { position: relative; transition: transform 420ms ease; transform-style: preserve-3d; }
+.rr-flip-inner[data-flipped="true"] { transform: rotateY(180deg); }
+.rr-flip-face { position: absolute; inset: 0; backface-visibility: hidden; }
+.rr-flip-back { transform: rotateY(180deg); }
+
+.rr-cert {
+  background: radial-gradient(ellipse at center, #fffaf0, var(--rr-paper) 70%);
+  color: var(--rr-ink); border: 10px double var(--rr-brass); box-shadow: var(--rr-lift);
+}
+.rr-seal { width: 84px; height: 84px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #c4554a, var(--rr-red) 60%, #7a2620); color: #f8e7d4; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35), inset 0 0 0 4px rgba(255, 255, 255, 0.15); }
+
+.rr-scroll { scrollbar-width: thin; scrollbar-color: var(--rr-brass) transparent; }
+
+@media print {
+  .rr-noprint { display: none !important; }
+  .rr { background: #fff !important; }
+}

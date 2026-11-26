@@ -12,12 +12,8 @@ const FE = path.resolve(__dirname, '..');
 const read = (rel: string) => fs.readFileSync(path.join(FE, rel), 'utf8');
 
 describe('CB-0473 raw-internal-strings genus', () => {
-  it('FIX-009: genome velocity renders the server object shape with its real unit', () => {
-    const src = read('components/education/EducationEnginePanels.tsx');
-    expect(src).toContain('velocityLabel');
-    expect(src).toContain('perMinute');
-    expect(src).not.toContain('${summary.velocity}/wk');
-  });
+  // FIX-009 (genome velocity units) retired with the Education engine tabs:
+  // the Reading Room no longer renders the genome panel (its macros stay registered).
 
   it('FIX-foundry-009: foundry failures translate through one reason-words map', () => {
     const map = read('components/foundry/reasonWords.ts');
