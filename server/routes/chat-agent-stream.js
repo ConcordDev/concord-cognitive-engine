@@ -77,7 +77,7 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
     // instructions; ConKay's identity line is the server's own.
     const personaNote = personaStyleNote(persona);
     const extraSystemBlock = [
-      isConKay ? "You are ConKay, Concord's assistant." : "",
+      isConKay ? "You are ConKay (Kay), the user's assistant inside Concord: a capable, candid partner who takes every request seriously and does the work. You think for yourself, give real opinions with reasons, and use Concord's tools to look things up, build, design and save." : "",
       isConKay ? conkayToolPolicy() : "",
       plan?.hint || "",
     ].filter(Boolean).map((b) => `\n\n${b}`).join("");

@@ -120,6 +120,10 @@ const ACTION_RE = [
   /\b(?:remind me to|add to my (?:list|calendar|tasks))\b/i,
 ];
 
+// "make a table of my expenses", "a chart of my sales": a view of the user's data
+// (their Concord records via find_lens_actions, or numbers they gave), not a write.
+const DATA_VIEW_RE = /\b(?:table|chart|graph|plot|summary|breakdown|overview|report|spreadsheet|visuali[sz]ation)\s+(?:of|for|showing)\b/i;
+
 // "save this as a DTU / note" without the titled-with-content form chat.respond handles.
 const NOTE_SAVE_RE = /\b(?:save|store|jot|write down|keep|remember)\b[^.?!]{0,40}\b(?:as\s+(?:a\s+)?(?:dtu|note)|dtu|note)\b/i;
 
@@ -247,6 +251,43 @@ export function deterministicRouteReply(route, prompt, history = [], memoryBlock
   return null;
 }
 
+// Asks for the assistant's own thinking: an opinion, advice, an evaluation,
+// an explanation, help deciding, learning or planning. These used to fall into
+// "lookup" and get a forced web search, so "your honest opinion on my startup
+// idea" came back as a list of links (owner, 2026-11-26: "ConKay doesn't take
+// me serious"). The model answers; tools stay available for a specific fact.
+const THINK_RES = [
+  /\b(?:your|an?|the)\s+(?:honest|real|brutal|blunt|frank|candid|unfiltered|expert|professional)?\s*(?:opinion|take|thoughts|view|feedback|advice|verdict|critique)\b/i,
+  /\bwhat\s+do\s+(?:you|u)\s+(?:think|reckon|suggest|recommend)\b/i,
+  /\b(?:is|was|would)\s+(?:this|it|that)\s+(?:be\s+)?(?:a\s+)?(?:good|bad|smart|dumb|stupid|wise|terrible|great|realistic|worth it|crazy|reasonable)(?:\s+(?:idea|plan|move|choice|decision))?\b/i,
+  /\b(?:is\s+it\s+worth|worth\s+it)\b/i,
+  /\bshould\s+i\b/i,
+  /\b(?:help|teach)\s+me\s+(?:to\s+)?(?:think|decide|figure|work out|understand|study|learn|prepare|prep|practi[cs]e|plan|organi[sz]e|get better|improve|prioriti[sz]e|deal with|handle|cope|talk|negotiate|ask)\b/i,
+  /^\s*(?:(?:can|could|would)\s+you\s+)?(?:please\s+)?explain\b/i,
+  /\b(?:like\s+i'?m\s+(?:five|5|a\s+kid|new)|in\s+(?:simple|plain)\s+(?:terms|english|words)|eli5)\b/i,
+  /\b(?:pros\s+and\s+cons|trade-?offs?|weigh\s+(?:up\s+)?(?:my|the)\s+options|talk\s+(?:me\s+)?through)\b/i,
+  /\b(?:feedback|notes)\s+on\s+(?:my|this)\b|\b(?:critique|evaluate|assess|grade|rate)\s+(?:my|this)\b/i,
+  /\bhow\s+(?:do|can|should)\s+i\s+(?:get better|improve|handle|deal|cope|approach|start|stop|tell|convince|talk|ask|prepare|stay|become|learn)\b/i,
+  // "is my research paper any good?", "how is my interview prep looking?"
+  /\b(?:is|are)\s+(?:my|this|these|our)\b[^.?!]{0,40}\b(?:any good|good enough|ok(?:ay)?|right|correct|strong|weak|ready|too (?:long|short|much))\b/i,
+  /\bhow(?:'s| is| are| does| do)\s+(?:my|this|our)\b[^.?!]{0,40}\b(?:look(?:ing)?|sound(?:ing)?|read(?:ing)?|com(?:e|ing) across)\b/i,
+  // "check my business plan", "look over my essay": read it and give a view.
+  /\b(?:check|look\s+over|go\s+over|review|read)\s+(?:over\s+)?(?:my|this|our)\s+(?:business\s+plan|plan|essay|resume|résumé|cv|cover\s+letter|pitch(?:\s+deck)?|idea|draft|writing|paper|application|proposal|argument|story|speech|outline|strategy)\b/i,
+];
+/** True when the ask is for the assistant's own reasoning, not a lookup. */
+export function isThinkAsk(prompt) {
+  const p = String(prompt || "");
+  if (!p || p.length > 4000) return false;
+  // "what do you think about that" / "your opinion?" alone: plain conversation (no route).
+  if (ABOUT_ASSISTANT_RE.test(p) && contentWords(p).length < 3) return false;
+  return THINK_RES.some((r) => r.test(p));
+}
+// The user's own records in Concord ("my schedule this week", "my budget"):
+// their lenses through find_lens_actions, never a web search.
+export const OWN_DATA_RE = /\bmy\s+(?:schedule|calendar|week|weekend|day|tasks?|to-?dos?|projects?|budget|expenses|spending|goals|habits|workouts?|meetings?|appointments?|inbox|boards?|courses?)\b/i;
+// "what's 15% of 240", "20 percent of 85": arithmetic, not a web search.
+const PERCENT_OF_RE = /\b\d+(?:\.\d+)?\s*(?:%|percent)\s+(?:of|off)\s+\$?\d/i;
+
 /**
  * Why this prompt should go through the agent tool loop, or null.
  * @param {{prevRoute?: string, prevReply?: string}} [opts]  agentRoute and text of the previous assistant turn
@@ -278,7 +319,7 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (MUSIC_RE.some((r) => r.test(p))) return "music";
   if (URL_RE.test(p) && BROWSE_ASK_RE.test(p)) return "browse";
   if (isCodeAsk(p)) return "code";
-  if (ACTION_RE.some((r) => r.test(p))) return "action";
+  if (ACTION_RE.some((r) => r.test(p)) && !DATA_VIEW_RE.test(p)) return "action";
   // "what did i save earlier", "whats my dog's name again": the chat memory and the
   // user's own DTUs, not the web and not "you didn't mention it".
   if (isRecallAsk(p)) return "recall";
@@ -286,7 +327,10 @@ export function chatAgentRoute(prompt, opts = {}) {
   if (opts?.prevRoute === "web" && WEB_FOLLOWUP_RE.test(p)) return "web";
   if (opts?.prevReply && ASKED_SEARCH_TOPIC_RE.test(String(opts.prevReply).slice(-400))
     && p.split(/\s+/).length <= 8 && !NOT_A_TOPIC_RE.test(p)) return "web";
-  if (CONVERT_RE.test(p)) return "compute";
+  if (CONVERT_RE.test(p) || PERCENT_OF_RE.test(p)) return "compute";
+  // Opinion, advice, explanation, help deciding or learning: the model thinks
+  // (tools stay available for a fact it needs); never a forced lookup.
+  if (isThinkAsk(p)) return "think";
   if (DTU_RE.some((r) => r.test(p))) return "dtu";
   // "solve conflicts with my coworker" is not a computation: needs math content too.
   if (COMPUTE_RE.some((r) => r.test(p)) && MATH_CONTENT_RE.test(p)) return "compute";
@@ -338,6 +382,7 @@ export function isCodeAsk(text) {
 
 const ROUTE_HINT = {
   long: "This is a big multi-step job. Call start_long_task with the user's goal in their own words (mode research, plan, code or general). Then tell the user the job id, that it keeps working in the background, and that the result will be posted here. Don't try to do the whole job in this reply.",
+  think: "The user wants your own thinking: an opinion, advice, an explanation, or help deciding, learning or planning. Take it seriously and engage with their actual situation. Give your real view and your reasons, the trade-offs or risks that matter, what you would ask them to pin it down, and a concrete next step. Be direct: if something is a bad idea, say so kindly and say why; if it depends, say on what. Use a tool only when a specific fact you need is uncertain or current (a price, a figure, a recent event, a law) and say what you looked up. Do not answer with a list of links, do not hedge into nothing, and do not tell them to ask someone else instead of answering.",
   general: "Do the work, don't just describe it. Use your tools whenever they help: find_lens_actions then run_lens_action to make or change something in Concord as this user, web_search or browse_url for anything current or factual, run_compute for math, textbook_lookup for science and engineering facts, create_dtu to save, start_long_task for a big multi-step job. Chain several tool calls in this turn when the task needs it, then report what you did and what the tools returned. Answer directly without tools only when it is plainly conversation or opinion. Never claim you did something a tool did not return.",
   jobs: "The user is asking about their background jobs. Call check_long_task (with the job id if they gave one) and report only what it returned: status, tool steps, latest notes, and the result if it finished.",
   lookup: "If a CONCORD KNOWLEDGE note above answers it (or the user asks about a Concord DTU), answer from that note and name the DTU; no web_search needed. Otherwise answer this with a tool, not from memory. Facts, current events, prices, scores, products, how-to steps, recipes, places: call web_search first with a short query in the user's own words (no year unless they gave one; add news or latest for anything recent), then answer from its results with each item's link (you may explain the results in your own words). For news, lead with the newest dated items and name each outlet and date. For the game last night with no team named, report the ESPN finals the search returns across the major US leagues instead of asking which game. Textbook, science and engineering facts (material constants, physical laws, definitions, derivations), or any ask for a textbook or OpenStax source: call textbook_lookup first and answer from its passages with the book, section and link. The user's own Concord data, or making/doing something in Concord (tasks, calendar, notes, recipes, budgets, plans, music, designs): call find_lens_actions with the intent, then run_lens_action with the best match, as this user. If the tools return nothing useful, say so plainly before giving any general answer. When the question has several parts or the first results are thin, run two or three searches from different angles in the same turn, and browse_url the best source when its snippet does not answer the question.",
@@ -530,6 +575,10 @@ export function answerLongTaskRoute({ runMacro, ctx, prompt, route, lensActions 
   if (route === "jobs") {
     const jobId = /\bmar_[a-z0-9-]+\b/i.exec(prompt)?.[0] || null;
     const st = longTaskStatus(ctx.db, userId, jobId);
+    // No jobs and the ask never said "background"/"long" or a job id: it was
+    // about something else ("how's my research going?" with nothing running),
+    // so the model answers it instead of a flat "no background jobs".
+    if (st?.ok && !(st.jobs || []).length && !jobId && !/\b(?:background|long)\s+(?:jobs?|tasks?)\b/i.test(prompt)) return null;
     return { ...base, reply: formatLongTaskStatus(st), toolCalls: [{ tool: "check_long_task", ok: !!st.ok, jobs: (st.jobs || []).map((j) => ({ jobId: j.jobId, status: j.status, steps: j.steps, turns: j.turns })) }] };
   }
   const r = startLongTask(ctx.db, { userId, goal: prompt, origin: { surface, sessionId } });

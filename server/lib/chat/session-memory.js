@@ -179,10 +179,10 @@ export function memoryDtuDue(userTurns, { evicted = false } = {}) {
 }
 
 // ── "what did I save / what did I say" ────────────────────────────────────
-const SAVED_RECALL_RE = /\bwhat(?:'?s| is| was)?\s+(?:the\s+|my\s+|that\s+)?(?:code ?word|password|passphrase|pass ?code|secret(?:\s+word)?|magic word|safe ?word)\b|\b(?:which|what)\s+(?:code ?word|word|phrase|number|name)\s+(?:did|have)\s+i\b|\bwhat did i (?:give|gave|tell|ask) you(?: to remember)?\b|\bwhat (?:did )?i (?:asked|told) you to remember\b|\bremember what i (?:said|told you|gave you)\b|\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bdo you remember\b|\bremind me (?:what|of|the)\b|\bwhen i asked\b|\bwhat (?:does|did) my\b[^.?!]{0,30}\b(?:note|notes|dtu)\b|\bmy\b[^.?!]{0,20}\bnote (?:says|said)\b/i;
+const SAVED_RECALL_RE = /\bwhat(?:'?s| is| was)?\s+(?:the\s+|my\s+|that\s+)?(?:code ?word|password|passphrase|pass ?code|secret(?:\s+word)?|magic word|safe ?word)\b|\b(?:which|what)\s+(?:code ?word|word|phrase|number|name)\s+(?:did|have)\s+i\b|\bwhat did i (?:give|gave|tell|ask) you(?: to remember)?\b|\bwhat (?:did )?i (?:asked|told) you to remember\b|\bremember what i (?:said|told you|gave you)\b|\b(?:what|which|show|list|find)\b[^.?!]{0,30}\b(?:did i|have i|i)\s+(?:save|saved|note|noted|store|stored|jot|write down|add|added|make|made)\b|\bmy\s+(?:saved\s+)?(?:notes|dtus)\b|\bwhat did i (?:say|tell you|mention)\b|\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b|\bwhen(?:'?s| is| was)\s+my\b|\b(?:what|show me what|the last thing|everything)\s+(?:you|we)\s+(?:made|built|did|wrote|designed|generated)\b|\bdo you remember\b|\bremind me (?:what|of|the)\b|\bwhen i asked\b|\bwhat (?:does|did) my\b[^.?!]{0,30}\b(?:note|notes|dtu)\b|\bmy\b[^.?!]{0,20}\bnote (?:says|said)\b/i;
 // "what's my X" is recall only with a recall cue or a fact noun; "what's my brother been up to" is chat.
-const MY_FORM_RE = /\bwhat(?:'?s| is| was)\s+my\b|\bwhats my\b/i;
-const RECALL_CUE_RE = /\b(?:again|earlier|before|said|told|gave|give|mentioned|remember|saved|code ?word|password|passphrase|secret)\b|\b(?:name|budget|address|birthday|plan|note|notes|order|hotel|flight|password hint|dog|cat|pet)\b/i;
+const MY_FORM_RE = /\b(?:what|when)(?:'?s| is| was)\s+my\b|\bwhats my\b/i;
+const RECALL_CUE_RE = /\b(?:again|earlier|before|last time|said|told|gave|give|mentioned|remember|saved|code ?word|password|passphrase|secret)\b|\b(?:name|budget|address|birthday|plan|note|notes|order|hotel|flight|password hint|dog|cat|pet)\b/i;
 const NOT_RECALL_RE = /\b(?:been up to|up to|doing|feeling|horoscope|ip address|location)\b/i;
 /** A question about what the user said or saved earlier. */
 export function isRecallAsk(prompt) {
@@ -196,7 +196,7 @@ export function isRecallAsk(prompt) {
 // Cockpit audit 2026-10-19: the remember turn had no route and the recall
 // question ran a web search for the phrase. Both are answered here from the
 // chat's own turns, with no model call, so the value comes back verbatim.
-const REMEMBER_RE = /^\s*(?:(?:hey|yo|ok(?:ay)?|so|also|and|please|pls|concord|conkay)[,\s]+)*(?:please\s+)?(?:remember|memori[sz]e|keep in mind|don'?t forget|do not forget)\s*[:,-]?\s+(?!(?:when|what|how|why|if|whether|the time)\b)(?:that\s+)?(.{2,300}?)\s*[.!]*$/i;
+const REMEMBER_RE = /^\s*(?:(?:hey|yo|ok(?:ay)?|so|also|and|please|pls|concord|conkay|kay)[,\s]+)*(?:(?:can|could|will|would)\s+(?:you|u)\s+)?(?:please\s+)?(?:remember|memori[sz]e|keep in mind|don'?t forget|do not forget)\s*[:,-]?\s+(?!(?:when|what|how|why|if|whether|the time)\b)(?:that\s+)?(.{2,300}?)\s*[.!]*$/i;
 const LABEL_WORDS = "code ?word|password|passphrase|pass ?code|pin|secret(?:\\s+word)?|magic word|safe ?word|word|phrase|number|key|name";
 const LABEL_RE = new RegExp(String.raw`\b(${LABEL_WORDS})\b(?:\s*(?:is|=|:|was|will be)\s*|\s+)["“'‘]?([A-Za-z0-9][\w-]*(?:[ ][A-Za-z0-9][\w-]*){0,3}?)["”'’]?\s*(?:[.,!?]|$)`, "i");
 const normLabel = (l) => String(l || "").toLowerCase().replace(/\s+/g, " ").replace(/^code ?word$/, "codeword").replace(/^pass ?code$/, "passcode").replace(/^safe ?word$/, "safeword").replace(/^secret\s+word$/, "secret");
