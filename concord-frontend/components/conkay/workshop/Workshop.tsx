@@ -13,15 +13,19 @@
  * /lenses/conkay, /conkay/demo, /conkay/designs[/id[/live]] and
  * /conkay/workbench all mount this component.
  *
- * Default screen = three things: the object, Kay's ring + command line, a
- * thin rail. Everything else is summoned and dismissed.
+ * ConKay opens on Kay (owner, 2026-11-26: "Kay first"): the conversation
+ * fills the screen (KayHome) and the Workshop — the object, Kay's log, the
+ * rail — slides in when she builds something you asked for, or when you
+ * open it. While the conversation is the whole screen no study is in view,
+ * so nothing typed is read as an edit of the I-beam. Deep links into a view
+ * or a design (and /conkay/designs, /conkay/workbench) open the Workshop.
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
-  Boxes, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal, LayoutGrid, Cpu, Box, ChevronUp, ChevronDown, PanelRightOpen,
+  ArrowLeft, Boxes, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal, LayoutGrid, Cpu, Box, ChevronUp, ChevronDown, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DISPLAY_LABELS, VIEW_LABELS, utilizationColor, type DisplayMode, type ViewPreset } from '@/lib/conkay/beam-view';
@@ -36,6 +40,7 @@ import { DesignBuilder } from '../designs/DesignBuilder';
 import { LiveBuild } from '../designs/LiveBuild';
 import type { BeamCallouts } from '../workspace/BeamViewport';
 import { KayLog, SweepTable } from './KayLog';
+import { KayHome } from './KayHome';
 import { useWorkshopController, type WorkshopController } from './useWorkshopController';
 import './workshop.css';
 import { workshopFontVars } from './workshopFonts';
@@ -75,10 +80,18 @@ export function Workshop(props: WorkshopProps) {
   );
 }
 
+type Stage = 'kay' | 'workshop';
+
 function WorkshopInner({ guest = false, initialView, designId: initialDesign = null }: WorkshopProps) {
   const [view, setViewState] = useState<WorkshopView>(initialView ?? 'table');
   const [designId, setDesignId] = useState<string | null>(initialDesign);
   const [logOpen, setLogOpen] = useState(true);
+  const [stage, setStage] = useState<Stage>(initialView || initialDesign ? 'workshop' : 'kay');
+  const stageRef = useRef<Stage>(stage);
+  stageRef.current = stage;
+  const [draft, setDraft] = useState<{ id: number; text: string } | null>(null);
+  // Set when the person sends something; a build that follows opens the Workshop.
+  const asked = useRef(false);
 
   // A newly designed object comes down onto the table through go(), so
   // the URL follows (?design=<id>) and a reload lands on it.
@@ -86,6 +99,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
   const c = useWorkshopController({
     guest,
     onDesigned: (id) => goRef.current('table', id),
+    studyActive: () => stageRef.current === 'workshop',
   });
   const { router, pathname, params } = c;
 
@@ -96,20 +110,35 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
     const qd = params.get('design');
     if (qv === 'table' || qv === 'wall' || qv === 'hood') setViewState(qv);
     if (qd) setDesignId(qd);
+    if (qv || qd || params.get('stage') === 'workshop') setStage('workshop');
     // Read once on mount; afterwards the state drives the URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const syncUrl = useCallback((v: WorkshopView, d: string | null) => {
+  const syncUrl = useCallback((v: WorkshopView, d: string | null, st: Stage = 'workshop') => {
     const q = new URLSearchParams(params.toString());
     if (v === 'table') q.delete('view'); else q.set('view', v);
     if (d) q.set('design', d); else q.delete('design');
+    if (st === 'workshop' && v === 'table' && !d) q.set('stage', 'workshop'); else q.delete('stage');
     const s = q.toString();
     router.replace(s ? `${pathname}?${s}` : pathname);
   }, [params, pathname, router]);
   const go = useCallback((v: WorkshopView, d: string | null = designId) => {
-    setViewState(v); setDesignId(d); syncUrl(v, d);
+    setStage('workshop'); setViewState(v); setDesignId(d); syncUrl(v, d, 'workshop');
   }, [designId, syncUrl]);
   goRef.current = go;
+  const toKay = useCallback(() => {
+    asked.current = false;
+    setStage('kay'); setViewState('table'); setDesignId(null); syncUrl('table', null, 'kay');
+  }, [syncUrl]);
+  const sendFromKay = useCallback((t: string) => { asked.current = true; setDraft(null); void c.send(t); }, [c]);
+
+  // Kay built something you asked for (a design, a 3D model, a study solve):
+  // the Workshop opens beside the conversation to show it.
+  const built = Boolean(c.design || c.viewMesh || c.status === 'solving');
+  useEffect(() => {
+    // Once shown, the build has been seen: going back to the conversation stays there.
+    if (stage === 'kay' && asked.current && built) { asked.current = false; go('table', null); }
+  }, [built, stage, go]);
   const openDesign = useCallback((id: string) => go('table', id), [go]);
   const closeDesign = useCallback(() => go('wall', null), [go]);
 
@@ -122,6 +151,9 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
         </div>
       )}
 
+      {stage === 'kay' ? (
+        <KayHome c={c} onSend={sendFromKay} draft={draft} onDraft={(t) => setDraft({ id: Date.now(), text: t })} onOpenWorkshop={() => go('table', null)} />
+      ) : (<>
       {/* Phone / tablet: the three panes as tabs */}
       <div role="tablist" aria-label="Workspace panels" className="m-2 flex gap-1 rounded-full border border-[color:var(--ws-line)] p-1 lg:hidden">
         {([['model', 'Table', Boxes], ['chat', 'Kay', MessageSquare], ['browse', 'Browse', PanelLeft]] as const).map(([id, label, Icon]) => (
@@ -139,6 +171,10 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
             <div className="ws-glow-text text-[17px] font-semibold tracking-[0.32em] text-[color:var(--ws-arc)]">CONKAY</div>
             <div className="ws-label mt-0.5">The workshop</div>
           </div>
+          <button type="button" onClick={toKay} data-testid="back-to-kay"
+            className="flex items-center gap-2 rounded-md border border-[color:var(--ws-line-strong)] px-2.5 py-1.5 text-[13px] text-[color:var(--ws-text)] transition-colors hover:bg-[color:var(--ws-arc-soft)]">
+            <ArrowLeft className="h-4 w-4" aria-hidden /> Back to the conversation
+          </button>
           <nav aria-label="Workshop views" className="flex flex-col gap-0.5">
             {VIEWS.map((v) => (
               <button key={v.id} type="button" onClick={() => go(v.id)} aria-current={view === v.id ? 'page' : undefined}
@@ -191,6 +227,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
         )}
         {!logOpen && c.mobileTab === 'chat' && <div className="flex min-h-0 flex-col lg:hidden"><KayLog c={c} /></div>}
       </div>
+      </>)}
     </div>
   );
 }
@@ -290,7 +327,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
           <BeamViewport
             dims={inputs.dims} support={inputs.support} utilization={c.utilization} view={c.view} display={c.display} showDims={c.showDims}
             leftInset={c.paramsOpen ? 0.22 : 0} solving={status === 'solving'} callouts={callouts}
-            onDimFocus={(key) => { c.setParamsOpen(true); c.setMobileTab('model'); setTimeout(() => c.paramRef.current?.focus(key), 50); }}
+            onDimFocus={(key) => { c.setParamsOpen(true); c.setMobileTab('model'); requestAnimationFrame(() => requestAnimationFrame(() => c.paramRef.current?.focus(key))); }}
           />
         )}
 

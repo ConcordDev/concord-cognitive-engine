@@ -41,10 +41,13 @@ const BEAM = /\b(?:i-?beam|beam|girder|joist|lintel)s?\b/;
 const BEAM_BRIDGE = /\b(?:beam|girder)\s+bridge\b/;
 
 /** True when the text names a design object other than the beam (parseWorkspaceCommand backs off). */
+/** Other things a person builds ("a shelf that holds 50 kg"): Kay designs those; they are not edits of the beam. */
+const OTHER_OBJECT = /\b(?:shelf|shelves|shelving|table|desk|chair|stool|bench|bookcase|bookshelf|cabinet|stand|holder|hook|rack|frame|deck|fence|gate|ladder|ramp|stairs?|gear\s*box|gearbox|enclosure|housing|box|robot|drone|bike|bicycle|trailer|cart|boat|wheel|axle|shaft|spring|hinge|mount|clamp|tripod|pergola|shed)s?\b/;
+
 export function namesNonBeamObject(text: string): boolean {
   const t = String(text || '').toLowerCase();
   if (BEAM_BRIDGE.test(t)) return false;
-  return CAR.test(t) || TRUSS.test(t) || BRACKET.test(t) || SENTINEL.test(t) || NUCLEAR.test(t) || FORMULATION.test(t) || MIXTURE.test(t);
+  return CAR.test(t) || TRUSS.test(t) || BRACKET.test(t) || SENTINEL.test(t) || NUCLEAR.test(t) || FORMULATION.test(t) || MIXTURE.test(t) || OTHER_OBJECT.test(t);
 }
 
 export function detectNewDesign(text: string): NewDesignIntent | null {

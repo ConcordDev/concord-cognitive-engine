@@ -22,6 +22,12 @@ interface Props {
   variant?: 'classic' | 'workshop';
   /** Kay's most recent line, shown above the command line in the workshop. */
   lastLine?: string | null;
+  /** What the empty box suggests. */
+  placeholder?: string;
+  /** The resting line under the box. */
+  hint?: string;
+  /** A starter to put in the box (and focus) for the person to finish; a new id re-applies it. */
+  draft?: { id: number; text: string } | null;
 }
 
 function Waveform({ levelRef, active }: { levelRef: React.MutableRefObject<number>; active: boolean }) {
@@ -52,8 +58,17 @@ function Waveform({ levelRef, active }: { levelRef: React.MutableRefObject<numbe
   return <canvas ref={canvasRef} width={192} height={36} className="h-9 w-32 shrink-0 sm:w-48" aria-hidden />;
 }
 
-export function VoiceComposer({ busy, onSend, speakText, variant = 'classic', lastLine = null }: Props) {
+export function VoiceComposer({ busy, onSend, speakText, variant = 'classic', lastLine = null, placeholder, hint, draft = null }: Props) {
   const [text, setText] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const draftId = useRef<number | null>(null);
+  useEffect(() => {
+    if (!draft || draftId.current === draft.id) return;
+    draftId.current = draft.id;
+    setText(draft.text);
+    const el = inputRef.current;
+    if (el) { el.focus(); el.setSelectionRange(draft.text.length, draft.text.length); }
+  }, [draft]);
   const [voiceOn, setVoiceOn] = useState(false);
   const sendRef = useRef(onSend);
   useEffect(() => { sendRef.current = onSend; }, [onSend]);
@@ -98,7 +113,7 @@ export function VoiceComposer({ busy, onSend, speakText, variant = 'classic', la
   else if (voiceOn && voice.speaking) status = 'ConKay is speaking…';
   else if (voiceOn && voice.listening) status = voice.interim ? `“${voice.interim}”` : 'Listening… (tap mic or press Space to stop)';
   else if (voiceOn) status = 'Starting microphone…';
-  else status = 'Type, or tap the mic and speak. Reference dimensions, loads, supports or materials.';
+  else status = hint ?? 'Type, or tap the mic and speak. Reference dimensions, loads, supports or materials.';
 
   if (variant === 'workshop') {
     const ringState: KayState = !voice.supported ? 'unavailable'
@@ -126,9 +141,10 @@ export function VoiceComposer({ busy, onSend, speakText, variant = 'classic', la
           <div className="min-w-0 flex-1">
             <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
               <input
+                ref={inputRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Tell Kay what to build — “t_w = 8 mm and re-run”, “make it lighter”"
+                placeholder={placeholder ?? 'Tell Kay what to build — “t_w = 8 mm and re-run”, “make it lighter”'}
                 aria-label="Message ConKay"
                 className="w-full min-w-0 bg-transparent text-[15px] text-[color:var(--ws-text)] placeholder:text-[color:var(--ws-faint)] focus:outline-none"
               />

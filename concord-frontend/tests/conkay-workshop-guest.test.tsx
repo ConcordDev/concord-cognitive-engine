@@ -73,7 +73,7 @@ afterEach(() => { vi.unstubAllGlobals(); cleanup(); });
 
 describe('Workshop — guest', () => {
   it('opens on the start screen, shows no result, and touches no account store', async () => {
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     expect(await screen.findByText('What do you want to build?')).toBeTruthy();
     expect(screen.queryByText(/FEA util\./)).toBeNull();
     expect(screen.getByText(/Nothing is saved/)).toBeTruthy();
@@ -82,7 +82,7 @@ describe('Workshop — guest', () => {
   });
 
   it('runs the FEA through the public route and shows the solver numbers', async () => {
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     runFea();
     await waitFor(() => expect(screen.getByText('FEA util. 29.3%')).toBeTruthy());
     expect(screen.getByText('Hand check agrees')).toBeTruthy();
@@ -90,7 +90,7 @@ describe('Workshop — guest', () => {
   });
 
   it('"make it lighter" sweeps through the public route and offers the lightest section', async () => {
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     fireEvent.change(screen.getByLabelText('Message ConKay'), { target: { value: 'make it lighter' } });
     fireEvent.click(screen.getByLabelText('Send'));
     expect(await screen.findByText(/lightest passing section is t_w = 6 mm/)).toBeTruthy();
@@ -98,7 +98,7 @@ describe('Workshop — guest', () => {
   });
 
   it('keeping a study sends the visitor to sign-up', async () => {
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     runFea();
     const keep = await screen.findByRole('button', { name: 'Create an account to keep it' });
     fireEvent.click(keep);
@@ -106,7 +106,7 @@ describe('Workshop — guest', () => {
   });
 
   it('a question for Kay says it needs an account instead of calling the agent', async () => {
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     fireEvent.change(screen.getByLabelText('Message ConKay'), { target: { value: 'why do I-beams have flanges?' } });
     fireEvent.click(screen.getByLabelText('Send'));
     expect(await screen.findByText(/needs an account/)).toBeTruthy();
@@ -117,7 +117,7 @@ describe('Workshop — guest', () => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/beam')
       ? { status: 400, json: async () => ({ ok: false, error: 'the web is wider than the flanges' }) }
       : { status: 200, json: async () => ({ ok: true, materials: MATERIALS }) })));
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     runFea();
     expect((await screen.findAllByText(/the web is wider than the flanges/)).length).toBeGreaterThan(0);
     expect(screen.queryByText(/FEA util\./)).toBeNull();
@@ -135,7 +135,7 @@ describe('Workshop — guest, server overload', () => {
       await new Promise<void>((r) => { release = r; });
       return { status: 200, json: async () => ({ ok: true, saved: false, result: RESULT }) };
     }));
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     runFea();
     expect(await screen.findByText(/ConKay is warming up after a restart\. Retrying \(2 of 4\)/)).toBeTruthy();
     release();
@@ -150,7 +150,7 @@ describe('Workshop — guest, server overload', () => {
       beamCalls++;
       return { status: 503, json: async () => ({ ok: false, error: 'service_overloaded', code: 'service_overloaded', retryAfterS: 0 }) };
     }));
-    render(<Workshop guest />);
+    render(<Workshop guest initialView="table" />);
     runFea();
     expect((await screen.findAllByText('ConKay is busy right now. Try again in a few seconds.')).length).toBeGreaterThan(0);
     expect(beamCalls).toBe(4);

@@ -113,6 +113,9 @@
  * ───────────────────────────────────────────────────────────────────── */
 .workshop .bg-\[\#040a13\],
 .workshop .bg-\[\#050d18\] { background-color: transparent; }
+/* An opened design covers the study: it stays opaque (it used to inherit the
+   transparency above, so the beam and its parameter card showed through). */
+.workshop .ws-overlay { background-color: var(--ws-deep); }
 .workshop .bg-\[\#06101c\],
 .workshop .bg-\[\#06101c\]\/80,
 .workshop .bg-\[\#06101c\]\/85,

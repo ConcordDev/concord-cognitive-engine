@@ -72,7 +72,16 @@ const clock = (iso: string) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 };
 
-export function useWorkshopController({ guest = false, onDesigned }: { guest?: boolean; onDesigned?: (id: string) => void } = {}) {
+const BARE_YES_RE = /^\s*(?:yes|yeah|yep|sure|ok(?:ay)?|please|go ahead|go for it|do it|run it|sounds good|let'?s do it)(?:[\s,]+(?:please|do it|go ahead|run it))?[\s.!]*$/i;
+const OFFER_RE = /\b(?:want me to|shall i|should i|would you like me to|do you want me to|i can (?:make|build|run|search|design|draft|write|start))\b/i;
+
+export function useWorkshopController({ guest = false, onDesigned, studyActive }: {
+  guest?: boolean;
+  onDesigned?: (id: string) => void;
+  /** False while the conversation is the whole screen: no study is in view, so a
+   *  message is never read as an edit of the I-beam ("run it", a load, "resonance"). */
+  studyActive?: () => boolean;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -410,6 +419,11 @@ export function useWorkshopController({ guest = false, onDesigned }: { guest?: b
     try {
       const intent = detectNewDesign(text);
       if (intent) { pendingBrief.current = null; await startDesign(intent, text); return; }
+      // "Yes, do it" after Kay offered something is a go-ahead for her offer, not a re-solve of the beam.
+      if (BARE_YES_RE.test(text)) {
+        const last = [...messagesRef.current].reverse().find((m) => m.role === 'assistant' && !m.pending);
+        if (last && OFFER_RE.test(last.text.slice(-400))) { await askAgent(text); return; }
+      }
       if ((design || pendingBrief.current) && /\b(?:fea|finite[- ]element|stress analysis)\b/i.test(text) && !/\b(?:i-?beam|t_w|t_f|flange|web)\b/i.test(text)) {
         // "run FEA on it" means the bracket/part just designed, not the I-beam study.
         pendingBrief.current = null;
@@ -421,13 +435,17 @@ export function useWorkshopController({ guest = false, onDesigned }: { guest?: b
         reply(push({ role: 'assistant', text: '', pending: true }), 'Dropped that brief.');
         return;
       }
-      if (pendingBrief.current && !/\b(?:run fea|save|keep|i-?beam|beam|t_w|t_f|flange|web)\b/i.test(text)) {
+      if (pendingBrief.current && !/\b(?:run fea|save|keep|i-?beam|beam|t_w|t_f|flange|web)\b/i.test(text)
+        && (/\d|\bdefaults?\b/i.test(text))) {
         // Answering the questions a brief came back with ("3 m tall, 6 panels").
         const brief = `${pendingBrief.current}. ${text}`;
         pendingBrief.current = null;
         await startDesign({ kind: 'workbench', domain: 'truss', label: 'design' }, brief);
         return;
       }
+      // In the conversation (no study on screen) everything else is Kay's to answer:
+      // nothing below here (FEA, sweeps, beam edits, scope refusals) applies to a study you can't see.
+      if (studyActive && !studyActive()) { await askAgent(text); return; }
       // "Make it lighter": sweep the web through the solver and offer the
       // lightest section that still passes — never a guessed number.
       if (!design && !viewMesh && /\b(?:make (?:it|this) lighter|lighten (?:it|this)|lightest (?:section|beam))\b/i.test(text)) {
@@ -465,7 +483,7 @@ export function useWorkshopController({ guest = false, onDesigned }: { guest?: b
     } finally {
       setBusy(false);
     }
-  }, [askAgent, busy, design, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign, sweepWeb, viewMesh]);
+  }, [askAgent, busy, design, inputs, keep, materials, persistModel, push, reply, runStudy, startDesign, studyActive, sweepWeb, viewMesh]);
 
   // Open a DTU in the workspace: read it, and when it is a kept beam study,
   // load the exact inputs it recorded (results stay hidden until re-solved).
@@ -506,7 +524,7 @@ export function useWorkshopController({ guest = false, onDesigned }: { guest?: b
       setViewMesh(null);
       setParamsOpen(true);
       setMobileTab('model');
-      setTimeout(() => paramRef.current?.focus('webThickness'), 50);
+      requestAnimationFrame(() => requestAnimationFrame(() => paramRef.current?.focus('webThickness')));
       return;
     }
     if (chip.kind === 'defaults' && chip.brief) {

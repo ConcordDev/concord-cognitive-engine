@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ConKayDemoPage() {
-  return <WorkshopPage forceGuest />;
+  return <WorkshopPage forceGuest initialView="table" />;
 }
