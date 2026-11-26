@@ -395,7 +395,11 @@ const LONG_RES = [
   /\b(?:in the background|background (?:job|task)|long[- ](?:task|job|running)|keep working on|work on (?:it|this) (?:for a while|overnight|in the background)|over the next (?:hour|few hours|day|couple of hours))\b/i,
 ];
 const JOB_STATUS_RES = [
-  /\b(?:how(?:'s| is| are)|status of|check on|progress (?:on|of)|update on|where are we on|is)\b[^.?!]{0,30}\b(?:my|the|that)\s+(?:background\s+|long\s+|research\s+)?(?:job|task|report|research)s?\b(?:[^.?!]{0,20}\b(?:going|done|ready|finished|coming along|status))?/i,
+  // The job/task/report/research noun has to close the ask or be followed by a
+  // status word: "how's my research going?" is a job check; "is my research
+  // paper any good?", "how is my job interview prep looking?" and "quitting my
+  // job to trade crypto" are the user's life, not a background job.
+  /\b(?:how(?:'s| is| are)|status of|check on|progress (?:on|of)|update on|where are we on|is)\b[^.?!:]{0,30}\b(?:my|the|that)\s+(?:background\s+|long\s+|research\s+)?(?:job|task|report|research)s?(?:\s+(?:going|done|ready|finished|coming along|status|progress)\b|\s*(?:yet\s*)?[?.!]*\s*$)/i,
   /\b(?:background|long)\s+(?:jobs?|tasks?)\b/i,
   /\bjob\s+mar_[a-z0-9-]+\b/i,
 ];
