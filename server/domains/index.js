@@ -180,6 +180,7 @@ import pharmacy from './pharmacy.js';
 import philosophy from './philosophy.js';
 import photography from './photography.js';
 import photosDarkroom from './photos-darkroom.js';
+import readingRoom from './reading-room.js';
 import plumbing from './plumbing.js';
 import podcast from './podcast.js';
 import poetry from './poetry.js';
@@ -511,6 +512,7 @@ export default [
   philosophy,
   photography,
   photosDarkroom,
+  readingRoom,
   plumbing,
   podcast,
   poetry,
