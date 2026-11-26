@@ -96,7 +96,8 @@ describe('fix: the failing sources are absent in scope', () => {
     }
     const compare = readFileSync(resolve(root, 'components/worldmodel/ComparePanel.tsx'), 'utf8');
     expect(/text-emerald-700(?![\w-])/.test(compare)).toBe(false);
-    for (const f of ['components/market/MarketListingsPanel.tsx', 'app/lenses/vote/page.tsx', 'app/lenses/fork/page.tsx']) {
+    // MarketListingsPanel left with the Auction House redesign (it has its own theme now).
+    for (const f of ['app/lenses/vote/page.tsx', 'app/lenses/fork/page.tsx']) {
       expect(readFileSync(resolve(root, f), 'utf8')).toContain('text-neon-purple-bright');
     }
     expect(offenders).toEqual([]);

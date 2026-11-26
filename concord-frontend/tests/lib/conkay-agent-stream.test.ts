@@ -27,8 +27,8 @@ describe('parseSseBuffer', () => {
 
 describe('agentFailure', () => {
   it('says the model is offline without blaming the study tools', () => {
-    expect(agentFailure('fetch failed')).toMatch(/language model is not reachable/);
-    expect(agentFailure('fetch failed')).toMatch(/FEA runs/);
+    expect(agentFailure('fetch failed')).toMatch(/can’t reach my language model/);
+    expect(agentFailure('fetch failed')).toMatch(/Workshop still works/);
     expect(agentFailure('status_401')).toBe('Sign in to talk to ConKay.');
     expect(agentFailure('weird')).toBe('ConKay could not answer (weird).');
   });

@@ -25,6 +25,11 @@ describe('detectOutOfScopeRequest (F6)', () => {
     expect(detectOutOfScopeRequest('cantilever, 50 kN, A36')).toBeNull();
     expect(detectOutOfScopeRequest('Review the stress results of this study')).toBeNull();
   });
+  it('leaves the everyday sense of the word to Kay', () => {
+    expect(detectOutOfScopeRequest('what is resonance in music')).toBeNull();
+    expect(detectOutOfScopeRequest('why does my car have a vibration at 60 mph? check it')).toBeNull();
+    expect(detectOutOfScopeRequest('explain buckling to me')).toBeNull();
+  });
   it('leaves questions ABOUT the scope to the agent', () => {
     expect(detectOutOfScopeRequest('Why is buckling not checked by the sweep?')).toBeNull();
   });
