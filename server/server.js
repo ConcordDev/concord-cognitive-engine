@@ -27,6 +27,7 @@ import { podPick as _podPick } from "./lib/pod-profile.js";
 import { createDtuQualityService as _createDtuQualityService, dtuQualityMode as _dtuQualityMode } from "./lib/dtu-quality/service.js";
 import { router as p2pSignallingRouter } from "./lib/p2p-dtu-signalling.js";
 import { createPhotosRouter } from "./routes/photos.js";
+import { createReadingRoomRouter } from "./routes/reading-room.js";
 import { selfPinAwayFromOllama } from "./lib/cpu-self-pin.js";
 import {
   redactLogValue,
@@ -8659,6 +8660,8 @@ function authMiddleware(req, res, next) {
     // The Darkroom — a published photo release's watermarked proof (and, when
     // free, its download). Each route checks the release itself (lib/darkroom/releases.js).
     "/api/photos/releases",
+    // The Reading Room's public reads — each one checks what the caller may see (domains/reading-room.js).
+    "/api/education/public",
     // Ambient chat — public read (district feed); post requires auth.
     "/api/ambient-chat/list",
     // Concord Link — public reads for anchors, cost preview, walker bazaar.
@@ -15965,7 +15968,7 @@ async function runMacro(domain, name, input, ctx) {
     "/api/diseases/plagues", "/api/drift", "/api/festivals", "/api/foundry/worlds",
     // "/api/evo-asset" — see Gate 1's matching addition + comment.
     "/api/evo-asset",
-    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world", "/api/photos/releases",
+    "/api/garage", "/api/lfg/open", "/api/mentors", "/api/photos/world", "/api/photos/releases", "/api/education/public",
     "/api/reasoning/trace", "/api/sports/league", "/api/tournaments/active",
     "/api/webrtc/ice-servers", "/api/worlds/spectator-counts",
     // "/api/settings" restored — see Gate 1's matching correction comment.
@@ -67822,6 +67825,8 @@ app.get("/api/mentors/:npcId", asyncHandler(async (req, res) => {
 // ── Phase BE1 — photo gallery + freecam screenshots ────────────────────
 
 app.use("/api/photos", createPhotosRouter({ db, requireAuth, STATE }));
+// Education — the Reading Room's public reads (catalogue, course page, preview lessons, certificate verification).
+app.use("/api/education/public", createReadingRoomRouter({ db }));
 
 // Phase BB3 — operator announcements. Admin only on POST; public read.
 app.post("/api/announcements", requireAuth(), asyncHandler(async (req, res) => {

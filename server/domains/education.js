@@ -1,7 +1,9 @@
 // server/domains/education.js
 // Domain actions for education: grading, attendance, progress tracking, schedule conflicts.
 
+import { getCourse as rrGetCourse, completeLesson as rrComplete, issueCertificate as rrIssue, verifyCertificate as rrVerify, isEnrolled as rrIsEnrolled } from "../lib/reading-room.js";
 import { guardAnonWrites } from "../lib/lens-authz.js";
+import { fetchPublicUrl } from "../lib/public-fetch.js";
 import { lookupUserIdentity } from "../lib/user-identity.js";
 import { handlerFailure } from "../lib/lens-action-dispatch.js";
 import { requireList } from "../lib/lens-inputs.js";
@@ -534,6 +536,7 @@ export default function registerEducationActions(registerLensAction) {
       lessons: safeParseArrayEdu(r.lessons_json),
       enrollmentCount: r.enrollment_count || 0, rating: r.rating || 0,
       createdAt: r.created_at,
+      extra: (() => { try { const x = JSON.parse(r.extra_json || "{}"); return x && typeof x === "object" ? x : {}; } catch { return {}; } })(),
     };
   }
   function courseToParams(c) {
@@ -546,28 +549,29 @@ export default function registerEducationActions(registerLensAction) {
       enrollment_count: Number(c.enrollmentCount) || 0, rating: Number(c.rating) || 0,
       lessons_json: JSON.stringify(Array.isArray(c.lessons) ? c.lessons : []),
       created_at: c.createdAt,
+      extra_json: JSON.stringify(c.extra && typeof c.extra === "object" ? c.extra : {}),
     };
   }
   const UPSERT_COURSE_SQL = `
     INSERT INTO edu_courses
       (id, author_id, title, description, category, level, duration_hours,
        instructor, institution, kind, status, enrollment_count, rating,
-       lessons_json, created_at)
+       lessons_json, created_at, extra_json)
     VALUES
       (@id, @author_id, @title, @description, @category, @level, @duration_hours,
        @instructor, @institution, @kind, @status, @enrollment_count, @rating,
-       @lessons_json, @created_at)
+       @lessons_json, @created_at, @extra_json)
     ON CONFLICT(id) DO UPDATE SET
       title = excluded.title, description = excluded.description,
       category = excluded.category, level = excluded.level,
       duration_hours = excluded.duration_hours, instructor = excluded.instructor,
       institution = excluded.institution, kind = excluded.kind, status = excluded.status,
       enrollment_count = excluded.enrollment_count, rating = excluded.rating,
-      lessons_json = excluded.lessons_json
+      lessons_json = excluded.lessons_json, extra_json = excluded.extra_json
   `;
   function dbCourseStore(db) {
     return {
-      listAll() { return db.prepare("SELECT id, author_id, title, description, category, level, duration_hours, instructor, institution, kind, status, enrollment_count, rating, lessons_json, created_at FROM edu_courses ORDER BY rowid ASC").all().map(rowToCourse); },
+      listAll() { return db.prepare("SELECT id, author_id, title, description, category, level, duration_hours, instructor, institution, kind, status, enrollment_count, rating, lessons_json, created_at, extra_json FROM edu_courses ORDER BY rowid ASC").all().map(rowToCourse); },
       get(id) { const r = db.prepare("SELECT * FROM edu_courses WHERE id = ?").get(id); return r ? rowToCourse(r) : null; },
       put(c) { db.prepare(UPSERT_COURSE_SQL).run(courseToParams(c)); },
       delete(id) { db.prepare("DELETE FROM edu_courses WHERE id = ?").run(id); },
@@ -635,13 +639,26 @@ export default function registerEducationActions(registerLensAction) {
   }
   function viewCourse(ctx, viewerId, course) {
     if (!course) return course;
-    const { authorId, ...rest } = course;
-    return { ...rest, author: actorIdentity(ctx, viewerId, authorId, "Instructor") };
+    const { authorId, extra, ...rest } = course;
+    const isAuthor = viewerId && viewerId === authorId;
+    // A lesson's check answers never leave the server, whoever asks; a
+    // reading's text goes only to the author (the Reading Room's lesson
+    // view serves it to learners who are entitled to it).
+    const lessons = (rest.lessons || []).map((l) => {
+      const { check, body, ...lr } = l || {};
+      return { ...lr, hasBody: !!body, checkQuestions: Array.isArray(check?.questions) ? check.questions.length : 0, ...(isAuthor && body ? { body } : {}) };
+    });
+    return { ...rest, lessons, priceCC: Number(extra?.priceCC) || 0, author: actorIdentity(ctx, viewerId, authorId, "Instructor") };
   }
   function viewDiscussion(ctx, viewerId, post) {
     if (!post) return post;
-    const { author, ...rest } = post;
-    return { ...rest, author: actorIdentity(ctx, viewerId, author, "Learner") };
+    const { author, voters, ...rest } = post;
+    let upvotedByMe = Array.isArray(voters) && voters.includes(viewerId);
+    if (!upvotedByMe && viewerId) {
+      const db = getEduDb(ctx);
+      if (db) { try { upvotedByMe = !!db.prepare("SELECT 1 FROM edu_discussion_votes WHERE post_id = ? AND user_id = ?").get(post.id, viewerId); } catch { /* pre-517 DB */ } }
+    }
+    return { ...rest, author: actorIdentity(ctx, viewerId, author, "Learner"), mine: author === viewerId, upvotedByMe };
   }
   function viewCohort(ctx, viewerId, cohort) {
     if (!cohort) return cohort;
@@ -656,22 +673,41 @@ export default function registerEducationActions(registerLensAction) {
   // ── discussions (course-scoped forum posts; open-post, no author gate
   //    beyond what already existed) ───────────────────────────────
   function rowToDiscussion(r) {
-    return { id: r.id, courseId: r.course_id, text: r.text, replyTo: r.reply_to || null, author: r.author_id, upvotes: r.upvotes || 0, createdAt: r.created_at };
+    return {
+      id: r.id, courseId: r.course_id, text: r.text, replyTo: r.reply_to || null, author: r.author_id,
+      upvotes: r.upvotes || 0, createdAt: r.created_at,
+      lessonId: r.lesson_id || null, timestampSec: r.timestamp_sec ?? null, acceptedId: r.accepted_id || null,
+    };
   }
-  function discussionToParams(d) {
-    return { id: d.id, course_id: d.courseId, author_id: d.author, text: d.text, reply_to: d.replyTo || null, upvotes: Number(d.upvotes) || 0, created_at: d.createdAt };
+  // Pre-517 databases have no lesson/timestamp/accepted columns; write what
+  // the table holds.
+  const _discCols = new WeakMap();
+  function discussionHasLessonCols(db) {
+    if (!_discCols.has(db)) {
+      let ok = false;
+      try { ok = db.prepare("PRAGMA table_info(edu_discussions)").all().some((c) => c.name === "lesson_id"); } catch { ok = false; }
+      _discCols.set(db, ok);
+    }
+    return _discCols.get(db);
   }
-  const UPSERT_DISCUSSION_SQL = `
-    INSERT INTO edu_discussions (id, course_id, author_id, text, reply_to, upvotes, created_at)
-    VALUES (@id, @course_id, @author_id, @text, @reply_to, @upvotes, @created_at)
-    ON CONFLICT(id) DO UPDATE SET upvotes = excluded.upvotes
-  `;
   function dbDiscussionStore(db) {
+    const rich = discussionHasLessonCols(db);
+    const sql = rich
+      ? `INSERT INTO edu_discussions (id, course_id, author_id, text, reply_to, upvotes, created_at, lesson_id, timestamp_sec, accepted_id)
+         VALUES (@id, @course_id, @author_id, @text, @reply_to, @upvotes, @created_at, @lesson_id, @timestamp_sec, @accepted_id)
+         ON CONFLICT(id) DO UPDATE SET upvotes = excluded.upvotes, accepted_id = excluded.accepted_id`
+      : `INSERT INTO edu_discussions (id, course_id, author_id, text, reply_to, upvotes, created_at)
+         VALUES (@id, @course_id, @author_id, @text, @reply_to, @upvotes, @created_at)
+         ON CONFLICT(id) DO UPDATE SET upvotes = excluded.upvotes`;
+    const params = (d) => {
+      const base = { id: d.id, course_id: d.courseId, author_id: d.author, text: d.text, reply_to: d.replyTo || null, upvotes: Number(d.upvotes) || 0, created_at: d.createdAt };
+      return rich ? { ...base, lesson_id: d.lessonId || null, timestamp_sec: d.timestampSec ?? null, accepted_id: d.acceptedId || null } : base;
+    };
     return {
       listByCourse(courseId) { return db.prepare("SELECT * FROM edu_discussions WHERE course_id = ? ORDER BY rowid ASC").all(courseId).map(rowToDiscussion); },
-      listAll() { return db.prepare("SELECT id, course_id, author_id, text, reply_to, upvotes, created_at FROM edu_discussions ORDER BY rowid ASC").all().map(rowToDiscussion); },
+      listAll() { return db.prepare("SELECT * FROM edu_discussions ORDER BY rowid ASC").all().map(rowToDiscussion); },
       get(id) { const r = db.prepare("SELECT * FROM edu_discussions WHERE id = ?").get(id); return r ? rowToDiscussion(r) : null; },
-      put(d) { db.prepare(UPSERT_DISCUSSION_SQL).run(discussionToParams(d)); },
+      put(d) { db.prepare(sql).run(params(d)); },
     };
   }
   function memDiscussionStore(s) {
@@ -877,7 +913,7 @@ export default function registerEducationActions(registerLensAction) {
    * 3-tier hint escalation, and identifies misconceptions.
    */
   registerLensAction("education", "tutor-ask", async (ctx, _artifact, params = {}) => {
-    if (!ctx?.llm?.chat) return { ok: true, result: { text: "(tutor unavailable — LLM not configured)" } };
+    if (!ctx?.llm?.chat || ctx.llm.enabled === false) return { ok: false, error: "the tutor isn't available right now (no language model is running)" };
     const subject = String(params.subject || "general");
     const level = String(params.level || "high school");
     const context = String(params.context || "");
@@ -905,9 +941,10 @@ Be encouraging, short, and concrete. 3 sentences max.${context ? `\n\nLesson con
         slot: "conscious",
       });
       const text = String(llmRes?.text || llmRes?.content || llmRes?.message?.content || "").trim();
+      if (!text) return { ok: false, error: "the tutor didn't answer; try again" };
       return { ok: true, result: { text, hintLevel, model: "conscious" } };
     } catch (e) {
-      return { ok: true, result: { text: `(tutor error: ${e?.message || "unknown"})`, hintLevel, error: true } };
+      return { ok: false, error: `the tutor isn't available right now (${String(e?.message || "unknown").slice(0, 80)})` };
     }
   });
 
@@ -916,7 +953,7 @@ Be encouraging, short, and concrete. 3 sentences max.${context ? `\n\nLesson con
    * cards from source text. Routes to utility brain (fast, cheap).
    */
   registerLensAction("education", "quiz-from-text", async (ctx, _artifact, params = {}) => {
-    if (!ctx?.llm?.chat) return { ok: false, error: "llm unavailable" };
+    if (!ctx?.llm?.chat || ctx.llm.enabled === false) return { ok: false, error: "llm unavailable" };
     const source = String(params.source || "").trim();
     const sourceDtuId = params.sourceDtuId ? String(params.sourceDtuId) : null;
     const count = Math.max(1, Math.min(30, Number(params.count) || 10));
@@ -983,11 +1020,18 @@ Constraints:
       id: `deck_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       title, createdAt: new Date().toISOString(),
     };
-    state.decks.get(userId).push(deck);
-    for (const c of cardsIn) {
-      const front = String(c.front || "").trim();
-      const back = String(c.back || "").trim();
+    let added = 0;
+    const fresh = [];
+    for (const c of cardsIn.slice(0, 200)) {
+      const front = String(c?.front || "").trim().slice(0, 1000);
+      const back = String(c?.back || "").trim().slice(0, 2000);
       if (!front || !back) continue;
+      added++;
+      fresh.push({ front, back });
+    }
+    if (!added) return { ok: false, error: "no usable cards (each needs a front and a back)" };
+    state.decks.get(userId).push(deck);
+    for (const { front, back } of fresh) {
       state.cards.get(userId).push({
         id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         deckId: deck.id, front, back,
@@ -998,7 +1042,7 @@ Constraints:
       });
     }
     saveStateIfAvailable();
-    return { ok: true, result: { deck, added: cardsIn.length } };
+    return { ok: true, result: { deck, added } };
     } catch (e) { return handlerFailure(e); }
 });
 
@@ -1120,7 +1164,7 @@ Constraints:
       status: params.status === "draft" ? "draft" : "published",
       lessons: [],
       enrollmentCount: 0,
-      rating: Math.max(0, Math.min(5, Number(params.rating) || 0)),
+      rating: 0, // a course's rating comes only from its learners' reviews
       createdAt: new Date().toISOString(),
     };
     courseStore(ctx, s).put(course);
@@ -1148,7 +1192,7 @@ Constraints:
     if (params.instructor != null) course.instructor = String(params.instructor);
     if (params.institution != null) course.institution = String(params.institution);
     if (params.kind != null) course.kind = ["course", "specialization", "certificate", "guided_project"].includes(params.kind) ? params.kind : course.kind;
-    if (params.rating != null) course.rating = Math.max(0, Math.min(5, Number(params.rating) || 0));
+    // rating is not settable: it is the average of learners' reviews (rr-review)
     if (params.status != null) course.status = params.status === "draft" ? "draft" : "published";
     store.put(course);
     saveStateIfAvailable();
@@ -1295,30 +1339,27 @@ Constraints:
     } catch (e) { return handlerFailure(e); }
   });
 
+  // Completion is earned (the Reading Room's rule, lib/reading-room.js):
+  // enrolled, the lesson really is in the course, its check passed (or, with
+  // no check, the lesson was opened). It used to accept any lesson id.
   registerLensAction("education", "lessons-complete", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const courseId = String(params.courseId || "");
     const lessonId = String(params.lessonId || "");
     if (!courseId || !lessonId) return { ok: false, error: "courseId and lessonId required" };
+    const db = getEduDb(ctx);
+    const course = db ? rrGetCourse(db, courseId) : null;
+    if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
+    const r = rrComplete(db, course, lessonId, userId);
+    if (!r.ok) return r;
     const progressMap = ensureEduBucket(s, "lessonProgress", userId);
-    const existing = progressMap.find(p => p.courseId === courseId && p.lessonId === lessonId);
-    const already = !!existing;
-    if (existing) {
-      existing.completedAt = new Date().toISOString();
-    } else {
-      progressMap.push({ courseId, lessonId, completedAt: new Date().toISOString() });
-    }
-    // First completion awards the stated 50. A repeat does not mint more.
-    const pointsAwarded = already ? 0 : 50;
-    if (pointsAwarded > 0) {
-      ensureEduBucket(s, "energyPoints", userId).push({ amount: pointsAwarded, source: "lesson_complete", lessonId, timestamp: new Date().toISOString() });
-    }
+    if (!progressMap.find(p => p.courseId === courseId && p.lessonId === lessonId)) progressMap.push({ courseId, lessonId, completedAt: new Date().toISOString() });
+    const pointsAwarded = r.alreadyCompleted ? 0 : 50;
+    if (pointsAwarded > 0) ensureEduBucket(s, "energyPoints", userId).push({ amount: pointsAwarded, source: "lesson_complete", lessonId, timestamp: new Date().toISOString() });
     saveStateIfAvailable();
-    return { ok: true, result: { completedAt: new Date().toISOString(), pointsAwarded, alreadyCompleted: already } };
+    return { ok: true, result: { completedAt: new Date().toISOString(), pointsAwarded, alreadyCompleted: !!r.alreadyCompleted } };
   });
-
-  // ── Enrollments + course progress ─────────────────────────────
 
   registerLensAction("education", "enrollments-list", (ctx, _a, _p = {}) => {
   try {
@@ -1352,6 +1393,10 @@ Constraints:
     if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
     const enrollments = ensureEduBucket(s, "enrollments", userId);
     if (enrollments.find(e => e.courseId === courseId)) return { ok: false, error: "already enrolled" };
+    // A paid course is bought, not enrolled into (education.rr-enroll goes through the marketplace).
+    if (Number(course.extra?.priceCC) > 0) return { ok: false, error: `this course costs ${course.extra.priceCC} CC: buy it from its course page` };
+    // The Reading Room's rules read the durable enrollment table.
+    try { const db = getEduDb(ctx); if (db && userId && userId !== "anon") db.prepare("INSERT OR IGNORE INTO edu_enrollments (course_id, user_id) VALUES (?, ?)").run(courseId, userId); } catch { /* pre-517 DB */ }
     const enrollment = {
       id: uidEdu("enr"), courseId,
       enrolledAt: new Date().toISOString(),
@@ -1371,7 +1416,9 @@ Constraints:
     const enrollments = ensureEduBucket(s, "enrollments", userId);
     const idx = enrollments.findIndex(e => e.id === id);
     if (idx < 0) return { ok: false, error: "enrollment not found" };
-    enrollments.splice(idx, 1);
+    const [gone] = enrollments.splice(idx, 1);
+    // Leaving a free course leaves it; a bought course stays bought.
+    try { const db = getEduDb(ctx); if (db && gone?.courseId) db.prepare("DELETE FROM edu_enrollments WHERE course_id = ? AND user_id = ? AND paid_cc = 0").run(gone.courseId, userId); } catch { /* pre-517 DB */ }
     saveStateIfAvailable();
     return { ok: true, result: { id, deleted: true } };
   });
@@ -1499,31 +1546,28 @@ Constraints:
     return { ok: true, result: { certificates: certs } };
   });
 
+  // A certificate is earned (every lesson done) and verifiable by anyone
+  // from its code (lib/reading-room.js). It used to count completions of
+  // any lesson id and carry a Math.random code nothing could check.
   registerLensAction("education", "certificates-issue", (ctx, _a, params = {}) => {
   try {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const courseId = String(params.courseId || "");
     if (!courseId) return { ok: false, error: "courseId required" };
-    const course = courseStore(ctx, s).get(courseId);
+    const db = getEduDb(ctx);
+    const course = db ? rrGetCourse(db, courseId) : null;
     if (!course || !courseVisibleTo(course, userId)) return { ok: false, error: "course not found" };
-    const lessons = course.lessons || [];
-    const progress = ensureEduBucket(s, "lessonProgress", userId);
-    const completed = progress.filter(p => p.courseId === courseId).length;
-    if (completed < lessons.length) return { ok: false, error: `course incomplete (${completed}/${lessons.length} lessons)` };
-    const cert = {
-      id: uidEdu("cert"), courseId,
-      courseTitle: course.title,
-      issuedAt: new Date().toISOString(),
-      institution: course.institution,
-      instructor: course.instructor,
-      verificationCode: `CERT-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
-    };
-    ensureEduBucket(s, "certificates", userId).push(cert);
+    const r = rrIssue(db, course, userId);
+    if (!r.ok) return r;
+    const v = rrVerify(db, r.code, (id) => { try { return db.prepare("SELECT username FROM users WHERE id = ?").get(id)?.username || null; } catch { return null; } });
+    const cert = { id: r.code, courseId, courseTitle: course.title, issuedAt: v.certificate?.issuedAt, verificationCode: r.code };
+    const list = ensureEduBucket(s, "certificates", userId);
+    if (!list.some((x) => x.verificationCode === r.code)) list.push(cert);
     saveStateIfAvailable();
     return { ok: true, result: { certificate: cert } };
     } catch (e) { return handlerFailure(e); }
-});
+  });
 
   // ── Assignments + peer review (Coursera-style) ─────────────────
   // Assignments and submissions are keyed by courseId (shared with every
@@ -1719,14 +1763,34 @@ Constraints:
   //    visibility — a discussion thread now shows every user's posts, not
   //    just the reader's own. ─────────────────────────────────────────
 
+  // A course's discussion belongs to the people taking it: its creator and
+  // its enrolled learners. Being able to see the catalogue page is not
+  // enough (a paid course's forum is part of what the learner bought).
+  function inCourseRoom(ctx, s, courseId, userId) {
+    if (!courseId || !userId || userId === "anon") return false;
+    const course = courseStore(ctx, s).get(String(courseId));
+    if (!course) return false;
+    if (course.authorId === userId) return true;
+    const db = ctx?.db || globalThis._concordSTATE?.db || null;
+    if (db) { try { if (rrIsEnrolled(db, course.id, userId)) return true; } catch { /* table optional */ } }
+    const mine = s.enrollments instanceof Map ? s.enrollments.get(userId) : null;
+    return Array.isArray(mine) && mine.some(e => e && e.courseId === course.id);
+  }
+
   registerLensAction("education", "discussions-list", (ctx, _a, params = {}) => {
     const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
     const userId = eduActor(ctx);
     const store = discussionStore(ctx, s);
     const courseId = params.courseId ? String(params.courseId) : null;
-    const canSee = courseVisibilityFilter(ctx, s, userId);
-    const all = (courseId ? store.listByCourse(courseId) : store.listAll())
-      .filter(d => d.author === userId || canSee(d.courseId));
+    const memo = new Map();
+    const inRoom = (cid) => { if (!memo.has(cid)) memo.set(cid, inCourseRoom(ctx, s, cid, userId)); return memo.get(cid); };
+    const lessonId = params.lessonId ? String(params.lessonId) : null;
+    // A lesson's Q&A: its questions plus every reply under them.
+    let all = (courseId ? store.listByCourse(courseId) : store.listAll()).filter(d => inRoom(d.courseId));
+    if (lessonId) {
+      const roots = new Set(all.filter(d => !d.replyTo && d.lessonId === lessonId).map(d => d.id));
+      all = all.filter(d => roots.has(d.id) || (d.replyTo && roots.has(d.replyTo)));
+    }
     return { ok: true, result: { discussions: all.slice().reverse().map(d => viewDiscussion(ctx, userId, d)) } };
   });
 
@@ -1737,16 +1801,33 @@ Constraints:
     const text = String(params.text || "").trim();
     const replyTo = params.replyTo ? String(params.replyTo) : null;
     if (!courseId || !text) return { ok: false, error: "courseId and text required" };
-    if (courseStore(ctx, s).get(courseId) && !courseRecordsVisibleTo(ctx, s, courseId, userId)) return { ok: false, error: "course not found" };
+    if (!courseStore(ctx, s).get(courseId)) return { ok: false, error: "course not found" };
+    if (!inCourseRoom(ctx, s, courseId, userId)) return { ok: false, error: "enroll in the course to join its discussion" };
+    if (text.length > 4000) return { ok: false, error: "keep a post under 4,000 characters" };
+    if (replyTo) {
+      const parent = discussionStore(ctx, s).get(replyTo);
+      if (!parent || parent.courseId !== courseId) return { ok: false, error: "reply target not found" };
+    }
+    let lessonId = null, timestampSec = null;
+    if (!replyTo && params.lessonId) {
+      const course = courseStore(ctx, s).get(courseId);
+      lessonId = String(params.lessonId);
+      if (!(course.lessons || []).some(l => l.id === lessonId)) return { ok: false, error: "lesson not found" };
+      if (params.timestampSec != null && params.timestampSec !== "") {
+        const t = Number(params.timestampSec);
+        if (!Number.isFinite(t) || t < 0) return { ok: false, error: "timestampSec must be a time in the video" };
+        timestampSec = Math.round(t * 10) / 10;
+      }
+    }
     const post = {
-      id: uidEdu("disc"), courseId, text, replyTo,
+      id: uidEdu("disc"), courseId, text, replyTo, lessonId, timestampSec, acceptedId: null,
       author: userId,
       upvotes: 0,
       createdAt: new Date().toISOString(),
     };
     discussionStore(ctx, s).put(post);
     saveStateIfAvailable();
-    return { ok: true, result: { post } };
+    return { ok: true, result: { post: viewDiscussion(ctx, userId, post) } };
   });
 
   registerLensAction("education", "discussions-upvote", (ctx, _a, params = {}) => {
@@ -1754,11 +1835,47 @@ Constraints:
     const store = discussionStore(ctx, s);
     const id = String(params.id || "");
     const post = store.get(id);
-    if (!post || (post.author !== eduActor(ctx) && !courseRecordsVisibleTo(ctx, s, post.courseId, eduActor(ctx)))) return { ok: false, error: "post not found" };
+    const voter = eduActor(ctx);
+    if (!post || !inCourseRoom(ctx, s, post.courseId, voter)) return { ok: false, error: "post not found" };
+    if (post.author === voter) return { ok: false, error: "you can't upvote your own post" };
+    // One vote per person: the vote table is the record when there is a DB,
+    // the in-memory voter list otherwise.
+    const vdb = getEduDb(ctx);
+    let recorded = null;
+    if (vdb) {
+      try { recorded = vdb.prepare("INSERT OR IGNORE INTO edu_discussion_votes (post_id, user_id) VALUES (?, ?)").run(post.id, voter).changes === 1; }
+      catch { recorded = null; /* pre-517 DB */ }
+    }
+    if (recorded === null) {
+      post.voters = Array.isArray(post.voters) ? post.voters : [];
+      recorded = !post.voters.includes(voter);
+      if (recorded) post.voters.push(voter);
+    }
+    if (!recorded) return { ok: false, error: "already upvoted" };
     post.upvotes++;
     store.put(post);
     saveStateIfAvailable();
     return { ok: true, result: { upvotes: post.upvotes } };
+  });
+
+  // The asker marks one reply as the answer to their question (or clears it).
+  registerLensAction("education", "discussions-accept", (ctx, _a, params = {}) => {
+    const s = getEduState(); if (!s) return { ok: false, error: "STATE unavailable" };
+    const userId = eduActor(ctx);
+    const store = discussionStore(ctx, s);
+    const question = store.get(String(params.id || ""));
+    if (!question || !inCourseRoom(ctx, s, question.courseId, userId)) return { ok: false, error: "post not found" };
+    if (question.replyTo) return { ok: false, error: "only a question can have an accepted answer" };
+    if (question.author !== userId) return { ok: false, error: "only the person who asked can accept an answer" };
+    const answerId = params.answerId ? String(params.answerId) : null;
+    if (answerId) {
+      const answer = store.get(answerId);
+      if (!answer || answer.replyTo !== question.id) return { ok: false, error: "that reply isn't an answer to this question" };
+    }
+    question.acceptedId = answerId;
+    store.put(question);
+    saveStateIfAvailable();
+    return { ok: true, result: { post: viewDiscussion(ctx, userId, question) } };
   });
 
   // ── Dashboard summary (ClassroomShell data source) ─────────────
@@ -2455,7 +2572,8 @@ Constraints:
     if (!(s.feedSeen instanceof Set)) s.feedSeen = new Set();
     const limit = Math.max(1, Math.min(20, Math.round(Number(params.limit) || 10)));
     try {
-      const r = await fetch(`https://opentdb.com/api.php?amount=${limit}&type=multiple`);
+      // Through the SSRF-guarded chokepoint like every other outbound read.
+      const r = await fetchPublicUrl(`https://opentdb.com/api.php?amount=${limit}&type=multiple`);
       if (!r.ok) return { ok: false, error: `opentdb ${r.status}` };
       const data = await r.json();
       const decode = (t) => String(t || "").replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&eacute;/g, "é");
