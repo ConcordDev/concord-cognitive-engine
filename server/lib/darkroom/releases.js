@@ -17,6 +17,7 @@ import { exportExif } from "./store.js";
 export const RELEASE_MAX_PRICE = 1000;
 export const PROOF_EDGE = 1200;
 const r2 = (n) => Math.round(n * 100) / 100;
+// eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
 const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").trim().slice(0, n);
 const RELEASE_DIR = () => path.join(PHOTO_DIR, "releases");
 

@@ -1463,6 +1463,7 @@ export default function registerAnimationActions(registerLensAction) {
     for (const [k, max] of Object.entries(XS_FIELDS)) {
       if (params[k] === undefined) continue;
       if (params[k] !== null && typeof params[k] !== "string") return { ok: false, error: `${k} must be text` };
+      // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
       const v = String(params[k] ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
       if (!frame.sheet) frame.sheet = {};
       if (v) frame.sheet[k] = v; else delete frame.sheet[k];

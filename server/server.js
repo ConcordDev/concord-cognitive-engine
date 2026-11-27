@@ -90134,10 +90134,10 @@ function createAsset({ type, title, description, tags, genre, subGenre, bpm, key
 
 app.post('/api/artistry/assets', (req, res) => {
   try {
-    // The owner is the signed-in account (lib/actor-identity.js refuses a body
-    // ownerId that names anyone else); a body ownerId is only honoured with no
-    // session, i.e. AUTH_MODE=public single-user mode.
-    const asset = createAsset({ ...req.body, ownerId: req.user?.id || req.body?.ownerId });
+    // The owner is the signed-in account, never a request field: with no
+    // session (AUTH_MODE=public) the asset is unowned rather than owned by
+    // whoever the body names.
+    const asset = createAsset({ ...req.body, ownerId: req.user?.id || null });
     res.json({ ok: true, asset });
   } catch (e) {
     serverError(res, e, 400);

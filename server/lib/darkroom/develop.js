@@ -450,13 +450,13 @@ function rasterBrush(mask, srcW, srcH) {
     const stamp = (cx, cy) => {
       const x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(bw - 1, Math.ceil(cx + r));
       const y0 = Math.max(0, Math.floor(cy - r)), y1 = Math.min(bh - 1, Math.ceil(cy + r));
-      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      for (let y = y0; y <= y1; y++) {for (let x = x0; x <= x1; x++) {
         const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.sqrt(dx * dx + dy * dy) / r;
         if (d >= 1) continue;
         const a = s.flow * (d <= inner ? 1 : 1 - smooth((d - inner) / Math.max(1e-3, 1 - inner)));
         const i = y * bw + x;
         plane[i] = s.erase ? plane[i] * (1 - a) : Math.max(plane[i], a);
-      }
+      }}
     };
     const pts = s.pts.map(([x, y]) => [x * bw, y * bh]);
     stamp(pts[0][0], pts[0][1]);
