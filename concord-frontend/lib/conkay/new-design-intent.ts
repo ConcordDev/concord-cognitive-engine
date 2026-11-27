@@ -34,9 +34,8 @@ const SENTINEL = /\bsentinel\b|\bm1\s+(?:robot|prototype)\b/;
 const SENTINEL_PART = /\b(?:knee|hip|ankle|actuator|bracket|mount|link|housing)\b/;
 const NUCLEAR = /\b(?:reactor|nuclear|nuscale|smr|us600)\b/;
 const FORMULATION = /\b(?:formulation|blend\s*d|usb\s+blend|material\s+formulation|new\s+material)\b/;
-const MIXTURE = /\b(?:mixture|methanol)\b/;
-/** Beam words: these stay with the open I-beam study. */
-const BEAM = /\b(?:i-?beam|beam|girder|joist|lintel)s?\b/;
+/** The methanol-water showcase only; any other mixture is a build Kay plans. */
+const MIXTURE = /\bmethanol\b/;
 /** "beam bridge": a beam, not a truss. */
 const BEAM_BRIDGE = /\b(?:beam|girder)\s+bridge\b/;
 
@@ -72,7 +71,9 @@ export function detectNewDesign(text: string): NewDesignIntent | null {
     if (show && !/\b(?:design|build|make|create)\b/.test(t)) return { kind: 'showcase', id: 'car', label: 'Four-seat 180 mph car' };
     return { kind: 'workbench', domain: 'car', label: 'car' };
   }
-  if (BRACKET.test(t) && !BEAM.test(t)) return { kind: 'workbench', domain: 'bracket', label: 'bracket' };
+  // A bracket, shelf, stand or anything else physical is Kay's to plan: she
+  // breaks it into parts and every applicable solver checks it (conkay_build).
+  // The fixed class-problem solvers are fast paths for trusses, cars and Sentinel parts.
   return null;
 }
 

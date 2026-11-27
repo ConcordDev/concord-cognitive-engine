@@ -60,6 +60,7 @@ const DOF_MAP = { x: 0, y: 1, z: 2, rx: 3, ry: 4, rz: 5 };
  *   rect-tube { width, height, wall }   thin-walled closed (Bredt) torsion
  *   round-tube { od, wall }
  *   rect { width, height }              solid
+ *   round { diameter }                  solid round bar
  *   i-beam { height, flangeWidth, flangeThickness, webThickness }  open, thin-walled torsion
  *   u-channel { width, height, wall }   a rect tube open at the top (a cut-out): open-section torsion
  *   properties { A, Iz, Iy, J, cy?, cz?, depth?, tauPerT? }  given directly
@@ -90,6 +91,17 @@ export function sectionProps(s) {
       Asy: (Math.PI / 8) * (D ** 2 - d ** 2), Asz: (Math.PI / 8) * (D ** 2 - d ** 2), shearAreaBasis: "thin-walled round tube: A / 2 (Cowper 1966)",
       wallSlenderness: { ratio: D / t, basis: "D / t" },
       torsionShear: (T) => (Math.abs(T) * D) / 2 / (2 * I),
+    };
+  }
+  if (s.shape === "round") {
+    // solid round bar: I = πd⁴/64, J = πd⁴/32, τ_torsion = 16T/(πd³); shear area 0.9A (Cowper 1966, ν ≈ 0.3)
+    const d = s.diameter ?? s.d;
+    if (!(d > 0)) throw new Error("round needs diameter > 0");
+    const I = (Math.PI * d ** 4) / 64;
+    return {
+      kind: "round", A: (Math.PI * d * d) / 4, Iz: I, Iy: I, J: 2 * I, cy: d / 2, cz: d / 2, round: true, depth: d,
+      Asy: 0.9 * (Math.PI * d * d) / 4, Asz: 0.9 * (Math.PI * d * d) / 4, shearAreaBasis: "solid circle: 0.9 A (Cowper 1966, ν ≈ 0.3)",
+      torsionShear: (T) => (16 * Math.abs(T)) / (Math.PI * d ** 3),
     };
   }
   if (s.shape === "rect") {

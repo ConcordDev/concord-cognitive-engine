@@ -31,6 +31,7 @@ function volumeM3(g) {
     case "bolt": return (PI * g.diameter * g.diameter / 4) * g.length;
     case "shell": return g.area * g.thickness;
     case "rect-tube": return (g.width * g.height - Math.max(0, g.width - 2 * g.wall) * Math.max(0, g.height - 2 * g.wall)) * g.length;
+    case "round-tube": { const di = Math.max(0, g.outerDiameter - 2 * g.wall); return (PI / 4) * (g.outerDiameter ** 2 - di ** 2) * g.length; }
     case "ellipsoid-shell": return ellipsoidArea(g.length / 2, g.width / 2, g.height / 2) * g.thickness;
     case "i-beam": return (2 * g.flangeWidth * g.flangeThickness + (g.height - 2 * g.flangeThickness) * g.webThickness) * g.length;
     default: return null;

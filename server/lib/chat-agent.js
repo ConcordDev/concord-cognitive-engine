@@ -113,6 +113,7 @@ export const TOOL_REQUIRED_PARAMS = {
   list_recipes:      [],
   run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
+  conkay_build:      ["brief"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
   conkay_ir_schema:  [],
@@ -325,6 +326,8 @@ Available tools (with one working example each):
 - list_recipes: List tested multi-step recipes (beam sizing, column buckling, unit conversion, material comparison, wall conduction, pipe flow) and their inputs. Check this FIRST for an engineering calculation. Params: {"query": "what you want to do"}
   Example: [TOOL_CALL: {"tool": "list_recipes", "params": {"query": "size a beam"}}]
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
+- conkay_build: Design anything physical and check it with ConKay's solvers: Kay breaks the request into parts and puts on them every check that applies (frames and supports, pressure, pipe flow, heat, DC power, mixtures and concentrations, mass and cost), the solvers run, and you get what passed, what failed, what was NOT checked and why, plus questions only the person can answer and a 3D model shown below your reply. Any units. Use it for shelves, brackets, stands, tables, planters, tanks, plumbing, coolers, battery packs, recipes and solutions. Params: {"brief": "what to build in the person's own words and units", "answers": [{"ask": "a question it asked", "answer": "the person's answer"}]}
+  Example: [TOOL_CALL: {"tool": "conkay_build", "params": {"brief": "a 3 ft pine wall shelf that holds 40 lb of books"}}]
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a car or other road vehicle it returns ConKay's vehicle concept assembly (body and tyres in 3D). For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
@@ -1273,6 +1276,25 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { dispatchChatRecipe } = await import("./chat-tool-surface.js");
         return dispatchChatRecipe(call.tool, call.params);
       }
+      case "conkay_build": {
+        const brief = String(call.params.brief || call.params.text || call.params.prompt || "").slice(0, 4000);
+        if (!brief.trim()) return { tool: call.tool, ok: false, error: "conkay_build requires a brief: what to build" };
+        const { buildFromBrief, saveBuild, buildToolSummary } = await import("./conkay/build/index.js");
+        const answers = (Array.isArray(call.params.answers) ? call.params.answers : []).filter((a) => a?.answer).slice(0, 12)
+          .map((a) => ({ ask: String(a.ask || "").slice(0, 400), answer: String(a.answer).slice(0, 1000) }));
+        const result = await buildFromBrief({ brief, answers, db: ctx?.db || null, userId: ctx?.userId || null });
+        const id = saveBuild(ctx?.db || null, { userId: ctx?.userId || null, brief, answers, result });
+        if (!result.ok) {
+          return { tool: call.tool, ok: false, terminal: result.error === "no_model", error: result.message || result.error,
+            ...(result.errors ? { detail: result.errors.slice(0, 6) } : {}) };
+        }
+        const summary = buildToolSummary(result);
+        return {
+          tool: call.tool, ok: true, key: "conkay_build", input: { brief }, result: { id, ...summary },
+          // Always an artifact: the report (and the 3D parts when any part has geometry).
+          artifact: { ...(result.artifact || { kind: "build", source: "conkay_build", title: result.ir?.design?.name || "build" }), buildId: id, report: result.report, summary: result.summary },
+        };
+      }
       case "conkay_design": {
         // Deterministic ConKay sizing check: parse → hand calc + FEA → safety
         // factor pass/fail. Same code as POST /api/conkay/design, without mesh arrays.
@@ -2162,6 +2184,9 @@ export function formatToolResults(results) {
         ? ` Scaled to ${b.length} mm long, ${b.height} mm tall, ${b.width} mm wide.`
         : (r.artifact?.units === "unitless" ? " It is unitless (not to scale). Do not invent dimensions." : "");
       return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.${sized}`;
+    }
+    if (r.tool === "conkay_build") {
+      return `[TOOL_RESULT: conkay_build] ${r.result?.headline || ""}. Report: what was built (parts), each check with its numbers and pass/fail exactly as given (these are in the person's units), what was NOT checked and why, the assumptions, and the questions (ask the blocking ones). Say the 3D model is shown below. Never add a number that is not here.\n${JSON.stringify(r.result).slice(0, 6000)}`;
     }
     if (r.tool === "conkay_design") {
       const v = r.result?.safety?.verdict;

@@ -13,6 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -279,6 +280,43 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
         error: e instanceof Error ? e.message : String(e),
       });
     }
+  });
+
+  /**
+   * POST /api/conkay/build — build anything: { brief, answers?: [{ ask, answer }], id? }
+   * Kay plans the design graph (model), every applicable solver checks it,
+   * → { ok, id, summary, report, artifact } or { ok:false, error, message }.
+   */
+  router.post('/build', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const brief = String(req.body?.brief ?? req.body?.text ?? '').slice(0, 4000);
+    if (!brief.trim()) return res.status(400).json({ ok: false, error: 'brief_required', message: 'Tell Kay what to build.' });
+    const answers = (Array.isArray(req.body?.answers) ? req.body.answers : [])
+      .filter((a) => a && String(a.answer ?? '').trim()).slice(0, 12)
+      .map((a) => ({ ask: String(a.ask ?? '').slice(0, 400), answer: String(a.answer).slice(0, 1000) }));
+    const prior = req.body?.id ? loadBuild(db, req.body.id, userId) : null;
+    if (req.body?.id && !prior) return res.status(404).json({ ok: false, error: 'not_found' });
+    try {
+      const result = await buildFromBrief({ brief: prior?.brief || brief, answers, previous: prior?.plan?.ir || null, db, userId });
+      const id = saveBuild(db, { id: prior?.id || null, userId, brief: prior?.brief || brief, answers, result });
+      if (!result.ok) return res.status(result.error === 'no_model' ? 503 : 422).json({ ok: false, id, error: result.error, message: result.message, errors: result.errors });
+      res.json({ ok: true, id, summary: result.summary, report: result.report, ir: result.ir, artifact: result.artifact });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'build_failed', message: String(e?.message || e) });
+    }
+  });
+
+  router.get('/build/:id', auth, (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    const b = userId ? loadBuild(db, req.params.id, userId) : null;
+    if (!b) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true, build: b });
+  });
+
+  router.get('/builds', auth, (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    res.json({ ok: true, builds: userId ? listBuilds(db, userId, Number(req.query.limit) || 20) : [] });
   });
 
   return router;

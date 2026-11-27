@@ -16,7 +16,6 @@ describe('workspace box routing: new design vs beam edit', () => {
     ['design a Warren truss, 12 m span', { kind: 'workbench', domain: 'truss' }],
     ['show me the car', { kind: 'showcase', id: 'car' }],
     ['design a four-seat electric car that holds 140 mph', { kind: 'workbench', domain: 'car' }],
-    ['make a steel bracket for 2 kN', { kind: 'workbench', domain: 'bracket' }],
     ['show me Sentinel', { kind: 'showcase', id: 'sentinel-m1' }],
     ['design the Sentinel knee actuator bracket', { kind: 'workbench', domain: 'sentinel-part' }],
     ['show me the reactor', { kind: 'showcase', id: 'nuscale-us600' }],
@@ -33,6 +32,9 @@ describe('workspace box routing: new design vs beam edit', () => {
     't_w = 8 mm and re-run',
     'make it aluminum',
     'show me the 3D view',
+    // Kay plans these as general builds (conkay_build), not a fixed bracket solver
+    'make a steel bracket for 2 kN',
+    'make a mixture of 2 oz salt in a quart of water',
   ])('stays a beam edit (or agent): %s', (text) => {
     expect(detectNewDesign(text)).toBeNull();
   });

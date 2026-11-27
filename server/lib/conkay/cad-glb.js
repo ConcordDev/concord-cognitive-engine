@@ -188,8 +188,9 @@ export function shapeSizeMm(g, axis = "y") {
     case "plate": return { x: mm(g.length), y: mm(g.width), z: mm(g.thickness) };
     case "cylinder":
     case "rod":
-    case "bolt": {
-      const d = mm(g.diameter);
+    case "bolt":
+    case "round-tube": {
+      const d = mm(g.diameter ?? g.outerDiameter);
       const len = mm(g.length);
       if (axis === "x") return { x: len, y: d, z: d };
       if (axis === "z") return { x: d, y: d, z: len };
@@ -219,8 +220,8 @@ function tessellate(node) {
   const axis = node.props?.axis || "y";
   if (g.shape === "box" || g.shape === "plate") {
     addBox(positions, indices, c, [size.x, size.y, size.z]);
-  } else if (g.shape === "cylinder" || g.shape === "rod" || g.shape === "bolt") {
-    const radius = (g.diameter * 1000) / 2;
+  } else if (g.shape === "cylinder" || g.shape === "rod" || g.shape === "bolt" || g.shape === "round-tube") {
+    const radius = ((g.diameter ?? g.outerDiameter) * 1000) / 2;
     const along = axis === "x" ? "x" : axis === "z" ? "z" : "y";
     addCylinder(positions, indices, c, radius, g.length * 1000, along);
   } else if (g.shape === "i-beam") {

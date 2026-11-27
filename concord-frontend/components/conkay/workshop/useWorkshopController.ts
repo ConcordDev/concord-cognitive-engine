@@ -20,6 +20,7 @@ import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-i
 import type { BriefClaim, TrussAnswer, WorkspaceDesign } from '../workspace/DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
+import { isBuildReport } from '@/lib/conkay/build-report';
 import type { ChatArtifact } from '@/components/chat/ChatArtifacts';
 import {
   DIM_LABELS,
@@ -99,6 +100,8 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
   const [design, setDesign] = useState<WorkspaceDesign | null>(null);
   /** The latest ConKay-designed 3D model (conkay_design mesh): shown in the main viewport in place of the I-beam study. */
   const [viewMesh, setViewMesh] = useState<ChatArtifact | null>(null);
+  /** The latest ConKay build (conkay_build): its report of what was checked, beside its 3D parts when it has any. */
+  const [build, setBuild] = useState<ChatArtifact | null>(null);
   /** A brief the workbench answered with questions: the next message adds to it. */
   const pendingBrief = useRef<string | null>(null);
   /** The "what the design solver builds" note is shown once, on the first brief handed to the agent. */
@@ -284,10 +287,13 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
       patch(id, { artifacts: artifacts.slice() });
       const meshUrl = typeof rec.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(rec.url);
       const meshPos = Array.isArray(rec.positions) && Array.isArray(rec.indices) && rec.positions.length >= 9;
+      const isBuild = isBuildReport(rec.report);
+      if (isBuild) { setDesign(null); setBuild(rec as ChatArtifact); }
       if (rec.kind === 'mesh' && (meshPos || meshUrl)) {
         setDesign(null);
         setViewMesh(rec as ChatArtifact);
-      }
+        if (!isBuild) setBuild(null);
+      } else if (isBuild) setViewMesh(null);
     };
     let resolved = false;
     try {
@@ -299,7 +305,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
         onToolCall: (c) => {
           const name = c.tool === 'run_lens_action' && c.domain ? `${c.domain}.${c.action}` : String(c.tool || 'tool');
           tools.push({ name, ok: c.ok !== false });
-          if (c.domain === 'engineering' && c.action === 'beamStudy' && c.ok !== false) { resolved = true; setViewMesh(null); }
+          if (c.domain === 'engineering' && c.action === 'beamStudy' && c.ok !== false) { resolved = true; setViewMesh(null); setBuild(null); }
           patch(id, { tools: tools.slice() });
           if (c.ok !== false) {
             addArtifact(c.artifact);
@@ -585,7 +591,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
     guest, router, pathname, params, workspaceId, workspaceName,
     ws, inputs, setInputs, result, materials, status,
     section, setSection, workspaces, workspacesError, goWorkspace, createWorkspace,
-    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh,
+    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild,
     keeping, view, setView, display, setDisplay, showDims, setShowDims,
     paramsOpen, setParamsOpen, mobileTab, setMobileTab, speak,
     saveOpen, setSaveOpen, saveName, setSaveName, saveTouched, setBusy,

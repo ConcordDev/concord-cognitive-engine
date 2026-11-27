@@ -705,6 +705,24 @@ describe('ConKay — Kay first', () => {
     await waitFor(() => expect(within(convo()).getByText(/Solved the truss/)).toBeTruthy());
   });
 
+  it('a build with no geometry still opens the Workshop on its report (checked / not checked, in your units)', async () => {
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { kind: 'build', title: 'pickling brine', report: {
+        verdict: 'passes_checked', headline: 'all 1 checks pass; 0 not checked', units: { mass: 'oz' }, parts: [], masses: [],
+        checked: [{ solver: 'chem.solution', target: 'BRINE', targetName: 'brine', status: 'PASS', check: 'salt mass_fraction ≤ max', pass: true, demand: '10.7 %', capacity: '12 %', utilization: 0.89, basis: 'recipe' }],
+        computed: [], gaps: [], questions: [], assumptions: [], sources: [] } } });
+      args.onToken('The brine checks out.');
+      return { ok: true };
+    });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('make a pickling brine with 1 oz salt in a cup of water');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/);
+    expect(screen.getByText(/10\.7 % vs 12 %/)).toBeTruthy();
+    expect(screen.queryByTestId('beam-viewport')).toBeNull();
+  });
+
   it('when Kay builds a 3D model the Workshop opens to show it', async () => {
     streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
       args.onToolCall({ tool: 'conkay_design', ok: true, artifact: { kind: 'mesh', title: 'shelf concept', positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2] } });

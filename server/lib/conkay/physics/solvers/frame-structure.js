@@ -86,6 +86,11 @@ function sectionFromGeometry(g) {
   if (g.shape === "round-tube") return { shape: "round-tube", od: g.od ?? g.outerDiameter, wall: g.wall };
   if (g.shape === "i-beam") return { shape: "i-beam", height: g.height, flangeWidth: g.flangeWidth, flangeThickness: g.flangeThickness, webThickness: g.webThickness };
   if (g.shape === "rect" || g.shape === "bar") return { shape: "rect", width: g.width, height: g.height };
+  // A part's own shape, read as a member section: a board (box) is width × height across its length, a plate
+  // spans along its length with its thickness as the depth, a rod or cylinder is a solid round.
+  if (g.shape === "box") return { shape: "rect", width: g.width, height: g.height };
+  if (g.shape === "plate") return { shape: "rect", width: g.width, height: g.thickness };
+  if (g.shape === "rod" || g.shape === "cylinder") return { shape: "round", diameter: g.diameter };
   return null;
 }
 
@@ -117,7 +122,7 @@ export const frameStructure = registerSolver({
       if (m.part) {
         // a member may override its part's section where the part is cut (an access opening over a length)
         section = m.section || sectionFromGeometry(ctx.get(m.part, "geometry"));
-        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (rect-tube, round-tube, i-beam, rect)` };
+        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (box, plate, rod, cylinder, rect-tube, round-tube, i-beam)` };
         mat = ctx.material(m.part);
         if (!mat) return { notComputed: `member ${m.id}: part ${m.part} has no material` };
       } else {

@@ -1,5 +1,90 @@
 # conkay — Capability Map
 
+## 2026-11-26 (pass 2) — Build anything: Kay designs, the solvers check
+
+Owner: "Conkay isn't meant to just solve the few hardcoded designs … it's
+supposed to be able to build anything down to every level with its solvers
+and use textbooks … it's hard to even input inputs like mm feet inches. Oz
+for chemicals." Owner choices: **Kay designs, solvers check**; **build it,
+mark the gap**; **any unit in, yours back**.
+
+### What was wrong
+
+- The design front door reached four fixed problem types (beam, bracket,
+  truss, car). A shelf, a bracket or a stand became an I-beam or a
+  layout concept with no checks; "holds 50 kg" quietly set a beam load.
+- A part's own shape could not be a frame member (only `rect`/`i-beam`
+  sections), there were no design-scoped materials (only the library), and
+  the IR example taught an invalid box format (x/y/z instead of
+  length/width/height).
+- Units: a fixed table of SI-ish strings. "3/4 in", "2 ft 3 in", "fl oz",
+  "°F", "psi", "lbf/ft", "cP", "mAh" either failed or were misread.
+
+### What changed
+
+- **Universal units** (`server/lib/conkay/units/universal.js`): dimension
+  vectors, compound units (`W/(m·K)`, `lbf/ft`, `Ω·m`), feet-inches,
+  fractions, temperatures with offsets, US cooking and chemistry units, and
+  refusal of ambiguous ones (`ton`). The compiler and chat quantity readers
+  fall back to it.
+- **Design-scoped materials**: `materials: { "<id>": { density: { value, source }, … } }`
+  compile only when every value carries its source.
+- **Parts as frame members**: box, plate, rod/cylinder and round-tube
+  sections come from the part's geometry; `round-tube` is a new shape.
+- **General solvers** (`physics/solvers/general.js`): `fluid.pipe-network`
+  (wraps `fluids/pipe-flow.js`), `thermal.conduction-1d` (wraps
+  `thermal/conduction.js`), `electrical.dc-budget` (load current, wire drop
+  from a sourced resistivity, AWG by its ASTM B258 definition, runtime),
+  `chem.solution` (mass fractions, molarity, mass concentration, ideal
+  mixing stated). Nothing is built in: a missing constant is NOT_COMPUTED
+  with what it needs.
+- **The build pipeline** (`server/lib/conkay/build/`): a catalogue of what
+  ConKay can check (each family's props shape and an example that compiles
+  and runs), a planner where the model writes the design graph, asks for
+  textbook lookups (OpenStax passages are fed back and cited), lists
+  questions and assumptions, and is repaired from the compiler's own errors
+  (up to 3); quantity strings are normalised to SI deterministically; every
+  solver runs; the report lists **checked** (demand vs capacity, pass/fail,
+  basis), **computed, not checked**, and **not checked** (with the reason),
+  all in the units the person used ("2650 psi (18.27 MPa)", "3.4 lb").
+  Builds persist (migration 518 `conkay_builds`);
+  `POST /api/conkay/build`, `GET /api/conkay/build/:id`, `GET /api/conkay/builds`.
+- **Kay routes physical asks to `conkay_build`** (a shelf, bracket, stand,
+  planter, cooler, pump loop, battery pack, brine…); robots, cars, plain
+  beams and trusses keep their fixed fast paths. The Workshop box no longer
+  sends a bracket to the fixed bracket solver.
+- **Workshop**: a build opens the Workshop with its report beside the 3D
+  parts (`BuildReportCard`), or on its own when nothing has geometry (a
+  brine). The study's number boxes take any unit ("2 ft 3 in" → 685.8 mm,
+  "50 kg" in a force box → its weight, said so).
+
+### Tests
+
+- `server/tests/conkay-universal-units.test.js` (9),
+  `conkay-general-solvers.test.js` (5, hand-calculated expected values),
+  `conkay-build-anything.test.js` (8: every catalogue example compiles and
+  runs its solver; families follow the brief; units come back; the planner's
+  lookup → repair → check loop against a hand-calculated shelf stress in psi;
+  unsourced material refused; no model is an honest failure; repairs give up
+  with the compiler's errors; a mechanism is not a pass).
+- Routing: `conkay-everyday-routing`, `conkay-tools-default`,
+  `cockpit-tools-2026-10-19` updated to the build route; `chat-tool-surface`
+  lists the new tool.
+- Frontend: `conkay-build-report.test.tsx`, a no-geometry build opening the
+  Workshop on its report (`conkay-workspace.test.tsx`), any-unit boxes
+  (`lib/conkay-field-units.test.ts`, `conkay-aria-invalid.test.tsx`).
+
+### Open
+
+- Planning needs a language model. With none reachable, the build route
+  answers 503 `no_model` with a plain message; nothing is invented. A full
+  build could not be driven in this container's browser for that reason;
+  the pipeline is proven with a stub model and real solvers.
+- The frame solver's `deep_member` warning reads the larger section side
+  as the depth, so a wide flat board bending about its thin axis is
+  flagged (conservatively) and reads WARN instead of PASS.
+- Textbook lookups need network once per OpenStax book (then cached).
+
 ## 2026-11-26 — Kay first; Kay thinks, then looks up
 
 Owner: "make sure ConKay actually tries and is easy to work with … right now
