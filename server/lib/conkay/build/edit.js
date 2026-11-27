@@ -46,6 +46,17 @@ export function listParameters(ir) {
     if (typeof n.material === "string" && n.geometry) {
       out.push({ id: pid(n.id, ["material"]), node: n.id, nodeName: name, path: ["material"], label: "material", value: n.material, dim: "material", options: materialOptions });
     }
+    // the conditions an object is checked under: flight, a drink, what it carries
+    const scalar = (path, label, dim) => {
+      let v = n.props; for (const k of path) v = v?.[k];
+      if (v == null || typeof v === "object") return;
+      out.push({ id: pid(n.id, ["props", ...path]), node: n.id, nodeName: name, path: ["props", ...path], label, value: String(v), dim });
+    };
+    scalar(["aero", "speed"], "flight speed", "velocity");
+    scalar(["aero", "angleOfAttack"], "angle of attack", "angle");
+    scalar(["cooling", "startTemperature"], "drink starts at", "temperature");
+    scalar(["cooling", "fill"], "filled (fraction)", "ratio");
+    (n.props?.tipping?.masses || []).forEach((m, i) => { if (m?.mass != null && typeof m.mass !== "object") out.push({ id: pid(n.id, ["props", "tipping", "masses", i, "mass"]), node: n.id, nodeName: name, path: ["props", "tipping", "masses", i, "mass"], label: `${m.name || `carried mass ${i + 1}`} (mass)`, value: String(m.mass), dim: "mass" }); });
     const fm = n.props?.frameModel;
     if (fm && Array.isArray(fm.loadCases)) {
       fm.loadCases.forEach((c, ci) => {
@@ -91,6 +102,7 @@ export function applyEdits(ir, edits) {
     } else if (p.dim === "ratio") {
       const n = Number(raw);
       if (!(n > 0)) { errors.push(`${p.nodeName} ${p.label}: a positive number`); continue; }
+      if (p.path.includes("fill") && n > 1) { errors.push(`${p.nodeName} ${p.label}: a fraction of the capacity, at most 1`); continue; }
       value = n;
     } else {
       const r = parseAmount(raw, { expectDim: p.dim });

@@ -125,6 +125,9 @@ part, editing anything, re-checking. A build is shown, not worked on.
 3. **Generalise the object-specific solvers**: aero (lift/drag on any
    surface), stability (any object), fatigue, thermal (transient + natural
    convection + radiation), modal; add them to the build catalogue.
+   (Shipped 2026-11-27: stability.tipping for any assembly,
+   thermal.vessel-cooling, aero.lifting-line for any NACA loft. Still open:
+   fatigue on load histories, modal, CFD for non-vehicles.)
 4. **Fill the missing physics** that decide common objects: impact/drop,
    thermal shock, photometry, junction thermal, linkages and friction,
    flight stability and performance, tolerance stacks, DFM rules.

@@ -65,6 +65,12 @@ const show = (value, unit, prefs) => {
   const s = toSI(value, unit);
   if (!s) return Number.isFinite(value) ? `${Number(value.toPrecision(4))} ${unit || ""}`.trim() : String(value);
   if (s.dim === "ratio" || /fraction/.test(s.dim)) return `${Number((s.si * 100).toPrecision(3))} %`;
+  // angles read in degrees; times in the unit people think in
+  if (s.dim === "angle" && !prefs.angle) return `${Number(((s.si * 180) / Math.PI).toPrecision(4))}°`;
+  if (s.dim === "time" && !prefs.time) {
+    const t = s.si;
+    return t >= 7200 ? `${Number((t / 3600).toPrecision(3))} h` : t >= 120 ? `${Number((t / 60).toPrecision(3))} min` : `${Number(t.toPrecision(3))} s`;
+  }
   return formatAmount(s.si, s.dim, prefs[s.dim]);
 };
 
