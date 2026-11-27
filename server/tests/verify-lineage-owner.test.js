@@ -19,6 +19,7 @@ function extractLink() {
   const descAt = serverSrc.indexOf(", { summary:", start);
   const end = serverSrc.indexOf("});", descAt);
   const span = serverSrc.slice(start, end + 3);
+  // eslint-disable-next-line no-new-func -- compiles a slice of server.js to test one handler in isolation
   const factory = new Function(
     "register", "STATE", "isShadowDTU", "nowISO", "dtuMutationDenial", "AUTH_MODE", "upsertDTU",
     span + "\nreturn register.__handler;");
