@@ -1,5 +1,80 @@
 # conkay — Capability Map
 
+## 2026-11-27 — Step 2: real shapes, real solids
+
+From the audit's ranked list: real geometry, and the CAD kernel where ConKay runs.
+
+### What shipped
+
+- **Three new shapes in the design language**, written in any units
+  (`lib/conkay/geometry/shapes.js`, math in `geometry/profiles.js`):
+  - `extrude` — a closed profile with holes (polygons or exact circles) and
+    filleted corners, pushed along an axis: brackets, rails, plates with
+    mounting holes, handles. Its section properties (area, centroid, second
+    moments) are exact, so an extruded part is a **frame member**; the torsion
+    constant is Saint-Venant's estimate and said so (and flagged as unreliable
+    for hollow or thin-walled sections; unsymmetric sections flagged too).
+  - `revolve` — a closed `(r, z)` profile, or an open **outline with a wall**:
+    a cup, bowl, bottle, lamp shade. Volume by Pappus (exact); an outline that
+    starts on the axis reports **what it holds** to the rim, checked by the new
+    `geometry.capacity` solver against `props.capacity { min | max }` ("12 fl oz").
+  - `loft` — sections (rectangle, ellipse, NACA 4-digit airfoil with twist)
+    blended along an axis: a wing, a blade, a hull. Volume exact for the ruled
+    blend (closed-form integral of the quadratic section area); `skin` makes
+    it a thin-walled shell (labelled an estimate).
+- **They draw in 3D** (`profileMesh`), and their mass, cost and editing come
+  through the existing paths (a mug's wall, a loft section's chord, a fillet).
+- **OpenCascade B-rep solids** (`geometry/conkay_solids_occ.py`,
+  `geometry/solids.js`): every part (profile shapes and primitives) built as a
+  real solid. `cad.solid-check` compares the kernel's own volume with
+  ConKay's exact volume — two independent computations; they agree to ~1e-16
+  for revolve, extrude with fillets and holes, and twisted ruled lofts. The
+  check caught a real mismatch in development (a skinned wing compared with
+  its solid) and now compares like with like.
+- **STEP export of builds** (`GET /api/conkay/build/:id/step`, "STEP" on the
+  report): real B-rep solids — planes, cylinders, cones, surfaces of revolution,
+  exact circular holes — not faceted triangles.
+- **Provisioning**: `server/Dockerfile` installs `cadquery-ocp==7.8.1.1.post1`
+  and `cantera==3.2.0` in one venv, `/opt/conkay-occ` (plus libGL/libX11, which
+  OCP links), and sets `CONKAY_OCC_PYTHON`; the gating `structural-audits` CI
+  job installs the same. They share a venv because chemistry falls back to
+  `CONKAY_OCC_PYTHON` — pointing it at a Python with OCP but no Cantera broke
+  the chemistry tests, caught in this pass; with both, the 21 chemistry tests
+  run real Cantera.
+  With the kernel present, the long-open `conkay-envelope-refusal` showcase
+  test passes (8/8). Without it, solid checks are NOT_COMPUTED with how to
+  install it. (The Docker build itself was not run in this container.)
+- **Fixed on the way**: the server's zero-warnings lint gate was red on this
+  branch (17 errors, 4 warnings from earlier lens passes: deliberate
+  control-character regexes, two literal byte-order marks, and an
+  `/api/artistry/assets` write that took its owner from the request body when
+  there was no session — now unowned instead); a stale animation test (a
+  soundtrack now needs a real source); the darkroom pipeline copy kept
+  byte-identical after the lint fix.
+
+### Verified
+
+- Hand calculations: cup capacity π·37²·97 mm³; cone πr²h/3; 50×50×5 angle
+  (A = 475 mm², I by parallel axes); plate with a hole; four 90° fillets
+  remove (4 − π)r² (2° arc segments, low by < 2.1e-4 of the sectors); frustum;
+  NACA 0012 area against its thickness-formula integral; an extruded bar's
+  frame stress equals the box section's and σ = Mc/I; a hollow extrusion
+  equals the rect-tube; a mug's mass and capacity.
+- The display mesh encloses the computed volume (divergence theorem) and
+  faces outward on every axis.
+- Browser: a mug (13.91 fl oz; an 8 mm wall drops it to 10.71 and the 12 fl oz
+  check fails), a desk lamp (filleted base with four holes, spun shade), a
+  tapered twisted wing; the STEP download is a 770 KB B-rep file.
+
+### Open
+
+- Physics for these shapes is the next step (audit items 3–4): lift and drag
+  on a loft, heat through a revolved wall over time, tipping of a lamp,
+  vibration. Kay can now model the shapes; what checks them is still the
+  existing catalogue.
+- Sweeps along a path, shells offset from a solid, booleans between parts,
+  and threads are not in the design language yet.
+
 ## 2026-11-27 — Audit, then step 1: builds you can work on
 
 Owner: "1:1 in every aspect that matters for development", for anything (a

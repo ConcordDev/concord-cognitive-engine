@@ -15,6 +15,7 @@ import { listSolvers } from "./physics/registry.js";
 export { softenDesignIR, formatIrErrors, CONKAY_IR_MINI_EXAMPLE, CONKAY_IR_HINTS } from "./compiler/soften-ir.js";
 import "./physics/solvers/mass-cost.js";
 import "./physics/solvers/general.js";
+import "./geometry/solids.js";
 import "./physics/solvers/bolted-joint.js";
 import "./physics/solvers/joint-governing-check.js";
 import "./physics/solvers/requirements.js";

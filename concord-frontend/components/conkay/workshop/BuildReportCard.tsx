@@ -114,8 +114,10 @@ function ParamRow({ p, busy, onEdit }: { p: BuildParameter; busy: boolean; onEdi
   );
 }
 
-export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, busy = false }: {
+export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, busy = false, stepHref }: {
   report: BuildReport; title?: string; onClose?: () => void; className?: string;
+  /** The build as real B-rep solids (STEP), made by the CAD kernel on the server. */
+  stepHref?: string;
   selected?: string | null; onSelect?: (id: string | null) => void;
   onEdit?: (edits: BuildEdit[]) => Promise<EditResult>; busy?: boolean;
 }) {
@@ -138,7 +140,13 @@ export function BuildReportCard({ report, title, onClose, className, selected = 
             {busy ? <><Loader2 className="mr-1 inline h-3 w-3 animate-spin" aria-hidden />Re-checking…</> : report.headline}
           </p>
         </div>
-        {onClose && <button type="button" onClick={onClose} className="shrink-0 rounded px-1.5 py-0.5 text-[11px] text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)]">Close</button>}
+        <div className="flex shrink-0 items-center gap-1">
+          {stepHref ? (
+            <a href={stepHref} download data-testid="build-step" title="Real solids (B-rep) for CAD and CAM, made by the CAD kernel from this exact design"
+              className="rounded px-1.5 py-0.5 text-[11px] text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)]">STEP</a>
+          ) : null}
+          {onClose && <button type="button" onClick={onClose} className="rounded px-1.5 py-0.5 text-[11px] text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)]">Close</button>}
+        </div>
       </div>
       <div className="min-h-0 overflow-y-auto">
         {sel ? (

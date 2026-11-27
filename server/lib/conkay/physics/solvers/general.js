@@ -309,3 +309,33 @@ export const solution = registerSolver({
     };
   },
 });
+
+// ── geometry.capacity ────────────────────────────────────────────────────────
+// What a revolved vessel (a cup, a bowl, a bottle) holds up to its rim, from
+// its own profile (Pappus, exact), checked against props.capacity { min?, max?, source }.
+export const capacity = registerSolver({
+  id: "geometry.capacity",
+  version: "1.0.0",
+  domain: "geometry.capacity",
+  domains: ["geometry.capacity"],
+  fidelity: 2,
+  method: "Volume enclosed by the inner surface of a revolved outline up to its rim (Pappus's theorem: 2π × area × centroid radius), exact for the profile",
+  reference: "server/lib/conkay/geometry/shapes.js (revolve)",
+  regime: "brim-full to the rim; no meniscus, no lid, no fill line",
+  units: { inputs: "m", outputs: "m^3" },
+  targets: (g) => [...g.nodes.values()].filter((n) => n.geometry?.shape === "revolve" && n.geometry.derived?.capacity > 0).map((n) => n.id),
+  run(ctx, id) {
+    const g = ctx.get(id, "geometry");
+    const V = g.derived.capacity;
+    const want = ctx.get(id, "props.capacity");
+    const margins = []; const warnings = [];
+    if (want && typeof want === "object") {
+      const lo = want.min != null ? q(want.min, "volume", "capacity.min") : null;
+      const hi = want.max != null ? q(want.max, "volume", "capacity.max") : null;
+      if (lo?.si > 0) margins.push({ check: "holds at least the required volume (to the rim)", demand: lo.si, capacity: V, unit: "m^3", basis: want.source || "stated" });
+      if (hi?.si > 0) margins.push({ check: "holds no more than the limit (to the rim)", demand: V, capacity: hi.si, unit: "m^3", basis: want.source || "stated" });
+      for (const r of [lo, hi]) if (r?.error) warnings.push(r.error);
+    } else warnings.push("no capacity was asked for, so it is computed but not checked");
+    return { inputs: { wall: { value: g.wall, unit: "m" } }, outputs: { capacity: { value: V, unit: "m^3" } }, margins, warnings, assumptions: ["filled to the rim"] };
+  },
+});

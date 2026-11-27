@@ -250,6 +250,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
   const { inputs, setInputs, result, ws, status, busy, design, viewMesh, build } = c;
   const report = build?.report && isBuildReport(build.report) ? build.report : null;
   const closeBuild = () => { c.setBuild(null); c.setViewMesh(null); c.setSelectedPart(null); };
+  const stepHref = build?.buildId ? `/api/conkay/build/${encodeURIComponent(build.buildId)}/step` : undefined;
   const fresh = Boolean(result) && !ws.stale;
   const callouts: BeamCallouts | null = useMemo(() => (
     result && fresh ? {
@@ -312,7 +313,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
             />
             {report ? (
               <BuildReportCard report={report} title={build?.title} onClose={closeBuild}
-                selected={c.selectedPart} onSelect={c.setSelectedPart} onEdit={c.editBuild} busy={c.buildBusy}
+                selected={c.selectedPart} onSelect={c.setSelectedPart} onEdit={c.editBuild} busy={c.buildBusy} stepHref={stepHref}
                 className="absolute z-20 bg-[color:var(--ws-glass-strong)] max-sm:inset-x-2 max-sm:bottom-2 max-sm:max-h-[48%] sm:right-3 sm:top-[4.75rem] sm:max-h-[calc(100%-5.5rem)] sm:w-72 sm:max-w-[calc(100%-1.5rem)]" />
             ) : (
             <div className="ws-glass absolute right-3 top-[4.75rem] z-20 flex max-h-[calc(100%-5.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
@@ -339,7 +340,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
           </>
         ) : report ? (
           <div className="absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-3 pt-11">
-            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} onEdit={c.editBuild} busy={c.buildBusy} className="w-full max-w-xl" />
+            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} onEdit={c.editBuild} busy={c.buildBusy} stepHref={stepHref} className="w-full max-w-xl" />
           </div>
         ) : (
           <BeamViewport

@@ -11,7 +11,7 @@ import { unitPreferences } from "../lib/conkay/build/report.js";
 import { openDesign } from "../lib/conkay/index.js";
 
 test("every catalogue example compiles and its own solver runs on it", () => {
-  const expect = { parts: "mass.part", frame: "structure.frame", pressure: "vessel.hoop-stress", flow: "fluid.pipe-network", heat: "thermal.conduction-1d", electrical: "electrical.dc-budget", mixture: "chem.solution", combustion: "chem.equilibrium" };
+  const expect = { parts: "mass.part", vessel: "geometry.capacity", frame: "structure.frame", pressure: "vessel.hoop-stress", flow: "fluid.pipe-network", heat: "thermal.conduction-1d", electrical: "electrical.dc-budget", mixture: "chem.solution", combustion: "chem.equilibrium" };
   for (const f of FAMILIES) {
     const c = checkPlan({ design: { id: f.id, name: f.id }, ...f.example });
     assert.equal(c.ok, true, `${f.id}: ${JSON.stringify(c.errors)}`);

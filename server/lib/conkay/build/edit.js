@@ -16,8 +16,8 @@
 import { parseAmount } from "../units/universal.js";
 import { MATERIALS } from "../materials/index.js";
 
-const GEOMETRY_DIMS = { length: "length", width: "length", height: "length", thickness: "length", diameter: "length", outerDiameter: "length", wall: "length", flangeWidth: "length", flangeThickness: "length", webThickness: "length" };
-const LABEL = { length: "length", width: "width", height: "height", thickness: "thickness", diameter: "diameter", outerDiameter: "outside diameter", wall: "wall", flangeWidth: "flange width", flangeThickness: "flange thickness", webThickness: "web thickness" };
+const GEOMETRY_DIMS = { length: "length", width: "length", height: "length", thickness: "length", diameter: "length", outerDiameter: "length", wall: "length", flangeWidth: "length", flangeThickness: "length", webThickness: "length", fillet: "length", skin: "length" };
+const LABEL = { length: "length", width: "width", height: "height", thickness: "thickness", diameter: "diameter", outerDiameter: "outside diameter", wall: "wall", flangeWidth: "flange width", flangeThickness: "flange thickness", webThickness: "web thickness", fillet: "corner fillet", skin: "skin thickness" };
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const pid = (node, path) => `${node}:${path.join(".")}`;
 
@@ -33,6 +33,15 @@ export function listParameters(ir) {
         if (k === "shape" || !GEOMETRY_DIMS[k] || v == null) continue;
         out.push({ id: pid(n.id, ["geometry", k]), node: n.id, nodeName: name, path: ["geometry", k], label: LABEL[k] || k, value: String(v), dim: GEOMETRY_DIMS[k] });
       }
+    }
+    // a loft's sections: each station's size
+    if (n.geometry?.shape === "loft" && Array.isArray(n.geometry.sections)) {
+      n.geometry.sections.forEach((sec, i) => {
+        for (const k of ["chord", "width", "height"]) {
+          if (sec?.[k] == null) continue;
+          out.push({ id: pid(n.id, ["geometry", "sections", i, k]), node: n.id, nodeName: name, path: ["geometry", "sections", i, k], label: `section ${i + 1} ${k}`, value: String(sec[k]), dim: "length" });
+        }
+      });
     }
     if (typeof n.material === "string" && n.geometry) {
       out.push({ id: pid(n.id, ["material"]), node: n.id, nodeName: name, path: ["material"], label: "material", value: n.material, dim: "material", options: materialOptions });

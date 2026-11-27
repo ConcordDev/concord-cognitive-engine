@@ -16,6 +16,7 @@
 //   requirements: [{ id, label, of: { solver, target, output }, max?: q, min?: q }]
 // }
 
+import { PROFILE_SHAPES, compileProfileShape } from "../geometry/shapes.js";
 import { parseQuantity } from "./units.js";
 import { softenDesignIR } from "./soften-ir.js";
 import { getMaterial } from "../materials/index.js";
@@ -380,10 +381,15 @@ export function compileDesignIR(ir) {
       if (refusedMaterials.has(n.material)) { /* its own errors above say why */ } else if (!getMaterial(n.material) && !customMaterials[n.material]) errors.push(`${where}: unknown material "${n.material}" (define it under materials with its values and their source, or use a library id)`);
       else node.material = n.material;
     }
-    if (n.geometry != null) {
+    if (n.geometry != null && PROFILE_SHAPES.has(n.geometry.shape)) {
+      // extrude / revolve / loft: point lists and sections, compiled with their exact properties
+      const c = compileProfileShape(n.geometry, `${where}.geometry`);
+      if (c.errors) errors.push(...c.errors);
+      else node.geometry = c.geometry;
+    } else if (n.geometry != null) {
       const shape = n.geometry.shape;
       const shapeKeys = ownArray(SHAPES, shape);
-      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}"`);
+      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}" (box, plate, cylinder, rod, bolt, round-tube, rect-tube, i-beam, shell, extrude, revolve, loft)`);
       else {
         const geometry = { shape };
         for (const key of shapeKeys) {

@@ -118,6 +118,10 @@ part, editing anything, re-checking. A build is shown, not worked on.
 2. **Real geometry**: revolve / sweep / loft / shell / fillet / hole in the
    IR, built by OpenCascade where installed and tessellated faithfully where
    not; the OCC kernel, CalculiX and Cantera provisioned in the deploy image.
+   (Shipped 2026-11-27: extrude with holes and fillets, revolve with capacity,
+   loft with NACA sections, the OCC kernel with a volume cross-check and STEP
+   export, provisioned in the Docker image and the gating CI job. Still open:
+   sweeps, shells, booleans, threads; CalculiX provisioning. Cantera is now provisioned beside OpenCascade.)
 3. **Generalise the object-specific solvers**: aero (lift/drag on any
    surface), stability (any object), fatigue, thermal (transient + natural
    convection + radiation), modal; add them to the build catalogue.

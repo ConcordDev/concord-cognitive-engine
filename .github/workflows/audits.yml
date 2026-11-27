@@ -70,6 +70,18 @@ jobs:
         working-directory: server
         run: npm ci --no-audit --no-fund
 
+      # ConKay's kernels in one venv (chemistry falls back to CONKAY_OCC_PYTHON,
+      # so Cantera must sit beside OpenCascade): real solids, the cad.solid-check
+      # cross-check, STEP export, and the chem.* solvers. Without them those
+      # checks are NOT_COMPUTED and tests that need them fail.
+      - name: Install ConKay kernels (cadquery-ocp, cantera)
+        run: |
+          sudo apt-get install -y --no-install-recommends libgl1 libx11-6
+          python3 -m venv /opt/conkay-occ
+          /opt/conkay-occ/bin/pip install --no-cache-dir cadquery-ocp==7.8.1.1.post1 cantera==3.2.0
+          /opt/conkay-occ/bin/python -c "from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox; import cantera; print('OCP + cantera', cantera.__version__)"
+          echo "CONKAY_OCC_PYTHON=/opt/conkay-occ/bin/python" >> "$GITHUB_ENV"
+
       - name: Install repo deps (audit scripts)
         run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
