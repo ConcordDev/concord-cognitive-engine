@@ -75,6 +75,7 @@ export async function importPhoto(db, userId, buf, { filename = null } = {}) {
   await fsp.mkdir(PHOTO_DIR, { recursive: true });
   const blobPath = path.join(PHOTO_DIR, `${id}.${fmt[0]}`);
   await fsp.writeFile(blobPath, buf);
+  // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
   const name = typeof filename === "string" ? filename.replace(/[\u0000-\u001f]/g, "").slice(0, 255) : null;
   const caption = name ? name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").trim().slice(0, 280) || null : null;
   try {

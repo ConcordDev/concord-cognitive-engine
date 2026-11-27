@@ -25,6 +25,7 @@ export function parseTimestamp(raw) {
 const tidy = (text) => String(text)
   .replace(/<\/?[^>]{0,80}>/g, "")           // cue tags: <v Speaker>, <i>, <c.x>
   .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'")
+  // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
   .replace(/[\u0000-\u001f\u007f]/g, " ")
   .replace(/\s+/g, " ")
   .trim()
@@ -55,7 +56,7 @@ const ARROW = /^\s*(\S+)\s+-->\s+(\S+)/;
 /** WebVTT → [{ startSec, endSec, text, speaker? }] */
 export function parseVtt(input) {
   const src = String(input ?? "").replace(/\r\n?/g, "\n");
-  if (!/^﻿?WEBVTT/.test(src)) return { ok: false, error: "not a WebVTT file (it must start with WEBVTT)" };
+  if (!/^\uFEFF?WEBVTT/.test(src)) return { ok: false, error: "not a WebVTT file (it must start with WEBVTT)" };
   const cues = [];
   for (const block of src.split(/\n{2,}/)) {
     const lines = block.split("\n");
@@ -71,7 +72,7 @@ export function parseVtt(input) {
 
 /** SRT → [{ startSec, endSec, text }] */
 export function parseSrt(input) {
-  const src = String(input ?? "").replace(/\r\n?/g, "\n").replace(/^﻿/, "");
+  const src = String(input ?? "").replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
   const cues = [];
   for (const block of src.split(/\n{2,}/)) {
     const lines = block.split("\n").filter((l) => l.trim() !== "");
