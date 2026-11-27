@@ -1,5 +1,51 @@
 # conkay — Capability Map
 
+## 2026-11-27 — Step 3: physics for everyday objects
+
+From the audit (items 3–4): the effects that decide whether a lamp, a mug or
+a wing works, on any build (`lib/conkay/physics/solvers/objects.js`). No
+constant is built in — air, water, conductivity and emissivity come with
+their source (Incropera's tables, ISA) or the check says what it needs.
+
+- **`stability.tipping`** — any assembly: CG from every contained part's real
+  volume × density at its real centroid (revolve and extrude centroids
+  exact) plus carried masses; support = convex hull of the base part's real
+  footprint (box/plate, revolve, vertical extrude or rod); tip angle about
+  the nearest edge; a named push tips it when its overturning moment beats
+  the weight's. Benchmarks: a block tips at atan(half-width / h); a push at
+  exactly F·H = W·d is the boundary; a lamp's CG by hand.
+- **`thermal.vessel-cooling`** — a hot drink in a revolved vessel: lumped
+  liquid, wall conduction in series with outside natural convection
+  (Churchill–Chu) and radiation, open top (hot plate facing up) and
+  radiation, RK4 in time. Time to a target, the outside temperature at the
+  start (hand contact), minimum time above. **Evaporation is not modelled**
+  and the report says so (a mug: 90 → 60 °C in 40 min computed; real coffee
+  is faster, mostly by evaporation).
+- **`aero.lifting-line`** — any lofted NACA wing: Prandtl lifting line
+  (Glauert series) on the loft's own chord and twist, zero-lift angle from
+  the camber line (thin-airfoil theory), profile drag by flat-plate
+  skin friction × Raymer form factor; lift ≥ weight and below-stall checks.
+  Benchmarks: an elliptic wing gives CL = a₀α/(1 + a₀/πAR) with e = 1;
+  a rectangular AR 6 wing e ≈ 0.95; NACA 2412 zero-lift −2.08°.
+- **Editable conditions** under Loads and settings: flight speed, angle of
+  attack, a drink's start temperature and fill, carried masses — in any unit
+  ("80 mph" re-checked a glider wing: lift 120.4 → 246.3 N, exactly ∝ V²).
+- Catalogue: new "stability" and "wing" families, cooling in "vessel"; each
+  example compiles and its solver runs (pinned).
+- Report: angles read in degrees and times in min/h.
+
+Browser: a lamp (49° to tip; a 3 lb bulb at the shade drops it to 22°), a
+mug (above 60 °C for 40.7 min vs 20 required), a glider wing (fails to carry
+25 kg at 25 m/s; passes at 80 mph).
+
+### Open
+
+Modal / natural frequencies; impact and drop; thermal shock; photometry and
+LED junction temperature; linkages and joint friction; flight stability
+(static margin) and performance; fatigue on real load histories; tolerance
+stacks and manufacturability; sweeps, booleans and threads; CalculiX
+provisioning; evaporation in vessel cooling.
+
 ## 2026-11-27 — Step 2: real shapes, real solids
 
 From the audit's ranked list: real geometry, and the CAD kernel where ConKay runs.

@@ -111,3 +111,18 @@ describe('BuildReportCard — STEP', () => {
     expect(screen.queryByTestId('build-step')).toBeNull();
   });
 });
+
+describe('BuildReportCard — conditions', () => {
+  it('a part\'s conditions (flight speed) are under Loads and settings, its sizes under the part', () => {
+    const r: BuildReport = { ...report, partStatus: { W: 'fail' }, parts: [{ id: 'W', name: 'wing', kind: 'Part', shape: 'loft', children: [] }],
+      parameters: [
+        { id: 'W:geometry.sections.0.chord', node: 'W', nodeName: 'wing', label: 'section 1 chord', value: '320 mm', dim: 'length' },
+        { id: 'W:props.aero.speed', node: 'W', nodeName: 'wing', label: 'flight speed', value: '25 m/s', dim: 'velocity' },
+      ] };
+    render(<BuildReportCard report={r} selected="W" onSelect={vi.fn()} onEdit={vi.fn(async () => ({ ok: true }))} />);
+    expect(within(screen.getByTestId('build-part-params')).queryByLabelText('flight speed')).toBeNull();
+    expect(within(screen.getByTestId('build-part-params')).getByLabelText('section 1 chord')).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    expect((screen.getByLabelText('flight speed') as HTMLInputElement).value).toBe('25 m/s');
+  });
+});

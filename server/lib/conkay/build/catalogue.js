@@ -69,6 +69,7 @@ export const FAMILIES = Object.freeze([
       "A vessel is a revolve with an outline from the axis outward then up and a wall: { shape: \"revolve\", outline: [[0, 0], [\"40 mm\", 0], [\"42 mm\", \"95 mm\"]], wall: \"3 mm\" }. Its position is the centre of its base; z is up.",
       "What it should hold goes on props.capacity: { min: \"12 fl oz\", source: \"the person\" } — geometry.capacity checks it against the volume to the rim.",
       "A handle is its own part (an extrude of its outline, or a box) placed beside the body.",
+      "How fast a hot drink cools and how hot the outside gets: props.cooling { startTemperature, targetTemperature, fill (0..1), lid?, liquid: { density, specificHeat }, ambient: { temperature, conductivity, kinematicViscosity, prandtl } (air), emissivity, wallConductivity (or conductivity on the material), maxOuterTemperature?, minTimeAbove? } — every property with its source (Incropera's tables for water and air).",
     ],
     example: {
       materials: { stoneware: { label: "Stoneware", density: { value: "2.3 g/cm3", source: "CRC Handbook of Chemistry and Physics, ceramics table" } } },
@@ -79,6 +80,41 @@ export const FAMILIES = Object.freeze([
           props: { capacity: { min: "12 fl oz", source: "the person" } } },
       ],
       edges: [{ from: "MUG", to: "BODY", type: "CONTAINS" }],
+    },
+  },
+  {
+    id: "stability",
+    keywords: /\b(?:lamp|stand|shelf\s+unit|bookcase|bookshelf|cabinet|dresser|ladder|stool|chair|table|vase|tall|top[- ]heavy|tip(?:s|ping)?\s+over|tip(?:s|ping)?|topple|fall\s+over|stable|stability|easel|tripod|sign|display|tower|coat\s+rack|plant\s+stand|bottle|glass)\b/i,
+    title: "Tipping over (lamps, stands, shelves, bottles, anything that stands)",
+    when: "anything free-standing: how far it can lean, and what push knocks it over",
+    guide: [
+      "props.tipping on the Assembly: { base: \"<the part it stands on>\", masses?: [{ name, mass, at: [x, y, z] }] (things it carries: books, a shade, a drink), tiltRequired?: { value: \"10 deg\", source }, pushes?: [{ name, at: [x, y, z], force: [Fx, Fy, Fz], source }] }. The CG comes from every part's real mass and centroid; the base part's footprint is the support (a box/plate, a revolve, a vertical extrude or rod).",
+      "Furniture standards set the tilt and push (e.g. ASTM F2057 for clothing storage units); give them with their source, or what the person wants.",
+    ],
+    example: {
+      nodes: [
+        { id: "LAMP", kind: "Assembly", name: "desk lamp", props: { tipping: { base: "BASE", masses: [{ name: "shade", mass: "600 g", at: ["250 mm", 0, "450 mm"] }], tiltRequired: { value: "10 deg", source: "the person" } } } },
+        { id: "BASE", kind: "Part", name: "base", material: "steel-a36", position: { x: 0, y: 0, z: "4 mm" }, geometry: { shape: "plate", length: "180 mm", width: "180 mm", thickness: "8 mm" } },
+        { id: "POST", kind: "Part", name: "post", material: "aluminum-6061-t6", position: { x: 0, y: 0, z: "233 mm" }, props: { axis: "z" }, geometry: { shape: "round-tube", length: "450 mm", outerDiameter: "12 mm", wall: "1 mm" } },
+      ],
+      edges: [{ from: "LAMP", to: "BASE", type: "CONTAINS" }, { from: "LAMP", to: "POST", type: "CONTAINS" }],
+    },
+  },
+  {
+    id: "wing",
+    keywords: /\b(?:wing|wings|plane|airplane|aeroplane|aircraft|glider|drone|uav|rc\s+plane|sailplane|airfoil|aerofoil|lift|fly|flying|hydrofoil|kite)\b/i,
+    title: "Wings (planes, gliders, drones, hydrofoils)",
+    when: "a lifting surface: lift, drag and whether it carries its weight",
+    guide: [
+      "A wing is a loft of NACA sections along its span (props.axis \"y\"): sections [{ at, shape: \"naca\", chord, naca: \"2412\", twist? }]. One loft is one half of a symmetric wing unless props.aero.halfSpan is false.",
+      "props.aero: { speed, angleOfAttack, air: { density, kinematicViscosity } (with source, e.g. ISA sea level), stallAngle?: { value, source } (from section data), mustLift?: { value: \"500 kg\" or \"4.9 kN\", source } }. Lift by lifting-line theory; drag = induced + skin friction.",
+    ],
+    example: {
+      nodes: [{ id: "W", kind: "Part", name: "wing (half)", material: "aluminum-6061-t6", props: { axis: "y", aero: {
+        speed: "35 m/s", angleOfAttack: "5 deg",
+        air: { density: { value: "1.225 kg/m3", source: "ISA sea level" }, kinematicViscosity: { value: "1.46e-5 m^2/s", source: "ISA sea level" } },
+        stallAngle: { value: "15 deg", source: "Abbott & von Doenhoff, NACA 2412 section data" }, mustLift: { value: "500 kg", source: "the person" },
+      } }, geometry: { shape: "loft", skin: "1 mm", sections: [{ at: 0, shape: "naca", chord: "1.6 m", naca: "2412" }, { at: "5 m", shape: "naca", chord: "1.1 m", naca: "2412", twist: -2 }] } }],
     },
   },
   {

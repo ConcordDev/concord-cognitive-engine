@@ -128,7 +128,10 @@ export function BuildReportCard({ report, title, onClose, className, selected = 
   const findPart = (ps: BuildPart[]): BuildPart | null => { for (const p of ps) { if (p.id === selected) return p; const k = findPart(p.children); if (k) return k; } return null; };
   const sel = selected ? findPart(report.parts) : null;
   const selStatus = selected ? report.partStatus?.[selected] : undefined;
-  const settings = params.filter((p) => !partIds.has(p.node));
+  // conditions (loads, flight, a drink, carried masses) live under Loads and settings, whatever node
+  // holds them; a part's own panel keeps its sizes and material
+  const isCondition = (p: BuildParameter) => !partIds.has(p.node) || p.id.split(':')[1]?.startsWith('props.');
+  const settings = params.filter(isCondition);
   const selChecks = selected ? report.checked.filter((c) => c.part === selected || c.target === selected) : [];
   const selGaps = selected ? report.gaps.filter((g) => g.target === selected) : [];
   return (
@@ -156,9 +159,9 @@ export function BuildReportCard({ report, title, onClose, className, selected = 
               <button type="button" onClick={() => onSelect?.(null)} className="shrink-0 text-[11px] text-[color:var(--ws-arc)]">All parts</button>
             </div>
             {selStatus ? <p className={cn('text-[11px]', STATUS_CLASS[selStatus])} data-testid="build-part-status">{STATUS_TEXT[selStatus]}</p> : null}
-            {onEdit && params.some((p) => p.node === sel.id) ? (
+            {onEdit && params.some((p) => p.node === sel.id && !isCondition(p)) ? (
               <ul className="mt-1.5" data-testid="build-part-params">
-                {params.filter((p) => p.node === sel.id).map((p) => <ParamRow key={p.id} p={p} busy={busy} onEdit={onEdit} />)}
+                {params.filter((p) => p.node === sel.id && !isCondition(p)).map((p) => <ParamRow key={p.id} p={p} busy={busy} onEdit={onEdit} />)}
               </ul>
             ) : null}
             <div className="mt-2"><CheckList checks={selChecks} /></div>
