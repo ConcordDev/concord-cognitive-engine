@@ -723,6 +723,76 @@ describe('ConKay — Kay first', () => {
     expect(screen.queryByTestId('beam-viewport')).toBeNull();
   });
 
+  it('a build can be worked on: pick a part, change it in any unit, the server re-checks and the report follows', async () => {
+    const report = (headline: string, height: string, status: 'fail' | 'pass') => ({
+      verdict: status === 'fail' ? 'fails' : 'passes_checked', headline, units: { length: 'in' },
+      parts: [{ id: 'BOARD', name: 'board', kind: 'Part', shape: 'box', material: 'white-pine', children: [] }], masses: [],
+      checked: [{ solver: 'structure.frame', target: 'SHELF', targetName: 'shelf', status: status === 'fail' ? 'FAIL' : 'PASS', check: 'books: M1 von Mises ≤ Fy / 2', pass: status === 'pass', demand: status === 'fail' ? '2650 psi' : '663 psi', capacity: '2393 psi', utilization: null, basis: 'the person', part: 'BOARD' }],
+      computed: [], gaps: [], questions: [], assumptions: [], sources: [],
+      partStatus: { BOARD: status },
+      parameters: [{ id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: height, dim: 'length' }],
+    });
+    const mesh = { kind: 'mesh', title: 'wall shelf model', positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2], partRanges: [{ id: 'BOARD', name: 'board', nodeName: 'board', i0: 0, i1: 3 }] };
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { ...mesh, buildId: 'bld_1', report: report('1 of 1 checks fail', '3/4 in', 'fail') } });
+      args.onToken('The board is overstressed.');
+      return { ok: true };
+    });
+    apiPost.mockResolvedValueOnce({ data: { ok: true, artifact: { ...mesh, buildId: 'bld_1', report: report('all 1 checks pass; 0 not checked', '1 1/2 in', 'pass') } } });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('build a 3 ft pine shelf for 72 lb of books');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('build-part-BOARD'));
+    expect(screen.getByTestId('build-part-status').textContent).toBe('fails a check');
+    const h = screen.getByLabelText('height') as HTMLInputElement;
+    fireEvent.change(h, { target: { value: '1 1/2 in' } });
+    fireEvent.blur(h);
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/conkay/build/bld_1/edit', { edits: [{ id: 'BOARD:geometry.height', value: '1 1/2 in' }] }, expect.anything()));
+    await waitFor(() => expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/));
+    expect(screen.getByTestId('build-part-status').textContent).toBe('passes its checks');
+    expect((screen.getByLabelText('height') as HTMLInputElement).value).toBe('1 1/2 in');
+  });
+
+  it('a re-check the server refuses leaves the build as it was and says why', async () => {
+    streamMock.mockImplementation(async (args: { onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { kind: 'build', title: 'brine', buildId: 'bld_2', report: {
+        verdict: 'unchecked', headline: 'nothing was checked against a limit yet', units: {}, parts: [{ id: 'BRINE', name: 'brine', kind: 'Part', children: [] }], masses: [],
+        checked: [], computed: [], gaps: [], questions: [], assumptions: [], sources: [], partStatus: {},
+        parameters: [{ id: 'PACK:props.frameModel.factorOfSafety.value', node: 'PACK', nodeName: 'pack', label: 'safety factor', value: '2', dim: 'ratio' }] } } });
+      return { ok: true };
+    });
+    apiPost.mockResolvedValueOnce({ data: { ok: false, error: 'invalid_edit', errors: ['pack safety factor: a positive number'] } });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('make a brine');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    const sf = screen.getByLabelText('safety factor') as HTMLInputElement;
+    fireEvent.change(sf, { target: { value: '0' } });
+    fireEvent.blur(sf);
+    expect(await screen.findByText(/a positive number/)).toBeTruthy();
+    expect(sf.value).toBe('2');
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/nothing was checked/);
+  });
+
+  it('?build=<id> reopens a saved build on its report; an unknown id says so', async () => {
+    apiGet.mockImplementation(async (url: string) => (url === '/api/conkay/build/bld_9'
+      ? { data: { ok: true, artifact: { kind: 'build', title: 'cooler wall', buildId: 'bld_9', report: {
+        verdict: 'passes_checked', headline: 'all 1 checks pass; 0 not checked', units: {}, parts: [], masses: [],
+        checked: [{ solver: 'thermal.conduction-1d', target: 'WALL', targetName: 'wall', status: 'PASS', check: 'peak temperature ≤ limit', pass: true, demand: '70 °F', capacity: '86 °F', utilization: null, basis: 'the person' }],
+        computed: [], gaps: [], questions: [], assumptions: [], sources: [] } } } }
+      : url === '/api/conkay/build/nope' ? { data: { ok: false, error: 'not_found' } } : { data: { items: [] } }));
+    search = 'build=bld_9';
+    render(<ConKayWorkspace />);
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/);
+    cleanup();
+    search = 'build=nope';
+    render(<ConKayWorkspace />);
+    expect(await screen.findByText('That build was not found in your account.')).toBeTruthy();
+  });
+
   it('when Kay builds a 3D model the Workshop opens to show it', async () => {
     streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
       args.onToolCall({ tool: 'conkay_design', ok: true, artifact: { kind: 'mesh', title: 'shelf concept', positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2] } });

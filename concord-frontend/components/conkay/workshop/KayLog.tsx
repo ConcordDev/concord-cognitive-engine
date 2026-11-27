@@ -97,7 +97,12 @@ export function KayLog({ c, onClose, variant = 'side', empty }: {
       </header>
       <div ref={listRef} className={`min-h-0 flex-1 overflow-y-auto ${home ? 'space-y-3 px-1 py-2' : 'space-y-2.5 px-3 py-3'}`} aria-live="polite">
         {messages.length === 0 && empty}
-        {messages.length === 0 && !empty && (
+        {messages.length === 0 && !empty && c.build && (
+          <div className="rounded-md border border-[color:var(--ws-line)] p-3 text-xs leading-relaxed text-[color:var(--ws-muted)]" data-testid="kaylog-build-hint">
+            <p className="text-[color:var(--ws-text)]">Pick a part in the model to see its checks and change its sizes or material in any unit; loads and the safety factor are under Loads and settings. Every change re-runs the checks.</p>
+          </div>
+        )}
+        {messages.length === 0 && !empty && !c.build && (
           <div className="rounded-md border border-[color:var(--ws-line)] p-3 text-xs leading-relaxed text-[color:var(--ws-muted)]">
             <p className="mb-2 text-[color:var(--ws-text)]">Ask Kay anything, or talk to the study: edits re-run the solver.</p>
             <ul className="ws-num space-y-1 text-[11px] text-[color:var(--ws-arc)]">

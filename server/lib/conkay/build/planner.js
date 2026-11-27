@@ -52,7 +52,7 @@ function extractJson(text) {
   return null;
 }
 
-/** Compile a planned IR the same way openDesign will; returns { ok, ir, errors, warnings }. */
+/** Compile a planned IR the same way openDesign will; returns { ok, ir (solver-ready), source (as written), errors, warnings }. */
 export function checkPlan(rawIr) {
   if (!rawIr || typeof rawIr !== "object" || !Array.isArray(rawIr.nodes) || !rawIr.nodes.length) return { ok: false, errors: ["the plan has no nodes"] };
   const norm = normalizePlan({ design: { id: "build", name: "build" }, ...rawIr });
@@ -60,7 +60,8 @@ export function checkPlan(rawIr) {
   const soft = softenDesignIR(norm.ir);
   const built = DesignGraph.fromIR(soft.ir);
   if (!built.ok) return { ok: false, errors: built.errors, warnings: soft.warnings };
-  return { ok: true, ir: soft.ir, warnings: [...soft.warnings, ...(built.warnings || [])] };
+  // `source` keeps the plan as written (the person's units); `ir` is what the solvers read.
+  return { ok: true, ir: soft.ir, source: { design: { id: "build", name: "build" }, edges: [], loadCases: [], requirements: [], ...rawIr }, warnings: [...soft.warnings, ...(built.warnings || [])] };
 }
 
 /**
@@ -113,7 +114,7 @@ export async function planBuild({ brief, answers = [], previous = null, chat, lo
     const checked = checkPlan(plan.ir);
     if (checked.ok) {
       return {
-        ok: true, ir: checked.ir, summary: String(plan.summary || "").slice(0, 400),
+        ok: true, ir: checked.source, summary: String(plan.summary || "").slice(0, 400),
         questions: (Array.isArray(plan.questions) ? plan.questions : []).filter((q) => q?.ask).map((q) => ({ ask: String(q.ask), blocking: q.blocking === true, ...(q.default ? { default: String(q.default) } : {}) })).slice(0, 6),
         assumptions: (Array.isArray(plan.assumptions) ? plan.assumptions : []).map(String).slice(0, 20),
         sources, warnings: checked.warnings, attempts,

@@ -7,7 +7,16 @@ export interface BuildCheck {
   solver: string; target: string; targetName: string; status: string;
   check: string; pass: boolean; demand: string; capacity: string;
   utilization: number | null; basis: string | null; method?: string | null;
+  /** The part (node id) this check is about, when it is about one part. */
+  part?: string;
 }
+/** A value the person can change on a build, as written (their units). */
+export interface BuildParameter {
+  id: string; node: string; nodeName: string; label: string; value: string;
+  dim: 'length' | 'force' | 'force_per_length' | 'ratio' | 'material' | string;
+  options?: string[];
+}
+export type PartStatus = 'pass' | 'warn' | 'fail' | 'unchecked';
 export interface BuildGap { target: string; targetName: string; solver?: string; domain?: string; reason: string; needs?: string | null }
 export interface BuildComputed { solver: string; target: string; targetName: string; outputs?: Array<{ name: string; value: string }>; note?: string }
 export interface BuildPart { id: string; name: string; kind: string; material?: string; shape?: string; children: BuildPart[] }
@@ -18,6 +27,8 @@ export interface BuildReport {
   parts: BuildPart[];
   masses: Array<{ id: string; name: string; mass: string | null }>;
   checked: BuildCheck[];
+  partStatus?: Record<string, PartStatus>;
+  parameters?: BuildParameter[];
   computed: BuildComputed[];
   gaps: BuildGap[];
   questions: Array<{ ask: string; blocking: boolean; default?: string }>;

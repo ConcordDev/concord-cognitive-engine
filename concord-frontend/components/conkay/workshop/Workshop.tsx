@@ -112,7 +112,9 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
     const qd = params.get('design');
     if (qv === 'table' || qv === 'wall' || qv === 'hood') setViewState(qv);
     if (qd) setDesignId(qd);
-    if (qv || qd || params.get('stage') === 'workshop') setStage('workshop');
+    const qb = params.get('build');
+    if (qb) void c.openBuild(qb);
+    if (qv || qd || qb || params.get('stage') === 'workshop') setStage('workshop');
     // Read once on mount; afterwards the state drives the URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -217,7 +219,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
           {view === 'wall' && <Wall c={c} onOpenDesign={openDesign} />}
           {view === 'hood' && (designId ? <HoodDesign id={designId} onBack={() => go('table', designId)} /> : <HoodStudy c={c} onTable={() => go('table', null)} />)}
           {(view !== 'table' || !designId) && (
-            <VoiceComposer variant="workshop" busy={c.busy || c.status === 'solving'} onSend={(t) => { if (view !== 'table' || designId) go('table', null); void c.send(t); }} speakText={c.speak} lastLine={logOpen ? null : lastKayLine(c)} />
+            <VoiceComposer variant="workshop" busy={c.busy || c.status === 'solving'} placeholder={c.build ? 'Ask Kay about this build, or describe something new to build' : undefined} onSend={(t) => { if (view !== 'table' || designId) go('table', null); void c.send(t); }} speakText={c.speak} lastLine={logOpen ? null : lastKayLine(c)} />
           )}
         </div>
 
@@ -247,7 +249,7 @@ function lastKayLine(c: WorkshopController): string | null {
 function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen: boolean; onOpenLog: () => void }) {
   const { inputs, setInputs, result, ws, status, busy, design, viewMesh, build } = c;
   const report = build?.report && isBuildReport(build.report) ? build.report : null;
-  const closeBuild = () => { c.setBuild(null); c.setViewMesh(null); };
+  const closeBuild = () => { c.setBuild(null); c.setViewMesh(null); c.setSelectedPart(null); };
   const fresh = Boolean(result) && !ws.stale;
   const callouts: BeamCallouts | null = useMemo(() => (
     result && fresh ? {
@@ -275,7 +277,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
               <input value={inputs.name} onChange={(e) => setInputs({ ...inputs, name: e.target.value.slice(0, 80) })} aria-label="Study name"
                 className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium tracking-wide text-[color:var(--ws-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--ws-line-strong)]" />
             )}
-            <span className="ws-label hidden truncate sm:inline">· {c.workspaceName} · mm / N / MPa</span>
+            <span className="ws-label hidden truncate sm:inline">· {c.workspaceName}{report ? ' · checked by ConKay’s solvers' : ' · mm / N / MPa'}</span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {!logOpen && (
@@ -293,6 +295,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
         </div>
 
         {c.saveOpen && <SaveStrip c={c} />}
+        {c.buildError ? <p role="alert" className="absolute inset-x-3 top-11 z-20 rounded-md border border-[color:var(--ws-line-strong)] bg-[color:var(--ws-deep)] px-3 py-2 text-[12px] text-[color:var(--ws-amber)]">{c.buildError}</p> : null}
 
         {design && <DesignPane design={design} onClose={() => c.setDesign(null)} />}
         {!design && !viewMesh && !report && ws.fresh && status !== 'loading' && (
@@ -304,13 +307,15 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
               positions={viewMesh.positions} indices={viewMesh.indices} url={viewMesh.url} color={viewMesh.color} title={viewMesh.title}
               units={viewMesh.units} geometryUnits={viewMesh.geometryUnits} bbox_mm={viewMesh.bbox_mm} scaleNote={viewMesh.scaleNote}
               extents_mm={viewMesh.extents_mm} partList={viewMesh.partList} partRanges={viewMesh.partRanges} engineering={viewMesh.engineering}
-              className="absolute inset-0" testId="viewport-model"
+              partStatus={report?.partStatus} selectedPart={report ? c.selectedPart : undefined} onPickPart={report ? c.setSelectedPart : undefined}
+              className="absolute inset-x-0 bottom-0 top-10" testId="viewport-model"
             />
             {report ? (
               <BuildReportCard report={report} title={build?.title} onClose={closeBuild}
-                className="absolute right-3 top-11 z-10 max-h-[calc(100%-4.5rem)] w-72 max-w-[calc(100%-1.5rem)]" />
+                selected={c.selectedPart} onSelect={c.setSelectedPart} onEdit={c.editBuild} busy={c.buildBusy}
+                className="absolute z-20 bg-[color:var(--ws-glass-strong)] max-sm:inset-x-2 max-sm:bottom-2 max-sm:max-h-[48%] sm:right-3 sm:top-[4.75rem] sm:max-h-[calc(100%-5.5rem)] sm:w-72 sm:max-w-[calc(100%-1.5rem)]" />
             ) : (
-            <div className="ws-glass absolute right-3 top-11 z-10 flex max-h-[calc(100%-4.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
+            <div className="ws-glass absolute right-3 top-[4.75rem] z-20 flex max-h-[calc(100%-5.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
               <div className="flex items-center justify-between gap-2 border-b border-[color:var(--ws-line)] px-3 py-2 text-xs font-medium text-[color:var(--ws-text)]">
                 <span className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5" aria-hidden /> Parts{viewMesh.partList?.length ? ` (${viewMesh.partList.length})` : ''}</span>
                 <button type="button" onClick={() => c.setViewMesh(null)} className="rounded px-1.5 py-0.5 text-[11px] text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)]">Back to study</button>
@@ -334,7 +339,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
           </>
         ) : report ? (
           <div className="absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-3 pt-11">
-            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} className="w-full max-w-xl" />
+            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} onEdit={c.editBuild} busy={c.buildBusy} className="w-full max-w-xl" />
           </div>
         ) : (
           <BeamViewport

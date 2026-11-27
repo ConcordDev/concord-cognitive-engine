@@ -102,6 +102,51 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
   const [viewMesh, setViewMesh] = useState<ChatArtifact | null>(null);
   /** The latest ConKay build (conkay_build): its report of what was checked, beside its 3D parts when it has any. */
   const [build, setBuild] = useState<ChatArtifact | null>(null);
+  /** The build part being inspected (a design-graph node id), picked in the model or the list. */
+  const [selectedPart, setSelectedPart] = useState<string | null>(null);
+  /** An edit is being re-checked on the server. */
+  const [buildBusy, setBuildBusy] = useState(false);
+  const buildRef = useRef<ChatArtifact | null>(null);
+  useEffect(() => { buildRef.current = build; }, [build]);
+  /**
+   * Change values on the open build (any unit) and re-run every solver on the
+   * server. The model and the report change only when the re-check returns.
+   */
+  /** Reopen a saved build (?build=<id>): its saved report and its parts in 3D. */
+  const [buildError, setBuildError] = useState('');
+  const openBuild = useCallback(async (id: string) => {
+    setBuildError('');
+    try {
+      const r = await api.get(`/api/conkay/build/${encodeURIComponent(id)}`, { validateStatus: (st) => st < 500 });
+      const d = (r?.data ?? {}) as { ok?: boolean; artifact?: ChatArtifact | null; error?: string };
+      if (!d.ok || !d.artifact?.report) { setBuildError(d.error === 'not_found' ? 'That build was not found in your account.' : 'That build has no report yet.'); return; }
+      const art = d.artifact;
+      setDesign(null);
+      setBuild(art);
+      setSelectedPart(null);
+      setViewMesh(art.kind === 'mesh' && Array.isArray(art.positions) && art.positions.length >= 9 ? art : null);
+    } catch (e) {
+      setBuildError(`Could not open the build: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, []);
+  const editBuild = useCallback(async (edits: Array<{ id: string; value: string }>): Promise<{ ok: boolean; errors?: string[] }> => {
+    const id = buildRef.current?.buildId;
+    if (!id) return { ok: false, errors: ['This build was not saved, so it cannot be changed. Ask Kay to build it again.'] };
+    setBuildBusy(true);
+    try {
+      const r = await api.post(`/api/conkay/build/${encodeURIComponent(id)}/edit`, { edits }, { validateStatus: (st) => st < 500 });
+      const d = (r?.data ?? {}) as { ok?: boolean; errors?: string[]; message?: string; error?: string; artifact?: ChatArtifact };
+      if (!d.ok || !d.artifact) return { ok: false, errors: d.errors?.length ? d.errors : [d.message || d.error || 'not changed'] };
+      const art = d.artifact;
+      setBuild(art);
+      if (art.kind === 'mesh' && Array.isArray(art.positions) && art.positions.length >= 9) setViewMesh(art);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, errors: [`Could not reach ConKay to re-check: ${e instanceof Error ? e.message : String(e)}`] };
+    } finally {
+      setBuildBusy(false);
+    }
+  }, []);
   /** A brief the workbench answered with questions: the next message adds to it. */
   const pendingBrief = useRef<string | null>(null);
   /** The "what the design solver builds" note is shown once, on the first brief handed to the agent. */
@@ -288,7 +333,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
       const meshUrl = typeof rec.url === 'string' && /^\/api\/media\/[^/]+\/stream$/.test(rec.url);
       const meshPos = Array.isArray(rec.positions) && Array.isArray(rec.indices) && rec.positions.length >= 9;
       const isBuild = isBuildReport(rec.report);
-      if (isBuild) { setDesign(null); setBuild(rec as ChatArtifact); }
+      if (isBuild) { setDesign(null); setBuild(rec as ChatArtifact); setSelectedPart(null); }
       if (rec.kind === 'mesh' && (meshPos || meshUrl)) {
         setDesign(null);
         setViewMesh(rec as ChatArtifact);
@@ -452,6 +497,9 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
       // In the conversation (no study on screen) everything else is Kay's to answer:
       // nothing below here (FEA, sweeps, beam edits, scope refusals) applies to a study you can't see.
       if (studyActive && !studyActive()) { await askAgent(text); return; }
+      // A build is on the table: nothing typed is an edit of the hidden beam study.
+      // Its sizes change in the part inspector; the words go to Kay.
+      if (buildRef.current) { await askAgent(text); return; }
       // "Make it lighter": sweep the web through the solver and offer the
       // lightest section that still passes — never a guessed number.
       if (!design && !viewMesh && /\b(?:make (?:it|this) lighter|lighten (?:it|this)|lightest (?:section|beam))\b/i.test(text)) {
@@ -591,7 +639,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
     guest, router, pathname, params, workspaceId, workspaceName,
     ws, inputs, setInputs, result, materials, status,
     section, setSection, workspaces, workspacesError, goWorkspace, createWorkspace,
-    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild,
+    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild, selectedPart, setSelectedPart, buildBusy, editBuild, openBuild, buildError,
     keeping, view, setView, display, setDisplay, showDims, setShowDims,
     paramsOpen, setParamsOpen, mobileTab, setMobileTab, speak,
     saveOpen, setSaveOpen, saveName, setSaveName, saveTouched, setBusy,

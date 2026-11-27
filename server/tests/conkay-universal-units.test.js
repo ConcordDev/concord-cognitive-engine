@@ -97,7 +97,10 @@ test("results come back in the person's unit with SI alongside", () => {
   assert.equal(formatAmount(1.6764, "length", "ft"), "5.5 ft (1.676 m)");
   assert.equal(formatAmount(0.0254, "length", "m"), "0.0254 m");
   assert.equal(formatAmount(373.15, "temperature", "°F"), "212 °F (373.1 K)");
-  assert.equal(formatAmount(5000, "force"), "5000 N");
+  // SI is shown with the prefix engineers read it in
+  assert.equal(formatAmount(5000, "force"), "5 kN");
+  assert.equal(formatAmount(23.21e6, "pressure", "psi"), "3366 psi (23.21 MPa)");
+  assert.equal(formatAmount(0.75, "current"), "0.75 A");
 });
 
 test("scanning a brief finds every amount and leaves words alone", () => {

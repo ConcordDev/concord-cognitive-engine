@@ -6,7 +6,7 @@
 // from the previous graph. Builds persist per user (migration 518).
 
 import crypto from "node:crypto";
-import { planBuild } from "./planner.js";
+import { planBuild, checkPlan } from "./planner.js";
 import { buildReport } from "./report.js";
 import { openDesign } from "../index.js";
 import { designIrParts } from "../cad-glb.js";
@@ -34,15 +34,22 @@ export function buildMesh(graph, title) {
   const positions = []; const indices = []; const partRanges = [];
   for (const p of parts) {
     const v0 = positions.length / 3, i0 = indices.length;
-    for (const x of p.positions) positions.push(x / 1000);
+    // Design coordinates are z-up (frames, heights); the 3D view is y-up: (x, y, z) → (x, z, −y).
+    for (let k = 0; k < p.positions.length; k += 3) positions.push(p.positions[k] / 1000, p.positions[k + 2] / 1000, -p.positions[k + 1] / 1000);
     for (const i of p.indices) indices.push(i + v0);
-    partRanges.push({ v0, v1: positions.length / 3, i0, i1: indices.length, name: p.name, nodeName: p.nodeName, size_mm: p.size_mm, shape: p.shape });
+    partRanges.push({ id: p.id, v0, v1: positions.length / 3, i0, i1: indices.length, name: p.name, nodeName: p.nodeName, size_mm: p.size_mm, shape: p.shape });
   }
+  // Overall size (display axes, mm) so the view frames the whole build and its grid is to scale.
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let k = 0; k < positions.length; k++) { const a = k % 3; lo[a] = Math.min(lo[a], positions[k]); hi[a] = Math.max(hi[a], positions[k]); }
+  const ext = hi.map((h, a) => Math.round((h - lo[a]) * 1e4) / 10);
   return {
     artifact: {
       kind: "mesh", source: "conkay_build", title: `${title || "build"} model`, meshKind: "build-assembly",
       positions, indices, vertexCount: positions.length / 3, triangleCount: indices.length / 3,
       geometryUnits: "m", units: "mm", partRanges,
+      extents_mm: { x: ext[0], y: ext[1], z: ext[2] },
+      bbox_mm: { length: ext[0], height: ext[1], width: ext[2] },
     },
     skipped,
   };
@@ -50,10 +57,13 @@ export function buildMesh(graph, title) {
 
 /** Run a planned IR through every solver (and external kernels) and report. */
 export async function checkBuild(ir, { text, plan, settle = true }) {
-  const opened = openDesign(ir);
+  // The plan keeps the person's units; the solvers read SI.
+  const ready = checkPlan(ir);
+  if (!ready.ok) return { ok: false, error: "compile", errors: ready.errors };
+  const opened = openDesign(ready.ir);
   if (!opened.ok) return { ok: false, error: "compile", errors: opened.errors };
   if (settle) { try { await opened.session.settle(); } catch { /* kernel failures stay NOT_COMPUTED with their reason */ } }
-  const report = buildReport(opened.session, { text, plan });
+  const report = buildReport(opened.session, { text, plan: { ...plan, ir } });
   const mesh = buildMesh(opened.session.graph, ir.design?.name);
   if (mesh.skipped?.length) for (const s of mesh.skipped) report.gaps.push({ target: s.id, targetName: s.name, reason: `not drawn in 3D: ${s.reason}` });
   return { ok: true, session: opened.session, report, artifact: mesh.artifact };
@@ -105,6 +115,43 @@ export function listBuilds(db, userId, limit = 20) {
   if (!has(db)) return [];
   return db.prepare("SELECT id, brief, status, updated_at FROM conkay_builds WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?").all(String(userId), Math.min(100, Math.max(1, limit | 0)))
     .map((r) => ({ id: r.id, brief: r.brief, status: r.status, updatedAt: r.updated_at }));
+}
+
+/**
+ * Edit a saved build (no model): apply the person's values, re-run every
+ * solver, save the new graph and report. Returns the same shape as a build.
+ */
+export async function editBuild(db, { id, userId, edits, settle = true }) {
+  const { applyEdits } = await import("./edit.js");
+  const b = loadBuild(db, id, userId);
+  if (!b) return { ok: false, error: "not_found" };
+  if (!b.plan?.ir) return { ok: false, error: "no_plan", message: "This build has no design yet; ask Kay to plan it first." };
+  const ed = applyEdits(b.plan.ir, edits);
+  if (!ed.ok) return { ok: false, error: "invalid_edit", errors: ed.errors };
+  const text = [b.brief, ...b.answers.map((a) => a.answer), ...edits.map((e) => String(e.value))].join("\n");
+  const plan = { ...b.plan, ir: ed.ir };
+  const ran = await checkBuild(ed.ir, { text, plan, settle });
+  if (!ran.ok) return { ok: false, error: "compile", errors: ran.errors };
+  const result = { ok: true, summary: b.plan.summary, ir: ed.ir, plan: { questions: b.plan.questions || [], assumptions: b.plan.assumptions || [], sources: b.plan.sources || [] }, report: ran.report };
+  saveBuild(db, { id: b.id, userId, brief: b.brief, answers: b.answers, result });
+  return { ...result, id: b.id, applied: ed.applied, artifact: ran.artifact ? { ...ran.artifact, buildId: b.id, report: ran.report, summary: b.plan.summary } : { kind: "build", source: "conkay_build", title: ed.ir.design?.name || "build", buildId: b.id, report: ran.report, summary: b.plan.summary } };
+}
+
+/**
+ * Reopen a saved build: its stored report (exactly what was checked when it
+ * was saved) and its 3D parts rebuilt from the saved graph.
+ */
+export function openBuild(db, id, userId) {
+  const b = loadBuild(db, id, userId);
+  if (!b) return null;
+  let artifact = null;
+  if (b.plan?.ir && b.report) {
+    const ready = checkPlan(b.plan.ir);
+    const opened = ready.ok ? openDesign(ready.ir) : null;
+    const mesh = opened?.ok ? buildMesh(opened.session.graph, b.plan.ir.design?.name) : null;
+    artifact = { ...(mesh?.artifact || { kind: "build", source: "conkay_build", title: b.plan.ir.design?.name || "build" }), buildId: b.id, report: b.report, summary: b.plan.summary };
+  }
+  return { build: b, artifact };
 }
 
 /** Summary for the chat model: numbers only from the report. */
