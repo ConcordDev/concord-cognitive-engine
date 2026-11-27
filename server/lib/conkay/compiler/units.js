@@ -4,6 +4,8 @@
 // carries its unit; everything is converted to SI on the way in, and an
 // unknown unit is an error, never a silent default.
 
+import { parseAmount, convertFromSI } from "../units/universal.js";
+
 const UNITS = {
   // length → m
   m: ["length", 1], mm: ["length", 1e-3], cm: ["length", 1e-2], km: ["length", 1e3],
@@ -71,7 +73,8 @@ export function parseQuantity(q, expectDim) {
     }
   } else if (typeof q === "string") {
     const m = q.trim().match(/^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)\s*([A-Za-z/³²0-9]*)$/i);
-    if (!m) return { ok: false, error: `cannot read quantity "${q}"` };
+    // Fractions, feet-and-inches, oz, °F, compound units: the universal parser.
+    if (!m || !knownUnit(m[2] || "1")) return universal(q, expectDim);
     value = Number(m[1]);
     unit = m[2] || "1";
     // "1.5" with no unit + expected dim → SI of that dim (same as bare number).
@@ -90,7 +93,7 @@ export function parseQuantity(q, expectDim) {
     return { ok: false, error: "quantity missing" };
   }
   if (!Number.isFinite(value)) return { ok: false, error: `not a number: ${JSON.stringify(q)}` };
-  if (!knownUnit(unit)) return { ok: false, error: `unknown unit "${unit}"` };
+  if (!knownUnit(unit)) return universal({ value, unit }, expectDim);
   const [dim, factor] = UNITS[unit];
   if (expectDim && dim !== expectDim) {
     const example = expectDim === "mass" ? `"${value} kg"` : expectDim === "length" ? `"${value} m"` : `"${value} ${SI_UNIT[expectDim] || ""}"`;
@@ -101,6 +104,13 @@ export function parseQuantity(q, expectDim) {
 
 /** Convert an SI value to a display unit of the same dimension. */
 export function fromSI(si, unit) {
-  if (!knownUnit(unit)) throw new Error(`unknown unit "${unit}"`);
+  if (!knownUnit(unit)) return convertFromSI(si, unit);
   return si / UNITS[unit][1];
+}
+
+/** Anything the table above does not carry, read by lib/conkay/units/universal.js. */
+function universal(q, expectDim) {
+  const r = parseAmount(q, { expectDim });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, si: r.si, dim: r.dim, value: r.value, unit: r.unit, ...(r.note ? { note: r.note } : {}), ...(r.coercedBare ? { coercedBare: true } : {}) };
 }

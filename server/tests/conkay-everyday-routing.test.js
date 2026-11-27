@@ -44,10 +44,18 @@ test("everyday words are not engineering parts", () => {
     assert.equal(isDesignAsk(m), false, m);
     assert.notEqual(tool(plan(m)), "conkay_design", m);
   }
-  for (const m of ["I want to build a shelf for my garage, 1.2 m wide, holds 50 kg", "design a 3 m steel beam carrying 5 kN", "size a bracket for 200 N", "build a wooden table 1.8 m long that holds 100 kg"]) {
+  // Anything physical is a general build (Kay plans it, every solver checks it);
+  // the fixed beam / robot / car tools stay as fast paths.
+  for (const m of ["I want to build a shelf for my garage, 1.2 m wide, holds 50 kg", "size a bracket for 200 N", "build a wooden table 1.8 m long that holds 100 kg",
+    "I want to build a 12 V battery pack for an LED lamp", "design a raised garden bed 4 ft by 8 ft", "make a pickling brine with 2 oz salt per quart", "design a cooler that keeps ice for 2 days"]) {
+    assert.equal(isDesignAsk(m), true, m);
+    assert.equal(tool(plan(m)), "conkay_build", m);
+  }
+  for (const m of ["design a 3 m steel beam carrying 5 kN", "design a cantilever beam 2 m long 10 kN at the tip", "design a humanoid robot"]) {
     assert.equal(isDesignAsk(m), true, m);
     assert.equal(tool(plan(m)), "conkay_design", m);
   }
+  for (const m of ["build a website for my bakery", "make me a playlist", "make a light breakfast"]) assert.notEqual(tool(plan(m)), "conkay_build", m);
 });
 
 test("facts that change or must be exact still get a search; stable knowledge does not", () => {

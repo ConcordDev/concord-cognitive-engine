@@ -30,13 +30,24 @@ const LOAD_RE = /\b\d+(?:\.\d+)?\s*(?:k?n|kgs?|kilograms?|lbs?|pounds?|tons?|ton
 const FEA_RE = /\b(?:fea|finite[- ]element|stress analysis|structural analysis|simulat(?:e|ion)|analy[sz]e (?:it|this|that|the (?:design|part|bracket|beam|model))|re-?run (?:it|the solver)|check (?:the )?(?:stress|deflection|safety factor))\b/i;
 const NEW_MUSIC_RE = /\b(?:make|compose|write|create|generate|produce)\b/i;
 
+// Physical things people build that are not structural "parts": a build ask too.
+const BUILD_NOUN_RE = /\b(?:shel(?:f|ves)|bookshel(?:f|ves)|bookcase|stand|rack|bench|desk|workbench|table|stool|planter|garden\s+bed|raised\s+bed|trellis|pergola|deck|shed|dog\s?house|chicken\s+coop|birdhouse|fence|gate|ramp|ladder|cart|trolley|frame|mount|hanger|hook|tank|vessel|boiler|keg|pipe|piping|plumbing|pump|irrigation|sprinkler|drip\s+system|fountain|aquarium|hydroponic\w*|cooler|ice\s?box|oven|kiln|smoker|incubator|heater|insulat\w+|enclosure|battery\s+pack|power\s+bank|power\s+supply|solar\s+(?:setup|panel|kit|system)|lamp|light|led\s+strip|circuit|wiring|brine|cleaner|fertili[sz]er|nutrient\s+mix|solution|mixture|resin\s+mix|glaze)\b/i;
+const BUILD_CUE_RE = /\b\d+(?:\.\d+)?\s*(?:mm|cm|m|in|inch(?:es)?|ft|feet|foot|"|'|v|volts?|a|amps?|w|watts?|ah|mah|wh|gal(?:lons?)?|l|litres?|liters?|ml|oz|cups?|qt|quarts?|psi|bar|°\s*[cf]|degrees?)\b/i;
+/** A general build ask: designing or building a physical thing (a shelf, a planter, a pump loop, a battery pack, a brine). */
+export function isBuildAsk(text) {
+  const p = String(text || "");
+  if (/\b(?:image|picture|photo|illustration|drawing|song|music|video|website|app|logo|essay|story|poem)\b/i.test(p) || NOT_PART_RE.test(p)) return false;
+  if (!/\b(?:design|build|make|engineer|plan\s+out|put\s+together|wire\s+up|mix\s+up)\b/i.test(p)) return false;
+  return BUILD_NOUN_RE.test(p) && (BUILD_CUE_RE.test(p) || PHYSICAL_CUE_RE.test(p) || /\b(?:design|build|engineer)\b/i.test(p));
+}
+
 /** A ConKay design ask: a part noun + a design verb or a load. */
 export function isDesignAsk(text) {
   const p = String(text || "");
   if (/\b(?:image|picture|photo|illustration|drawing|song|music)\b/i.test(p)) return false;
   if (!(DESIGN_VERB_RE.test(p) || LOAD_RE.test(p))) return false;
   if (ROBOT_RE.test(p) || STRONG_PART_RE.test(p)) return true;
-  return PART_RE.test(p) && PHYSICAL_CUE_RE.test(p) && !NOT_PART_RE.test(p);
+  return (PART_RE.test(p) && PHYSICAL_CUE_RE.test(p) && !NOT_PART_RE.test(p)) || isBuildAsk(p);
 }
 
 /** The most recent design brief the user gave in this conversation. */
@@ -49,6 +60,14 @@ export function lastDesignBrief(history = []) {
 }
 
 const DESIGN_HINT = "This is a ConKay design ask. Call conkay_design with the user's spec in words (part, load, material, supports, safety factor). It runs the hand calculation and the FEA solver and returns a 3D model the interface shows below your reply; for everyday objects it has no solver for (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with a parts list. Report the solver's real numbers and pass/fail (or the concept parts and sizes), list the assumed defaults, and say the model is shown below. Never state numbers the tool did not return.";
+const BUILD_HINT = "This is a ConKay build. Call conkay_build with the user's request in their own words and units (and any answers they gave). Kay plans the parts and every check that applies, ConKay's solvers run them, and a 3D model is shown below your reply. Report what was checked with the tool's numbers and pass/fail, what was NOT checked and why, the assumptions, and any questions it returned (ask the blocking ones). Never state a number the tool did not return.";
+// Fast paths: the fixed robot / car / plain-beam tools. Anything else is a general build.
+const FAST_PATH_RE = /\b(?:car|truck|vehicle|sedan|suv|go-?kart|i[- ]?beam|cantilever|joist|steel\s+beam|beam\s+\d)\b/i;
+export function designCall(text) {
+  const t = String(text || "");
+  if (ROBOT_RE.test(t) || FAST_PATH_RE.test(t)) return { tool: "conkay_design", params: designTextParams(t) };
+  return { tool: "conkay_build", params: { brief: t.slice(0, 4000) } };
+}
 const FREEFORM_3D_HINT = "The user wants a free-form 3D model. Call generate_3d with the object in a few words; it returns a rotatable mesh and its concept image below your reply. If it fails, tell the user 3D generation is busy or unavailable and to try again in a minute. Do not call conkay_design for a creature, character, statue or plant, and do not substitute a different object. Never substitute generate_image and call it a 3D model.";
 
 const POLICY = [
@@ -56,7 +75,7 @@ const POLICY = [
   "• Take the person seriously. Read what they actually asked and answer that, about their situation, in their words. If they ask for your opinion, give it with your reasons; if something is a bad idea, say so kindly and say why; if it depends, say on what. Never deflect, never answer a different question, never reply with only links, and never tell them to ask someone else instead of helping.",
   "• Think first, then look up. Answer from your own reasoning when the question is about ideas, advice, explanations, writing, planning, or knowledge that doesn't change. Use a tool when the answer hinges on a specific fact you could get wrong: a current price, a recent event, a statistic, a law, a product spec, a person or place, or the user's own Concord data. Say briefly what you looked up.",
   "• When you need facts: Concord's own knowledge first (a CONCORD KNOWLEDGE block of retrieved DTUs: answer from it and name the DTU). For anything outside it, web_search first, then answer from the results with their links (browse_url the best result when the snippet lacks the number); textbook_lookup for science and engineering constants and formulas. For news, lead with the newest dated items and name each outlet and date. Never invent a number, a date, a source or a link.",
-  "• When they want something made or changed, do it with the tool that does it, then say what was made: conkay_design for an engineered part (hand calc + FEA + a 3D model shown below; if FEA has ok:false, say it failed), generate_3d for a free-form 3D object, generate_image for a picture, run_lens_action studio.compose for a new song, run_lens_action (find_lens_actions if unsure) for tasks, events, notes, plans and the user's records. Report only what the tool stored.",
+  "• When they want something made or changed, do it with the tool that does it, then say what was made: conkay_build for anything physical they want designed or checked (a shelf, a planter, a cooler, a pump loop, a battery pack, a brine; ConKay's solvers check every part and the report says what was checked and what was not), conkay_design for a robot, a car or a plain beam (hand calc + FEA; if FEA has ok:false, say it failed), generate_3d for a free-form 3D object, generate_image for a picture, run_lens_action studio.compose for a new song, run_lens_action (find_lens_actions if unsure) for tasks, events, notes, plans and the user's records. Report only what the tool stored.",
   "• If a request is unclear, ask one short question, or make a sensible assumption, say it, and go ahead. If a tool fails, try one other way, then tell them plainly what failed and what they can do.",
   "• Be concise and warm, like a sharp colleague: lead with the answer, then the why. No filler, no \"On it\", no describing a tool you did not call.",
 ].join("\n");
@@ -122,8 +141,8 @@ export function conkayTurnPlan(message, history = []) {
     const brief = lastDesignBrief(history);
     const designish = /\b(?:design|model|fea|cad|brief|solver|conkay|3d|stl|part|assembly)\b/i.test(`${prevReply.slice(-600)} ${ask}`);
     let fallbackCall = null;
-    if (brief && designish) fallbackCall = { tool: "conkay_design", params: designTextParams(brief) };
-    else if (ask && CAD_RE.test(ask) && conceptKind(ask)) fallbackCall = { tool: "conkay_design", params: designTextParams(ask) };
+    if (brief && designish) fallbackCall = designCall(brief);
+    else if (ask && CAD_RE.test(ask) && conceptKind(ask)) fallbackCall = designCall(ask);
     return { route, hint: routeHint("continue"), fallbackCall, message: continueAgentMessage(p, history), ...(brief && designish ? { brief } : {}) };
   }
   // "create a task: call the machinist about the bracket" is a lens write, not a design.
@@ -142,10 +161,12 @@ export function conkayTurnPlan(message, history = []) {
   }
   // "make a 3d model / CAD / STL of X": engineered objects to conkay_design, free-form to generate_3d.
   if (!writeFirst && CAD_RE.test(p) && !isDesignAsk(p)) {
-    if (conceptKind(p)) return { route: "design", hint: DESIGN_HINT, fallbackCall: { tool: "conkay_design", params: designTextParams(p) } };
+    if (conceptKind(p)) { const call = designCall(p); return { route: "design", hint: call.tool === "conkay_build" ? BUILD_HINT : DESIGN_HINT, fallbackCall: call }; }
     return { route: "design", hint: FREEFORM_3D_HINT, fallbackCall: { tool: "generate_3d", params: { prompt: p.replace(/^.*?\b(?:3[- ]?d|cad|stl)\s+(?:model|file|mesh|object|version|print)?\s*(?:of\s+)?/i, "").slice(0, 300) || p.slice(0, 300) } } };
   }
   if (!writeFirst && isDesignAsk(p)) {
+    const call = designCall(p);
+    if (call.tool === "conkay_build") return { route: "design", hint: BUILD_HINT, fallbackCall: call };
     const hint = ROBOT_RE.test(p)
       ? "This is a ConKay robot build. Call conkay_design with the user's words. It returns a concept 3D assembly the interface shows below your reply, with the parts list. Name the parts with their sizes and the overall size, say the model is shown below, and say it is a layout concept (no structural, motor or battery sizing was run). Never invent numbers the tool did not return."
       : DESIGN_HINT;
@@ -175,7 +196,8 @@ export function conkayTurnPlan(message, history = []) {
   } else if (route === "code" && !CODE_TEST_RE.test(p)) {
     fallbackCall = { tool: "run_lens_action", params: { domain: "code", action: "build", params: { request: p.slice(0, 2000) } } };
   } else if (route === "design") {
-    fallbackCall = { tool: "conkay_design", params: designTextParams(p) };
+    fallbackCall = designCall(p);
+    if (fallbackCall.tool === "conkay_build") hint = BUILD_HINT;
   } else if (route === "music") {
     fallbackCall = NEW_MUSIC_RE.test(p)
       ? { tool: "run_lens_action", params: { domain: "studio", action: "compose", params: { genre: /\b(lofi|jazz|rock|house|techno|ambient|hip[- ]?hop|trap|pop|synthwave|edm)\b/i.exec(p)?.[1]?.toLowerCase() || "lofi", key: "C", bpm: 85, bars: 8, title: "ConKay Sketch" } } }

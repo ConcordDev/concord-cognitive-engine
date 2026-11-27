@@ -34,7 +34,18 @@ describe('FIX-conkay-001 — aria-invalid on rejected fields', () => {
     expect(describedby).toBe('conkay-dim-length-error');
     const alert = container.querySelector(`#${describedby}`);
     expect(alert?.getAttribute('role')).toBe('alert');
-    expect(alert?.textContent).toContain('is not a positive number');
+    expect(alert?.textContent).toContain('is not a positive length');
+  });
+
+  it('the L field takes any length unit and shows the conversion', () => {
+    const onChange = vi.fn();
+    const { container } = render(<ParameterPanel inputs={inputs} materials={[]} onChange={onChange} />);
+    const field = container.querySelector('#conkay-dim-length') as HTMLInputElement;
+    fireEvent.change(field, { target: { value: '2 ft 3 in' } });
+    fireEvent.blur(field);
+    expect(onChange).toHaveBeenCalled();
+    expect(onChange.mock.calls[0][0].dims.length).toBeCloseTo(685.8, 3);
+    expect(container.querySelector('[data-testid="conkay-dim-length-converted"]')?.textContent).toBe('2 ft 3 in = 685.8 mm');
   });
 
   it('the SF field gains aria-invalid when its input is rejected', () => {

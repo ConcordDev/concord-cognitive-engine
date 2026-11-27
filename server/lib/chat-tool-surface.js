@@ -209,6 +209,7 @@ export const AGENT_LOOP_TOOLS = Object.freeze([
   { name: "get_live_data", description: "Live data with source, timestamp and licence (PubChem compounds, ECB fx rates). Signed-in users only.", params: { kind: { type: "string", required: true } } },
   { name: "list_recipes", description: "List tested multi-step recipes with their inputs.", params: { query: { type: "string", required: false } } },
   { name: "run_recipe", description: "Run a recipe deterministically in SI: result, checks, receipt.", params: { recipe: { type: "string", required: true }, inputs: { type: "object", required: true } } },
+  { name: "conkay_build", description: "ConKay build: Kay plans any physical design as parts with every applicable solver check; reports checked, failed and not-checked items in the person's units.", params: { brief: { type: "string", required: true }, answers: { type: "array", required: false } } },
   { name: "conkay_design", description: "ConKay sizing check: hand calc + FEA + safety-factor pass/fail from a plain-language spec.", params: { text: { type: "string", required: true } } },
   { name: "conkay_solve", description: "Run one ConKay solver against a Design IR (MCP bridge).", params: { solver_id: { type: "string", required: true }, ir: { type: "object", required: false } } },
   { name: "conkay_solver_list", description: "List ConKay solvers (MCP bridge).", params: { domain: { type: "string", required: false } } },

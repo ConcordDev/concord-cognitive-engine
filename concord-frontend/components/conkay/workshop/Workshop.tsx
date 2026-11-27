@@ -42,6 +42,8 @@ import type { BeamCallouts } from '../workspace/BeamViewport';
 import { KayLog, SweepTable } from './KayLog';
 import { KayHome } from './KayHome';
 import { useWorkshopController, type WorkshopController } from './useWorkshopController';
+import { BuildReportCard } from './BuildReportCard';
+import { isBuildReport } from '@/lib/conkay/build-report';
 import './workshop.css';
 import { workshopFontVars } from './workshopFonts';
 
@@ -134,7 +136,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
 
   // Kay built something you asked for (a design, a 3D model, a study solve):
   // the Workshop opens beside the conversation to show it.
-  const built = Boolean(c.design || c.viewMesh || c.status === 'solving');
+  const built = Boolean(c.design || c.viewMesh || c.build || c.status === 'solving');
   useEffect(() => {
     // Once shown, the build has been seen: going back to the conversation stays there.
     if (stage === 'kay' && asked.current && built) { asked.current = false; go('table', null); }
@@ -243,7 +245,9 @@ function lastKayLine(c: WorkshopController): string | null {
 // ── The table: the study ─────────────────────────────────────────────────────
 
 function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen: boolean; onOpenLog: () => void }) {
-  const { inputs, setInputs, result, ws, status, busy, design, viewMesh } = c;
+  const { inputs, setInputs, result, ws, status, busy, design, viewMesh, build } = c;
+  const report = build?.report && isBuildReport(build.report) ? build.report : null;
+  const closeBuild = () => { c.setBuild(null); c.setViewMesh(null); };
   const fresh = Boolean(result) && !ws.stale;
   const callouts: BeamCallouts | null = useMemo(() => (
     result && fresh ? {
@@ -265,8 +269,8 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
         <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className={cn('h-2 w-2 shrink-0 rounded-full', led)} aria-hidden />
-            {viewMesh ? (
-              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-[color:var(--ws-text)]" data-testid="viewport-model-title">{viewMesh.title || 'ConKay model'}</span>
+            {viewMesh || report ? (
+              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-[color:var(--ws-text)]" data-testid="viewport-model-title">{(viewMesh || build)?.title || 'ConKay model'}</span>
             ) : (
               <input value={inputs.name} onChange={(e) => setInputs({ ...inputs, name: e.target.value.slice(0, 80) })} aria-label="Study name"
                 className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium tracking-wide text-[color:var(--ws-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--ws-line-strong)]" />
@@ -291,7 +295,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
         {c.saveOpen && <SaveStrip c={c} />}
 
         {design && <DesignPane design={design} onClose={() => c.setDesign(null)} />}
-        {!design && !viewMesh && ws.fresh && status !== 'loading' && (
+        {!design && !viewMesh && !report && ws.fresh && status !== 'loading' && (
           <StartScreen busy={busy} onPick={(t) => void c.send(t)} onBeam={ws.startBeam} />
         )}
         {viewMesh && meshOk ? (
@@ -302,6 +306,10 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
               extents_mm={viewMesh.extents_mm} partList={viewMesh.partList} partRanges={viewMesh.partRanges} engineering={viewMesh.engineering}
               className="absolute inset-0" testId="viewport-model"
             />
+            {report ? (
+              <BuildReportCard report={report} title={build?.title} onClose={closeBuild}
+                className="absolute right-3 top-11 z-10 max-h-[calc(100%-4.5rem)] w-72 max-w-[calc(100%-1.5rem)]" />
+            ) : (
             <div className="ws-glass absolute right-3 top-11 z-10 flex max-h-[calc(100%-4.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
               <div className="flex items-center justify-between gap-2 border-b border-[color:var(--ws-line)] px-3 py-2 text-xs font-medium text-[color:var(--ws-text)]">
                 <span className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5" aria-hidden /> Parts{viewMesh.partList?.length ? ` (${viewMesh.partList.length})` : ''}</span>
@@ -322,7 +330,12 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
                 {typeof viewMesh.triangleCount === 'number' ? `${viewMesh.triangleCount} triangles · ` : ''}drag to orbit
               </p>
             </div>
+            )}
           </>
+        ) : report ? (
+          <div className="absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-3 pt-11">
+            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} className="w-full max-w-xl" />
+          </div>
         ) : (
           <BeamViewport
             dims={inputs.dims} support={inputs.support} utilization={c.utilization} view={c.view} display={c.display} showDims={c.showDims}
@@ -331,7 +344,7 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
           />
         )}
 
-        {!viewMesh && (
+        {!viewMesh && !report && (
           <div className="ws-glass absolute left-3 top-11 z-10 w-52 max-w-[calc(100%-1.5rem)] rounded-lg">
             <button type="button" onClick={() => c.setParamsOpen((v) => !v)} aria-expanded={c.paramsOpen} className="flex w-full items-center justify-between px-3 py-2">
               <span className="ws-label flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Parameters</span>

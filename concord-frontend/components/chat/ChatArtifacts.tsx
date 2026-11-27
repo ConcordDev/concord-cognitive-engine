@@ -12,6 +12,7 @@ import dynamic from 'next/dynamic';
 import { Play } from 'lucide-react';
 import { useMediaStore } from '@/store/media';
 import type { ComposedSong } from '@/lib/daw/render-song';
+import type { BuildReport } from '@/lib/conkay/build-report';
 import { SongArtifactPlayer } from './SongArtifactPlayer';
 
 // three.js only loads when a reply actually carries a 3D model.
@@ -57,6 +58,10 @@ export interface ChatArtifact {
   extents_mm?: { x?: number; y?: number; z?: number };
   partRanges?: Array<{ name?: string; nodeName?: string; i0?: number; i1?: number; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
   engineering?: { massKg?: number | null; massNote?: string };
+  /** kind 'build' or a build's mesh (conkay_build): what the solvers checked, in the person's units. */
+  report?: BuildReport;
+  summary?: string;
+  buildId?: string | null;
 }
 
 function meshSizeCaption(a: ChatArtifact): string {

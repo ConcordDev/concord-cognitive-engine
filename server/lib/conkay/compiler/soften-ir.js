@@ -23,7 +23,7 @@ export const CONKAY_IR_MINI_EXAMPLE = Object.freeze({
       name: "plate",
       material: "steel-a36",
       position: { x: "0 m", y: "0 m", z: "0 m" },
-      geometry: { shape: "box", x: "200 mm", y: "100 mm", z: "10 mm" },
+      geometry: { shape: "box", length: "200 mm", width: "100 mm", height: "10 mm" },
       props: {
         mass: "1.5 kg",
         massSource: "caller assumption (catalogue TBD)",
@@ -39,7 +39,9 @@ export const CONKAY_IR_HINTS = Object.freeze([
   'Quantities are strings with units: "20 mm", "1.5 kg", "40 kN" (bare SI numbers are also accepted).',
   'A stated props.mass needs props.massSource (or massState): e.g. massSource: "caller assumption".',
   'Positions are lengths: position: { x: "0 m", y: "0 m", z: "0 m" } (or bare 0 = 0 m).',
-  "Materials must be registry ids (steel-a36, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, abs-plastic). Common aliases are auto-mapped.",
+  "Materials are registry ids (steel-a36, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, abs-plastic, douglas-fir, copper-c11000, …; common aliases are auto-mapped), or your own under materials: { \"red-oak\": { density: { value: \"45 lb/ft^3\", source: \"USDA Wood Handbook, Table 5-3a\" }, youngsModulus: …, yield: … } } — every value needs a source.",
+  'Geometry keys by shape: box { length, width, height }, plate { length, width, thickness }, rod/cylinder/bolt { diameter, length }, round-tube { length, outerDiameter, wall }, rect-tube { length, width, height, wall }.',
+  "A frame (shelf, bracket, stand, truss) is props.frameModel on an Assembly: nodes with x/y/z, members naming a part (section from its geometry), supports with fix, loadCases with nodal F or udl w. Hold rx at one end of a simple span.",
   "requirements is an array of { id, metric, max|min, ... } objects, not bare strings.",
 ]);
 
@@ -91,7 +93,9 @@ export function canonicalMaterial(name) {
 function softenMaterials(materials, warnings) {
   const out = {};
   for (const [id, val] of Object.entries(materials)) {
-    const alias = canonicalMaterial(id);
+    // A material with its own values is the design's own: never alias it to a library id.
+    const own = val && typeof val === "object" && ("density" in val || "youngsModulus" in val);
+    const alias = own ? null : canonicalMaterial(id);
     if (alias && alias !== id) {
       warnings.push(`materials.${id}: aliased to ${alias}`);
       out[alias] = val;
