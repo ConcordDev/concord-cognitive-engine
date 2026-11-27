@@ -8,6 +8,31 @@
 // plus the part tree and an overall verdict. Nothing here is the model's word.
 
 import { scanAmounts, parseUnit, formatAmount, siSymbol } from "../units/universal.js";
+import { listParameters, memberLengthMismatches } from "./edit.js";
+
+const RANK = { fail: 3, warn: 2, pass: 1, unchecked: 0 };
+
+/**
+ * Worst check per part (node id), for colouring the 3D model. A check on a
+ * part counts directly; a frame check names its member, and the member names
+ * its part. A part nothing checked is "unchecked".
+ */
+export function partStatuses(graph, checked, gaps) {
+  const status = {};
+  const bump = (id, s) => { if (id && RANK[s] > (RANK[status[id]] ?? -1)) status[id] = s; };
+  for (const n of graph.nodes.values()) if (n.geometry) status[n.id] = "unchecked";
+  const memberPart = new Map();
+  for (const n of graph.nodes.values()) for (const m of n.props?.frameModel?.members || []) if (m.part) memberPart.set(`${n.id}|${m.id}`, m.part);
+  for (const c of checked) {
+    const s = c.pass ? (c.status === "WARN" ? "warn" : "pass") : "fail";
+    const member = /:\s*([A-Za-z0-9_.-]+)\s+(?:von Mises|panel|buckling)/.exec(c.check || "")?.[1];
+    const viaMember = member ? memberPart.get(`${c.target}|${member}`) : null;
+    if (viaMember) { bump(viaMember, s); c.part = viaMember; }
+    else if (graph.node(c.target)?.geometry) { bump(c.target, s); c.part = c.target; }
+  }
+  for (const g of gaps) if (graph.node(g.target)?.geometry && !status[g.target]) status[g.target] = "unchecked";
+  return status;
+}
 
 const DIM_ALIASES = { "fraction of supply": "ratio", fraction: "ratio", "1": "ratio" };
 
@@ -90,6 +115,9 @@ export function buildReport(session, { text = "", plan = {} } = {}) {
       if (d.status === "not computed" && /^no .+ solver yet$/.test(d.reason || "")) gaps.push({ target: row.node, targetName: nameOf(row.node), domain: d.domain, reason: d.reason, needs: `a ${d.domain} solver` });
     }
   }
+  for (const mm of memberLengthMismatches(graph)) {
+    gaps.push({ target: mm.part, targetName: nameOf(mm.part), reason: `the frame check models member ${mm.member} as ${show(mm.spanM, "m", prefs)} long but the part is ${show(mm.lengthM, "m", prefs)}: move its joints or change the part so they agree` });
+  }
   const fails = checked.filter((c) => !c.pass).length;
   const passes = checked.filter((c) => c.pass).length;
   const masses = env.filter((e) => e.solver?.id === "mass.part" && e.status !== "NOT_COMPUTED")
@@ -99,6 +127,8 @@ export function buildReport(session, { text = "", plan = {} } = {}) {
     headline: fails ? `${fails} of ${checked.length} checks fail` : passes ? `all ${passes} checks pass; ${gaps.length} not checked` : "nothing was checked against a limit yet",
     units: prefs,
     parts: partTree(graph), masses,
+    partStatus: partStatuses(graph, checked, gaps),
+    parameters: plan.ir ? listParameters(plan.ir) : [],
     checked, computed, gaps,
     questions: plan.questions || [], assumptions: plan.assumptions || [], sources: plan.sources || [],
   };

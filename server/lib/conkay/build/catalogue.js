@@ -20,7 +20,7 @@ export const FAMILIES = Object.freeze([
     guide: [
       'Each physical part is { id, kind: "Part", name, material, geometry, position? }. Group parts under an { kind: "Assembly" } node with CONTAINS edges { from: assemblyId, to: partId, type: "CONTAINS" } so the assembly mass adds up.',
       "Shapes and their keys: box { length, width, height }, plate { length, width, thickness }, rod | cylinder | bolt { diameter, length }, round-tube { length, outerDiameter, wall }, rect-tube { length, width, height, wall }, i-beam { length, height, flangeWidth, flangeThickness, webThickness }.",
-      "position { x, y, z } is the part's centre. Lengths run along x unless stated.",
+      "position { x, y, z } is the part's centre; z is up. A box or plate runs its length along x, its width along y and its height (thickness) along z. A rod, cylinder or tube runs along props.axis: \"x\", \"y\" or \"z\" (z for a vertical post).",
       "Library materials: steel-a36, steel-a992, steel-4140, stainless-304, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, titanium-ti6al4v, copper-c11000, cast-iron-gray-30, douglas-fir, concrete-30mpa, abs-plastic, pla-plastic, polycarbonate, cfrp, gfrp-quasi-iso, rubber-natural, glass-soda-lime, foam-eps-30.",
       'Anything else is your own material under materials: { "<id>": { label, density: { value, source }, youngsModulus: { value, source }, poisson: { value, source }, yield: { value, source }, costPerKg?: { value, source } } } (a frame needs density, youngsModulus, poisson and yield) — every value with the book, table or datasheet it came from. Never a value without a source.',
     ],

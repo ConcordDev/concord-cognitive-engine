@@ -1,5 +1,68 @@
 # conkay — Capability Map
 
+## 2026-11-27 — Audit, then step 1: builds you can work on
+
+Owner: "1:1 in every aspect that matters for development", for anything (a
+car, a lamp, a plane, a coffee cup), "3d and inspectable and manipulated by
+the user as long as things pass checks". The full audit is
+`docs/conkay/CONKAY_CAPABILITY_AUDIT_2026-11-27.md`: 128 solvers (about 35
+tied to a vehicle or robot, 9 untested), six real outside-engine drivers
+(OpenCascade, CalculiX, OpenFOAM, Meep, FEniCSx, Cantera) none installed in
+the dev container, 27 engine CI lanes whose test files and docs do not exist,
+primitive-only geometry, and a 3D view that showed a build but could not
+work on it.
+
+### Step 1 (shipped)
+
+- **Per-part status**: every check is tied to the part it is about (a frame
+  check names its member, the member names its part); each part takes its
+  worst check (`report.partStatus`), and the model is coloured by it: green
+  passes, amber warnings, red fails, grey nothing checked it.
+- **Pick a part** in the model or the parts list: its status, its own checks
+  and its editable values (sizes, material) open in the report card.
+- **Edit in any unit** (`report.parameters`, `build/edit.js`): sizes,
+  material (library or the design's own), loads, safety factor. Values keep
+  the units they were written in ("3/4 in", "-24.3 lbf/ft"); a load typed
+  without a sign keeps its direction; a part's new length moves the free end
+  of its frame member so the span follows the part (a shared joint is left
+  alone and the report says the two disagree). Only listed values can change
+  and each must read as the right kind of quantity.
+- **Re-check without a model**: `POST /api/conkay/build/:id/edit` re-runs
+  every solver and saves the new graph and report; `GET /api/conkay/build/:id`
+  reopens a build with its 3D parts, and `?build=<id>` opens it in the
+  Workshop.
+- **Fixes found on the way**: the design graph is z-up and the 3D view y-up
+  (build parts are rotated for display); builds send their overall size so
+  the view frames them; `.ws-glass` set `position: relative` outside
+  Tailwind's layers and overrode every `absolute` glass card in the Workshop
+  (moved into the components layer); with a build open, typing no longer
+  edits the hidden I-beam study; SI values show with an engineering prefix
+  ("23.21 MPa", not "23210000 Pa").
+
+### Tests
+
+- `server/tests/conkay-build-anything.test.js` (14): parameters keep their
+  units; parts take their check colour; a thicker board lowers stress by the
+  square of the thickness (hand check); a longer board moves its member end;
+  a load keeps its direction; edits refused when unlisted, the wrong kind,
+  non-positive, an unknown material, or someone else's build; reopen.
+- Frontend: `conkay-build-report.test.tsx` (pick, edit in any unit, refused
+  edit reverts, loads), `mesh-artifact-build-parts.test.tsx` (part colours,
+  pick, unpick), `conkay-workspace.test.tsx` (pick → edit → server re-check →
+  report follows; refused re-check leaves the build; `?build=`).
+
+### Open (from the audit, in order)
+
+Real geometry (revolve, sweep, loft, shell, fillet, hole; OCC installed in the
+deploy image); generalise the vehicle-only solvers (aero, stability, fatigue)
+and add the missing physics common objects need (transient + natural
+convection + radiation, modal, impact/drop, thermal shock, photometry,
+junction thermal, linkages, flight stability, tolerance stacks, DFM); real
+drivers for the dead engine lanes or remove them; uncertainty on margins and
+a lab test-plan → calibration loop. Kay's chat does not yet edit an open
+build (sizes change in the inspector; a typed change goes to Kay as a new
+ask).
+
 ## 2026-11-26 (pass 2) — Build anything: Kay designs, the solvers check
 
 Owner: "Conkay isn't meant to just solve the few hardcoded designs … it's

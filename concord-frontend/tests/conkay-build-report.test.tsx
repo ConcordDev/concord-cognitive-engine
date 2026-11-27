@@ -1,7 +1,7 @@
 // The build report shows what the solvers checked, in the person's units,
 // and what nothing checked with its reason. Values are rendered as given.
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { BuildReportCard } from '@/components/conkay/workshop/BuildReportCard';
 import { isBuildReport, type BuildReport } from '@/lib/conkay/build-report';
 
@@ -40,5 +40,61 @@ describe('BuildReportCard', () => {
     expect(screen.getByText('3.4 lb (1.54 kg)')).toBeTruthy();
     fireEvent.click(within(screen.getByTestId('build-sources')).getByRole('button'));
     expect(screen.getByRole('link', { name: /University Physics Volume 1/ }).getAttribute('href')).toBe('https://openstax.org/x');
+  });
+});
+
+describe('BuildReportCard — working on a build', () => {
+  const withParams: BuildReport = {
+    ...report,
+    partStatus: { BOARD: 'fail' },
+    checked: report.checked.map((c, i) => (i === 0 ? { ...c, part: 'BOARD' } : c)),
+    parameters: [
+      { id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: '3/4 in', dim: 'length' },
+      { id: 'BOARD:material', node: 'BOARD', nodeName: 'board', label: 'material', value: 'white-pine', dim: 'material', options: ['white-pine', 'steel-a36'] },
+      { id: 'SHELF:props.frameModel.loadCases.0.udl.0.w.2', node: 'SHELF', nodeName: 'wall shelf', label: 'books: spread load on M1 (z)', value: '-24.3 lbf/ft', dim: 'force_per_length' },
+    ],
+  };
+
+  it('picking a part shows its status, its checks and its values; an edit is sent in the units typed', async () => {
+    const onEdit = vi.fn(async () => ({ ok: true }));
+    const onSelect = vi.fn();
+    const { rerender } = render(<BuildReportCard report={withParams} onSelect={onSelect} onEdit={onEdit} />);
+    fireEvent.click(screen.getByTestId('build-part-BOARD'));
+    expect(onSelect).toHaveBeenCalledWith('BOARD');
+    rerender(<BuildReportCard report={withParams} selected="BOARD" onSelect={onSelect} onEdit={onEdit} />);
+    const focus = screen.getByTestId('build-part-focus');
+    expect(within(focus).getByTestId('build-part-status').textContent).toBe('fails a check');
+    expect(within(focus).getByText(/von Mises/)).toBeTruthy();
+    expect(within(focus).queryByText(/runtime/)).toBeNull();
+    const h = within(focus).getByLabelText('height') as HTMLInputElement;
+    expect(h.value).toBe('3/4 in');
+    fireEvent.change(h, { target: { value: '1 1/2 in' } });
+    fireEvent.keyDown(h, { key: 'Enter' });
+    fireEvent.blur(h);
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith([{ id: 'BOARD:geometry.height', value: '1 1/2 in' }]));
+    fireEvent.change(within(focus).getByLabelText('material'), { target: { value: 'steel-a36' } });
+    await waitFor(() => expect(onEdit).toHaveBeenLastCalledWith([{ id: 'BOARD:material', value: 'steel-a36' }]));
+  });
+
+  it('a refused edit says why and puts the value back', async () => {
+    const onEdit = vi.fn(async () => ({ ok: false, errors: ['board height: expected a length, got "5 kg" (a mass)'] }));
+    render(<BuildReportCard report={withParams} selected="BOARD" onSelect={vi.fn()} onEdit={onEdit} />);
+    const h = screen.getByLabelText('height') as HTMLInputElement;
+    fireEvent.change(h, { target: { value: '5 kg' } });
+    fireEvent.blur(h);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/expected a length/);
+    expect(h.value).toBe('3/4 in');
+  });
+
+  it('loads and the safety factor are edited under Loads and settings', async () => {
+    const onEdit = vi.fn(async () => ({ ok: true }));
+    render(<BuildReportCard report={withParams} onSelect={vi.fn()} onEdit={onEdit} />);
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    const load = screen.getByLabelText('books: spread load on M1 (z)') as HTMLInputElement;
+    expect(load.value).toBe('-24.3 lbf/ft');
+    fireEvent.change(load, { target: { value: '40 lbf/ft' } });
+    fireEvent.blur(load);
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith([{ id: 'SHELF:props.frameModel.loadCases.0.udl.0.w.2', value: '40 lbf/ft' }]));
   });
 });

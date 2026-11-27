@@ -13,7 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
-import { buildFromBrief, saveBuild, loadBuild, listBuilds } from '../lib/conkay/build/index.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -307,11 +307,29 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
     }
   });
 
+  /**
+   * POST /api/conkay/build/:id/edit — { edits: [{ id, value }] } (ids from report.parameters;
+   * values in any unit). Every solver re-runs; no model. → { ok, report, artifact, applied }.
+   */
+  router.post('/build/:id/edit', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const edits = Array.isArray(req.body?.edits) ? req.body.edits.slice(0, 50) : [];
+    if (!edits.length) return res.status(400).json({ ok: false, error: 'edits_required' });
+    try {
+      const r = await editBuild(db, { id: req.params.id, userId, edits });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json({ ok: true, id: r.id, report: r.report, artifact: r.artifact, applied: r.applied, ir: r.ir });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'edit_failed', message: String(e?.message || e) });
+    }
+  });
+
   router.get('/build/:id', auth, (req, res) => {
     const userId = req.user?.id || req.user?.userId || null;
-    const b = userId ? loadBuild(db, req.params.id, userId) : null;
-    if (!b) return res.status(404).json({ ok: false, error: 'not_found' });
-    res.json({ ok: true, build: b });
+    const o = userId ? openBuild(db, req.params.id, userId) : null;
+    if (!o) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true, build: o.build, artifact: o.artifact });
   });
 
   router.get('/builds', auth, (req, res) => {

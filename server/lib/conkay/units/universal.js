@@ -363,6 +363,24 @@ export function convert(value, from, to) {
 
 const sig = (n, d = 4) => (n === 0 || !Number.isFinite(n) ? String(n) : String(Number(n.toPrecision(d))));
 /** "1.2 m (3.937 ft)": the value in the person's unit, with SI alongside when different. */
+// SI with an engineering prefix where people read it that way (23.2 MPa, not 23210000 Pa).
+const SI_PREFIXED = {
+  pressure: [[1e9, "GPa"], [1e6, "MPa"], [1e3, "kPa"], [1, "Pa"]],
+  stress: [[1e9, "GPa"], [1e6, "MPa"], [1e3, "kPa"], [1, "Pa"]],
+  force: [[1e6, "MN"], [1e3, "kN"], [1, "N"]],
+  power: [[1e6, "MW"], [1e3, "kW"], [1, "W"]],
+  energy: [[1e6, "MJ"], [1e3, "kJ"], [1, "J"]],
+  length: [[1e3, "km"], [1, "m"], [1e-3, "mm"], [1e-6, "µm"]],
+  mass: [[1e3, "t"], [1, "kg"], [1e-3, "g"]],
+};
+function siText(si, dim) {
+  const steps = SI_PREFIXED[dim];
+  if (!steps || !Number.isFinite(si) || si === 0) return `${sig(si)} ${siSymbol(dim)}`;
+  const a = Math.abs(si);
+  const [f, sym] = steps.find(([k]) => a >= k) || steps[steps.length - 1];
+  return `${sig(si / f)} ${sym}`;
+}
+
 export function formatAmount(si, dim, preferUnit) {
   const siSym = siSymbol(dim);
   if (preferUnit) {
@@ -370,10 +388,10 @@ export function formatAmount(si, dim, preferUnit) {
       const v = convertFromSI(si, preferUnit);
       const same = parseUnit(preferUnit);
       if (same.ok && same.factor === 1 && !same.offset) return `${sig(v)} ${preferUnit}`;
-      return `${sig(v)} ${preferUnit} (${sig(si)} ${siSym})`;
+      return `${sig(v)} ${preferUnit} (${siText(si, dim)})`;
     } catch { /* fall through to SI */ }
   }
-  return `${sig(si)} ${siSym}`;
+  return siSym === "SI" ? `${sig(si)} ${siSym}` : siText(si, dim);
 }
 
 // ── scanning free text ────────────────────────────────────────────────

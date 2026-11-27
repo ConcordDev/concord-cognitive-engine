@@ -118,3 +118,93 @@ test("a mechanism is a failure the report shows, not a pass", async () => {
   assert.equal(r.ok, true);
   assert.notEqual(r.report.verdict, "passes_checked");
 });
+
+// ── Step 1: a build you can work on ──────────────────────────────────────────
+import Database from "better-sqlite3";
+import { up as migrate518 } from "../migrations/518_conkay_builds.js";
+import { saveBuild, editBuild, loadBuild } from "../lib/conkay/build/index.js";
+import { listParameters, applyEdits } from "../lib/conkay/build/edit.js";
+
+async function savedShelf() {
+  const db = new Database(":memory:");
+  migrate518(db);
+  const plan = { summary: "s", ir: shelfIr(["x", "y", "z", "rx"]), lookups: [], questions: [], assumptions: [] };
+  const r = await buildFromBrief({ brief: "a 3 ft pine shelf for 72 lb", chat: async () => ({ ok: true, text: JSON.stringify(plan) }), lookup: null, settle: false });
+  const id = saveBuild(db, { userId: "u1", brief: "a 3 ft pine shelf for 72 lb", answers: [], result: r });
+  return { db, id, r };
+}
+
+test("a build lists what can be edited, in the units it was written in, and colours its parts", async () => {
+  const { r } = await savedShelf();
+  const p = r.report.parameters;
+  const len = p.find((x) => x.id === "BOARD:geometry.length");
+  assert.equal(len.value, "3 ft");
+  assert.equal(len.dim, "length");
+  const load = p.find((x) => x.dim === "force_per_length");
+  assert.equal(load.value, "-24.3 lbf/ft", "the load stays as written, not converted to SI");
+  assert.ok(p.find((x) => x.id === "BOARD:material").options.includes("white-pine"));
+  // the frame check names member M1, which is the board: the board carries its colour
+  assert.ok(["pass", "warn", "fail"].includes(r.report.partStatus.BOARD), JSON.stringify(r.report.partStatus));
+  assert.equal(r.artifact.partRanges[0].id, "BOARD");
+});
+
+test("editing a build re-runs the solvers: a thicker board lowers the stress by the square of the thickness", async () => {
+  const { db, id, r } = await savedShelf();
+  const before = r.report.checked.find((c) => c.solver === "structure.frame");
+  const e = await editBuild(db, { id, userId: "u1", edits: [{ id: "BOARD:geometry.height", value: "1.5 in" }], settle: false });
+  assert.equal(e.ok, true, JSON.stringify(e.errors));
+  const after = e.report.checked.find((c) => c.solver === "structure.frame");
+  const psi = (s) => Number(/^([\d.]+) psi/.exec(s)[1]);
+  // σ = 6M/(b h²): doubling h quarters σ (self-weight doubles too, so slightly more than a quarter)
+  const ratio = psi(after.demand) / psi(before.demand);
+  assert.ok(ratio > 0.25 && ratio < 0.3, `ratio ${ratio}`);
+  assert.equal(loadBuild(db, id, "u1").plan.ir.nodes.find((n) => n.id === "BOARD").geometry.height, "1.5 in");
+});
+
+test("a longer board moves the free end of its frame member; the span follows the part", async () => {
+  const { db, id } = await savedShelf();
+  const e = await editBuild(db, { id, userId: "u1", edits: [{ id: "BOARD:geometry.length", value: "4 ft" }], settle: false });
+  assert.equal(e.ok, true);
+  const B = e.ir.nodes.find((n) => n.id === "SHELF").props.frameModel.nodes.find((n) => n.id === "B");
+  assert.ok(Math.abs(B.x - 1.2192) < 1e-6, String(B.x));
+  assert.ok(e.applied.some((a) => /frame joint B moved/.test(a.label)));
+  assert.ok(!e.report.gaps.some((g) => /frame check models member/.test(g.reason)));
+});
+
+test("a load typed without a sign keeps its direction", async () => {
+  const { db, id } = await savedShelf();
+  const load = (await savedShelf()).r.report.parameters.find((x) => x.dim === "force_per_length");
+  const e = await editBuild(db, { id, userId: "u1", edits: [{ id: load.id, value: "60 lbf/ft" }], settle: false });
+  assert.equal(e.ok, true);
+  assert.equal(e.report.parameters.find((x) => x.id === load.id).value, "-60 lbf/ft");
+});
+
+test("edits are refused when they are not values of this build, the wrong kind, or not a material", async () => {
+  const ir = shelfIr(["x", "y", "z", "rx"]);
+  for (const [edit, re] of [
+    [{ id: "BOARD:props.secret", value: "1" }, /not an editable value/],
+    [{ id: "BOARD:geometry.height", value: "5 kg" }, /expected a length/],
+    [{ id: "BOARD:geometry.height", value: "-2 in" }, /more than zero/],
+    [{ id: "BOARD:material", value: "unobtainium" }, /not a library material/],
+    [{ id: "SHELF:props.frameModel.factorOfSafety.value", value: "0" }, /positive number/],
+  ]) {
+    const r = applyEdits(ir, [edit]);
+    assert.equal(r.ok, false, JSON.stringify(edit));
+    assert.match(r.errors.join(" "), re);
+  }
+  // another person's build cannot be edited
+  const { db, id } = await savedShelf();
+  assert.equal((await editBuild(db, { id, userId: "someone-else", edits: [{ id: "BOARD:geometry.height", value: "1 in" }] })).error, "not_found");
+  assert.ok(listParameters(ir).length >= 5);
+});
+
+test("a saved build reopens with its report and its 3D parts; only its owner can open it", async () => {
+  const { openBuild } = await import("../lib/conkay/build/index.js");
+  const { db, id, r } = await savedShelf();
+  const o = openBuild(db, id, "u1");
+  assert.equal(o.artifact.buildId, id);
+  assert.equal(o.artifact.report.headline, r.report.headline);
+  assert.ok(o.artifact.positions.length > 0);
+  assert.equal(o.artifact.partRanges[0].id, "BOARD");
+  assert.equal(openBuild(db, id, "someone-else"), null);
+});

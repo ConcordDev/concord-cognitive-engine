@@ -56,7 +56,7 @@ export interface ChatArtifact {
   scale?: number;
   scaleNote?: string;
   extents_mm?: { x?: number; y?: number; z?: number };
-  partRanges?: Array<{ name?: string; nodeName?: string; i0?: number; i1?: number; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
+  partRanges?: Array<{ id?: string; name?: string; nodeName?: string; i0?: number; i1?: number; size_mm?: { x?: number; y?: number; z?: number } | number[] }>;
   engineering?: { massKg?: number | null; massNote?: string };
   /** kind 'build' or a build's mesh (conkay_build): what the solvers checked, in the person's units. */
   report?: BuildReport;
