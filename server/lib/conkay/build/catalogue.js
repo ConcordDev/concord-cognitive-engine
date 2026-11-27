@@ -20,6 +20,7 @@ export const FAMILIES = Object.freeze([
     guide: [
       'Each physical part is { id, kind: "Part", name, material, geometry, position? }. Group parts under an { kind: "Assembly" } node with CONTAINS edges { from: assemblyId, to: partId, type: "CONTAINS" } so the assembly mass adds up.',
       "Shapes and their keys: box { length, width, height }, plate { length, width, thickness }, rod | cylinder | bolt { diameter, length }, round-tube { length, outerDiameter, wall }, rect-tube { length, width, height, wall }, i-beam { length, height, flangeWidth, flangeThickness, webThickness }.",
+      "Real shapes beyond blocks: extrude { length, profile: [[a, b], ...] (a closed outline, any units), holes?: [[[a, b], ...] | { circle: { at: [a, b], diameter } }], fillet? } pushed along props.axis (default x) — brackets, rails, custom extrusions, plates with holes; an extruded part can be a frame member (its exact section properties are used). revolve { outline: [[r, z], ...] from the axis outward then up, wall } — a cup, bowl, bottle, lamp shade, pot (it reports what it holds); or revolve { profile: [[r, z], ...] closed } — a knob, a wheel, a bushing. loft { sections: [{ at, shape: \"naca\", chord, naca: \"2412\", twist? } | { at, shape: \"rect\" | \"ellipse\", width, height }], skin? } along props.axis — a wing, a blade, a hull, a fuselage.",
       "position { x, y, z } is the part's centre; z is up. A box or plate runs its length along x, its width along y and its height (thickness) along z. A rod, cylinder or tube runs along props.axis: \"x\", \"y\" or \"z\" (z for a vertical post).",
       "Library materials: steel-a36, steel-a992, steel-4140, stainless-304, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, titanium-ti6al4v, copper-c11000, cast-iron-gray-30, douglas-fir, concrete-30mpa, abs-plastic, pla-plastic, polycarbonate, cfrp, gfrp-quasi-iso, rubber-natural, glass-soda-lime, foam-eps-30.",
       'Anything else is your own material under materials: { "<id>": { label, density: { value, source }, youngsModulus: { value, source }, poisson: { value, source }, yield: { value, source }, costPerKg?: { value, source } } } (a frame needs density, youngsModulus, poisson and yield) — every value with the book, table or datasheet it came from. Never a value without a source.',
@@ -57,6 +58,27 @@ export const FAMILIES = Object.freeze([
         { id: "BOARD", kind: "Part", name: "board", material: "steel-a36", geometry: { shape: "plate", length: "0.9 m", width: "250 mm", thickness: "5 mm" } },
       ],
       edges: [{ from: "SHELF", to: "BOARD", type: "CONTAINS" }],
+    },
+  },
+  {
+    id: "vessel",
+    keywords: /\b(?:cup|mug|bowl|glass|tumbler|bottle|jar|vase|pot|planter|bucket|pitcher|jug|kettle|carafe|flask|container|lamp\s*shade|shade|funnel|cone|bell)\b/i,
+    title: "Turned shapes and vessels (cups, bowls, bottles, shades, planters)",
+    when: "anything round that holds something or is turned on a lathe: real profile, mass, and what it holds",
+    guide: [
+      "A vessel is a revolve with an outline from the axis outward then up and a wall: { shape: \"revolve\", outline: [[0, 0], [\"40 mm\", 0], [\"42 mm\", \"95 mm\"]], wall: \"3 mm\" }. Its position is the centre of its base; z is up.",
+      "What it should hold goes on props.capacity: { min: \"12 fl oz\", source: \"the person\" } — geometry.capacity checks it against the volume to the rim.",
+      "A handle is its own part (an extrude of its outline, or a box) placed beside the body.",
+    ],
+    example: {
+      materials: { stoneware: { label: "Stoneware", density: { value: "2.3 g/cm3", source: "CRC Handbook of Chemistry and Physics, ceramics table" } } },
+      nodes: [
+        { id: "MUG", kind: "Assembly", name: "mug" },
+        { id: "BODY", kind: "Part", name: "mug body", material: "stoneware", position: { x: 0, y: 0, z: 0 },
+          geometry: { shape: "revolve", outline: [[0, 0], ["40 mm", 0], ["42 mm", "95 mm"]], wall: "4 mm" },
+          props: { capacity: { min: "12 fl oz", source: "the person" } } },
+      ],
+      edges: [{ from: "MUG", to: "BODY", type: "CONTAINS" }],
     },
   },
   {

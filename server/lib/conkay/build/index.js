@@ -154,6 +154,23 @@ export function openBuild(db, id, userId) {
   return { build: b, artifact };
 }
 
+/**
+ * The build as one STEP file of real B-rep solids (OpenCascade). The graph is
+ * recompiled from the saved plan, so the file is exactly the saved design.
+ */
+export async function buildStepFile(db, id, userId) {
+  const b = loadBuild(db, id, userId);
+  if (!b) return { ok: false, error: "not_found" };
+  if (!b.plan?.ir) return { ok: false, error: "no_plan" };
+  const ready = checkPlan(b.plan.ir);
+  if (!ready.ok) return { ok: false, error: "compile", errors: ready.errors };
+  const opened = openDesign(ready.ir);
+  if (!opened.ok) return { ok: false, error: "compile", errors: opened.errors };
+  const { buildStep } = await import("../geometry/solids.js");
+  const r = await buildStep(opened.session.graph);
+  return r.ok ? { ok: true, step: r.step, name: (b.plan.ir.design?.name || "build").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "build", parts: r.parts } : { ok: false, error: "kernel", message: r.error };
+}
+
 /** Summary for the chat model: numbers only from the report. */
 export function buildToolSummary(result) {
   const r = result.report;

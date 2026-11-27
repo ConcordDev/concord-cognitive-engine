@@ -98,3 +98,16 @@ describe('BuildReportCard — working on a build', () => {
     await waitFor(() => expect(onEdit).toHaveBeenCalledWith([{ id: 'SHELF:props.frameModel.loadCases.0.udl.0.w.2', value: '40 lbf/ft' }]));
   });
 });
+
+describe('BuildReportCard — STEP', () => {
+  it('offers the solid STEP download when the build is saved', () => {
+    render(<BuildReportCard report={report} stepHref="/api/conkay/build/bld_1/step" />);
+    const a = screen.getByTestId('build-step');
+    expect(a.getAttribute('href')).toBe('/api/conkay/build/bld_1/step');
+    expect(a.hasAttribute('download')).toBe(true);
+  });
+  it('no saved build, no STEP link', () => {
+    render(<BuildReportCard report={report} />);
+    expect(screen.queryByTestId('build-step')).toBeNull();
+  });
+});

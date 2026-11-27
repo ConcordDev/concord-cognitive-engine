@@ -91,6 +91,14 @@ function sectionFromGeometry(g) {
   if (g.shape === "box") return { shape: "rect", width: g.width, height: g.height };
   if (g.shape === "plate") return { shape: "rect", width: g.width, height: g.thickness };
   if (g.shape === "rod" || g.shape === "cylinder") return { shape: "round", diameter: g.diameter };
+  // An extruded profile: its exact section properties (Green's theorem; the profile's b axis is the
+  // member's height direction). Torsion constant J is Saint-Venant's estimate, said so in the warnings.
+  if (g.shape === "extrude" && g.derived?.A > 0) {
+    const d = g.derived;
+    const notes = [`J by Saint-Venant's estimate A⁴/(4π²Ip)${d.hollow ? "; not valid for a hollow or thin-walled section, so torsional results for it are unreliable" : ""}`];
+    if (Math.abs(d.Iab) > 1e-3 * Math.sqrt(d.Iaa * d.Ibb)) notes.push("unsymmetric section: its principal axes are rotated from the profile axes and bending is taken about the profile axes (skew bending not modelled)");
+    return { shape: "properties", A: d.A, Iz: d.Iaa, Iy: d.Ibb, J: d.J, cy: d.cMaxA, cz: d.cMaxB, depth: d.depth, tauPerT: Math.max(d.cMaxA, d.cMaxB) / d.J, notes };
+  }
   return null;
 }
 
@@ -117,12 +125,14 @@ export const frameStructure = registerSolver({
     const fm = ctx.get(id, "props.frameModel");
     const inputs = {};
     const members = [];
+    const sectionNotes = [];
     for (const m of fm.members || []) {
       let section, mat;
       if (m.part) {
         // a member may override its part's section where the part is cut (an access opening over a length)
         section = m.section || sectionFromGeometry(ctx.get(m.part, "geometry"));
-        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (box, plate, rod, cylinder, rect-tube, round-tube, i-beam)` };
+        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (box, plate, rod, cylinder, rect-tube, round-tube, i-beam, extrude)` };
+        if (Array.isArray(section.notes)) for (const t of section.notes) sectionNotes.push(`member ${m.id} (${m.part}): ${t}`);
         mat = ctx.material(m.part);
         if (!mat) return { notComputed: `member ${m.id}: part ${m.part} has no material` };
       } else {
@@ -161,7 +171,7 @@ export const frameStructure = registerSolver({
     const panelMember = new Set(panelInfo.flatMap((p) => p.diagonals.map((d) => d.id)));
     const fs = fm.factorOfSafety?.value ?? 1;
     const reqBuckling = fm.buckling?.requiredFactor?.value ?? 1;
-    const warnings = [...panelWarnings];
+    const warnings = [...panelWarnings, ...sectionNotes];
     const scaleable = new Map();
     const loadCases = [];
     for (const lc of fm.loadCases || []) {

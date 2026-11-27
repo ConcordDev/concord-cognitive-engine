@@ -40,7 +40,7 @@ export const CONKAY_IR_HINTS = Object.freeze([
   'A stated props.mass needs props.massSource (or massState): e.g. massSource: "caller assumption".',
   'Positions are lengths: position: { x: "0 m", y: "0 m", z: "0 m" } (or bare 0 = 0 m).',
   "Materials are registry ids (steel-a36, aluminum-6061-t6, aluminum-5052-h32, aluminum-7075-t6, abs-plastic, douglas-fir, copper-c11000, …; common aliases are auto-mapped), or your own under materials: { \"red-oak\": { density: { value: \"45 lb/ft^3\", source: \"USDA Wood Handbook, Table 5-3a\" }, youngsModulus: …, yield: … } } — every value needs a source.",
-  'Geometry keys by shape: box { length, width, height }, plate { length, width, thickness }, rod/cylinder/bolt { diameter, length }, round-tube { length, outerDiameter, wall }, rect-tube { length, width, height, wall }.',
+  'Geometry keys by shape: box { length, width, height }, plate { length, width, thickness }, rod/cylinder/bolt { diameter, length }, round-tube { length, outerDiameter, wall }, rect-tube { length, width, height, wall }; real shapes: extrude { length, profile: [[a, b], ...], holes?, fillet? }, revolve { outline: [[r, z], ...], wall } or { profile: [[r, z], ...] }, loft { sections: [{ at, shape: "naca"|"rect"|"ellipse", ... }] }.',
   "A frame (shelf, bracket, stand, truss) is props.frameModel on an Assembly: nodes with x/y/z, members naming a part (section from its geometry), supports with fix, loadCases with nodal F or udl w. Hold rx at one end of a simple span.",
   "requirements is an array of { id, metric, max|min, ... } objects, not bare strings.",
 ]);

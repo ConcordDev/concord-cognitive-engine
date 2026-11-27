@@ -13,7 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
-import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild } from '../lib/conkay/build/index.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -322,6 +322,24 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
       res.json({ ok: true, id: r.id, report: r.report, artifact: r.artifact, applied: r.applied, ir: r.ir });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'edit_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /** GET /api/conkay/build/:id/step — the build as real B-rep solids (STEP AP214), from OpenCascade. */
+  router.get('/build/:id/step', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    try {
+      const r = await buildStepFile(db, req.params.id, userId);
+      if (!r.ok) {
+        const code = r.error === 'not_found' ? 404 : r.error === 'kernel' ? 503 : 422;
+        return res.status(code).json({ ok: false, error: r.error, message: r.message || (r.error === 'kernel' ? 'The CAD kernel is not available here, so a solid STEP file cannot be made.' : undefined), errors: r.errors });
+      }
+      res.setHeader('Content-Type', 'application/step');
+      res.setHeader('Content-Disposition', `attachment; filename="${r.name}.step"`);
+      res.send(r.step);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'step_failed', message: String(e?.message || e) });
     }
   });
 
