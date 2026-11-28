@@ -13,7 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
-import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile, sizeSavedBuild } from '../lib/conkay/build/index.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile, sizeSavedBuild, uncertaintyForSavedBuild } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -341,6 +341,24 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
       res.json(r);
     } catch (e) {
       res.status(500).json({ ok: false, error: 'size_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * POST /api/conkay/build/:id/uncertainty — { samples?, seed?, loadCoV?, dimensionCoV?, scatter? }:
+   * how sure every check is (Monte Carlo over material, load and size scatter; read-only).
+   */
+  router.post('/build/:id/uncertainty', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const b = req.body || {};
+    const num = (v) => (v == null || v === '' ? undefined : Number(v));
+    try {
+      const r = await uncertaintyForSavedBuild(db, { id: req.params.id, userId, samples: num(b.samples), seed: num(b.seed), loadCoV: num(b.loadCoV), dimensionCoV: num(b.dimensionCoV), scatter: b.scatter && typeof b.scatter === 'object' ? b.scatter : undefined });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'uncertainty_failed', message: String(e?.message || e) });
     }
   });
 

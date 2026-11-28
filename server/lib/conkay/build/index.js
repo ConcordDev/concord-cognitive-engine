@@ -196,6 +196,25 @@ export async function sizeSavedBuild(db, { id, userId, variables, settle = true 
     artifact: { ...(ran.artifact || { kind: "build", source: "conkay_build", title: sized.ir.design?.name || "build" }), buildId: b.id, report: ran.report, summary: b.plan.summary, sizing: receipt } };
 }
 
+/**
+ * How sure the checks are: Monte Carlo over material scatter, load scatter and
+ * size tolerances (build/uncertainty.js). Read-only: the design is not changed.
+ * With a stated safety factor, a second run with it set to 1 gives the chance a
+ * part actually fails, beside the chance a check as written is not met.
+ */
+export async function uncertaintyForSavedBuild(db, { id, userId, samples, seed, loadCoV, dimensionCoV, scatter } = {}) {
+  const { propagate } = await import("./uncertainty.js");
+  const b = loadBuild(db, id, userId);
+  if (!b) return { ok: false, error: "not_found" };
+  if (!b.plan?.ir) return { ok: false, error: "no_plan" };
+  const opts = { samples, seed, loadCoV, dimensionCoV, scatter };
+  for (const k of Object.keys(opts)) if (opts[k] == null) delete opts[k];
+  const asWritten = await propagate(b.plan.ir, opts);
+  if (!asWritten.ok) return { ok: false, error: asWritten.error, errors: asWritten.errors };
+  const real = await propagate(b.plan.ir, { ...opts, withoutSafetyFactors: true });
+  return { ok: true, id: b.id, asWritten, withoutSafetyFactors: real.ok ? real : null };
+}
+
 /** Summary for the chat model: numbers only from the report. */
 export function buildToolSummary(result) {
   const r = result.report;

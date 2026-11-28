@@ -6,6 +6,7 @@
 // taken from the client's text) and two tools:
 //   conkay_build_edit  — words → exact edits of listed values; every solver re-runs
 //   conkay_build_size  — which sizes may change and their bounds; the solvers size it
+//   conkay_build_uncertainty — how sure every check is (Monte Carlo; read-only)
 // Kay picks WHAT changes. The numbers that come back are solver outputs.
 
 import { loadBuild } from "./index.js";
@@ -28,6 +29,7 @@ export function openBuildHint(db, buildId, userId) {
       ...lines,
       "When they ask to change it (\"make the arm 2 inches longer\", \"try oak\", \"what if it carries 60 lb\"), call conkay_build_edit with buildId and edits [{ id, value }] using ONLY ids from this list; values in any unit (work out \"2 inches longer\" from the current value shown).",
       "When they ask you to make it pass, make it lighter, or size it, call conkay_build_size with buildId and variables: the SIZE ids (lengths) that may change, each with min and max (or a stock list of buyable sizes). You choose WHAT may change and sensible bounds; the solvers find the sizes. Keep layout lengths (spans, heights) fixed unless they asked.",
+      "When they ask how sure you are, how safe it is, or how likely it is to fail, call conkay_build_uncertainty with buildId (and loadCoV if they said how much the load varies, e.g. 0.2 for ±20 %). It re-runs every solver over real scatter; report its probabilities with their intervals.",
       "Report only what the tool returned: which values changed, which checks pass or fail now, the mass before and after. Never state a number the tool did not return. For an unrelated new object, use conkay_build.",
     ].filter(Boolean).join("\n"),
   };

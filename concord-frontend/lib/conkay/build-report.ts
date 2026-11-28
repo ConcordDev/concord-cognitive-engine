@@ -42,6 +42,24 @@ export function isBuildReport(v: unknown): v is BuildReport {
 }
 
 /** What the solvers did when asked to size a build (server/lib/conkay/build/size.js). */
+/** How sure the checks are: Monte Carlo over material, load and size scatter (server: build/uncertainty.js). */
+export interface UncertaintyProbability { p: number; low: number; high: number; zeroFailures?: boolean }
+export interface UncertaintyCheck {
+  solver: string; target: string; check: string; basis: string | null;
+  nominalUtilization: number;
+  utilization: { p05: number; p50: number; p95: number };
+  failures: number; probabilityNotMet: UncertaintyProbability;
+  driver: { input: string; correlation: number } | null;
+}
+export interface UncertaintyRun {
+  samples: number; seed: number; mode: string;
+  probabilityAnyNotMet: UncertaintyProbability;
+  checks: UncertaintyCheck[];
+  inputs: Array<{ input: string; cov: number; distribution: string; source: string }>;
+  warnings: string[]; method: string; assumption: string;
+}
+export interface BuildUncertainty { asWritten: UncertaintyRun; withoutSafetyFactors: UncertaintyRun | null }
+
 export interface BuildSizing {
   feasible: boolean;
   evaluations: number;

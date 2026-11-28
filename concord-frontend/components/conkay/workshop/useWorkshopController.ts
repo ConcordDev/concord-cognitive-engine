@@ -20,7 +20,7 @@ import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-i
 import type { BriefClaim, TrussAnswer, WorkspaceDesign } from '../workspace/DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
-import { isBuildReport, type BuildSizing } from '@/lib/conkay/build-report';
+import { isBuildReport, type BuildSizing, type BuildUncertainty } from '@/lib/conkay/build-report';
 import type { ChatArtifact } from '@/components/chat/ChatArtifacts';
 import {
   DIM_LABELS,
@@ -149,6 +149,22 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
       return { ok: true, sizing: d.sizing };
     } catch (e) {
       return { ok: false, errors: [`Could not reach ConKay to size it: ${e instanceof Error ? e.message : String(e)}`] };
+    } finally {
+      setBuildBusy(false);
+    }
+  }, []);
+  /** How sure every check is, on the build as it stands (read-only; nothing about the design changes). */
+  const checkUncertainty = useCallback(async (opts: { samples?: number; loadCoV?: number; dimensionCoV?: number }): Promise<{ ok: boolean; errors?: string[]; uncertainty?: BuildUncertainty }> => {
+    const id = buildRef.current?.buildId;
+    if (!id) return { ok: false, errors: ['This build was not saved, so it cannot be checked. Ask Kay to build it again.'] };
+    setBuildBusy(true);
+    try {
+      const r = await api.post(`/api/conkay/build/${encodeURIComponent(id)}/uncertainty`, opts, { validateStatus: (st) => st < 500 });
+      const d = (r?.data ?? {}) as { ok?: boolean; errors?: string[]; message?: string; error?: string } & Partial<BuildUncertainty>;
+      if (!d.ok || !d.asWritten) return { ok: false, errors: d.errors?.length ? d.errors : [d.message || d.error || 'not run'] };
+      return { ok: true, uncertainty: { asWritten: d.asWritten, withoutSafetyFactors: d.withoutSafetyFactors ?? null } };
+    } catch (e) {
+      return { ok: false, errors: [`Could not reach ConKay: ${e instanceof Error ? e.message : String(e)}`] };
     } finally {
       setBuildBusy(false);
     }
@@ -664,7 +680,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
     guest, router, pathname, params, workspaceId, workspaceName,
     ws, inputs, setInputs, result, materials, status,
     section, setSection, workspaces, workspacesError, goWorkspace, createWorkspace,
-    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild, selectedPart, setSelectedPart, buildBusy, editBuild, sizeBuild, openBuild, buildError,
+    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild, selectedPart, setSelectedPart, buildBusy, editBuild, sizeBuild, checkUncertainty, openBuild, buildError,
     keeping, view, setView, display, setDisplay, showDims, setShowDims,
     paramsOpen, setParamsOpen, mobileTab, setMobileTab, speak,
     saveOpen, setSaveOpen, saveName, setSaveName, saveTouched, setBusy,
