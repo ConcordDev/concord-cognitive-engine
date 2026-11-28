@@ -55,7 +55,7 @@ function _summarizeMemoryDtu(dtu) {
 export default function registerConkayMacros(register) {
   register("conkay", "observe", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const state = observeTurn(db, userId, input.text || "");
     return { ok: true, state, prosody: prosodyParams(state), note: affectNote(state) };
@@ -63,7 +63,7 @@ export default function registerConkayMacros(register) {
 
   register("conkay", "affect_state", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const state = getAffectState(db, userId);
     return { ok: true, state, prosody: prosodyParams(state), note: affectNote(state) };
@@ -74,7 +74,7 @@ export default function registerConkayMacros(register) {
   }, { note: "analyze the VAD affect of a piece of text (real lexicon) (#15)" });
 
   register("conkay", "memory_list", async (ctx, input = {}) => {
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const dtus = ctx?.state?.dtus;
     if (!dtus || typeof dtus.values !== "function") return { ok: false, reason: "no_state" };
@@ -90,7 +90,7 @@ export default function registerConkayMacros(register) {
   }, { note: "list this user's real conversation-memory DTUs (conversation_memory + conversation_memory_hyper) for cross-session recall (#2 Beyond-Denial)" });
 
   register("conkay", "memory_pin", async (ctx, input = {}) => {
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     const dtuId = input.dtuId || input.id;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!dtuId) return { ok: false, reason: "no_dtu_id" };
@@ -110,7 +110,7 @@ export default function registerConkayMacros(register) {
   }, { note: "pin/unpin a real conversation-memory DTU so it survives consolidation sweeps as user-flagged (#2 Beyond-Denial)" });
 
   register("conkay", "memory_forget", async (ctx, input = {}) => {
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     const dtuId = input.dtuId || input.id;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!dtuId) return { ok: false, reason: "no_dtu_id" };

@@ -25,7 +25,7 @@ export default function registerSecretsMacros(register) {
   register("secrets", "list_discovered", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const limit = Math.min(Math.max(Number(input.limit) || 50, 1), 200);
     return {
@@ -45,7 +45,7 @@ export default function registerSecretsMacros(register) {
   register("secrets", "world_catalog", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId || null;
+    const userId = ctx?.actor?.userId || input.userId || null;
     const entries = listWorldCatalog(db, input.worldId || "sere", userId, {
       limit: Math.min(Math.max(Number(input.limit) || 200, 1), 500),
     });
@@ -127,7 +127,7 @@ export default function registerSecretsMacros(register) {
   register("secrets", "hooks_held", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, hooks: getHooksHeldBy(db, "player", userId) };
   }, { note: "list hooks (leverage) the player holds" });

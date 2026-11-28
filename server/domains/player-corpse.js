@@ -19,7 +19,7 @@ export default function registerPlayerCorpseMacros(register) {
     // Server-side callers (combat-kill path) supply userId; auth-required
     // for client paths so a malicious client can't drop arbitrary corpses
     // for someone else.
-    const userId = input.userId || ctx?.actor?.userId || null;
+    const userId = ctx?.actor?.userId || input.userId || null;
     if (!userId) return { ok: false, reason: "auth_required" };
     return dropCorpseOnDeath(db, { ...input, userId });
   }, { note: "drop a recoverable corpse on player death" });

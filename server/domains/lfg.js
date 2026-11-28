@@ -86,7 +86,7 @@ export default function registerLfgMacros(register) {
   register("lfg", "post", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const badNum = badNumericField(input, ["partyMaxSize"]);
     if (badNum) return { ok: false, reason: `invalid_${badNum}` };
@@ -119,7 +119,7 @@ export default function registerLfgMacros(register) {
   register("lfg", "cancel", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.lfgId) return { ok: false, reason: "no_lfg_id" };
     return cancelLfg(db, input.lfgId, userId);
@@ -133,7 +133,7 @@ export default function registerLfgMacros(register) {
   register("lfg", "join", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.lfgId) return { ok: false, reason: "no_lfg_id" };
     return inviteFromLfg(db, input.lfgId, userId);

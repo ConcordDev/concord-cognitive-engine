@@ -62,7 +62,7 @@ export default function registerCombatPolishMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     return changeStance(db, {
       actorKind: input.actorKind || "player",
-      actorId: input.actorId || ctx?.actor?.userId,
+      actorId: ctx?.actor?.userId || input.actorId,
       to: input.to,
     });
   }, { note: "change combat stance (high/low/clinch/ground/aerial)" });
@@ -85,7 +85,7 @@ export default function registerCombatPolishMacros(register) {
     if (!db) return { ok: false, reason: "no_db" };
     const events = getRecentCombatEvents(db, {
       actorKind: input.actorKind || "player",
-      actorId: input.actorId || ctx?.actor?.userId,
+      actorId: ctx?.actor?.userId || input.actorId,
       limit: Math.min(100, Math.max(1, Number(input.limit) || 30)),
     });
     return { ok: true, events };

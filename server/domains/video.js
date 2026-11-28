@@ -40,7 +40,7 @@ export default function registerVideoActions(registerLensAction) {
   // ── Connect / disconnect YouTube ──────────────────────────────────────
 
   registerLensAction("video", "youtube-connect-status", (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     const tok = getConnectorToken(ctx?.db, userId, youtubeConnectorId("default"));
     if (!tok) return { ok: true, connected: false };
@@ -53,14 +53,14 @@ export default function registerVideoActions(registerLensAction) {
   });
 
   registerLensAction("video", "youtube-disconnect", (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     disconnectYouTube(ctx.db, userId);
     return { ok: true };
   });
 
   registerLensAction("video", "youtube-channel-info", async (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     return getYouTubeChannel(ctx.db, userId);
   });
@@ -68,7 +68,7 @@ export default function registerVideoActions(registerLensAction) {
   // ── Generate video (calls Sora / Veo / Runway) ────────────────────────
 
   registerLensAction("video", "generate", async (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     if (!params.prompt) return { ok: false, error: "prompt_required" };
 
@@ -98,7 +98,7 @@ export default function registerVideoActions(registerLensAction) {
   });
 
   registerLensAction("video", "poll-generation", async (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     const job = state.jobs.get(params.jobId);
     if (!job) return { ok: false, error: "job_not_found" };
@@ -122,7 +122,7 @@ export default function registerVideoActions(registerLensAction) {
   // ── Upload existing video file to YouTube ─────────────────────────────
 
   registerLensAction("video", "upload-to-youtube", async (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     if (!params.file) return { ok: false, error: "file_required" };
     if (!params.title) return { ok: false, error: "title_required" };
@@ -162,7 +162,7 @@ export default function registerVideoActions(registerLensAction) {
   // ── List / get / delete ────────────────────────────────────────────────
 
   registerLensAction("video", "list", (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     const all = [...state.videos.values()].filter((v) => v.userId === userId);
     return {
@@ -172,7 +172,7 @@ export default function registerVideoActions(registerLensAction) {
   });
 
   registerLensAction("video", "get", (ctx, _a, params = {}) => {
-    const userId = params.userId || ctx?.user?.id || ctx?.actor?.id;
+    const userId = ctx?.actor?.userId || ctx?.user?.id || ctx?.actor?.id || params.userId;
     if (!userId) return { ok: false, error: "user_required" };
     const v = state.videos.get(params.videoId);
     if (!v || v.userId !== userId) return { ok: false, error: "not_found" };

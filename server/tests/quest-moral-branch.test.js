@@ -38,6 +38,10 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { macroRuntime, load } from "./depth/_harness.js";
 import { getOpinion } from "../lib/npc-opinions.js";
+
+// The player is the signed-in account (2026-11-28: macros read the session first, so a
+// player named only in input.userId no longer acts for that player).
+const as = (c, uid) => ({ ...c, actor: { ...c.actor, userId: uid } });
 import { computeFactionReputation, getFactionReputation } from "../lib/faction-reputation.js";
 import { getMoralBranch, resolveReputationTarget } from "../lib/quests/moral-branch.js";
 
@@ -145,7 +149,7 @@ describe("quest.resolve_moral_branch — real reputation round-trip", () => {
       optionId: OPTION_ID,
       userId,
       worldId: WORLD,
-    }, ctx);
+    }, as(ctx, userId));
 
     assert.equal(r.ok, true);
     assert.equal(r.questAuthoredId, QUEST_ID);
@@ -193,7 +197,7 @@ describe("quest.resolve_moral_branch — real reputation round-trip", () => {
       optionId: OPTION_ID,
       userId,
       worldId: WORLD,
-    }, ctx);
+    }, as(ctx, userId));
     assert.equal(r2.ok, false);
     assert.equal(r2.reason, "already_chosen");
     assert.equal(r2.existingOptionId, OPTION_ID);
@@ -216,7 +220,7 @@ describe("quest.resolve_moral_branch — real reputation round-trip", () => {
       optionId: "deflect_rael",
       userId: otherUser,
       worldId: WORLD,
-    }, ctx);
+    }, as(ctx, otherUser));
     assert.equal(r.ok, true);
     assert.equal(r.applied.length, 1); // deflect_rael only touches captain_rael_personal
     const rael = getOpinion(db, "captain_rael", "player", otherUser);
@@ -234,7 +238,7 @@ describe("quest.resolve_moral_branch — real reputation round-trip", () => {
       optionId: "whatever",
       userId,
       worldId: WORLD,
-    }, ctx);
+    }, as(ctx, userId));
     assert.equal(rNoBranch.ok, false);
     assert.equal(rNoBranch.reason, "no_moral_branch");
 

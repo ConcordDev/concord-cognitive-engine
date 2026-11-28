@@ -22536,7 +22536,8 @@ async function initGhostFleet() {
     const ingest = await import("./emergent/ingest-engine.js");
     GHOST_FLEET_STATUS.modules["ingest-engine"] = { loaded: true, loadedAt: new Date().toISOString() };
 
-    register("ingest", "submit_url", (_ctx, input = {}) => ingest.submitUrl(input.userId, input.url, input.tier));
+    // The submitter is the signed-in account; input.userId only for internal callers with no session.
+    register("ingest", "submit_url", (ctx, input = {}) => ingest.submitUrl(ctx?.actor?.userId || input.userId, input.url, input.tier));
     register("ingest", "queue", () => ghostFleetOk(ingest.getQueue()));
     register("ingest", "status", (_ctx, input = {}) => ghostFleetOk(ingest.getIngestStatus(input.ingestId)));
     register("ingest", "stats", () => ghostFleetOk(ingest.getIngestStats()));
@@ -22599,7 +22600,7 @@ async function initGhostFleet() {
     register("quest", "create", (_ctx, input = {}) => quest.createQuest(input.title, input.config));
     register("quest", "get", (_ctx, input = {}) => quest.getQuest(input.id));
     register("quest", "list", (_ctx, input = {}) => quest.listQuests(input.filter));
-    register("quest", "start", (_ctx, input = {}) => quest.startQuest(input.questId, input.userId));
+    register("quest", "start", (ctx, input = {}) => quest.startQuest(input.questId, ctx?.actor?.userId || input.userId));
     register("quest", "complete_step", (_ctx, input = {}) => quest.completeStep(input.questId, input.stepId));
     register("quest", "release_insight", (_ctx, input = {}) => quest.releaseInsight(input.questId, input.insightId));
     register("quest", "active", () => quest.getActiveQuests());
@@ -22625,7 +22626,7 @@ async function initGhostFleet() {
     register("quest", "resolve_moral_branch", async (ctx, input = {}) => {
       const { applyMoralBranchChoice } = await import("./lib/quests/moral-branch.js");
       const database = ctx?.db || db;
-      const userId = input.userId || ctx?.actor?.userId || ctx?.actor?.id || null;
+      const userId = ctx?.actor?.userId || ctx?.actor?.id || input.userId || null;
       const worldId = input.worldId || ctx?.worldId || null;
       return applyMoralBranchChoice(database, {
         userId,
@@ -32525,7 +32526,7 @@ register("shield", "scan", async (ctx, input) => {
 }, { description: "Submit file content or hash for security analysis." });
 
 register("shield", "status", (ctx, input) => {
-  const userId = input.userId || ctx?.actor?.userId || "anonymous";
+  const userId = ctx?.actor?.userId || input.userId || "anonymous";
   // computeSecurityScore returns { score, grade, breakdown } — sending the
   // whole object as `securityScore` renders as the literal string
   // "[object Object]" wherever the frontend does String(securityScore) or
@@ -36269,7 +36270,9 @@ register("economy", "royaltyFlow", async (ctx, input = {}) => {
     // specific DTU) must show every real earner tied to that DTU, not
     // silently narrow to the current caller's own cut of it — those are
     // two different, both legitimate, views and must not collapse into one.
-    const userId = input.userId || input.creatorId || (!dtuId ? ctx?.actor?.userId : null) || null;
+    // SECURITY: the "my own dashboard" shape is always the caller's own earnings; only a DTU-scoped
+    // view (whose earners are shown to everyone who can read the DTU) may narrow to a named earner.
+    const userId = dtuId ? (input.userId || input.creatorId || null) : (ctx?.actor?.userId || input.userId || input.creatorId || null);
     const limit = input.limit;
     const cd = await import("./lib/creator-dashboard.js");
     return cd.computeRoyaltyFlow(db, STATE, { userId, dtuId, limit });
@@ -36597,7 +36600,7 @@ register("settings", "status", (ctx, _input) => {
 
   register("analytics", "personal", (ctx, input = {}) => {
     try {
-      const userId = input.userId || ctx?.actor?.userId || ctx?.actor?.id;
+      const userId = ctx?.actor?.userId || ctx?.actor?.id || input.userId;
       if (!userId) return { ok: false, error: "authentication_required", reason: "authentication_required" };
       const out = getPersonalAnalytics(typeof STATE !== "undefined" ? STATE : ctx?.state, userId);
       return out && typeof out === "object" ? (out.ok !== undefined ? out : { ok: true, ...out }) : { ok: true, result: out };
@@ -37360,7 +37363,8 @@ register("social", "profile", (ctx, input = {}) => {
 
 register("social", "discover", (ctx, input = {}) => {
   try {
-    const userId = input.userId || input.id || ctx?.actor?.userId || ctx?.actor?.id || "anon";
+    // Suggestions are for the signed-in account; input.userId/id only for internal callers with no session.
+    const userId = ctx?.actor?.userId || input.userId || input.id || "anon";
     const out = discoverUsers(STATE, userId);
     return out && typeof out === "object" ? (out.ok !== undefined ? out : { ok: true, ...out }) : { ok: true, users: out };
   } catch (e) {
@@ -38152,7 +38156,7 @@ register("hypothesis", "generate", async (ctx, input = {}) => {
 register("research", "cross-domain-scan", async (ctx, input = {}) => {
   const topic = normalizeText(input.topic || "").trim();
   if (!topic) return { ok: false, error: "topic required" };
-  const userId = input.userId || ctx?.userId || ctx?.actor?.userId;
+  const userId = ctx?.userId || ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, error: "userId required" };
   const excludeDomains = new Set((Array.isArray(input.excludeDomains) ? input.excludeDomains : []).map((d) => String(d).toLowerCase()));
 
@@ -38187,7 +38191,7 @@ register("research", "synthesize", async (ctx, input = {}) => {
   const topic = normalizeText(input.topic || "").trim();
   if (!topic) return { ok: false, error: "topic required" };
   const substrateKnowledge = Array.isArray(input.substrateKnowledge) ? input.substrateKnowledge : [];
-  const userId = input.userId || ctx?.userId || ctx?.actor?.userId || "system";
+  const userId = ctx?.userId || ctx?.actor?.userId || input.userId || "system";
 
   // Grounded ONLY in the substrate DTUs the caller actually supplied —
   // never invents claims the account's own knowledge doesn't contain.
@@ -49731,7 +49735,7 @@ register("marketplace", "purchaseWithRoyalties", async (ctx, input) => {
 // ── Royalties Query Endpoint ────────────────────────────────────────────────
 
 register("marketplace", "royalties", async (ctx, input) => {
-  const userId = input?.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input?.userId;
   if (!userId) return { ok: false, error: "userId required" };
 
   const royaltyDtus = [];
@@ -60956,7 +60960,11 @@ register("shard", "stats", async (ctx, _input) => {
 
 // Governor for rate limiting
 register("governor", "configure", (ctx, input) => {
-  const { userId, maxDtusPerHour, maxQueriesPerMinute, heartbeatInterval } = input;
+  const { maxDtusPerHour, maxQueriesPerMinute, heartbeatInterval } = input;
+  // Your own limits, or another account's (or the default) only as an admin.
+  const _gRole = ctx?.actor?.role;
+  const _gAdmin = _gRole === "admin" || _gRole === "owner" || _gRole === "sovereign" || _gRole === "founder";
+  const userId = _gAdmin ? input.userId : (ctx?.actor?.userId || input.userId);
   const governor = {
     userId: userId || "default",
     limits: { maxDtusPerHour: Number(maxDtusPerHour) || 500, maxQueriesPerMinute: Number(maxQueriesPerMinute) || 200, heartbeatInterval: Number(heartbeatInterval) || 10000 },
@@ -60970,7 +60978,8 @@ register("governor", "configure", (ctx, input) => {
 });
 
 register("governor", "check", (ctx, input) => {
-  const { userId, action } = input;
+  const { action } = input;
+  const userId = ctx?.actor?.userId || input.userId;
   const governor = STATE.governors?.get(userId) || STATE.governors?.get("default");
   if (!governor) return { ok: true, allowed: true };
   const now = Date.now();
@@ -60982,7 +60991,8 @@ register("governor", "check", (ctx, input) => {
 });
 
 register("governor", "increment", (ctx, input) => {
-  const { userId, action } = input;
+  const { action } = input;
+  const userId = ctx?.actor?.userId || input.userId;
   const governor = STATE.governors?.get(userId) || STATE.governors?.get("default");
   if (!governor) return { ok: true };
   if (action === "create_dtu") governor.usage.dtusThisHour++;
@@ -93503,7 +93513,7 @@ register("npc", "schedule", (ctx, input = {}) => {
 // ── Phase 2.3: Forward-sim premonitions (ideas #7, #32) ─────────────────────
 register("forward_sim", "predictions_for_player", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const rows = db.prepare(`
@@ -93550,7 +93560,7 @@ register("forward_sim", "active", (ctx, _input = {}) => {
 // ── Phase 2.4: Dream surface (idea #31) ─────────────────────────────────────
 register("dream", "recent_for_player", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const rows = db.prepare(`
@@ -93568,7 +93578,7 @@ register("dream", "recent_for_player", (ctx, input = {}) => {
 
 register("dream", "list_for_player", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const limit = Math.min(100, Math.max(1, Number(input.limit) || 20));
   try {
@@ -93603,7 +93613,7 @@ structuredLog("info", "phase2_substrate_reveal_init", {
 // Phase 3.1: Embodied 7-channel HUD (idea #13).
 register("embodied", "signals_for_player", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const worldId = input.worldId || "concordia-hub";
   try {
@@ -93647,7 +93657,7 @@ register("embodied", "channels", (_ctx, _input = {}) => {
 // Phase 3.2: Pain → scars (idea #12).
 register("scars", "list", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const rows = db.prepare(`
@@ -93661,7 +93671,7 @@ register("scars", "list", (ctx, input = {}) => {
 
 register("scars", "record", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const { region, source, severity = 0.3, avatarId = null, label = null } = input || {};
   if (!region || !source) return { ok: false, reason: "missing_region_or_source" };
@@ -93681,7 +93691,7 @@ register("scars", "record", (ctx, input = {}) => {
 // in-place rather than schema-add since that table is already JSON-bag'd.
 register("mount", "bond_event", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const { mountId, eventKind, magnitude = 0.05, note = null } = input || {};
   if (!mountId || !eventKind) return { ok: false, reason: "missing_mount_or_event" };
@@ -93709,7 +93719,7 @@ register("mount", "bond_event", (ctx, input = {}) => {
 
 register("mount", "bond_state", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   const { mountId } = input || {};
   if (!mountId) return { ok: false, reason: "missing_mount" };
   try {
@@ -93733,7 +93743,7 @@ register("mount", "bond_state", (ctx, input = {}) => {
 // Phase 3.4: Fidelity multi-avatar drift (idea #23).
 register("fidelity", "drift", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   const { avatarId } = input || {};
   if (!userId || !avatarId) return { ok: false, reason: "missing_user_or_avatar" };
   try {
@@ -93764,7 +93774,7 @@ register("fidelity", "drift", (ctx, input = {}) => {
 
 register("fidelity", "summary", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const rows = db.prepare(`
@@ -93900,7 +93910,7 @@ structuredLog("info", "phase4_player_agency_init", {
 register("chat", "timeline", (ctx, input = {}) => {
   try {
   if (!STATE?.sessions) return { ok: false, reason: "no_state_sessions" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const sessionId = input.sessionId;
   const limit = Math.min(500, Math.max(10, Number(input.limit) || 100));
@@ -93991,7 +94001,7 @@ register("reflex", "recent_proposals", (_ctx, input = {}) => {
 
 // Phase 5.3: Semantic search on the user's own thoughts (idea #18).
 register("semantic", "search_thoughts", async (ctx, input = {}) => {
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   const text = input.text || "";
   if (!text || text.length < 2) return { ok: false, reason: "query_too_short" };
@@ -94216,7 +94226,7 @@ register("federation", "commune_status", (ctx, input = {}) => {
 // Phase 6.3: ActivityPub bridge (idea #21).
 register("federation", "outbox", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const ap = await import("./lib/activitypub-bridge.js");
@@ -94225,7 +94235,7 @@ register("federation", "outbox", async (ctx, input = {}) => {
 }, { note: "Read a user's ActivityPub outbox (federated DTU announcements)." });
 
 register("federation", "actor", async (ctx, input = {}) => {
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const ap = await import("./lib/activitypub-bridge.js");
@@ -94310,7 +94320,7 @@ register("narrative", "ripple_report", (_ctx, input = {}) => {
 register("npc", "lie_probability", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
   const { npcId, topic = "unknown" } = input || {};
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!npcId || !userId) return { ok: false, reason: "missing_inputs" };
   let probability = 0;
   let signals = {};
@@ -94489,7 +94499,7 @@ register("federation", "inbox_receive", async (ctx, input = {}) => {
 
 register("federation", "inbox", async (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const ap = await import("./lib/activitypub-bridge.js");
@@ -96222,7 +96232,7 @@ register("therapy", "compose_field", async (ctx, input = {}) => {
 
 register("therapy", "active_fields", (ctx, input = {}) => {
   if (!db) return { ok: false, reason: "no_db" };
-  const userId = input.userId || ctx?.actor?.userId;
+  const userId = ctx?.actor?.userId || input.userId;
   if (!userId) return { ok: false, reason: "no_actor" };
   try {
     const now = Math.floor(Date.now() / 1000);

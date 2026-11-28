@@ -18,7 +18,7 @@ export default function registerCultureMacros(register) {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
     const actorKind = String(input?.actorKind || "player");
-    const actorId = String(input?.actorId || ctx?.actor?.userId || "").trim();
+    const actorId = String(ctx?.actor?.userId || input?.actorId || "").trim();
     if (!actorId) return { ok: false, reason: "missing_inputs" };
     return { ok: true, culture: getCulture(db, actorKind, actorId) };
   });
