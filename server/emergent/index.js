@@ -24,6 +24,7 @@
  */
 
 import logger from '../logger.js';
+import { findNegationContradictions } from "../lib/lattice-contradictions.js";
 
 import {
   ALL_ROLES,
@@ -3237,20 +3238,13 @@ function init({ register, STATE, helpers }) {
           }
         }
       }
-      for (let i = 0; i < claimMap.length && audit.contradictions.length < 5; i++) {
-        for (let j = i + 1; j < claimMap.length && audit.contradictions.length < 5; j++) {
-          const a = claimMap[i].claim;
-          const b = claimMap[j].claim;
-          if (claimMap[i].id !== claimMap[j].id) {
-            if ((a.includes("not ") && b === a.replace("not ", "")) ||
-                (b.includes("not ") && a === b.replace("not ", ""))) {
-              audit.contradictions.push({
-                dtuA: { id: claimMap[i].id, claim: claimMap[i].claim.slice(0, 80) },
-                dtuB: { id: claimMap[j].id, claim: claimMap[j].claim.slice(0, 80) },
-              });
-            }
-          }
-        }
+      // One pass over an index of claim text (lib/lattice-contradictions.js). The nested
+      // all-pairs loop that was here held the event loop ~3 minutes per run at 60k DTUs.
+      for (const [i, j] of findNegationContradictions(claimMap, 5)) {
+        audit.contradictions.push({
+          dtuA: { id: claimMap[i].id, claim: claimMap[i].claim.slice(0, 80) },
+          dtuB: { id: claimMap[j].id, claim: claimMap[j].claim.slice(0, 80) },
+        });
       }
 
       const totalIssues = audit.staleDtus.length + audit.orphanedLineage.length + audit.lowQuality.length + audit.contradictions.length;
