@@ -752,6 +752,9 @@ describe('ConKay — Kay first', () => {
     await waitFor(() => expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/));
     expect(screen.getByTestId('build-part-status').textContent).toBe('passes its checks');
     expect((screen.getByLabelText('height') as HTMLInputElement).value).toBe('1 1/2 in');
+    // with the build open, what is typed goes to Kay with that build's id (she edits and sizes THIS build)
+    send('make it thicker');
+    await waitFor(() => expect(streamMock.mock.calls.at(-1)?.[0].buildId).toBe('bld_1'));
   });
 
   it('a re-check the server refuses leaves the build as it was and says why', async () => {

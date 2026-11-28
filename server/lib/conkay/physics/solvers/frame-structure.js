@@ -105,7 +105,7 @@ function sectionFromGeometry(g) {
 function materialProps(mat) {
   if (!mat || !(mat.youngsModulusPa > 0)) return { error: "material needs E" };
   if (!(mat.poisson > 0)) return { error: `material ${mat.id} has no Poisson ratio: G not computed` };
-  return { E: mat.youngsModulusPa, G: mat.youngsModulusPa / (2 * (1 + mat.poisson)), fy: mat.yieldPa ?? null, id: mat.id, source: mat.source };
+  return { E: mat.youngsModulusPa, G: mat.youngsModulusPa / (2 * (1 + mat.poisson)), nu: mat.poisson, fy: mat.yieldPa ?? null, id: mat.id, source: mat.source };
 }
 
 export const frameStructure = registerSolver({
@@ -144,7 +144,7 @@ export const frameStructure = registerSolver({
       if (mp.error) return { notComputed: `member ${m.id}: ${mp.error}` };
       // a part split into several members at joints is checked for beam-theory validity on its own length
       const partLen = m.part ? ctx.get(m.part, "geometry.length") : null;
-      members.push({ id: m.id, i: m.i, j: m.j, section, E: mp.E, G: mp.G, fy: mp.fy, segments: m.segments, part: m.part || null, ...(m.endSprings ? { endSprings: m.endSprings } : {}), ...(Number.isFinite(partLen) ? { checkLength: partLen } : {}) });
+      members.push({ id: m.id, i: m.i, j: m.j, section, E: mp.E, G: mp.G, nu: mp.nu, fy: mp.fy, segments: m.segments, part: m.part || null, ...(m.endSprings ? { endSprings: m.endSprings } : {}), ...(Number.isFinite(partLen) ? { checkLength: partLen } : {}) });
       inputs[`member.${m.id}`] = { value: { section, material: mp.id, part: m.part || null }, source: mp.source };
     }
     // shear panels → equivalent diagonals (not stress-checked as members; checked as panels below)
@@ -244,6 +244,17 @@ export const frameStructure = registerSolver({
       const structural = c.members.filter((mr) => !panelMember.has(mr.id));
       for (const mr of structural) {
         if (mr.fy && !stiffnessOnly.has(c.id)) margins.push({ check: `${c.id}: ${mr.id} von Mises ≤ Fy / ${fs}`, demand: mr.worst.vonMises, capacity: mr.fy / fs, unit: "Pa" });
+        // A thin round tube crumples (local shell buckling) before it yields. Classical critical stress
+        // σcr = E t / (R √(3(1−ν²))) with NASA SP-8007's knockdown for bending, γ = 1 − 0.731 (1 − e^(−φ)),
+        // φ = √(R/t) / 16 (NASA SP-8007, Buckling of Thin-Walled Circular Cylinders, 1968, §4.1.2).
+        const inMember = members.find((x) => x.id === mr.id);
+        const sec = inMember?.section;
+        if (sec?.shape === "round-tube" && sec.wall > 0 && !stiffnessOnly.has(c.id)) {
+          const t = sec.wall, R = (sec.od - t) / 2, nu = inMember.nu ?? 0.3;
+          const gamma = 1 - 0.731 * (1 - Math.exp(-Math.sqrt(R / t) / 16));
+          const sigmaCr = (gamma * inMember.E * t) / (R * Math.sqrt(3 * (1 - nu * nu)));
+          margins.push({ check: `${c.id}: ${mr.id} thin-wall local buckling ≤ σcr / ${fs}`, demand: mr.worst.vonMises, capacity: sigmaCr / fs, unit: "Pa", basis: "NASA SP-8007 (bending knockdown)" });
+        }
         if (mr.fy && (!gov || mr.worst.vonMises / mr.fy > gov.worst.vonMises / gov.fy)) gov = mr;
       }
       if (structural.some((mr) => !mr.fy)) warnings.push(`${c.id}: members without a yield strength are not stress-checked: ${structural.filter((mr) => !mr.fy).map((mr) => mr.id).join(", ")}`);

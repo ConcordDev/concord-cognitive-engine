@@ -74,6 +74,8 @@ export async function streamConKayAgent(args: {
   message: string;
   history: Array<{ role: string; content: string }>;
   persona: string;
+  /** The ConKay build open in the Workshop: Kay edits and sizes THAT build (the server loads it for this person). */
+  buildId?: string | null;
   signal?: AbortSignal;
   onToken: (chunk: string) => void;
   onToolCall: (call: AgentToolCall) => void;
@@ -86,7 +88,7 @@ export async function streamConKayAgent(args: {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: args.message, history: args.history, persona: args.persona }),
+    body: JSON.stringify({ message: args.message, history: args.history, persona: args.persona, ...(args.buildId ? { buildId: args.buildId } : {}) }),
     signal: args.signal,
   });
   const reader = res.body?.getReader();

@@ -13,7 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
-import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile } from '../lib/conkay/build/index.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile, sizeSavedBuild } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -322,6 +322,25 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
       res.json({ ok: true, id: r.id, report: r.report, artifact: r.artifact, applied: r.applied, ir: r.ir });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'edit_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * POST /api/conkay/build/:id/size — { variables: [{ id, min, max } | { id, stock: [...] }] }:
+   * the lightest design in those bounds on which every check passes (no model; every number
+   * from a solver run). → { ok, feasible, sizing, report?, artifact? }.
+   */
+  router.post('/build/:id/size', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const variables = Array.isArray(req.body?.variables) ? req.body.variables.slice(0, 12) : [];
+    if (!variables.length) return res.status(400).json({ ok: false, error: 'variables_required', message: 'Say which sizes may change, with their bounds or stock sizes.' });
+    try {
+      const r = await sizeSavedBuild(db, { id: req.params.id, userId, variables });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'size_failed', message: String(e?.message || e) });
     }
   });
 

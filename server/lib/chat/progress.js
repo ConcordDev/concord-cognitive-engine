@@ -12,6 +12,8 @@ const TOOL_LABELS = {
   run_compute: "Running the calculation",
   conkay_design: "Sizing the design",
   conkay_build: "Planning the parts and running the checks",
+  conkay_build_edit: "Changing the build and re-running the checks",
+  conkay_build_size: "Sizing it with the solvers",
   conkay_solve: "Running the solver",
   conkay_compile_brief: "Compiling the design brief",
   dtu_search: "Searching your knowledge base",

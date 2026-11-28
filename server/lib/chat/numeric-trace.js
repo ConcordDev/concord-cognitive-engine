@@ -68,7 +68,7 @@ function tracedDerived(x, operands) {
 export function guardNumericTrace(reply, toolCalls = [], { prompt = "" } = {}) {
   const text = String(reply || "");
   const ran = (toolCalls || []).filter((t) => t && t.ok !== false && t.result != null
-    && /^(?:run_compute|conkay_design|conkay_build|conkay_solve|run_recipe|get_live_data|run_python)$/.test(String(t.tool || "")));
+    && /^(?:run_compute|conkay_design|conkay_build|conkay_build_edit|conkay_build_size|conkay_solve|run_recipe|get_live_data|run_python)$/.test(String(t.tool || "")));
   if (!text || !ran.length) return { text, untraced: [], checked: 0 };
 
   const set = new Set();

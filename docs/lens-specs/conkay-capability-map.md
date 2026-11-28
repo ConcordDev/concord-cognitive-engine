@@ -1,5 +1,55 @@
 # conkay — Capability Map
 
+## 2026-11-28 — The math designs, Kay organizes
+
+Owner: "Jarvis level in capability but with actual CERN level physics that can
+really build and design things using real math and the LLM is just
+essentially the organizer." Until now the model wrote every dimension and the
+solvers only graded them. Now:
+
+- **The solvers size the design** (`lib/conkay/build/size.js`). The organizer
+  (the person, or Kay) names which sizes may change and their bounds (any
+  units) or a stock list; ConKay finds the lightest design in those bounds on
+  which every check passes. Deterministic: feasibility by a common geometric
+  step (bisection), coordinate descent, then trades (grow one size, shrink
+  the others — a tube gets lighter wider with a thinner wall; descent alone
+  stops short, found in a browser run). Bounds that cannot work are said with
+  the checks that still fail at the limits. The receipt names the checks
+  that set the answer (within 0.1 % of their limit) and the solver runs used.
+  Benchmarks: a shelf board sized to h* = √(6 M FS / (b Fy)) = 7.2845 mm
+  (exact, in inches as written); stock sizes → the smallest that passes; a
+  tube cantilever → its maximum diameter with the wall from Mc/I = Fy/3
+  (1.1894 mm).
+- `POST /api/conkay/build/:id/size`; the report card's **Size it with the
+  solvers** (cross-section sizes ticked by default, layout lengths left as
+  drawn, bounds ¼×–4× in their own units; the result rides on the build).
+- **Kay organizes the open build.** With a build open, the Workshop sends its
+  id; the server loads that person's build and shows Kay its real editable
+  values. Two tools: `conkay_build_edit` (words → exact edits of listed
+  values, every check re-runs) and `conkay_build_size` (she picks what may
+  change and sensible bounds; the solvers size it). Her replies may only
+  report what the tools returned. Another person's build id is refused.
+
+- **Thin-wall local buckling** of round tubes added to `structure.frame`
+  (σcr = γ E t / (R √(3(1−ν²))), NASA SP-8007 bending knockdown). Found by
+  letting the math design: the optimizer drives into any failure mode that is
+  not a check, so every mode that matters must be one. (For the lamp's
+  45 × 0.5 mm post it does not govern — σcr ≈ 700 MPa vs 276 MPa yield — so
+  that post is structurally valid; denting and buyable sizes are the real
+  limits there, which a stock list states.)
+
+Browser: the shelf sized from 3/4 in to 0.28679 in (1.55 → 0.592 kg, set by
+bending at Fy/2); the lamp overloaded with a 40 lbf knock (post fails), then
+its post sized by the solvers to pass (45.3 mm OD, 0.5 mm wall at its min).
+
+### Next (toward the owner's bar)
+
+1. Uncertainty on every margin (Monte Carlo over sourced ranges).
+2. Vibration / natural frequencies in the frame solver; CalculiX on the real
+   B-rep solids; a published-benchmark validation suite per solver.
+3. Sizing beyond lengths (material choice from a shortlist, discrete layout
+   options) and objectives beyond mass (cost, deflection).
+
 ## 2026-11-27 — Step 3: physics for everyday objects
 
 From the audit (items 3–4): the effects that decide whether a lamp, a mug or

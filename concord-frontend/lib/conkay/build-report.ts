@@ -40,3 +40,16 @@ export function isBuildReport(v: unknown): v is BuildReport {
   const r = v as BuildReport | null;
   return Boolean(r && typeof r === 'object' && Array.isArray(r.checked) && Array.isArray(r.gaps) && Array.isArray(r.parts));
 }
+
+/** What the solvers did when asked to size a build (server/lib/conkay/build/size.js). */
+export interface BuildSizing {
+  feasible: boolean;
+  evaluations: number;
+  before: { mass: number; feasible: boolean };
+  after?: { mass: number; worstUtilization: number };
+  changes?: Array<{ id: string; label: string; from: string; to: string; atBound: string | null }>;
+  binding?: Array<{ check: string; target: string; utilization: number }>;
+  failingAtLimits?: Array<{ check: string; target: string; utilization: number }>;
+  message?: string;
+  method?: string;
+}
