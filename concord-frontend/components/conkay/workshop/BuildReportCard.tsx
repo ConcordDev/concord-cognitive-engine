@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { AlertTriangle, BookOpen, Check, ChevronDown, ChevronRight, CircleHelp, Loader2, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { BuildCheck, BuildParameter, BuildPart, BuildReport, BuildSizing, PartStatus } from '@/lib/conkay/build-report';
+import type { BuildCheck, BuildParameter, BuildPart, BuildReport, BuildSizing, BuildUncertainty, PartStatus, UncertaintyProbability, UncertaintyRun } from '@/lib/conkay/build-report';
 import { parseNumberText } from '@/lib/conkay/field-units';
 
 export type BuildEdit = { id: string; value: string };
@@ -185,7 +185,87 @@ function SizePanel({ params, busy, onSize }: { params: BuildParameter[]; busy: b
   );
 }
 
-export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, onSize, lastSizing, busy = false, stepHref }: {
+export type UncertaintyOptions = { samples?: number; loadCoV?: number; dimensionCoV?: number };
+export type UncertaintyResult = { ok: boolean; errors?: string[]; uncertainty?: BuildUncertainty };
+
+const num = (x: number) => { const v = x * 100; return String(Number(v.toPrecision(v >= 1 ? 3 : 2))); };
+const pct = (x: number) => `${num(x)} %`;
+/** "9.8 % (8.6–11.2 %)", or "under 0.3 %" when no sample failed (the bound N samples can show). */
+export function formatProbability(pr: UncertaintyProbability, samples: number): string {
+  if (pr.zeroFailures || pr.p === 0) return `under ${pct(pr.high)} (none of ${samples} failed)`;
+  return `${pct(pr.p)} (${num(pr.low)}–${pct(pr.high)})`;
+}
+
+function UncertaintyRunView({ run, title, testId }: { run: UncertaintyRun; title: string; testId: string }) {
+  return (
+    <div className="mt-2" data-testid={testId}>
+      <p className="text-[11px] font-medium text-[color:var(--ws-text)]">{title}</p>
+      <p className="ws-num text-[11px]">any check not met: {formatProbability(run.probabilityAnyNotMet, run.samples)}</p>
+      <ul className="mt-1 space-y-1">
+        {run.checks.slice(0, 8).map((c, i) => (
+          <li key={`${c.target}-${i}`} className="text-[11px]">
+            <span className="block truncate text-[color:var(--ws-text)]" title={c.check}>{c.check}</span>
+            <span className="ws-num block">use {Math.round(c.nominalUtilization * 100)} % · 90 % of samples {Math.round(c.utilization.p05 * 100)}–{Math.round(c.utilization.p95 * 100)} % · not met {formatProbability(c.probabilityNotMet, run.samples)}</span>
+            {c.driver ? <span className="block text-[10.5px] text-[color:var(--ws-faint)]">moved most by {c.driver.input} (r = {c.driver.correlation})</span> : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function UncertaintyPanel({ busy, onRun }: { busy: boolean; onRun: (o: UncertaintyOptions) => Promise<UncertaintyResult> }) {
+  const [samples, setSamples] = useState('1000');
+  const [load, setLoad] = useState('10');
+  const [size, setSize] = useState('1');
+  const [result, setResult] = useState<UncertaintyResult | null>(null);
+  const run = async () => {
+    setResult(null);
+    setResult(await onRun({ samples: Number(samples), loadCoV: Number(load) / 100, dimensionCoV: Number(size) / 100 }));
+  };
+  const u = result?.ok ? result.uncertainty : null;
+  const field = (label: string, value: string, set: (v: string) => void, suffix: string) => (
+    <label className="flex items-center justify-between gap-2 text-[11px]">
+      <span>{label}</span>
+      <span className="flex items-center gap-1">
+        <input value={value} aria-label={label} inputMode="decimal" onChange={(e) => set(e.target.value)}
+          className="ws-num w-16 rounded border border-[color:var(--ws-line-strong)] bg-transparent px-1 py-0.5 text-right text-[10.5px]" />
+        <span className="w-6 text-[color:var(--ws-faint)]">{suffix}</span>
+      </span>
+    </label>
+  );
+  return (
+    <div data-testid="build-uncertainty">
+      <p className="mb-1.5 text-[10.5px] text-[color:var(--ws-faint)]">Real parts are not the drawing: strength varies by batch, loads are not exact, sizes are cut to a tolerance. Every solver re-runs on each sample; material scatter comes from cited sources, and what isn&rsquo;t known is said, not guessed.</p>
+      <div className="space-y-1">
+        {field('samples', samples, setSamples, '')}
+        {field('load scatter (CoV)', load, setLoad, '%')}
+        {field('size tolerance (CoV)', size, setSize, '%')}
+      </div>
+      <button type="button" onClick={() => void run()} disabled={busy} data-testid="build-uncertainty-run"
+        className="mt-2 flex items-center gap-1.5 rounded-md border border-[color:var(--ws-arc)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)] disabled:opacity-40">
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Sparkles className="h-3.5 w-3.5" aria-hidden />} How sure is it?
+      </button>
+      {result && !result.ok ? <p role="alert" className="mt-1.5 text-[10.5px] text-[color:var(--ws-amber)]">{(result.errors || []).join('; ')}</p> : null}
+      {u ? (
+        <>
+          <UncertaintyRunView run={u.asWritten} title="Checks as written (with their safety factors)" testId="build-uncertainty-as-written" />
+          {u.withoutSafetyFactors ? <UncertaintyRunView run={u.withoutSafetyFactors} title="Does it really break? (safety factors set to 1)" testId="build-uncertainty-real" /> : null}
+          {u.asWritten.warnings.length ? <ul className="mt-1.5 text-[10.5px] text-[color:var(--ws-amber)]">{u.asWritten.warnings.map((w, i) => <li key={i}>· {w}</li>)}</ul> : null}
+          <details className="mt-1.5 text-[10.5px] text-[color:var(--ws-faint)]">
+            <summary className="cursor-pointer">What was varied, and from where</summary>
+            <ul className="mt-1 space-y-0.5">{u.asWritten.inputs.map((i) => <li key={i.input}>· {i.input}: CoV {Math.round(i.cov * 1000) / 10} % — {i.source}</li>)}</ul>
+            <p className="mt-1">{u.asWritten.method}. {u.asWritten.assumption}.</p>
+          </details>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, onSize, onUncertainty, lastSizing, busy = false, stepHref }: {
+  /** How sure every check is (Monte Carlo on the server; read-only). */
+  onUncertainty?: (o: UncertaintyOptions) => Promise<UncertaintyResult>;
   onSize?: (variables: SizeVariable[]) => Promise<SizeResult>;
   /** The last sizing the solvers did on this build (it rides on the build, so it survives the refresh). */
   lastSizing?: BuildSizing | null;
@@ -265,6 +345,11 @@ export function BuildReportCard({ report, title, onClose, className, selected = 
           <Section title="Size it with the solvers" count={params.filter((p) => p.dim === 'length' && !isCondition(p)).length} open={Boolean(lastSizing?.feasible)} testId="build-size-section">
             {lastSizing?.feasible ? <SizeResultView sizing={lastSizing} /> : null}
             <SizePanel key={params.map((p) => `${p.id}=${p.value}`).join('|')} params={params.filter((p) => p.dim === 'length' && !isCondition(p))} busy={busy} onSize={onSize} />
+          </Section>
+        ) : null}
+        {onUncertainty && report.checked.length > 0 ? (
+          <Section title="How sure is it?" count={report.checked.length} open={false} testId="build-uncertainty-section">
+            <UncertaintyPanel key={params.map((p) => `${p.id}=${p.value}`).join('|')} busy={busy} onRun={onUncertainty} />
           </Section>
         ) : null}
         <Section title="Checked" count={report.checked.length} open={!sel} testId="build-checked">

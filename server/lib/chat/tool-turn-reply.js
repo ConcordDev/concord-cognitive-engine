@@ -42,7 +42,7 @@ const TOOL_NAME_SCRUB = [
   [/\b(?:use|call|try)\s+conkay_design\s+with\s+a\s+detailed\s+spec\b/gi, "describe the part in more detail, or try Agent mode"],
   [/\bconkay_design\.from-brief\b/gi, "a fuller design"],
   [/\bconkay_design\b/gi, "the design layout"],
-  [/\bconkay_build_(?:edit|size)\b/gi, "the build check"],
+  [/\bconkay_build_(?:edit|size|uncertainty)\b/gi, "the build check"],
   [/\bconkay_build\b/gi, "the build check"],
   [/\bconkay_(?:solve|compile_brief|solver_list|ir_schema)\b/gi, "the design check"],
   [/\bgenerate_3d\b/gi, "3D generation"],
@@ -75,7 +75,7 @@ const TOOL_DESCRIPTION_SCRUB = [
 // Design and image tool ids. A failed compute or search step still names
 // itself ("I couldn't complete run_compute"); those receipts are not the
 // schema text this pass is stripping.
-const TOOL_IDENT_RE = /\b(?:generate_3d|generate_image|conkay_build_edit|conkay_build_size|conkay_build|conkay_design|conkay_solve|conkay_compile_brief|conkay_solver_list|conkay_ir_schema)\b/gi;
+const TOOL_IDENT_RE = /\b(?:generate_3d|generate_image|conkay_build_edit|conkay_build_size|conkay_build_uncertainty|conkay_build|conkay_design|conkay_solve|conkay_compile_brief|conkay_solver_list|conkay_ir_schema)\b/gi;
 
 /**
  * Last pass on text a person will read. Strips tool identifiers and the

@@ -2,7 +2,7 @@
 // and what nothing checked with its reason. Values are rendered as given.
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
-import { BuildReportCard } from '@/components/conkay/workshop/BuildReportCard';
+import { BuildReportCard, formatProbability } from '@/components/conkay/workshop/BuildReportCard';
 import { isBuildReport, type BuildReport } from '@/lib/conkay/build-report';
 
 const report: BuildReport = {
@@ -160,5 +160,43 @@ describe('BuildReportCard — size it with the solvers', () => {
     const inf = await screen.findByTestId('build-size-infeasible');
     expect(inf.textContent).toMatch(/No design within these bounds/);
     expect(inf.textContent).toMatch(/von Mises ≤ Fy \/ 2 \(210 %\)/);
+  });
+});
+
+describe('BuildReportCard — how sure is it', () => {
+  const run = (check: string, p: { p: number; low: number; high: number; zeroFailures?: boolean }, u: number) => ({
+    samples: 1000, seed: 1, mode: 'm', probabilityAnyNotMet: p, warnings: ['Eastern white pine: not varied — no sourced scatter'],
+    checks: [{ solver: 'structure.frame', target: 'SHELF', check, basis: null, nominalUtilization: u, utilization: { p05: u * 0.8, p50: u, p95: u * 1.3 }, failures: Math.round(p.p * 1000), probabilityNotMet: p, driver: { input: 'board strength', correlation: -0.95 } }],
+    inputs: [{ input: 'board strength', cov: 0.25, distribution: 'lognormal', source: 'JCSS Probabilistic Model Code Part 3.05' }],
+    method: 'Monte Carlo, 1000 samples', assumption: 'library values taken as the mean',
+  });
+
+  it('probabilities read honestly: an interval, or a bound when nothing failed', () => {
+    expect(formatProbability({ p: 0.098, low: 0.0857, high: 0.1118 }, 1000)).toBe('9.8 % (8.57–11.2 %)');
+    expect(formatProbability({ p: 0, low: 0, high: 0.002991, zeroFailures: true }, 1000)).toBe('under 0.3 % (none of 1000 failed)');
+  });
+
+  it('runs on the build with the stated scatter and shows both runs, the driver, the sources and what was not varied', async () => {
+    const onUncertainty = vi.fn(async () => ({ ok: true, uncertainty: {
+      asWritten: run('books: M1 von Mises ≤ Fy / 2', { p: 0.098, low: 0.0857, high: 0.1118 }, 0.7),
+      withoutSafetyFactors: run('books: M1 von Mises ≤ Fy / 1', { p: 0, low: 0, high: 0.002991, zeroFailures: true }, 0.35) } }));
+    render(<BuildReportCard report={report} onUncertainty={onUncertainty} />);
+    fireEvent.click(within(screen.getByTestId('build-uncertainty-section')).getByRole('button', { name: /How sure is it\?/ }));
+    fireEvent.change(screen.getByLabelText('load scatter (CoV)'), { target: { value: '20' } });
+    fireEvent.click(screen.getByTestId('build-uncertainty-run'));
+    await waitFor(() => expect(onUncertainty).toHaveBeenCalledWith({ samples: 1000, loadCoV: 0.2, dimensionCoV: 0.01 }));
+    const aw = await screen.findByTestId('build-uncertainty-as-written');
+    expect(aw.textContent).toMatch(/not met 9\.8 % \(8\.57–11\.2 %\)/);
+    expect(aw.textContent).toMatch(/moved most by board strength/);
+    expect(screen.getByTestId('build-uncertainty-real').textContent).toMatch(/under 0\.3 % \(none of 1000 failed\)/);
+    expect(screen.getByTestId('build-uncertainty').textContent).toMatch(/JCSS Probabilistic Model Code Part 3\.05/);
+    expect(screen.getByTestId('build-uncertainty').textContent).toMatch(/not varied/);
+  });
+
+  it('an error is said, not hidden', async () => {
+    render(<BuildReportCard report={report} onUncertainty={vi.fn(async () => ({ ok: false, errors: ['samples: between 20 and 5000'] }))} />);
+    fireEvent.click(within(screen.getByTestId('build-uncertainty-section')).getByRole('button', { name: /How sure is it\?/ }));
+    fireEvent.click(screen.getByTestId('build-uncertainty-run'));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/samples/);
   });
 });

@@ -31,6 +31,7 @@ const SYSTEM = [
   "- Build what was asked, whatever it is. Break it into its real parts and put on them every check from the catalogue that applies. Do not turn it into a single beam.",
   "- Write quantities as strings with units, in the person's own units when they gave them (\"3 ft\", \"2 fl oz\", \"70 °F\").",
   "- Never invent a material constant. Use a library material, or a value from a textbook passage you were given (cite it as the source), or put a lookup for it. A value the person gave is sourced \"the person\".",
+  "- A material you define under materials gets its \"category\" (metal, wood, ceramic, polymer, composite) so its scatter is known when the design is checked for uncertainty.",
   "- Ask a question only when the answer changes the design and you cannot reasonably assume it; mark it blocking only when nothing useful can be checked without it. Otherwise assume, and say so in assumptions.",
   "- Give parts positions so the assembly is laid out; z is up.",
 ].join("\n");

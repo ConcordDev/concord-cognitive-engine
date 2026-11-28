@@ -42,9 +42,42 @@ Browser: the shelf sized from 3/4 in to 0.28679 in (1.55 → 0.592 kg, set by
 bending at Fy/2); the lamp overloaded with a 40 lbf knock (post fails), then
 its post sized by the solvers to pass (45.3 mm OD, 0.5 mm wall at its min).
 
+### Uncertainty on every margin (same day)
+
+A margin was one number; a lab trusts a number with its scatter.
+`lib/conkay/build/uncertainty.js` samples the real inputs and re-runs
+**every** solver on each sample:
+
+- material strength / stiffness / density: lognormal about the library value,
+  one draw per material per sample, coefficients of variation from the JCSS
+  Probabilistic Model Code (steel 3.02: fy 0.07, E 0.03; timber 3.05: 0.25 /
+  0.13 / 0.10) and Weibull m ≈ 10 for ceramics. Polymers, composites and
+  design-defined materials without a category are **not varied** unless the
+  person gives their scatter — said in the warnings, never guessed (the
+  planner now asks Kay to give a defined material its category);
+- loads (forces, spread loads, carried masses) and cross-section sizes
+  (spans held): CoV stated by the person, else labelled assumptions (0.10, 0.01).
+
+Per check: utilization, its 5–95 % range, the probability it is not met with a
+Wilson 95 % interval — or, when no sample fails, "under 1 − 0.05^(1/N)" (never
+zero) — and the input that moves it most. Run twice when the build states a
+safety factor: as written, and with the factor at 1 (does the part actually
+break). Seeded, so a run repeats exactly; yields to the event loop.
+`POST /api/conkay/build/:id/uncertainty`, the report card's **How sure is
+it?**, and Kay's `conkay_build_uncertainty`.
+
+Benchmarks: with strength the only scatter, P(u > 1) = Φ((ln u0 + σ²/2)/σ)
+(9.36 % for the 8.7 mm pine shelf; Monte Carlo 9.8 %, interval 8.6–11.2 %),
+median u0·e^{σ²/2}; FS 2 → 1 halves utilization exactly. Run on the tube post
+sized exactly to Fy/3: that check is missed by 49.9 % of real parts (it sits
+on the line, as an optimum does), yet none of 2,000 yield with the factor at 1
+(< 0.15 %). Which is why the next step below is sizing to a reliability
+target rather than to the nominal check.
+
 ### Next (toward the owner's bar)
 
-1. Uncertainty on every margin (Monte Carlo over sourced ranges).
+1. Size to a reliability target (e.g. P(fail) ≤ 10⁻³ with the factor at 1),
+   with importance sampling / FORM for small probabilities Monte Carlo can't reach.
 2. Vibration / natural frequencies in the frame solver; CalculiX on the real
    B-rep solids; a published-benchmark validation suite per solver.
 3. Sizing beyond lengths (material choice from a shortlist, discrete layout
