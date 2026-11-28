@@ -76,6 +76,8 @@ target rather than to the nominal check.
 
 ### Next (toward the owner's bar)
 
+The full long-range plan (phases A–H, comparison targets, "done when" per phase): `docs/conkay/CONKAY_ULTIMATE_PLAN.md`.
+
 1. Size to a reliability target (e.g. P(fail) ≤ 10⁻³ with the factor at 1),
    with importance sampling / FORM for small probabilities Monte Carlo can't reach.
 2. Vibration / natural frequencies in the frame solver; CalculiX on the real
