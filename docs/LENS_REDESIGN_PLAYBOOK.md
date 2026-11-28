@@ -30,6 +30,14 @@ page; do it first if the lens scores heavy in `audit/lens-stacking-report.md`),
 
 ---
 
+## 0. Start from the lens kit
+
+Every redesign starts from `node scripts/new-lens.mjs <lens> --identity "<Name>"` (docs/LENS_KIT.md):
+the receipt card, sourced numbers (no number on screen without a source and an uncertainty,
+enforced by `tests/lens-kit-number-rule.test.ts`), honest loading/empty/error states, the
+390px layout and tab strip, the dialog, the contrast contract and a starter check spec. The
+kit shares behaviour and guarantees, never a look: the identity is still the lens's own.
+
 ## 1. Audit the lens
 
 - List every backend action the lens has

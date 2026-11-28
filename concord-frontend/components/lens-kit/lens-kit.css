@@ -1,0 +1,38 @@
+/*
+ * Lens kit — neutral default tokens.
+ *
+ * A redesigned lens replaces ALL of these in its own token file with its own
+ * identity (the playbook's rule: no two lenses share a look). They exist so the
+ * kit renders legibly before a lens has an identity, and they pass the contrast
+ * contract themselves (lib/lens-kit/contrast.ts; tests/lens-kit.test.tsx).
+ * Dark is the app's default; light follows [data-theme="light"] / .light.
+ */
+.lk-tokens {
+  --lk-surface: #111113;
+  --lk-surface-raised: #1b1b1f;
+  --lk-text: #ededef;
+  --lk-text-muted: #a1a1aa;
+  --lk-accent: #5b8def;
+  --lk-on-accent: #0a0a0b;
+  --lk-line: #2e2e33;
+  --lk-ok: #4ade80;
+  --lk-warn: #fbbf24;
+  --lk-danger: #f87171;
+  background: var(--lk-surface);
+  color: var(--lk-text);
+}
+[data-theme="light"] .lk-tokens, .light .lk-tokens {
+  --lk-surface: #fafafa;
+  --lk-surface-raised: #ffffff;
+  --lk-text: #171717;
+  --lk-text-muted: #525252;
+  --lk-accent: #1d4ed8;
+  --lk-on-accent: #ffffff;
+  --lk-line: #d4d4d4;
+  --lk-ok: #067647;
+  --lk-warn: #93370d;
+  --lk-danger: #b42318;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lk-tokens *, .lk-tokens *::before, .lk-tokens *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
