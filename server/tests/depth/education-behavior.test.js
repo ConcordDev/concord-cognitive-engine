@@ -13,6 +13,13 @@ import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { lensRun, depthCtx } from "./_harness.js";
 
+// Completion is earned: a lesson has to be opened (and its check passed,
+// if it has one) before it can be marked done.
+async function openAndComplete(ctx, courseId, lessonId) {
+  await lensRun("education", "rr-lesson", { params: { courseId, lessonId } }, ctx);
+  return lensRun("education", "lessons-complete", { params: { courseId, lessonId } }, ctx);
+}
+
 describe("education — calc contracts (exact computed values)", () => {
   it("gradeCalculation: weighted average + letter grade are exact", async () => {
     // exam 90% × 0.70 + homework 80% × 0.30 = 63 + 24 = 87 → "B+" (≥87)
@@ -214,7 +221,7 @@ describe("education — courses + enrollment + mastery round-trips (shared ctx)"
     assert.equal(enr.ok, true);
 
     // complete 1 of 2 lessons → 50%
-    const done = await lensRun("education", "lessons-complete", { params: { courseId, lessonId: l1.result.lesson.id } }, ctx);
+    const done = await openAndComplete(ctx, courseId, l1.result.lesson.id);
     assert.equal(done.result.pointsAwarded, 50);
     const list = await lensRun("education", "enrollments-list", {}, ctx);
     const mine = list.result.enrollments.find((e) => e.courseId === courseId);
@@ -260,7 +267,7 @@ describe("education — courses + enrollment + mastery round-trips (shared ctx)"
     await lensRun("education", "lessons-create", { params: { courseId, title: "Only Lesson" } }, ctx);
     const tooEarly = await lensRun("education", "certificates-issue", { params: { courseId } }, ctx);
     assert.equal(tooEarly.result.ok, false);
-    assert.match(tooEarly.result.error, /course incomplete/);
+    assert.match(tooEarly.result.error, /still to finish|own creator|enroll/);
   });
 
   it("video-progress-save: forward watch-time accrues and 90% coverage marks complete", async () => {
@@ -321,7 +328,7 @@ describe("education — courses + enrollment + mastery round-trips (shared ctx)"
     assert.equal(p.completedSteps, 0);
 
     // complete X's only lesson → step 2 unlocks
-    await lensRun("education", "lessons-complete", { params: { courseId: cx.result.course.id, lessonId: lx.result.lesson.id } }, ctx);
+    await openAndComplete(ctx, cx.result.course.id, lx.result.lesson.id);
     listed = await lensRun("education", "paths-list", {}, ctx);
     p = listed.result.paths.find((x) => x.id === path.result.path.id);
     assert.equal(p.steps[0].courseComplete, true);
@@ -461,13 +468,16 @@ describe("education — notes + discussions + Q&A threads (wave 17 top-up)", () 
   });
 
   it("discussions-post → upvote increments → list returns it newest-first", async () => {
-    const p = await lensRun("education", "discussions-post", { params: { courseId: "C1", text: "first post" } }, ctx);
+    const C1 = (await lensRun("education", "courses-create", { params: { title: "Forum" } }, ctx)).result.course.id;
+    const p = await lensRun("education", "discussions-post", { params: { courseId: C1, text: "first post" } }, ctx);
     assert.equal(p.result.post.upvotes, 0);
     const id = p.result.post.id;
-    await lensRun("education", "discussions-post", { params: { courseId: "C1", text: "second post" } }, ctx);
-    const up = await lensRun("education", "discussions-upvote", { params: { id } }, ctx);
+    await lensRun("education", "discussions-post", { params: { courseId: C1, text: "second post" } }, ctx);
+    const peer = await depthCtx("education-forum-peer");
+    await lensRun("education", "enrollments-enroll", { params: { courseId: C1 } }, peer);
+    const up = await lensRun("education", "discussions-upvote", { params: { id } }, peer);
     assert.equal(up.result.upvotes, 1);
-    const listed = await lensRun("education", "discussions-list", { params: { courseId: "C1" } }, ctx);
+    const listed = await lensRun("education", "discussions-list", { params: { courseId: C1 } }, ctx);
     // list is reversed (newest first)
     assert.equal(listed.result.discussions[0].text, "second post");
     assert.ok(listed.result.discussions.some((d) => d.id === id && d.upvotes === 1));
@@ -711,15 +721,20 @@ describe("education — unenroll + certificates-list + cohorts-list (wave 17 top
     const course = await lensRun("education", "courses-create", { params: { title: "Finish Me", institution: "ConcordU", instructor: "Dr. Ada" } }, ctx);
     const courseId = course.result.course.id;
     const lesson = await lensRun("education", "lessons-create", { params: { courseId, title: "The Only Lesson" } }, ctx);
-    // before completion: empty list (this user had no certs in this fresh-ish ctx for this course)
-    await lensRun("education", "lessons-complete", { params: { courseId, lessonId: lesson.result.lesson.id } }, ctx);
-    const issued = await lensRun("education", "certificates-issue", { params: { courseId } }, ctx);
+    // The creator can't certify themselves; a learner enrolls and earns it.
+    const own = await lensRun("education", "certificates-issue", { params: { courseId } }, ctx);
+    assert.equal(own.result.ok, false);
+    const learner = await depthCtx("education-cert-learner");
+    assert.equal((await lensRun("education", "enrollments-enroll", { params: { courseId } }, learner)).ok, true);
+    const early = await lensRun("education", "certificates-issue", { params: { courseId } }, learner);
+    assert.equal(early.result.ok, false);
+    await openAndComplete(learner, courseId, lesson.result.lesson.id);
+    const issued = await lensRun("education", "certificates-issue", { params: { courseId } }, learner);
     assert.equal(issued.ok, true);
     assert.equal(issued.result.certificate.courseTitle, "Finish Me");
-    assert.equal(issued.result.certificate.institution, "ConcordU");
-    assert.match(issued.result.certificate.verificationCode, /^CERT-[A-Z0-9]+-[A-Z0-9]+$/);
+    assert.match(issued.result.certificate.verificationCode, /^RR-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/);
 
-    const certs = await lensRun("education", "certificates-list", {}, ctx);
+    const certs = await lensRun("education", "certificates-list", {}, learner);
     const found = certs.result.certificates.find((c) => c.courseId === courseId);
     assert.ok(found, "issued cert should appear in certificates-list");
     assert.equal(found.courseTitle, "Finish Me");

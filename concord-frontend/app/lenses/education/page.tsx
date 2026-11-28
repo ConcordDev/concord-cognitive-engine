@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Education — one LMS / Khan+Coursera learning desk.
- *
- * Single ModeTab union + category strip live in EducationSection (extracted
- * from the former welded page). This file is the thin LensShell wrapper.
- */
-
-import { LensShell } from '@/components/lens/LensShell';
-import { DepthBadge } from '@/components/lens/DepthBadge';
-import { useLensNav } from '@/hooks/useLensNav';
-import { useLensIdentity } from '@/hooks/useLensIdentity';
-import { EducationSection } from '@/components/education/EducationSection';
-
-export default function EducationLensPage() {
-  useLensNav('education');
-  useLensIdentity('education');
-
-  return (
-    <LensShell lensId="education" asMain={false}>
-
-      <DepthBadge lensId="education" size="sm" className="ml-2" />
-      <EducationSection />
-    </LensShell>
-  );
-}
+// Education — the Reading Room (components/education/reading). Anyone
+// teaches, anyone learns: the catalogue, courses with real lessons and
+// server-graded checks, the carrel, Teaching, and verifiable certificates.
+export { default } from '@/components/education/reading/ReadingRoom';

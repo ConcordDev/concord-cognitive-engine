@@ -6,7 +6,11 @@
 import { describe, it, before, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
+import Database from "better-sqlite3";
 import registerEducationActions from "../domains/education.js";
+import registerReadingRoom from "../domains/reading-room.js";
+import { up as upEduCatalog } from "../migrations/363_edu_catalog.js";
+import { up as upReadingRoom } from "../migrations/517_reading_room.js";
 
 const ACTIONS = new Map();
 function register(domain, name, fn) { ACTIONS.set(`${domain}.${name}`, fn); }
@@ -16,17 +20,28 @@ function call(name, ctx, params = {}) {
   return fn(ctx, { id: null, data: {}, meta: {} }, params);
 }
 
-before(() => { registerEducationActions(register); });
+before(() => { registerEducationActions(register); registerReadingRoom(register); });
 
+// Completion is earned (lib/reading-room.js), which reads real tables: every
+// test gets a fresh in-memory database with the course + Reading Room schema.
+let db;
 beforeEach(() => {
-  globalThis._concordSTATE = { dtus: new Map(), educationLens: { decks: new Map(), cards: new Map() } };
+  db = new Database(":memory:");
+  upEduCatalog(db); upReadingRoom(db);
+  globalThis._concordSTATE = { dtus: new Map(), educationLens: { decks: new Map(), cards: new Map() }, db };
   globalThis._concordSaveStateDebounced = () => {};
+  ctxA.db = db; ctxB.db = db;
 });
 
 const userA = "user_a";
 const userB = "user_b";
 const ctxA = { actor: { userId: userA }, userId: userA };
 const ctxB = { actor: { userId: userB }, userId: userB };
+/** A learner opens a lesson before marking it done (the rule since the Reading Room). */
+function learn(ctx, params) {
+  call("rr-lesson", ctx, { courseId: params.courseId, lessonId: params.lessonId });
+  return call("lessons-complete", ctx, params);
+}
 
 describe("education.flashcards-* (decks + cards + SM-2 review)", () => {
   it("deck CRUD scoped per user", () => {
@@ -125,9 +140,10 @@ describe("education.flashcards-* (decks + cards + SM-2 review)", () => {
 
 describe("education.tutor-ask (Socratic)", () => {
   it("returns graceful no-op text when llm unavailable", async () => {
+    // Honest: no model running is a refusal that says so, never a fake success.
     const r = await call("tutor-ask", ctxA, { subject: "algebra", history: [{ role: "student", content: "what's 2+2?" }] });
-    assert.equal(r.ok, true);
-    assert.match(r.result.text, /unavailable/);
+    assert.equal(r.ok, false);
+    assert.match(r.error, /tutor isn't available/);
   });
 
   it("constrains LLM via system prompt at hintLevel 1 (Socratic-only)", async () => {
@@ -190,7 +206,7 @@ describe("education.quiz-from-text + mint-deck", () => {
       ],
     });
     assert.equal(r.ok, true);
-    assert.equal(r.result.added, 3);  // input count, not filtered
+    assert.equal(r.result.added, 2);  // only the usable cards are counted
     const due = call("flashcards-due", ctxA, { deckId: r.result.deck.id });
     assert.equal(due.result.cards.length, 2);  // empty front dropped
   });
@@ -387,13 +403,13 @@ describe("education.lessons-* (within course)", () => {
     const l = call("lessons-create", ctxA, { courseId: cid, title: "Lesson 1", kind: "video", durationMin: 12 });
     assert.equal(l.ok, true);
     assert.equal(call("lessons-list", ctxA, { courseId: cid }).result.lessons.length, 1);
-    const comp = call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
+    const comp = learn(ctxA, { courseId: cid, lessonId: l.result.lesson.id });
     assert.equal(comp.ok, true);
     assert.equal(comp.result.pointsAwarded, 50);
     assert.equal(comp.result.alreadyCompleted, false);
     const listed = call("lessons-list", ctxA, { courseId: cid });
     assert.deepEqual(listed.result.completedLessonIds, [l.result.lesson.id]);
-    const again = call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
+    const again = learn(ctxA, { courseId: cid, lessonId: l.result.lesson.id });
     assert.equal(again.result.pointsAwarded, 0);
     assert.equal(again.result.alreadyCompleted, true);
     const status = call("gamification-status", ctxA, {});
@@ -414,8 +430,8 @@ describe("education.enrollments-* (with progress calc)", () => {
     call("lessons-create", ctxA, { courseId: cid, title: "L3" });
     const e = call("enrollments-enroll", ctxA, { courseId: cid });
     assert.equal(e.ok, true);
-    call("lessons-complete", ctxA, { courseId: cid, lessonId: l1.result.lesson.id });
-    call("lessons-complete", ctxA, { courseId: cid, lessonId: l2.result.lesson.id });
+    learn(ctxA, { courseId: cid, lessonId: l1.result.lesson.id });
+    learn(ctxA, { courseId: cid, lessonId: l2.result.lesson.id });
     const list = call("enrollments-list", ctxA, {});
     assert.equal(list.result.enrollments[0].progressPct, 67);
     assert.equal(list.result.enrollments[0].completedLessons, 2);
@@ -478,20 +494,25 @@ describe("education.certificates-* (issue after course complete)", () => {
     const cid = c.result.course.id;
     const l1 = call("lessons-create", ctxA, { courseId: cid, title: "L1" });
     call("lessons-create", ctxA, { courseId: cid, title: "L2" });
-    const r1 = call("certificates-issue", ctxA, { courseId: cid });
+    call("enrollments-enroll", ctxB, { courseId: cid });
+    const r1 = call("certificates-issue", ctxB, { courseId: cid });
     assert.equal(r1.ok, false);
-    call("lessons-complete", ctxA, { courseId: cid, lessonId: l1.result.lesson.id });
-    const r2 = call("certificates-issue", ctxA, { courseId: cid });
+    learn(ctxB, { courseId: cid, lessonId: l1.result.lesson.id });
+    const r2 = call("certificates-issue", ctxB, { courseId: cid });
     assert.equal(r2.ok, false);
+    assert.match(r2.error, /1 lesson still to finish/);
   });
   it("issues certificate with verification code when course complete", () => {
     const c = call("courses-create", ctxA, { title: "C" });
     const cid = c.result.course.id;
     const l = call("lessons-create", ctxA, { courseId: cid, title: "L1" });
-    call("lessons-complete", ctxA, { courseId: cid, lessonId: l.result.lesson.id });
-    const cert = call("certificates-issue", ctxA, { courseId: cid });
+    call("enrollments-enroll", ctxB, { courseId: cid });
+    learn(ctxB, { courseId: cid, lessonId: l.result.lesson.id });
+    const cert = call("certificates-issue", ctxB, { courseId: cid });
     assert.equal(cert.ok, true);
-    assert.match(cert.result.certificate.verificationCode, /^CERT-/);
+    assert.match(cert.result.certificate.verificationCode, /^RR-[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/);
+    // and the course's own creator doesn't certify themselves
+    assert.match(call("certificates-issue", ctxA, { courseId: cid }).error, /own creator/);
   });
 });
 
@@ -531,12 +552,25 @@ describe("education.notes-* (per-lesson with video timestamp)", () => {
 
 describe("education.discussions-* (forums)", () => {
   it("post / list / upvote / reply", () => {
-    const p = call("discussions-post", ctxA, { courseId: "c_1", text: "How does X work?" });
+    const cid = call("courses-create", ctxA, { title: "Forum course" }).result.course.id;
+    // no forum for a course that doesn't exist, none for someone not taking it
+    assert.equal(call("discussions-post", ctxA, { courseId: "c_ghost", text: "?" }).ok, false);
+    assert.equal(call("discussions-post", ctxB, { courseId: cid, text: "?" }).ok, false);
+    const p = call("discussions-post", ctxA, { courseId: cid, text: "How does X work?" });
     assert.equal(p.ok, true);
-    call("discussions-post", ctxA, { courseId: "c_1", text: "Like this!", replyTo: p.result.post.id });
-    assert.equal(call("discussions-list", ctxA, { courseId: "c_1" }).result.discussions.length, 2);
-    const up = call("discussions-upvote", ctxA, { id: p.result.post.id });
+    assert.equal(call("enrollments-enroll", ctxB, { courseId: cid }).ok, true);
+    const r = call("discussions-post", ctxB, { courseId: cid, text: "Like this!", replyTo: p.result.post.id });
+    assert.equal(r.result.post.mine, true);
+    assert.equal(call("discussions-post", ctxB, { courseId: cid, text: "x", replyTo: "disc_ghost" }).ok, false);
+    assert.equal(call("discussions-list", ctxA, { courseId: cid }).result.discussions.length, 2);
+    assert.equal(call("discussions-upvote", ctxA, { id: p.result.post.id }).ok, false, "no self-upvote");
+    const up = call("discussions-upvote", ctxB, { id: p.result.post.id });
     assert.equal(up.result.upvotes, 1);
+    assert.equal(call("discussions-upvote", ctxB, { id: p.result.post.id }).ok, false, "one vote each");
+    const listed = call("discussions-list", ctxB, { courseId: cid }).result.discussions;
+    const q = listed.find((d) => d.id === p.result.post.id);
+    assert.equal(q.upvotedByMe, true);
+    assert.equal(q.voters, undefined, "voter ids stay on the server");
   });
 });
 
@@ -545,7 +579,7 @@ describe("education.dashboard-summary (ClassroomShell data source)", () => {
     const c = call("courses-create", ctxA, { title: "C" });
     const l = call("lessons-create", ctxA, { courseId: c.result.course.id, title: "L" });
     call("enrollments-enroll", ctxA, { courseId: c.result.course.id });
-    call("lessons-complete", ctxA, { courseId: c.result.course.id, lessonId: l.result.lesson.id });
+    learn(ctxA, { courseId: c.result.course.id, lessonId: l.result.lesson.id });
     const sk = call("skills-create", ctxA, { name: "S" });
     call("skills-practice", ctxA, { id: sk.result.skill.id, success: true });
     call("skills-practice", ctxA, { id: sk.result.skill.id, success: true });
@@ -680,7 +714,7 @@ describe("education.paths-* (prerequisite sequencing across courses)", () => {
     assert.equal(p.steps[0].unlocked, true);
     assert.equal(p.steps[1].unlocked, false);
     // Complete course 1
-    call("lessons-complete", ctxA, { courseId: c1.result.course.id, lessonId: l1.result.lesson.id });
+    learn(ctxA, { courseId: c1.result.course.id, lessonId: l1.result.lesson.id });
     p = call("paths-list", ctxA, {}).result.paths[0];
     assert.equal(p.steps[0].courseComplete, true);
     assert.equal(p.steps[1].unlocked, true);

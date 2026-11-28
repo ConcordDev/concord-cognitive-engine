@@ -137,3 +137,28 @@ test("a private media stream survives a cleared in-memory map", async () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// A release (music, film, podcast, a course's preview video) makes its media
+// public with setMediaPrivacy. That change has to reach SQLite, and it has to
+// work on a row that isn't in memory yet, or the media is private again
+// after the next restart.
+test("setMediaPrivacy persists, and works on a row only SQLite still holds", async () => {
+  const { setMediaPrivacy, getMediaDTU } = await import("../lib/media-dtu.js");
+  const db = new Database(":memory:");
+  migrateMediaIndex(db);
+  const STATE = { db, dtus: new Map() };
+  const created = createMediaDTU(STATE, { authorId: "owner-2", title: "lesson video", mediaType: "video", mimeType: "video/webm", privacy: "private", fileSize: 10 });
+  const id = created.mediaDTU.id;
+
+  assert.equal(setMediaPrivacy(STATE, id, "public").ok, true);
+  assert.equal(db.prepare("SELECT privacy FROM media_index WHERE id = ?").get(id).privacy, "public");
+
+  // a restart: memory is empty, SQLite still has the row
+  STATE._media.mediaDTUs.clear();
+  assert.equal(setMediaPrivacy(STATE, id, "private").ok, true, "the row is recalled from SQLite");
+  STATE._media.mediaDTUs.clear();
+  const back = getMediaDTU(STATE, id);
+  assert.equal(back.mediaDTU.privacy, "private");
+  assert.equal(back.mediaDTU.scope, "user");
+  assert.equal(setMediaPrivacy(STATE, "no-such-media", "public").ok, false);
+});
