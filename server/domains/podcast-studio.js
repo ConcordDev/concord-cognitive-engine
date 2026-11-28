@@ -75,6 +75,7 @@ export function lockedTranscript(segments) {
 }
 
 const xmlEsc = (v) => String(v ?? "")
+  // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 const hms = (sec) => {
@@ -243,6 +244,7 @@ export default function registerPodcastStudio(registerLensAction, h) {
     const next = {};
     if (params.title !== undefined) { const t = pcclean(params.title, 160); if (!t) return { ok: false, error: "show title required" }; next.title = t; }
     if (params.author !== undefined) next.author = pcclean(params.author, 120) || null;
+    // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
     if (params.description !== undefined) next.description = String(params.description ?? "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").trim().slice(0, 4000) || null;
     if (params.appleCategory !== undefined) {
       if (params.appleCategory !== null && !APPLE_CATEGORIES.includes(params.appleCategory)) return { ok: false, error: "appleCategory must be one of Apple Podcasts' categories" };
@@ -331,6 +333,7 @@ export default function registerPodcastStudio(registerLensAction, h) {
     if (typeof params.priceCC !== "number" || !Number.isFinite(price) || price < 1 || price > MAX_PASS_PRICE || r2(price) !== price) {
       return { ok: false, error: `priceCC must be from 1 to ${MAX_PASS_PRICE} CC, in cents` };
     }
+    // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
     const perks = String(params.perks ?? "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").trim().slice(0, 600);
     const existing = passes(s).get(show.id);
     if (existing) {

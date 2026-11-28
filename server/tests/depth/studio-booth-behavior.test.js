@@ -144,6 +144,7 @@ describe("studio booth — MIDI learn", () => {
     const r = await lensRun("studio", "midi-map-add", { params: { projectId, target: `\u0007<script>${"a".repeat(200)}`, controller: 20 } }, ctx);
     assert.equal(r.ok, true);
     assert.equal(r.result.map.target.length, 120);
+    // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
     assert.ok(!/[\u0000-\u001f]/.test(r.result.map.target));
     const empty = await lensRun("studio", "midi-map-add", { params: { projectId, target: "\u0000\u0001  " } }, ctx);
     assert.equal(empty.result.ok, false);

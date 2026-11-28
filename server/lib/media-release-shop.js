@@ -20,6 +20,7 @@ const persistDtu = (d) => { try { globalThis._concordUpsertDTU?.(d); } catch { /
 export const RELEASE_MAX_PRICE = 1000;
 const ID_RE = /^[A-Za-z0-9_:-]{3,120}$/;
 const r2 = (n) => Math.round(n * 100) / 100;
+// eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
 const cleanText = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").trim().slice(0, n);
 
 /** A person's public name: their username, never an email. */

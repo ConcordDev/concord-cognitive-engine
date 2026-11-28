@@ -23,6 +23,7 @@ function extractSpan(marker, params, args) {
   const descAt = serverSrc.indexOf(", { summary:", start);
   const end = serverSrc.indexOf("});", descAt);
   const span = serverSrc.slice(start, end + 3);
+  // eslint-disable-next-line no-new-func -- compiles a slice of server.js to test one handler in isolation
   const factory = new Function("register", ...params, span + "\nreturn register.__handler;");
   const register = (domain, nm, fn) => { register.__handler = fn; };
   return factory(register, ...args);
