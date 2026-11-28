@@ -9,7 +9,7 @@
  */
 
 import { RailAccount } from './RailAccount';
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
@@ -105,16 +105,30 @@ export function Sidebar() {
     }
   }, [pathname]);
 
-  // Close mobile sidebar on escape
+  // Escape closes the innermost open layer (CB-1271): an expanded
+  // sub-lens expander first — collapsing it and returning focus to its
+  // button, the contract keyboard users expect — then the mobile
+  // sidebar itself.
+  const asideRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && sidebarOpen) {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // Only an Escape pressed in the sidebar collapses an expander: Escape in a lens's own
+      // field or panel belongs to that lens, and must not fold up the person's navigation.
+      const inSidebar = !!(e.target instanceof Node && asideRef.current?.contains(e.target));
+      if (expandedCore && inSidebar) {
+        const id = expandedCore;
+        setExpandedCore(null);
+        requestAnimationFrame(() => {
+          document.getElementById(`sidebar-expand-${id}`)?.focus();
+        });
+      } else if (sidebarOpen) {
         setSidebarOpen(false);
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [sidebarOpen, setSidebarOpen]);
+  }, [expandedCore, sidebarOpen, setSidebarOpen]);
 
   const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => {
@@ -147,6 +161,7 @@ export function Sidebar() {
           visibility:hidden does both; the lg:visible keeps the desktop
           rail (where sidebarOpen is not the governing state) shown. */}
       <aside
+        ref={asideRef}
         role="navigation"
         aria-label="Main navigation"
         data-testid="sidebar"
@@ -409,6 +424,7 @@ const CoreLensNavItem = memo(function CoreLensNavItem({
         {/* Expand toggle for absorbed lenses */}
         {showLabel && absorbed.length > 0 && (
           <button
+            id={`sidebar-expand-${core.id}`}
             onClick={onToggleExpand}
             className="p-1.5 text-gray-400 hover:text-gray-300 transition-colors rounded"
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${core.name} sub-lenses`}
