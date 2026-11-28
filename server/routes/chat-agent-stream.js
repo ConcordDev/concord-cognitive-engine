@@ -65,13 +65,25 @@ export function mountChatAgentStream({ app, auth, runMacro, lensActions, retriev
     // caller that doesn't send it (every other caller, unchanged) behaves
     // byte-identically to before. Length-capped defensively since this rides
     // straight into a system-role LLM message.
-    const { message = "", history = [], maxTurns, slot, persona } = req.body || {};
+    const { message = "", history = [], maxTurns, slot, persona, buildId } = req.body || {};
     // ConKay (the persona names her): tools are the default. The route hint
     // says which tool this ask needs and the fallback call runs it if the
     // model answers from memory (lib/conkay/agent-turn.js).
     const isConKay = typeof persona === "string" && /\bConKay\b/.test(persona);
     let plan = null;
     if (isConKay) { try { plan = conkayTurnPlan(message, Array.isArray(history) ? history : []); } catch { plan = null; } }
+    // A build open in the Workshop: Kay organizes edits and sizing of THAT build (its values are
+    // loaded here for this user, never taken from the client); the design route does not start a new one.
+    if (isConKay && typeof buildId === "string" && buildId) {
+      try {
+        const { openBuildHint } = await import("../lib/conkay/build/chat.js");
+        const ob = openBuildHint(req.db || req.app.locals.db, buildId.slice(0, 64), req.user?.id || req.auth?.userId);
+        if (ob) {
+          const keepOwnRoute = plan && ["long", "jobs", "remember", "status", "recall", "lookup", "web", "own-data", "think"].includes(plan.route);
+          plan = keepOwnRoute ? { ...plan, hint: `${plan.hint || ""}\n\n${ob.hint}`.trim() } : { route: "build-open", hint: ob.hint, fallbackCall: null };
+        }
+      } catch { /* the plain plan stands */ }
+    }
     // The system prompt is server text only. The client persona goes in as
     // a user-role style note (tone only), so its lines cannot act as system
     // instructions; ConKay's identity line is the server's own.

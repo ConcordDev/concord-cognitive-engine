@@ -114,6 +114,8 @@ export const TOOL_REQUIRED_PARAMS = {
   run_recipe:        ["recipe", "inputs"],
   conkay_design:     ["text"],
   conkay_build:      ["brief"],
+  conkay_build_edit: ["buildId", "edits"],
+  conkay_build_size: ["buildId", "variables"],
   conkay_solve:      ["solver_id"],
   conkay_solver_list: [],
   conkay_ir_schema:  [],
@@ -328,6 +330,8 @@ Available tools (with one working example each):
 - run_recipe: Run a recipe in SI; returns the result, pass/fail checks and a receipt. Quote only numbers from its result. Params: {"recipe": "beam_sizing", "inputs": {"spanM": 4, "loadN": 10000, "widthM": "60 mm", "material": "steel-a36", "safetyFactor": 2}}
 - conkay_build: Design anything physical and check it with ConKay's solvers: Kay breaks the request into parts and puts on them every check that applies (frames and supports, pressure, pipe flow, heat, DC power, mixtures and concentrations, mass and cost), the solvers run, and you get what passed, what failed, what was NOT checked and why, plus questions only the person can answer and a 3D model shown below your reply. Any units. Use it for shelves, brackets, stands, tables, planters, tanks, plumbing, coolers, battery packs, recipes and solutions. Params: {"brief": "what to build in the person's own words and units", "answers": [{"ask": "a question it asked", "answer": "the person's answer"}]}
   Example: [TOOL_CALL: {"tool": "conkay_build", "params": {"brief": "a 3 ft pine wall shelf that holds 40 lb of books"}}]
+- conkay_build_edit: Change values on the person's open build (only the ids listed for it) and re-run every check. Params: {"buildId": "bld_...", "edits": [{"id": "<value id>", "value": "<value in any unit>"}]}
+- conkay_build_size: Let ConKay's solvers size the open build: the lightest design where every check passes, varying only the size ids you name within bounds (or stock sizes). Params: {"buildId": "bld_...", "variables": [{"id": "<size id>", "min": "3 mm", "max": "25 mm"} | {"id": "<size id>", "stock": ["1/4 in", "3/8 in", "1/2 in"]}]}
 - conkay_design: Size or check a structural part (beam, cantilever, I-beam, bracket, shaft, column) from a plain-language spec. For a car or other road vehicle it returns ConKay's vehicle concept assembly (body and tyres in 3D). For a robot (base, torso, arms, head...) or an everyday CAD object (phone stand, truss, gearbox, shelf, table, chair, enclosure) it returns a concept 3D assembly with its parts list instead. This is the tool for "make a 3D/CAD model of X", STL and printable-part asks. Runs the deterministic hand calc and FEA and checks the stated safety factor (pass/fail with margin). If the user asked for one sub-assembly (torso, arm, head, leg, hand, or a single part), set "scope" to that part so only that sub-assembly is built. Params: {"text": "the design in words, with span, load, material, supports and safety factor", "scope": "torso"}
   Example: [TOOL_CALL: {"tool": "conkay_design", "params": {"text": "steel cantilever beam 2 m long, 10 kN at the tip, safety factor of 2"}}]
 - conkay_ir_schema: Worked Design IR example + contract hints before conkay_solve. Params: {}
@@ -1276,6 +1280,25 @@ export async function executeToolCall(ctx, runMacro, lensActions, call) {
         const { dispatchChatRecipe } = await import("./chat-tool-surface.js");
         return dispatchChatRecipe(call.tool, call.params);
       }
+      case "conkay_build_edit":
+      case "conkay_build_size": {
+        const buildId = String(call.params.buildId || call.params.id || "").slice(0, 64);
+        if (!buildId) return { tool: call.tool, ok: false, error: `${call.tool} needs the open build's id` };
+        const { editBuild, sizeSavedBuild, buildToolSummary } = await import("./conkay/build/index.js");
+        const userId = ctx?.userId || null;
+        if (call.tool === "conkay_build_edit") {
+          const edits = (Array.isArray(call.params.edits) ? call.params.edits : []).slice(0, 20).map((e) => ({ id: String(e?.id || ""), value: String(e?.value ?? "") }));
+          if (!edits.length) return { tool: call.tool, ok: false, error: "conkay_build_edit needs edits [{ id, value }]" };
+          const r = await editBuild(ctx?.db || null, { id: buildId, userId, edits });
+          if (!r.ok) return { tool: call.tool, ok: false, error: r.error === "not_found" ? "that build is not open for this person" : (r.errors || [r.error]).join("; ") };
+          return { tool: call.tool, ok: true, key: "conkay_build_edit", input: { buildId, edits }, result: { applied: r.applied, ...buildToolSummary({ summary: r.summary, report: r.report }) }, artifact: r.artifact };
+        }
+        const variables = (Array.isArray(call.params.variables) ? call.params.variables : []).slice(0, 12);
+        const r = await sizeSavedBuild(ctx?.db || null, { id: buildId, userId, variables });
+        if (!r.ok) return { tool: call.tool, ok: false, error: r.error === "not_found" ? "that build is not open for this person" : (r.errors || [r.error]).join("; ") };
+        if (!r.feasible) return { tool: call.tool, ok: true, key: "conkay_build_size", input: { buildId, variables }, result: { feasible: false, message: r.sizing.message, failingAtLimits: r.sizing.failingAtLimits } };
+        return { tool: call.tool, ok: true, key: "conkay_build_size", input: { buildId, variables }, result: { feasible: true, changes: r.sizing.changes, massBefore: r.sizing.before.mass, massAfter: r.sizing.after.mass, binding: r.sizing.binding, evaluations: r.sizing.evaluations, headline: r.report.headline }, artifact: r.artifact };
+      }
       case "conkay_build": {
         const brief = String(call.params.brief || call.params.text || call.params.prompt || "").slice(0, 4000);
         if (!brief.trim()) return { tool: call.tool, ok: false, error: "conkay_build requires a brief: what to build" };
@@ -2184,6 +2207,9 @@ export function formatToolResults(results) {
         ? ` Scaled to ${b.length} mm long, ${b.height} mm tall, ${b.width} mm wide.`
         : (r.artifact?.units === "unitless" ? " It is unitless (not to scale). Do not invent dimensions." : "");
       return `[TOOL_RESULT: generate_3d source=${r.source}] A real 3D model (${r.triangleCount} triangles, decimated from the GPU pod mesh) and its concept image are attached below for "${r.prompt}". Say the model is shown below and can be rotated; it is an AI-generated shape, not an engineered part.${sized}`;
+    }
+    if (r.tool === "conkay_build_edit" || r.tool === "conkay_build_size") {
+      return `[TOOL_RESULT: ${r.tool}] Report exactly these values (they are solver outputs, in the person's units): what changed, which checks pass or fail now${r.tool === "conkay_build_size" ? ", the mass before and after (kg), and which checks set the answer" : ""}. The updated model is shown in the Workshop.\n${JSON.stringify(r.result).slice(0, 5000)}`;
     }
     if (r.tool === "conkay_build") {
       return `[TOOL_RESULT: conkay_build] ${r.result?.headline || ""}. Report: what was built (parts), each check with its numbers and pass/fail exactly as given (these are in the person's units), what was NOT checked and why, the assumptions, and the questions (ask the blocking ones). Say the 3D model is shown below. Never add a number that is not here.\n${JSON.stringify(r.result).slice(0, 6000)}`;

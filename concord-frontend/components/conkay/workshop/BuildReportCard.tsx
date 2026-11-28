@@ -10,9 +10,10 @@
  */
 
 import { useState } from 'react';
-import { AlertTriangle, BookOpen, Check, ChevronDown, ChevronRight, CircleHelp, Loader2, X } from 'lucide-react';
+import { AlertTriangle, BookOpen, Check, ChevronDown, ChevronRight, CircleHelp, Loader2, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { BuildCheck, BuildParameter, BuildPart, BuildReport, PartStatus } from '@/lib/conkay/build-report';
+import type { BuildCheck, BuildParameter, BuildPart, BuildReport, BuildSizing, PartStatus } from '@/lib/conkay/build-report';
+import { parseNumberText } from '@/lib/conkay/field-units';
 
 export type BuildEdit = { id: string; value: string };
 export type EditResult = { ok: boolean; errors?: string[] };
@@ -114,7 +115,80 @@ function ParamRow({ p, busy, onEdit }: { p: BuildParameter; busy: boolean; onEdi
   );
 }
 
-export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, busy = false, stepHref }: {
+export type SizeVariable = { id: string; min?: string; max?: string; stock?: string[] };
+export type SizeResult = { ok: boolean; errors?: string[]; sizing?: BuildSizing };
+
+/** Cross-section sizes are sized by default; layout lengths (spans, heights of things) stay as drawn. */
+const SECTION_LABEL = /^(?:thickness|wall|diameter|outside diameter|flange thickness|web thickness|flange width|height|skin thickness)$/;
+
+/** "3/4 in" → bounds ¼× … 4× in the same unit. */
+function defaultBounds(value: string): { min: string; max: string } {
+  const m = /^(.*?\d[\d./\s-]*?)\s*([a-zA-Z"″'′µ]+)$/.exec(value.trim());
+  const n = m ? parseNumberText(m[1]) : null;
+  if (!m || n == null || !(n > 0)) return { min: '', max: '' };
+  const fmt = (x: number) => String(Number(x.toPrecision(3)));
+  return { min: `${fmt(n / 4)} ${m[2]}`, max: `${fmt(n * 4)} ${m[2]}` };
+}
+
+function SizeResultView({ sizing }: { sizing: BuildSizing }) {
+  const kg = (x?: number) => (Number.isFinite(x) ? `${Number((x as number).toPrecision(3))} kg` : '—');
+  return (
+    <div className="mt-1.5 space-y-0.5 text-[11px]" data-testid="build-size-result">
+      {(sizing.changes || []).map((c) => (
+        <p key={c.id}><span className="text-[color:var(--ws-text)]">{c.label}</span>: <span className="ws-num">{c.from} → {c.to}</span>{c.atBound ? <span className="text-[color:var(--ws-faint)]"> (at its {c.atBound})</span> : null}</p>
+      ))}
+      <p className="ws-num">mass {kg(sizing.before.mass)} → {kg(sizing.after?.mass)}</p>
+      {sizing.binding?.length ? <p className="text-[10.5px] text-[color:var(--ws-faint)]">set by: {sizing.binding.map((b) => b.check).join('; ')}</p> : null}
+      <p className="text-[10.5px] text-[color:var(--ws-faint)]">{sizing.evaluations} solver runs</p>
+    </div>
+  );
+}
+
+function SizePanel({ params, busy, onSize }: { params: BuildParameter[]; busy: boolean; onSize: (v: SizeVariable[]) => Promise<SizeResult> }) {
+  const [rows, setRows] = useState(() => params.map((p) => ({ p, on: SECTION_LABEL.test(p.label), ...defaultBounds(p.value) })));
+  const [result, setResult] = useState<SizeResult | null>(null);
+  const chosen = rows.filter((r) => r.on);
+  const run = async () => {
+    setResult(null);
+    setResult(await onSize(chosen.map((r) => ({ id: r.p.id, min: r.min, max: r.max }))));
+  };
+  return (
+    <div data-testid="build-size">
+      <p className="mb-1.5 text-[10.5px] text-[color:var(--ws-faint)]">Tick what may change and its range (any unit). ConKay&rsquo;s solvers find the lightest sizes where every check passes; nothing is guessed.</p>
+      <ul className="space-y-1">
+        {rows.map((r, i) => (
+          <li key={r.p.id} className="flex items-center gap-1.5">
+            <input type="checkbox" checked={r.on} aria-label={`size ${r.p.nodeName} ${r.p.label}`}
+              onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, on: e.target.checked } : x)))} />
+            <span className="min-w-0 flex-1 truncate" title={`${r.p.nodeName} ${r.p.label} = ${r.p.value}`}>{r.p.nodeName} {r.p.label}</span>
+            <input value={r.min} disabled={!r.on} aria-label={`${r.p.nodeName} ${r.p.label} min`} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, min: e.target.value } : x)))}
+              className="ws-num w-16 rounded border border-[color:var(--ws-line-strong)] bg-transparent px-1 py-0.5 text-right text-[10.5px] disabled:opacity-40" />
+            <span aria-hidden>–</span>
+            <input value={r.max} disabled={!r.on} aria-label={`${r.p.nodeName} ${r.p.label} max`} onChange={(e) => setRows((rs) => rs.map((x, j) => (j === i ? { ...x, max: e.target.value } : x)))}
+              className="ws-num w-16 rounded border border-[color:var(--ws-line-strong)] bg-transparent px-1 py-0.5 text-right text-[10.5px] disabled:opacity-40" />
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={() => void run()} disabled={busy || !chosen.length} data-testid="build-size-run"
+        className="mt-2 flex items-center gap-1.5 rounded-md border border-[color:var(--ws-arc)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)] disabled:opacity-40">
+        <Sparkles className="h-3.5 w-3.5" aria-hidden /> Size it: lightest that passes
+      </button>
+      {result && !result.ok ? <p role="alert" className="mt-1.5 text-[10.5px] text-[color:var(--ws-amber)]">{(result.errors || []).join('; ')}</p> : null}
+      {result?.ok && result.sizing && !result.sizing.feasible ? (
+        <div className="mt-1.5 text-[11px]" data-testid="build-size-infeasible">
+          <p className="text-[color:var(--ws-amber)]">{result.sizing.message}</p>
+          <ul className="mt-1">{(result.sizing.failingAtLimits || []).map((f, i) => <li key={i}>· {f.check} ({Math.round(f.utilization * 100)} %)</li>)}</ul>
+        </div>
+      ) : null}
+      {result?.ok && result.sizing?.feasible ? <SizeResultView sizing={result.sizing} /> : null}
+    </div>
+  );
+}
+
+export function BuildReportCard({ report, title, onClose, className, selected = null, onSelect, onEdit, onSize, lastSizing, busy = false, stepHref }: {
+  onSize?: (variables: SizeVariable[]) => Promise<SizeResult>;
+  /** The last sizing the solvers did on this build (it rides on the build, so it survives the refresh). */
+  lastSizing?: BuildSizing | null;
   report: BuildReport; title?: string; onClose?: () => void; className?: string;
   /** The build as real B-rep solids (STEP), made by the CAD kernel on the server. */
   stepHref?: string;
@@ -187,6 +261,12 @@ export function BuildReportCard({ report, title, onClose, className, selected = 
             <ul>{settings.map((p) => <ParamRow key={p.id} p={p} busy={busy} onEdit={onEdit} />)}</ul>
           </Section>
         )}
+        {onSize && params.some((p) => p.dim === 'length' && !isCondition(p)) ? (
+          <Section title="Size it with the solvers" count={params.filter((p) => p.dim === 'length' && !isCondition(p)).length} open={Boolean(lastSizing?.feasible)} testId="build-size-section">
+            {lastSizing?.feasible ? <SizeResultView sizing={lastSizing} /> : null}
+            <SizePanel key={params.map((p) => `${p.id}=${p.value}`).join('|')} params={params.filter((p) => p.dim === 'length' && !isCondition(p))} busy={busy} onSize={onSize} />
+          </Section>
+        ) : null}
         <Section title="Checked" count={report.checked.length} open={!sel} testId="build-checked">
           <CheckList checks={report.checked} />
         </Section>

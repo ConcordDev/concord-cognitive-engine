@@ -171,6 +171,31 @@ export async function buildStepFile(db, id, userId) {
   return r.ok ? { ok: true, step: r.step, name: (b.plan.ir.design?.name || "build").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "build", parts: r.parts } : { ok: false, error: "kernel", message: r.error };
 }
 
+/**
+ * Size a saved build (no model): the person or Kay names what may change and
+ * within what bounds; the lightest design on which every check passes is
+ * found, re-checked in full, and saved. Returns the build shape plus the
+ * sizing receipt.
+ */
+export async function sizeSavedBuild(db, { id, userId, variables, settle = true }) {
+  const { sizeBuild } = await import("./size.js");
+  const b = loadBuild(db, id, userId);
+  if (!b) return { ok: false, error: "not_found" };
+  if (!b.plan?.ir) return { ok: false, error: "no_plan" };
+  const sized = sizeBuild(b.plan.ir, { variables });
+  if (!sized.ok) return { ok: false, error: sized.error, errors: sized.errors };
+  if (!sized.feasible) return { ok: true, id: b.id, feasible: false, sizing: sized };
+  const text = [b.brief, ...b.answers.map((a) => a.answer), ...sized.changes.map((c) => c.to)].join("\n");
+  const plan = { ...b.plan, ir: sized.ir };
+  const ran = await checkBuild(sized.ir, { text, plan, settle });
+  if (!ran.ok) return { ok: false, error: "compile", errors: ran.errors };
+  const result = { ok: true, summary: b.plan.summary, ir: sized.ir, plan: { questions: b.plan.questions || [], assumptions: b.plan.assumptions || [], sources: b.plan.sources || [] }, report: ran.report };
+  saveBuild(db, { id: b.id, userId, brief: b.brief, answers: b.answers, result });
+  const { ir: _ir, ...receipt } = sized;
+  return { ok: true, id: b.id, feasible: true, sizing: receipt, report: ran.report,
+    artifact: { ...(ran.artifact || { kind: "build", source: "conkay_build", title: sized.ir.design?.name || "build" }), buildId: b.id, report: ran.report, summary: b.plan.summary, sizing: receipt } };
+}
+
 /** Summary for the chat model: numbers only from the report. */
 export function buildToolSummary(result) {
   const r = result.report;

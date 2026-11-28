@@ -126,3 +126,39 @@ describe('BuildReportCard — conditions', () => {
     expect((screen.getByLabelText('flight speed') as HTMLInputElement).value).toBe('25 m/s');
   });
 });
+
+describe('BuildReportCard — size it with the solvers', () => {
+  const r: BuildReport = { ...report, partStatus: { BOARD: 'pass' },
+    parameters: [
+      { id: 'BOARD:geometry.length', node: 'BOARD', nodeName: 'board', label: 'length', value: '3 ft', dim: 'length' },
+      { id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: '3/4 in', dim: 'length' },
+    ] };
+  const open = () => fireEvent.click(within(screen.getByTestId('build-size-section')).getByRole('button', { name: /Size it with the solvers/ }));
+
+  it('offers the cross-section sizes (not the span) with bounds ¼×–4× in their own unit, and sends what is ticked', async () => {
+    const onSize = vi.fn(async () => ({ ok: true, sizing: { feasible: true, evaluations: 47, before: { mass: 1.549, feasible: true }, after: { mass: 0.592, worstUtilization: 1 },
+      changes: [{ id: 'BOARD:geometry.height', label: 'board height', from: '3/4 in', to: '0.28679 in', atBound: null }], binding: [{ check: 'books: M1 von Mises ≤ Fy / 2', target: 'SHELF', utilization: 1 }] } }));
+    render(<BuildReportCard report={r} onSize={onSize} onEdit={vi.fn(async () => ({ ok: true }))} />);
+    open();
+    expect((screen.getByLabelText('size board length') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('size board height') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('board height min') as HTMLInputElement).value).toBe('0.188 in');
+    expect((screen.getByLabelText('board height max') as HTMLInputElement).value).toBe('3 in');
+    fireEvent.click(screen.getByTestId('build-size-run'));
+    await waitFor(() => expect(onSize).toHaveBeenCalledWith([{ id: 'BOARD:geometry.height', min: '0.188 in', max: '3 in' }]));
+    const res = await screen.findByTestId('build-size-result');
+    expect(res.textContent).toMatch(/3\/4 in → 0\.28679 in/);
+    expect(res.textContent).toMatch(/1\.55 kg → 0\.592 kg/);
+    expect(res.textContent).toMatch(/set by: books: M1 von Mises/);
+  });
+
+  it('bounds that cannot work: the message and the checks that still fail', async () => {
+    const onSize = vi.fn(async () => ({ ok: true, sizing: { feasible: false, evaluations: 2, before: { mass: 1.5, feasible: true }, message: 'No design within these bounds passes every check.', failingAtLimits: [{ check: 'books: M1 von Mises ≤ Fy / 2', target: 'SHELF', utilization: 2.1 }] } }));
+    render(<BuildReportCard report={r} onSize={onSize} />);
+    open();
+    fireEvent.click(screen.getByTestId('build-size-run'));
+    const inf = await screen.findByTestId('build-size-infeasible');
+    expect(inf.textContent).toMatch(/No design within these bounds/);
+    expect(inf.textContent).toMatch(/von Mises ≤ Fy \/ 2 \(210 %\)/);
+  });
+});

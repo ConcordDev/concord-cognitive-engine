@@ -20,7 +20,7 @@ import { detectNewDesign, type NewDesignIntent } from '@/lib/conkay/new-design-i
 import type { BriefClaim, TrussAnswer, WorkspaceDesign } from '../workspace/DesignPane';
 import { CONKAY_PERSONA_PROMPT } from '@/components/conkay/conkay-persona';
 import { agentFailure, artifactKey, streamConKayAgent, stripToolCallLeak } from '@/lib/conkay/agent-stream';
-import { isBuildReport } from '@/lib/conkay/build-report';
+import { isBuildReport, type BuildSizing } from '@/lib/conkay/build-report';
 import type { ChatArtifact } from '@/components/chat/ChatArtifacts';
 import {
   DIM_LABELS,
@@ -127,6 +127,30 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
       setViewMesh(art.kind === 'mesh' && Array.isArray(art.positions) && art.positions.length >= 9 ? art : null);
     } catch (e) {
       setBuildError(`Could not open the build: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, []);
+  /**
+   * Let the solvers size the open build: the lightest design in the given bounds on which
+   * every check passes. The receipt (what changed, mass before/after, the binding checks,
+   * or why no size works) rides on the build artifact.
+   */
+  const sizeBuild = useCallback(async (variables: Array<{ id: string; min?: string; max?: string; stock?: string[] }>): Promise<{ ok: boolean; errors?: string[]; sizing?: BuildSizing }> => {
+    const id = buildRef.current?.buildId;
+    if (!id) return { ok: false, errors: ['This build was not saved, so it cannot be sized. Ask Kay to build it again.'] };
+    setBuildBusy(true);
+    try {
+      const r = await api.post(`/api/conkay/build/${encodeURIComponent(id)}/size`, { variables }, { validateStatus: (st) => st < 500 });
+      const d = (r?.data ?? {}) as { ok?: boolean; feasible?: boolean; errors?: string[]; message?: string; error?: string; artifact?: ChatArtifact; sizing?: BuildSizing };
+      if (!d.ok) return { ok: false, errors: d.errors?.length ? d.errors : [d.message || d.error || 'not sized'] };
+      if (d.feasible && d.artifact) {
+        setBuild(d.artifact);
+        if (d.artifact.kind === 'mesh' && Array.isArray(d.artifact.positions) && d.artifact.positions.length >= 9) setViewMesh(d.artifact);
+      }
+      return { ok: true, sizing: d.sizing };
+    } catch (e) {
+      return { ok: false, errors: [`Could not reach ConKay to size it: ${e instanceof Error ? e.message : String(e)}`] };
+    } finally {
+      setBuildBusy(false);
     }
   }, []);
   const editBuild = useCallback(async (edits: Array<{ id: string; value: string }>): Promise<{ ok: boolean; errors?: string[] }> => {
@@ -346,6 +370,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
         message: text,
         history,
         persona,
+        buildId: buildRef.current?.buildId ?? null,
         onToken: (chunk) => { live += chunk; patch(id, { text: live }); },
         onToolCall: (c) => {
           const name = c.tool === 'run_lens_action' && c.domain ? `${c.domain}.${c.action}` : String(c.tool || 'tool');
@@ -639,7 +664,7 @@ export function useWorkshopController({ guest = false, onDesigned, studyActive }
     guest, router, pathname, params, workspaceId, workspaceName,
     ws, inputs, setInputs, result, materials, status,
     section, setSection, workspaces, workspacesError, goWorkspace, createWorkspace,
-    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild, selectedPart, setSelectedPart, buildBusy, editBuild, openBuild, buildError,
+    refreshKey, messages, busy, design, setDesign, viewMesh, setViewMesh, build, setBuild, selectedPart, setSelectedPart, buildBusy, editBuild, sizeBuild, openBuild, buildError,
     keeping, view, setView, display, setDisplay, showDims, setShowDims,
     paramsOpen, setParamsOpen, mobileTab, setMobileTab, speak,
     saveOpen, setSaveOpen, saveName, setSaveName, saveTouched, setBusy,
