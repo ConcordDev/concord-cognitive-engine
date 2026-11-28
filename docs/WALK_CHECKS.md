@@ -88,7 +88,19 @@ node scripts/walk/ingest.mjs <walk result files or folders> \
   --out audit/walk/ingest-2026-11-28 --date 2026-11-28
 ```
 
-**What it reads:** every JSONL line the walker writes.
+**What it reads:** every JSONL line the walker writes, in both formats.
+
+Tonight's walker (v3) writes either a merged export, where each line is `{ "_file": "<file>.jsonl", "_run": "<run id>", "row": {…} }`, or its files separately. The ingest reads each line by its shape, so either works. Pass the export file or the run folders.
+
+| Walker file | Becomes |
+|---|---|
+| `findings.jsonl` | ticket rows. The walker's `check` sets the root cause: escape → focus trap, `fab_overlap` → mobile FAB, `http` → server error on load, contrast, export. |
+| `ledger.jsonl` | re-verifications of existing tickets. FIXED goes to `verified.jsonl` for a glance, then VERIFIED. STILL_FAILING on a ticket marked fixed means the fix didn't hold; on an open ticket it's seen again. NEEDS_HUMAN goes to a person. |
+| `needs_tester.jsonl` | a person, with a check-spec draft |
+| `dedup.jsonl` | a sighting of the ticket it names |
+| `fixtures.jsonl` | `fixtures-to-clean.jsonl` (anything not deleted) |
+
+The November formats are still read:
 - ticket rows (`fix_tickets.jsonl` shape)
 - per-lens result records with a `cases` map (`lens` or the older `slug`)
 - `check_result` lines from the runner
@@ -102,6 +114,9 @@ node scripts/walk/ingest.mjs <walk result files or folders> \
 | `reopen.jsonl` | findings that match a ticket marked fixed and were seen **after** the fix's timestamp: the fix didn't hold. Earlier sightings go to `seen-again` with a note. |
 | `needs-human.jsonl` | NEEDS_HUMAN or BLOCKED cases, failures with no detail and check ERRORs, each with a check-spec draft to complete |
 | `TICKETS.md` | everything above, grouped by triage wave → lens → root cause, with the evidence |
+| `verified.jsonl` | tickets the walker re-ran and found fixed |
+| `walker-review.jsonl` | findings matching a reviewed walker false positive (below): kept with every lens and its evidence, never ticketed |
+| `fixtures-to-clean.jsonl` | fixtures the walk left behind |
 | `unreadable.jsonl` | lines that weren't JSON, or findings with no lens |
 
 **How it decides.** Each decision is written on the ticket, so a builder can see why.
@@ -115,7 +130,22 @@ node scripts/walk/ingest.mjs <walk result files or folders> \
   `root_cause_basis` says which applied.
 - **Triage wave and family:** from `docs/LENS_REDESIGN_TRIAGE.md`. A lens the triage doesn't list is unassigned.
 
+- **Shared code:** the same walker check on the same control across lenses, or a server error on the same endpoint, is one bug in shared code. It becomes one `FIX-shared-NNN` ticket that lists `affected_lenses`.
+- **The walker's own verdicts get checked:**
+  - a FIXED whose only steps opened the lens hasn't tested the ticket, so it goes to a person;
+  - a STILL_FAILING whose own overflow measurement was clean contradicts itself, so it goes to a person rather than being reopened.
+- **Reviewed walker false positives** (`KNOWN_WALKER_FALSE_POSITIVES` in `ingest.mjs`; each entry says why, with the code). The first one: Escape not closing "Expand … sub-lenses". That control is the shared left bar's inline expand/collapse toggle (`components/shell/Sidebar.tsx`, a button with `aria-expanded`), not an overlay, and WAI-ARIA gives a disclosure no Escape behaviour. The fix belongs in the walker's escape check (skip `aria-expanded` disclosures that don't open a dialog, menu or popover).
+
 The same inputs always give the same ids and the same files.
+
+**Checked on the 2026-11-27 walk sample** (65 lines, 2 shards):
+- 2 new tickets.
+- 10 Escape findings on 10 lenses set aside as the sidebar false positive.
+- 7 fixes confirmed; 1 "fixed" sent to a person because its only step opened the lens.
+- 9 fixes that didn't hold.
+- 10 sightings of tickets already open.
+- 22 items for a person, including one walker verdict that contradicts its own measurement.
+- 2 fixtures left to clean.
 
 **Checked on real data:**
 - **The November ticket log against itself** (2,496 ticket rows): **0 new tickets.** Every row matches its own ticket.

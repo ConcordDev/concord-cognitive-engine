@@ -150,3 +150,67 @@ test("real data: the November ticket log ingested against itself mints nothing n
   assert.equal(r.tickets.length, 0, "every row matches its own ticket");
   assert.ok(r.seenAgain.length + r.reopen.length > 1000);
 });
+
+// ── tonight's walker (v3): the merged export { _file, _run, row } ─────────────
+test("walker v3 export: every file kind is read and routed (real lines from the 2026-11-27 walk)", () => {
+  const f = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures", "walk-v3-sample.jsonl");
+  const { rows, bad } = readJsonl(f);
+  assert.equal(bad.length, 0);
+  assert.ok(rows.every((r) => r.__file), "each line unwrapped from its envelope");
+  const log = [
+    { id: "FIX-chat-013", lens: "chat", title: "Mobile chat clipped", status: "REOPENED" },
+    { id: "FIX-literary-002", lens: "literary", title: "Search query limit (200) only enforced after submit", status: "FIXED_PENDING_VERIFY", ts: "2026-11-20T00:00:00Z" },
+    { id: "FIX-goals-002", lens: "goals", title: "Past due date accepted", status: "FIXED_PENDING_VERIFY", ts: "2026-11-20T00:00:00Z" },
+    { id: "FIX-studio-007", lens: "studio", title: "Time readout contrast 4.09:1", status: "OPEN" },
+  ];
+  const r = ingest({ walkRows: rows, existingRows: log, date: "2026-11-28" });
+  // the shared sidebar toggle: set aside as a reviewed false positive, not a ticket
+  assert.equal(r.walkerReview.length, 1);
+  assert.equal(r.walkerReview[0].pattern, "sidebar-disclosure-escape");
+  assert.ok(!r.tickets.some((t) => /sub-lenses/.test(t.title)));
+  // real findings become tickets, classified by the walker's check
+  const byTitle = Object.fromEntries(r.tickets.map((t) => [t.lens, t]));
+  assert.deepEqual([byTitle.suffering.root_cause_group, byTitle.suffering.root_cause_basis], ["RCA-server-error-on-load", "walker check:http"]);
+  assert.deepEqual([byTitle.entity.root_cause_group, byTitle.entity.walker_check], ["RCA-mobile-clip-fab", "fab_overlap"]);
+  // the ledger: a fix that did not hold; a "fixed" that only opened the lens goes to a person; a contradiction too
+  assert.deepEqual(r.reopen.map((x) => x.id), ["FIX-goals-002"]);
+  const nh = Object.fromEntries(r.needsHuman.map((n) => [n.case, n]));
+  assert.match(nh["FIX-literary-002"].why, /only step was opening the lens/);
+  assert.match(nh["FIX-chat-013"].why, /its own measurement was clean/);
+  assert.match(nh["FIX-global-001"].why, /rewrite_disagrees/, "the tester queue and the ledger raise it once");
+  assert.equal(r.needsHuman.filter((n) => n.case === "FIX-global-001").length, 1);
+  assert.match(nh["export_nothing"].why, /Export/);
+  // walker dedup → a sighting of the ticket it names
+  assert.ok(r.seenAgain.some((x) => x.id === "FIX-studio-007" && /walker dedup/.test(x.match)));
+  // fixtures: what is left to clean, not what was deleted
+  assert.deepEqual(r.fixturesToClean.map((x) => x.state), ["leftover"]);
+  assert.equal(r.stats.fixturesDeleted, 1);
+});
+
+test("the same walker check on the same control across lenses is one shared ticket", () => {
+  const row = (lens) => ({ check: "fab_overlap", lens, severity: "low", title: `FAB overlaps the bottom nav on ${lens}`, expected: "clear", actual: "boxes intersect", element: "Ask the agent", evidence: [`ev/${lens}.png`], __src: `w:${lens}` });
+  const r = ingest({ walkRows: [row("entity"), row("tick"), row("food")], existingRows: [], date: "2026-11-28" });
+  assert.equal(r.tickets.length, 1);
+  assert.deepEqual(r.tickets[0].affected_lenses, ["entity", "food", "tick"]);
+  assert.equal(r.tickets[0].lens, "shared");
+  assert.equal(r.tickets[0].occurrences, 3);
+  assert.equal(r.tickets[0].triage_family, "shared code");
+});
+
+test("a walker 'fixed' with a real check is confirmed; one that only opened the lens is not", () => {
+  const led = (id, steps) => ({ id, result: "FIXED", status: "VERIFIED", recipe: "repro-steps", walker_run_id: "run1", steps, __src: `l:${id}` });
+  const r = ingest({ walkRows: [
+    led("FIX-board-009", [{ action: "check_ax", executed: true, raw: "Open the a11y tree", result: "0 unnamed of 55" }]),
+    led("FIX-x-001", [{ action: "open", executed: true, raw: "open the X lens", result: "opened" }]),
+  ], existingRows: [], date: "2026-11-28" });
+  assert.deepEqual(r.verified.map((v) => v.id), ["FIX-board-009"]);
+  assert.deepEqual(r.needsHuman.map((n) => n.case), ["FIX-x-001"]);
+});
+
+test("a server error on the same endpoint across lenses is one shared ticket (it is the server, not the lens)", () => {
+  const row = (lens) => ({ check: "http", lens, severity: "medium", title: "API returns 5xx while loading the lens", expected: "No server errors on lens load", actual: "503 /api/metrics/vitals", evidence: [`ev/${lens}.png`], __src: `w:${lens}` });
+  const r = ingest({ walkRows: [row("suffering"), row("goals"), { ...row("pets"), actual: "500 /api/lens/run" }], existingRows: [], date: "2026-11-28" });
+  const shared = r.tickets.find((t) => t.lens === "shared");
+  assert.deepEqual(shared.affected_lenses, ["goals", "suffering"]);
+  assert.ok(r.tickets.some((t) => t.lens === "pets"), "a different endpoint stays its own ticket");
+});
