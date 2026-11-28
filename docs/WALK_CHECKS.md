@@ -47,7 +47,7 @@ can't turn a check into a pass.
 
   | Expectation | What it checks |
   |---|---|
-  | `visible` / `hidden` | the target is or isn't on screen |
+  | `visible` / `hidden` | the target is or isn't on screen; `visible` also needs it uncovered (it waits for a splash to clear, and names a cover that stays: a sticky bar, a floating button). It's a hit test, so a see-through overlay that ignores the pointer isn't caught |
   | `text` | the target's text: `equals`, `contains` or `matches` |
   | `count` | how many match: `eq`, `min` or `max` |
   | `url` | the address matches a regex |
@@ -60,6 +60,7 @@ can't turn a check into a pass.
 - **Accounts** are `anon`, `member`, `member2` or `admin`. The credentials come only from the environment, never from a spec:
   - `CONCORD_WALK_MEMBER_USER` / `CONCORD_WALK_MEMBER_PASS` (and `MEMBER2`, `ADMIN`)
   - A spec whose account has no credentials is ERROR, not a pass.
+- **Login:** the runner sends `email` when the account is an address, `username` otherwise (the login route checks `email` is an address). If the site turns away automated browsers, set `CONCORD_WALK_UA`; it's your own site.
 - **Viewports** are `desktop` (1280×800) or `mobile` (390×844).
 
 Run one spec, or a folder of them:

@@ -25,7 +25,7 @@
 // Steps: goto {path} · click {target} · fill {target, value} · select {target, value} ·
 //        press {key, target?} · wait {for: target, timeoutMs?} · scroll {target}
 // Expectations (all must hold):
-//   visible {target}            the target is on screen
+//   visible {target}            the target is on screen and not covered (a splash, a sticky bar, a floating button)
 //   hidden {target}             the target is not on screen
 //   text {target, equals|contains|matches}   its text
 //   count {target, eq|min|max}  how many match

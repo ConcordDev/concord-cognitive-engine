@@ -58,8 +58,22 @@ export const CONTRAST_JS = `(el) => {
   return { ratio: Math.round(ratio * 100) / 100, fg: s.color, bg: \`rgb(\${Math.round(bg.r)}, \${Math.round(bg.g)}, \${Math.round(bg.b)})\`, image };
 }`;
 
+// null when the element is what sits under its centre point; otherwise a short description of the cover.
+const COVER_JS = (el) => {
+  el.scrollIntoView({ block: "center", inline: "center" });
+  const b = el.getBoundingClientRect();
+  const x = Math.min(Math.max(b.left + b.width / 2, 0), window.innerWidth - 1), y = Math.min(Math.max(b.top + b.height / 2, 0), window.innerHeight - 1);
+  const hit = document.elementFromPoint(x, y);
+  if (!hit || el === hit || el.contains(hit) || hit.contains(el)) return null;
+  const name = (n) => `${n.tagName.toLowerCase()}${n.id ? "#" + n.id : ""}${n.getAttribute("data-testid") ? `[data-testid=${n.getAttribute("data-testid")}]` : ""}${n.getAttribute("aria-label") ? `[aria-label="${n.getAttribute("aria-label").slice(0, 40)}"]` : ""}`;
+  let top = hit; while (top.parentElement && top.parentElement !== document.body && getComputedStyle(top).position === "static") top = top.parentElement;
+  return name(top === hit ? hit : top);
+};
+
 async function signIn(context, base, creds) {
-  const r = await context.request.post(`${base}/api/auth/login`, { data: { username: creds.user, email: creds.user, password: creds.pass }, failOnStatusCode: false });
+  // the login route validates `email` as an address: send whichever the account is
+  const who = creds.user.includes("@") ? { email: creds.user } : { username: creds.user };
+  const r = await context.request.post(`${base}/api/auth/login`, { data: { ...who, password: creds.pass }, failOnStatusCode: false });
   if (r.status() >= 400) throw new Error(`sign-in failed: HTTP ${r.status()}`);
 }
 
@@ -102,7 +116,25 @@ export async function runSpec(spec, { browser, base, shotsDir = null, env = proc
       const rec = { i, kind, ok: false, detail: "" };
       try {
         if (stepFailed) { rec.detail = "not checked: a step failed"; out.expect.push(rec); continue; }
-        if (kind === "visible") { await locate(page, a.target).waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT }).then(() => { rec.ok = true; }, () => { rec.detail = `${describe(a.target)} not visible`; }); }
+        if (kind === "visible") {
+          // "visible" means a person can see it: rendered AND not covered (a splash, a sticky bar, a
+          // floating button). Playwright's own visibility ignores what is drawn on top, so check the
+          // element is what sits under its centre, waiting for a cover that clears (a boot splash).
+          // Limit: this is a hit test, so a see-through overlay that ignores the pointer
+          // (pointer-events: none, e.g. a fading splash) is not seen as a cover.
+          const loc = locate(page, a.target);
+          const shown = await loc.waitFor({ state: "visible", timeout: DEFAULT_TIMEOUT }).then(() => true, () => false);
+          if (!shown) rec.detail = `${describe(a.target)} not visible`;
+          else {
+            const deadline = Date.now() + DEFAULT_TIMEOUT; let cover = null;
+            for (;;) {
+              cover = await loc.evaluate(COVER_JS).catch(() => "could not test");
+              if (!cover || Date.now() > deadline) break;
+              await page.waitForTimeout(250);
+            }
+            rec.ok = !cover; rec.detail = cover ? `${describe(a.target)} is covered by ${cover}` : "";
+          }
+        }
         else if (kind === "hidden") { await locate(page, a.target).waitFor({ state: "hidden", timeout: DEFAULT_TIMEOUT }).then(() => { rec.ok = true; }, () => { rec.detail = `${describe(a.target)} still visible`; }); }
         else if (kind === "text") {
           const t = ((await locate(page, a.target).textContent({ timeout: DEFAULT_TIMEOUT })) || "").replace(/\s+/g, " ").trim();
@@ -139,7 +171,7 @@ export async function runSpec(spec, { browser, base, shotsDir = null, env = proc
   } catch (e) {
     out.verdict = "ERROR"; out.error = String(e?.message || e).split("\n")[0].slice(0, 300);
   } finally {
-    if (shotsDir) { try { fs.mkdirSync(shotsDir, { recursive: true }); const f = path.join(shotsDir, `${spec.id}.png`); await page.screenshot({ path: f, fullPage: true }); out.screenshot = f; } catch { /* a screenshot is evidence, not the verdict */ } }
+    if (shotsDir) { try { await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {}); await page.waitForTimeout(1200); fs.mkdirSync(shotsDir, { recursive: true }); const f = path.join(shotsDir, `${spec.id}.png`); await page.screenshot({ path: f, fullPage: true }); out.screenshot = f; } catch { /* a screenshot is evidence, not the verdict */ } }
     await context.close();
     out.durationMs = Date.now() - started;
   }

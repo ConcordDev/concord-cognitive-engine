@@ -19,6 +19,15 @@ const PAGES = {
     <dialog id="dlg" aria-label="Edit event"><input id="in" aria-label="Event name"><button>Done</button></dialog>
     <ul><li>a</li><li>b</li><li>c</li></ul>
   </body></html>`,
+  "/covered": `<!doctype html><html><body style="margin:0">
+    <button style="position:absolute;top:10px;left:10px">Checkout</button>
+    <div id="fab" aria-label="Ask the agent" style="position:fixed;inset:0 0 auto 0;height:80px;background:#000"></div>
+  </body></html>`,
+  "/splash": `<!doctype html><html><body style="margin:0">
+    <button style="margin:20px">Start</button>
+    <div id="splash" style="position:fixed;inset:0;background:#123"></div>
+    <script>setTimeout(() => document.getElementById("splash").remove(), 600)</script>
+  </body></html>`,
   "/bad": `<!doctype html><html><body style="margin:0;background:#fff">
     <p id="faint" style="color:#ddd">Faint text</p>
     <div data-testid="wide" style="width:600px;height:10px;background:#eee"></div>
@@ -124,6 +133,14 @@ test("a wrong page fails each expectation with its reason", async () => {
   assert.ok(!d.download.ok); assert.equal(d.download.detail, "notes.txt");
   assert.ok(!d.visible.ok); assert.match(d.visible.detail, /text "Saved" not visible/);
   assert.ok(!d.status.ok); assert.equal(d.status.detail, "HTTP 200");
+});
+
+test("visible means a person can see it: a cover that stays fails with what covers it; one that clears (a splash) is waited out", async () => {
+  const covered = await run(spec({ path: "/covered", expect: [{ visible: { target: { role: "button", name: "Checkout" } } }] }));
+  assert.equal(covered.verdict, "FAIL");
+  assert.match(covered.expect[0].detail, /button "Checkout" is covered by div#fab\[aria-label="Ask the agent"\]/);
+  const splash = await run(spec({ path: "/splash", expect: [{ visible: { target: { role: "button", name: "Start" } } }] }));
+  assert.equal(splash.verdict, "PASS", JSON.stringify(splash.expect));
 });
 
 test("a step that cannot be done is a FAIL with the step named, and nothing after it is claimed", async () => {
