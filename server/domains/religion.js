@@ -159,7 +159,7 @@ export default function registerReligionMacros(register) {
     // pass an explicit actorId to inspect someone else. Without the fallback the
     // default "" never matched, so worshipper({faithId}) always returned
     // not_a_worshipper even for a member. Pinned by religion-behavior.test.js.
-    const actorId = String(input?.actorId || ctx?.actor?.userId || "");
+    const actorId = String(ctx?.actor?.userId || input?.actorId || "");
     const w = getWorshipper(db, String(input?.faithId || ""), String(input?.actorKind || "player"), actorId);
     if (!w) return { ok: false, reason: "not_a_worshipper" };
     return { ok: true, worshipper: w };

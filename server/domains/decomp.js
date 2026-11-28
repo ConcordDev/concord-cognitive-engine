@@ -15,7 +15,7 @@ import {
 export default function registerDecompMacros(register) {
   register("decomp", "create", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return createGoalTree(db, { userId, title: input.title, description: input.description, mintDtu: input.mintDtu !== false });
   }, { note: "create a persistent goal tree (mints a root DTU) (#10)" });
@@ -42,7 +42,7 @@ export default function registerDecompMacros(register) {
 
   register("decomp", "list", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, trees: listGoalTrees(db, userId, { status: input.status, limit: input.limit }) };
   }, { note: "list a user's goal trees with progress (#10)" });

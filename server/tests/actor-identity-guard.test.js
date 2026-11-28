@@ -69,7 +69,10 @@ describe("actor identity — the payer is the signed-in account", () => {
       assert.equal((await call(s, "POST", "/api/artistry/distribution/follow", { followerId: "alice", followedId: "bob" })).status, 200, "followedId is a target");
       assert.equal((await call(s, "POST", "/api/connective-tissue/tip", { creatorId: "bob" })).status, 200, "a tip's creator is the recipient");
       assert.equal((await call(s, "POST", "/api/economic/webhook", { odId: "x" })).status, 200, "the Stripe webhook is signature-checked, not session-checked");
-      assert.equal((await call(s, "POST", "/api/lens/run", { userId: "bob" })).status, 200, "unlisted route");
+      assert.equal((await call(s, "POST", "/api/notes/quick", { userId: "bob" })).status, 200, "unlisted route");
+      // /api/lens/run used to be the example of an unlisted route here; since 2026-11-28 it is guarded
+      // (tests/lens-run-actor-identity.test.js), and a spoofed actor id in its input is refused.
+      assert.equal((await call(s, "POST", "/api/lens/run", { domain: "housing", action: "mine", input: { userId: "bob" } })).status, 403, "the lens dispatch is guarded");
     } finally { s.close(); }
     assert.deepEqual(claimedActors("POST", "/api/economic/marketplace/buy", { odId: "" }, {}), [], "an empty field claims nothing");
   });

@@ -231,7 +231,13 @@ describe("V1.2 Wave A — workspace macros (create-room / list-in-district / lis
     assert.equal(mine.rooms.length, 1);
     assert.equal(mine.rooms[0].name, "Mine");
 
-    const bobs = await registry.call("workspace", "list-mine", ctx, { userId: "user_bob" });
+    // Naming another account's id lists your own rooms, not theirs (2026-11-28: the session is
+    // the actor; input.userId only stands in when there is no session, for internal callers).
+    const named = await registry.call("workspace", "list-mine", ctx, { userId: "user_bob" });
+    assert.equal(named.rooms.length, 1);
+    assert.equal(named.rooms[0].name, "Mine");
+
+    const bobs = await registry.call("workspace", "list-mine", otherCtx, {});
     assert.equal(bobs.rooms.length, 1);
     assert.equal(bobs.rooms[0].name, "Bob's");
   });

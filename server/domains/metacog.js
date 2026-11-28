@@ -13,7 +13,7 @@ export default function registerMetacogMacros(register) {
   register("metacog", "fingerprint", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, userId, fingerprint: computeFingerprint(db, userId) };
   }, { note: "current cognitive fingerprint — thinking-style profile from real activity (#5)" });
@@ -21,7 +21,7 @@ export default function registerMetacogMacros(register) {
   register("metacog", "fingerprint_history", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, userId, history: getFingerprintHistory(db, userId, input.limit) };
   }, { note: "cognitive fingerprint snapshot time-series (#5)" });

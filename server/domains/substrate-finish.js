@@ -627,7 +627,7 @@ export default function registerSubstrateFinishMacros(register, deps = {}) {
     async (ctx, input = {}) => {
       try {
         const m = await lazy("../emergent/creative-generation.js");
-        const id = input.entityId || input.id || input.userId || ctx?.actor?.userId || ctx?.actor?.id;
+        const id = input.entityId || input.id || ctx?.actor?.userId || ctx?.actor?.id || input.userId;
         if (!id) return { ok: false, error: "entityId_required", reason: "entityId_required" };
         return wrap(m.getCreativeProfile(id), "creative-generation.getCreativeProfile");
       } catch (e) {

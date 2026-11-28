@@ -19,7 +19,7 @@ export default function registerBeatsMacros(register) {
   register("beats", "list", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     const limit = Math.min(Math.max(Number(input.limit) || 20, 1), 100);
     return { ok: true, beats: listBeatsForUser(db, userId, limit) };
@@ -48,7 +48,7 @@ export default function registerBeatsMacros(register) {
   register("beats", "find_open_for_subject", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId || !input.subjectKind || !input.subjectId) {
       return { ok: false, reason: "missing_inputs" };
     }

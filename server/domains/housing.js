@@ -60,7 +60,7 @@ export default function registerHousingMacros(register) {
   register("housing", "mine", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, houses: listMyHouses(db, userId) };
   }, { note: "list the actor's houses" });
@@ -111,7 +111,7 @@ export default function registerHousingMacros(register) {
   register("housing", "claim", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return claimHouse(db, userId, {
       landClaimId: input.landClaimId,
@@ -127,7 +127,7 @@ export default function registerHousingMacros(register) {
   register("housing", "place_furniture", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return placeFurniture(db, userId, input.houseId, input.roomId, input.item || {});
   }, { note: "place / move a furniture item (per-coord)" });
@@ -139,7 +139,7 @@ export default function registerHousingMacros(register) {
   register("housing", "remove_furniture", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return removeFurniture(db, userId, input.houseId, input.roomId, input.itemId);
   }, { note: "remove a furniture item from a room" });
@@ -155,7 +155,7 @@ export default function registerHousingMacros(register) {
   register("housing", "rename", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.houseId) return { ok: false, reason: "missing_house_id" };
     return renameHouse(db, userId, input.houseId, input.name);
@@ -168,7 +168,7 @@ export default function registerHousingMacros(register) {
   register("housing", "unclaim", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!input.houseId) return { ok: false, reason: "missing_house_id" };
     return unclaimHouse(db, userId, input.houseId);
@@ -177,7 +177,7 @@ export default function registerHousingMacros(register) {
   register("housing", "set_visibility", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     if (!VISIBILITIES.has(input.visibility)) return { ok: false, reason: "invalid_visibility" };
     return setVisibility(db, userId, input.houseId, input.visibility);
@@ -190,7 +190,7 @@ export default function registerHousingMacros(register) {
   register("housing", "set_live_visits", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return setAllowLiveVisits(db, userId, input.houseId, Boolean(input.allow));
   }, { note: "toggle live visits on/off" });
@@ -204,7 +204,7 @@ export default function registerHousingMacros(register) {
   register("housing", "set_lock", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return setLockTier(db, userId, input.houseId, input.roomId, input.lockTier);
   }, { note: "set a room's lock tier" });
@@ -217,7 +217,7 @@ export default function registerHousingMacros(register) {
   register("housing", "visit", async (ctx, input = {}) => {
     const db = ctx?.db;
     if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return requestVisit(db, userId, input.houseId, { isFriend: Boolean(input.isFriend) });
   }, { note: "request a snapshot or live visit" });

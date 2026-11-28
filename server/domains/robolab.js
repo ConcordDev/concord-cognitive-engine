@@ -14,14 +14,14 @@ import { actuate, hasActuator } from "../lib/robotics/actuator-adapter.js";
 export default function registerRobolabMacros(register) {
   register("robolab", "record_run", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return recordRun(db, { userId, robotId: input.robotId, kind: input.kind, input: input.input, result: input.result, mintDtu: input.mintDtu === true });
   }, { note: "persist a real computed robotics run; optionally mint a DTU (#27)" });
 
   register("robolab", "runs", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, runs: listRuns(db, userId, { robotId: input.robotId, limit: input.limit }) };
   }, { note: "list a user's persisted robotics runs (#27)" });

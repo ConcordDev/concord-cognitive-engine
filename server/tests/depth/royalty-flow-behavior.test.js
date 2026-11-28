@@ -145,12 +145,22 @@ describe("economy.royaltyFlow — user-scoped real earnings", () => {
   });
 
   it("honest empty state: a user with zero royalty history gets ok:true and zeroed totals, not an error", async () => {
-    const r = await runMacro("economy", "royaltyFlow", { userId: "nobody-has-ever-earned-anything" }, ctx);
+    // The no-DTU view is always the caller's own (2026-11-28), so the empty earner is the caller.
+    const nobody = { ...ctx, actor: { ...ctx.actor, userId: "nobody-has-ever-earned-anything" } };
+    const r = await runMacro("economy", "royaltyFlow", {}, nobody);
     assert.equal(r.ok, true);
     assert.equal(r.hopCount, 0);
     assert.equal(r.totalCC, 0);
     assert.deepEqual(r.hops, []);
     assert.deepEqual(r.byGeneration, {});
+  });
+
+  it("naming another earner without a DTU returns your own earnings, never theirs", async () => {
+    const nobody = { ...ctx, actor: { ...ctx.actor, userId: "nobody-has-ever-earned-anything" } };
+    const spoof = await runMacro("economy", "royaltyFlow", { userId: creatorId }, nobody);
+    assert.equal(spoof.ok, true);
+    assert.equal(spoof.hopCount, 0, "the creator's earnings are not readable by someone else");
+    assert.equal(spoof.totalCC, 0);
   });
 
   it("rejects a call with neither userId nor dtuId — never silently returns a fabricated empty card", () => {

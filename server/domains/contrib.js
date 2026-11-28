@@ -21,14 +21,14 @@ export default function registerContribMacros(register) {
 
   register("contrib", "progress", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return refreshProgress(db, input.questId, userId);
   }, { note: "recompute a user's quest progress from real DTU activity (#36)" });
 
   register("contrib", "claim", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return claimReward(db, input.questId, userId);
   }, { note: "claim a completed contribution quest's reward (idempotent) (#36)" });
@@ -40,7 +40,7 @@ export default function registerContribMacros(register) {
 
   register("contrib", "mine", async (ctx, input = {}) => {
     const db = ctx?.db; if (!db) return { ok: false, reason: "no_db" };
-    const userId = input.userId || ctx?.actor?.userId;
+    const userId = ctx?.actor?.userId || input.userId;
     if (!userId) return { ok: false, reason: "no_user" };
     return { ok: true, progress: getQuestProgress(db, userId, { limit: input.limit }) };
   }, { note: "a user's contribution-quest progress (#36)" });
