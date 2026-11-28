@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
@@ -281,6 +281,51 @@ describe('Sidebar', () => {
       // trip the guard.
       const code = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
       expect(code).not.toMatch(/(?:bg|text|border)-\$\{/);
+    });
+  });
+
+  describe('Escape on a sub-lens expander (CB-1271)', () => {
+    const expand = () => {
+      const btn = screen.getByRole('button', { name: 'Expand Chat sub-lenses' });
+      fireEvent.click(btn);
+      return screen.getByRole('button', { name: 'Collapse Chat sub-lenses' });
+    };
+
+    it('Escape on the expander collapses it and keeps focus on it', async () => {
+      render(<Sidebar />);
+      const btn = expand();
+      expect(btn.getAttribute('aria-expanded')).toBe('true');
+      btn.focus();
+      fireEvent.keyDown(btn, { key: 'Escape' });
+      const collapsed = await screen.findByRole('button', { name: 'Expand Chat sub-lenses' });
+      expect(collapsed.getAttribute('aria-expanded')).toBe('false');
+      await waitFor(() => expect(document.activeElement).toBe(collapsed));
+    });
+
+    it('Escape typed in a lens field outside the sidebar leaves the navigation as it is', () => {
+      render(<><Sidebar /><input aria-label="lens field" /></>);
+      expand();
+      const field = screen.getByLabelText('lens field');
+      field.focus();
+      fireEvent.keyDown(field, { key: 'Escape' });
+      expect(screen.getByRole('button', { name: 'Collapse Chat sub-lenses' }).getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('an Escape another handler already used (a dialog closing) does not also collapse the expander', () => {
+      render(<Sidebar />);
+      const btn = expand();
+      btn.focus();
+      const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+      e.preventDefault();
+      act(() => { btn.dispatchEvent(e); });
+      expect(screen.getByRole('button', { name: 'Collapse Chat sub-lenses' }).getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('with nothing expanded, Escape still closes the open mobile sidebar', () => {
+      mockUIStore.sidebarOpen = true;
+      render(<Sidebar />);
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(mockUIStore.setSidebarOpen).toHaveBeenCalledWith(false);
     });
   });
 });

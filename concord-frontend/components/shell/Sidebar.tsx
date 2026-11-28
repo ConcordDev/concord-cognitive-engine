@@ -9,7 +9,7 @@
  */
 
 import { RailAccount } from './RailAccount';
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useUIStore } from '@/store/ui';
@@ -109,10 +109,14 @@ export function Sidebar() {
   // sub-lens expander first — collapsing it and returning focus to its
   // button, the contract keyboard users expect — then the mobile
   // sidebar itself.
+  const asideRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (expandedCore) {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      // Only an Escape pressed in the sidebar collapses an expander: Escape in a lens's own
+      // field or panel belongs to that lens, and must not fold up the person's navigation.
+      const inSidebar = !!(e.target instanceof Node && asideRef.current?.contains(e.target));
+      if (expandedCore && inSidebar) {
         const id = expandedCore;
         setExpandedCore(null);
         requestAnimationFrame(() => {
@@ -157,6 +161,7 @@ export function Sidebar() {
           visibility:hidden does both; the lg:visible keeps the desktop
           rail (where sidebarOpen is not the governing state) shown. */}
       <aside
+        ref={asideRef}
         role="navigation"
         aria-label="Main navigation"
         data-testid="sidebar"
