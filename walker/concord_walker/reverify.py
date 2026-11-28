@@ -480,6 +480,11 @@ class Reverifier:
             if not elems or not tested:
                 return {"verdict": HUMAN, "method": "openers", "category": cat, "evidence": ev,
                         "notes": "ticket's overlay (%s) not among the safe openers walked (%s)" % (elems or "unnamed", [r["opener"] for r in rows][:6])}
+            if cat in ("escape", "focus_return") and all(r.get("popup") == "disclosure" for r in tested):
+                # an inline expand/collapse toggle: Escape isn't owed, so "no finding" is not a fix
+                return {"verdict": HUMAN, "method": "openers", "category": cat, "evidence": ev,
+                        "notes": "'%s' is an inline disclosure (aria-expanded, no aria-haspopup), not an overlay; "
+                                 "Escape isn't required to close it. Tester to confirm and close as not a defect" % tested[0]["opener"]}
             bad = [f for f in same if elem_hit(f)]
             return {"verdict": STILL if bad else FIXED, "method": "Escape/focus on '%s'" % tested[0]["opener"], "category": cat,
                     "evidence": ev if bad else [tested[0].get("evidence")], "notes": self._row(tested[0])}

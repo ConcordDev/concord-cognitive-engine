@@ -34,6 +34,26 @@ NO_ACCESS_TEXT = re.compile(r"(?i)no access|access denied|not authorized|not aut
                             r"admin access required|operator surface needs one of")
 
 
+def is_disclosure(opener, popup):
+    """True when clicking `opener` only toggled an expand/collapse section.
+
+    A disclosure button (aria-expanded, no aria-haspopup) shows or hides
+    content inline: a sidebar sub-lens list, an accordion, "Show more".
+    It isn't an overlay, so WAI-ARIA doesn't ask Escape to close it, and
+    pressing Escape there is not a failure. Walk 3 reported every sidebar
+    "Expand <lens> sub-lenses" toggle as "Escape doesn't close the menu/panel".
+
+    It's an overlay (and the Escape check still runs) when a dialog, menu or
+    listbox appeared (`popup` is not None) or when the opener declares a popup
+    (Chrome's AX tree reports aria-haspopup as `hasPopup` and leaves it out
+    when the value is "false").
+    """
+    if popup is not None:
+        return False
+    hp = (opener.props.get("hasPopup") if opener is not None else None) or ""
+    return str(hp).lower() in ("", "false")
+
+
 def gate_verdict(status, texts, signed_out):
     """Admin-gate outcome for a NON-admin account on an admin lens (WALK-02).
     The gate holding IS the pass: a login redirect, a 403, or a no-access page
@@ -1147,6 +1167,10 @@ class LensWalk:
                 rows.append({"opener": key, "status": "NO_POPUP"})
                 continue
             ax, pop = got
+            if is_disclosure(node, pop):
+                # an inline expand/collapse section, not an overlay: no Escape or focus-return check
+                rows.append({"opener": key, "popup": "disclosure", "escape": "SKIP"})
+                continue
             kind = pop.role if pop else "expanded"
             ev_open = self.shot(page, "open-" + key[:20])
             row = {"opener": key, "popup": kind, "evidence": ev_open}
