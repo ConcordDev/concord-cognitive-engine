@@ -9,6 +9,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { DIM_LABELS, SUPPORT_LABELS, type BeamDims, type BeamSupport } from '@/lib/conkay/workspace-commands';
 import type { Material, StudyInputs } from './useConKayWorkspace';
+import { parseFieldInput, type FieldDim } from '@/lib/conkay/field-units';
 
 export interface ParameterPanelHandle {
   focus: (key: keyof BeamDims) => void;
@@ -23,25 +24,29 @@ interface Props {
 const DIM_ORDER: Array<keyof BeamDims> = ['length', 'height', 'flangeWidth', 'flangeThickness', 'webThickness'];
 
 function NumberField({
-  id, label, title, unit, value, onCommit, inputRef,
+  id, label, title, unit, dim, value, onCommit, inputRef,
 }: {
-  id: string; label: string; title: string; unit: string; value: number;
+  id: string; label: string; title: string; unit: string; dim: FieldDim; value: number;
   onCommit: (v: number) => void;
   inputRef?: (el: HTMLInputElement | null) => void;
 }) {
   const [text, setText] = useState(String(value));
   const [rejected, setRejected] = useState('');
+  const [converted, setConverted] = useState('');
   // Follow outside changes (a chat edit, opening a model) — the
   // "adjust state while rendering" pattern, not an effect.
   const [seen, setSeen] = useState(value);
   if (seen !== value) { setSeen(value); setText(String(value)); }
   const commit = () => {
-    const n = Number(text);
+    // Any unit in ("3/4 in", "2 ft 3 in", "500 lbf", "50 kg"): converted to the box's unit, shown.
+    const p = parseFieldInput(text, dim, unit);
+    const n = p.ok ? Number(p.value.toPrecision(6)) : NaN;
+    setConverted(p.ok && p.note ? p.note : '');
     if (Number.isFinite(n) && n > 0 && n !== value) { setRejected(''); onCommit(n); }
     else if (Number.isFinite(n) && n === value) { setRejected(''); setText(String(value)); }
     else {
       // A rejected input is announced, never silently reverted (ConKay F14).
-      setRejected(`“${text.trim() || 'blank'}” is not a positive number — kept ${value}.`);
+      setRejected(`“${text.trim() || 'blank'}” is not a positive ${dim === 'length' ? 'length' : 'force'}${p.ok ? '' : ` (${p.error})`} — kept ${value}.`);
       setText(String(value));
     }
   };
@@ -58,7 +63,8 @@ function NumberField({
             aria-label={`${label} ${title}`}
             aria-invalid={rejected ? true : undefined}
             aria-describedby={rejected ? `${id}-error` : undefined}
-            inputMode="decimal"
+            inputMode="text"
+            title={`A number in ${unit}, or with any unit (e.g. ${dim === 'length' ? '3/4 in, 2 ft 3 in' : '500 lbf, 50 kg'})`}
             value={text}
             onChange={(e) => { setText(e.target.value); if (rejected) setRejected(''); }}
             onBlur={commit}
@@ -68,6 +74,7 @@ function NumberField({
           <span className="w-6 text-[10px] text-slate-400">{unit}</span>
         </span>
       </label>
+      {converted && !rejected && <p className="mt-0.5 text-right text-[10px] text-slate-400" data-testid={`${id}-converted`}>{converted}</p>}
       {rejected && <p id={`${id}-error`} role="alert" className="mt-0.5 text-right text-[10px] text-amber-300">{rejected}</p>}
     </div>
   );
@@ -109,6 +116,7 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
             label={DIM_LABELS[k].symbol}
             title={DIM_LABELS[k].name}
             unit="mm"
+            dim="length"
             value={inputs.dims[k]}
             onCommit={(v) => setDim(k, v)}
             inputRef={(el) => { fields.current[k] = el; }}
@@ -119,6 +127,7 @@ export const ParameterPanel = forwardRef<ParameterPanelHandle, Props>(function P
           label="P"
           title="point load"
           unit="kN"
+          dim="force"
           value={Math.round((inputs.loadN / 1000) * 1000) / 1000}
           onCommit={(v) => onChange({ ...inputs, loadN: v * 1000 })}
         />

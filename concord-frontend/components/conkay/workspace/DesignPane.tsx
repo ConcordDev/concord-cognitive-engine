@@ -125,9 +125,22 @@ export function TrussView({ answer }: { answer: TrussAnswer }) {
   );
 }
 
+/** "depthSource" → "Depth source": the solver's field names, said in words. */
+function fieldLabel(k: string): string {
+  const w = k.replace(/_/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().trim();
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+function fieldValue(v: unknown): string {
+  if (typeof v === 'boolean') return v ? 'yes' : 'no';
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(4)));
+  return String(v);
+}
+
 function SolvedView({ d }: { d: Extract<WorkspaceDesign, { kind: 'solved' }> }) {
   const truss = d.domain === 'truss' && Array.isArray((d.answer as { forces?: unknown }).forces);
-  const scalars = Object.entries(d.answer).filter(([, v]) => typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean').slice(0, 16);
+  const scalars = Object.entries(d.answer)
+    .filter(([k, v]) => k !== 'ok' && (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean'))
+    .slice(0, 16);
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-base font-semibold capitalize text-slate-100">{d.domain.replace('-', ' ')}</h2>
@@ -141,7 +154,7 @@ function SolvedView({ d }: { d: Extract<WorkspaceDesign, { kind: 'solved' }> }) 
       {truss ? <TrussView answer={d.answer as unknown as TrussAnswer} /> : (
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
           {scalars.map(([k, v]) => (
-            <Fragment key={k}><dt className="text-slate-400">{k}</dt><dd className="font-mono text-slate-200">{String(v)}</dd></Fragment>
+            <Fragment key={k}><dt className="text-slate-400">{fieldLabel(k)}</dt><dd className="font-mono text-slate-200">{fieldValue(v)}</dd></Fragment>
           ))}
         </dl>
       )}
@@ -151,7 +164,7 @@ function SolvedView({ d }: { d: Extract<WorkspaceDesign, { kind: 'solved' }> }) 
 
 export function DesignPane({ design, onClose }: { design: WorkspaceDesign; onClose: () => void }) {
   return (
-    <div className="absolute inset-0 z-30 overflow-y-auto bg-[#040a13] p-3" data-testid="design-pane">
+    <div className="ws-overlay absolute inset-0 z-30 overflow-y-auto bg-[#040a13] p-3" data-testid="design-pane">
       <button type="button" onClick={onClose} aria-label="Back to the beam study" title="Back to the beam study" className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-slate-300 hover:bg-white/10">
         <X className="h-4 w-4" aria-hidden />
       </button>

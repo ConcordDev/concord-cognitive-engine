@@ -11,6 +11,8 @@
 
 import { parseQuantity } from "../compiler/units.js";
 
+import { parseAmount } from "../units/universal.js";
+
 export const CHAT_QUANTITIES_VERSION = "1.0.0";
 
 const LOWER_TO_UNIT = {
@@ -70,7 +72,11 @@ function toSI(value, unitText) {
   const lower = unitText.toLowerCase();
   if (EXTRA[lower]) return { unit: lower, dim: EXTRA[lower][0], si: value * EXTRA[lower][1] };
   const unit = LOWER_TO_UNIT[lower] ?? LOWER_TO_UNIT[unitText];
-  if (!unit) return null;
+  if (!unit) {
+    // oz, fl oz, cups, mL, °F, psi·…, compound units: the universal parser.
+    const u = parseAmount(`${value} ${unitText}`);
+    return u.ok && u.dim !== "ratio" ? { unit: u.unit, dim: u.dim, si: u.si } : null;
+  }
   const q = parseQuantity({ value, unit });
   return q.ok ? { unit, dim: q.dim, si: q.si } : null;
 }

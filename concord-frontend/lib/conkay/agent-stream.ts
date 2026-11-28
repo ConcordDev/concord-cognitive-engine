@@ -74,6 +74,8 @@ export async function streamConKayAgent(args: {
   message: string;
   history: Array<{ role: string; content: string }>;
   persona: string;
+  /** The ConKay build open in the Workshop: Kay edits and sizes THAT build (the server loads it for this person). */
+  buildId?: string | null;
   signal?: AbortSignal;
   onToken: (chunk: string) => void;
   onToolCall: (call: AgentToolCall) => void;
@@ -86,7 +88,7 @@ export async function streamConKayAgent(args: {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: args.message, history: args.history, persona: args.persona }),
+    body: JSON.stringify({ message: args.message, history: args.history, persona: args.persona, ...(args.buildId ? { buildId: args.buildId } : {}) }),
     signal: args.signal,
   });
   const reader = res.body?.getReader();
@@ -163,7 +165,7 @@ export function stripToolCallLeak(text: string): { text: string; leaked: boolean
 export function agentFailure(error?: string): string {
   const e = String(error || '');
   if (/fetch failed|ECONNREFUSED|llm|model|provider|ollama|no_brain|unavailable|503/i.test(e)) {
-    return 'ConKay’s language model is not reachable right now, so I can’t answer free-form questions. Study edits, FEA runs, sweeps, saving and keeping as a DTU still work.';
+    return 'I can’t reach my language model right now, so I can’t answer that yet. Try again in a minute. Building and checking parts in the Workshop still works without it.';
   }
   if (/401|no_actor/i.test(e)) return 'Sign in to talk to ConKay.';
   return `ConKay could not answer${e ? ` (${e})` : ''}.`;

@@ -20,7 +20,7 @@ describe("conkayTurnPlan", () => {
     assert.equal(conkayTurnPlan("search the web for the lightest carbon bike frames 2026").fallbackCall.tool, "web_search");
     const d = conkayTurnPlan("design a bracket that holds 50 kg, aluminum, show me the model");
     assert.equal(d.route, "design");
-    assert.equal(d.fallbackCall.tool, "conkay_design");
+    assert.equal(d.fallbackCall.tool, "conkay_build", "a bracket is a general build: Kay plans it, the solvers check it");
     const f = conkayTurnPlan("run FEA on it", H);
     assert.equal(f.route, "fea");
     assert.equal(f.fallbackCall.params.text, H[0].content);

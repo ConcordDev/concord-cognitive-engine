@@ -3,6 +3,7 @@
 // material it was assigned. Shells and kernel CAD bodies are skipped:
 // they are not a unique primitive solid.
 
+import { PROFILE_SHAPES, profileMesh, profileBounds } from "./geometry/shapes.js";
 import { Document, NodeIO } from "@gltf-transform/core";
 import { getMaterial } from "./materials/index.js";
 import { geometryVolumeM3 } from "./physics/solvers/mass-cost.js";
@@ -188,8 +189,9 @@ export function shapeSizeMm(g, axis = "y") {
     case "plate": return { x: mm(g.length), y: mm(g.width), z: mm(g.thickness) };
     case "cylinder":
     case "rod":
-    case "bolt": {
-      const d = mm(g.diameter);
+    case "bolt":
+    case "round-tube": {
+      const d = mm(g.diameter ?? g.outerDiameter);
       const len = mm(g.length);
       if (axis === "x") return { x: len, y: d, z: d };
       if (axis === "z") return { x: d, y: d, z: len };
@@ -208,6 +210,16 @@ export function shapeSizeMm(g, axis = "y") {
 
 function tessellate(node) {
   const g = node.geometry;
+  if (g && PROFILE_SHAPES.has(g.shape)) {
+    // extrude / revolve / loft: the shape's own mesh (metres, local) placed at the node's position
+    const placed = node.position && [node.position.x, node.position.y, node.position.z].every(Number.isFinite);
+    const c = placed ? [node.position.x, node.position.y, node.position.z] : [0, 0, 0];
+    const m = profileMesh(g, node.props?.axis || "x");
+    const positions = m.positions.map((v, i) => (v + c[i % 3]) * 1000);
+    const b = profileBounds(g, node.props?.axis || "x");
+    const size = { x: (b.x[1] - b.x[0]) * 1000, y: (b.y[1] - b.y[0]) * 1000, z: (b.z[1] - b.z[0]) * 1000 };
+    return m.indices.length >= 3 ? { positions, indices: m.indices, size_mm: size, placed } : null;
+  }
   const size = shapeSizeMm(g, node.props?.axis || "y");
   if (!size) return null;
   const positions = [];
@@ -219,8 +231,8 @@ function tessellate(node) {
   const axis = node.props?.axis || "y";
   if (g.shape === "box" || g.shape === "plate") {
     addBox(positions, indices, c, [size.x, size.y, size.z]);
-  } else if (g.shape === "cylinder" || g.shape === "rod" || g.shape === "bolt") {
-    const radius = (g.diameter * 1000) / 2;
+  } else if (g.shape === "cylinder" || g.shape === "rod" || g.shape === "bolt" || g.shape === "round-tube") {
+    const radius = ((g.diameter ?? g.outerDiameter) * 1000) / 2;
     const along = axis === "x" ? "x" : axis === "z" ? "z" : "y";
     addCylinder(positions, indices, c, radius, g.length * 1000, along);
   } else if (g.shape === "i-beam") {

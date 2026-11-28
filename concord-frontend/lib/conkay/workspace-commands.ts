@@ -499,6 +499,12 @@ export function detectOutOfScopeRequest(text: string): { receipt: string; label:
   const t = String(text || '');
   const hit = OUT_OF_SCOPE_ANALYSES.find((a) => a.terms.test(t));
   if (!hit) return null;
+  // "what is resonance in music", "the vibration in my car": the word, not an
+  // analysis of this study. Those are Kay's to answer.
+  if (/\b(?:music|musical|song|songs|sound|audio|guitar|piano|voice|vocal|singing|acoustic|instrument|room|speaker|radio|relationship|emotional|feel|feeling|vibe|vibes|car|engine|phone|washing machine)\b/i.test(t)) return null;
+  if (/^\s*(?:what(?:'s| is| are)|explain|define|tell me about|how does)\b/i.test(t)
+    && !/\b(?:beam|study|this|it|the part|my part|my beam)\b/i.test(t)
+    && !/\b(?:run|do|perform|calculate|compute|check)\b/i.test(t)) return null;
   const asks = /\b(?:run|do|perform|check|calculate|compute|find|give|show|what(?:'s| is)|critical)\b/i.test(t)
     || /\b(?:check|analysis|load)\b/i.test(t);
   return asks ? { receipt: hit.receipt, label: hit.label } : null;

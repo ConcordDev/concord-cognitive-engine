@@ -101,7 +101,8 @@ beforeEach(() => {
   Element.prototype.scrollTo = vi.fn() as unknown as typeof Element.prototype.scrollTo;
   // A wide screen: the parameters card starts open.
   window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as typeof window.matchMedia;
-  search = '';
+  // The study suites test the Workshop itself: open it the way a deep link does.
+  search = 'stage=workshop';
   appended = [];
   lensRun.mockReset();
   apiGet.mockReset();
@@ -253,7 +254,7 @@ describe('ConKay workspace — agent and reopen', () => {
     render(<ConKayWorkspace />);
     await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
     send('what about buckling?');
-    await waitFor(() => expect(within(convo()).getByText(/language model is not reachable right now/)).toBeTruthy());
+    await waitFor(() => expect(within(convo()).getByText(/can’t reach my language model right now/)).toBeTruthy());
   });
 
   it('reopens the stored study and conversation', async () => {
@@ -285,14 +286,15 @@ describe('ConKay workspace — agent and reopen', () => {
 
 describe('ConKay workspace — handoffs and navigation', () => {
   it('?ask= sends the request once and strips it from the URL', async () => {
-    search = 'ask=t_w%20%3D%2010%20mm';
+    search = 'stage=workshop&ask=t_w%20%3D%2010%20mm';
     render(<ConKayWorkspace />);
     await waitFor(() => expect(within(convo()).getByText(/Update applied: t_w = 10 mm/)).toBeTruthy());
-    expect(routerReplace).toHaveBeenCalledWith('/lenses/conkay');
+    // ?ask= is consumed; the Workshop stage stays in the address so a reload lands back here.
+    expect(routerReplace).toHaveBeenCalledWith('/lenses/conkay?stage=workshop');
   });
 
   it('?dtu= opens a kept beam study DTU and loads its inputs without showing results', async () => {
-    search = 'dtu=dtu_b1&title=Kept';
+    search = 'stage=workshop&dtu=dtu_b1&title=Kept';
     routes({ 'dtu.get': () => ok({ dtu: { id: 'dtu_b1', title: 'Shop beam: 300×150', machine: {
       kind: 'conkay_beam_study', jobId: 'sim_7', dims: { ...DIMS, length: 3000 }, support: 'cantilever', loadN: 9000,
       material: 'steel-a36', maxStressMPa: 42.1, utilization: 0.17,
@@ -305,7 +307,7 @@ describe('ConKay workspace — handoffs and navigation', () => {
   });
 
   it('?dtu= for another DTU shows its stored summary, then asks ConKay', async () => {
-    search = 'dtu=dtu_n1';
+    search = 'stage=workshop&dtu=dtu_n1';
     streamMock.mockResolvedValue({ ok: false, error: 'fetch failed' });
     routes({ 'dtu.get': () => ok({ dtu: { id: 'dtu_n1', title: 'Site notes', human: { summary: 'Column grid 6 m.' } } }) });
     render(<ConKayWorkspace />);
@@ -321,7 +323,7 @@ describe('ConKay workspace — handoffs and navigation', () => {
     fireEvent.click(screen.getByLabelText('New workspace'));
     fireEvent.change(screen.getByLabelText('Workspace name'), { target: { value: 'Launch Vehicle' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-    await waitFor(() => expect(routerReplace).toHaveBeenCalledWith('/lenses/conkay?ws=proj_new'));
+    await waitFor(() => expect(routerReplace.mock.calls.some(([u]) => /^\/lenses\/conkay\?(?=.*\bws=proj_new\b)(?=.*\bstage=workshop\b)/.test(String(u)))).toBe(true));
   });
 
   it('lists real stores in each nav section and says when they are empty', async () => {
@@ -485,18 +487,19 @@ describe('ConKay workspace — save, export, delete', () => {
   });
 });
 
+const TRUSS = {
+  geometry: { joints: [{ id: 'L0', x: 0, y: 0 }, { id: 'L1', x: 15, y: 0 }, { id: 'L2', x: 30, y: 0 }, { id: 'U1', x: 15, y: 3 }], bars: [] },
+  forces: [
+    { id: 'L0-L1', i: 'L0', j: 'L1', lengthM: 15, N: 12500, sense: 'tension' },
+    { id: 'L1-L2', i: 'L1', j: 'L2', lengthM: 15, N: 12500, sense: 'tension' },
+    { id: 'L0-U1', i: 'L0', j: 'U1', lengthM: 15.3, N: -25500, sense: 'compression' },
+    { id: 'U1-L2', i: 'U1', j: 'L2', lengthM: 15.3, N: -25500, sense: 'compression' },
+  ],
+  reactions: [{ joint: 'L0', Rx: 0, Ry: 2500 }, { joint: 'L2', Rx: 0, Ry: 2500 }],
+  maxDisplacementM: 0.0042, note: 'statically determinate',
+};
+
 describe('ConKay workspace — new designs from the box', () => {
-  const TRUSS = {
-    geometry: { joints: [{ id: 'L0', x: 0, y: 0 }, { id: 'L1', x: 15, y: 0 }, { id: 'L2', x: 30, y: 0 }, { id: 'U1', x: 15, y: 3 }], bars: [] },
-    forces: [
-      { id: 'L0-L1', i: 'L0', j: 'L1', lengthM: 15, N: 12500, sense: 'tension' },
-      { id: 'L1-L2', i: 'L1', j: 'L2', lengthM: 15, N: 12500, sense: 'tension' },
-      { id: 'L0-U1', i: 'L0', j: 'U1', lengthM: 15.3, N: -25500, sense: 'compression' },
-      { id: 'U1-L2', i: 'U1', j: 'L2', lengthM: 15.3, N: -25500, sense: 'compression' },
-    ],
-    reactions: [{ joint: 'L0', Rx: 0, Ry: 2500 }, { joint: 'L2', Rx: 0, Ry: 2500 }],
-    maxDisplacementM: 0.0042, note: 'statically determinate',
-  };
 
   it('a new workspace starts on "What do you want to build?"; picking the I-beam dismisses it', async () => {
     render(<ConKayWorkspace />);
@@ -630,5 +633,185 @@ describe('ConKay workspace — build(conkay) F3/F6/F12b', () => {
     expect(call?.[2]).toMatchObject({ requiredSafetyFactor: 2 });
     fireEvent.click(screen.getByRole('button', { name: 'Clear required safety factor' }));
     expect((screen.getByLabelText('Required safety factor') as HTMLInputElement).value).toBe('');
+  });
+});
+
+// Kay first (owner, 2026-11-26): ConKay opens on the conversation. Nothing
+// typed there is read as an edit of the I-beam; the Workshop opens when Kay
+// builds something you asked for, or when you open it.
+describe('ConKay — Kay first', () => {
+  beforeEach(() => { search = ''; });
+
+  it('opens on the conversation, not the I-beam study', async () => {
+    render(<ConKayWorkspace />);
+    expect(await screen.findByTestId('kay-welcome')).toBeTruthy();
+    expect(screen.getByText('Hi, I’m Kay.')).toBeTruthy();
+    expect(screen.queryByText(/Not solved yet/)).toBeNull();
+    expect(screen.queryByTestId('beam-viewport')).toBeNull();
+    expect((screen.getByLabelText('Message ConKay') as HTMLInputElement).placeholder).toMatch(/Ask Kay anything/);
+  });
+
+  it('everyday messages go to Kay — never a beam edit, a solver refusal or a re-solve', async () => {
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void }) => { args.onToken('Here is my honest take.'); return { ok: true }; });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    for (const text of ['what is resonance in music', 'run it', 'I want to build a shelf for my garage, 1.2 m wide, holds 50 kg', 'is this a good idea: quitting my job to trade crypto']) {
+      const before = streamMock.mock.calls.length;
+      send(text);
+      await waitFor(() => expect(streamMock.mock.calls.length).toBe(before + 1));
+      expect(streamMock.mock.calls[before][0].message).toBe(text);
+    }
+    expect(lensRun.mock.calls.some((c) => c[1] === 'beamStudy')).toBe(false);
+    expect(screen.queryByText(/The beam solver does not run/)).toBeNull();
+  });
+
+  it('a starter that needs finishing goes into the box; a complete one is sent', async () => {
+    streamMock.mockResolvedValue({ ok: true });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    fireEvent.click(screen.getByRole('button', { name: 'Get an honest take on an idea…' }));
+    expect((screen.getByLabelText('Message ConKay') as HTMLInputElement).value).toBe('Give me your honest take on this idea: ');
+    expect(streamMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'My week' }));
+    await waitFor(() => expect(streamMock).toHaveBeenCalled());
+    expect(streamMock.mock.calls[0][0].message).toBe('What’s on my schedule this week?');
+  });
+
+  it('the Workshop opens on request and the conversation is one click back', async () => {
+    render(<ConKayWorkspace />);
+    fireEvent.click(await screen.findByTestId('open-workshop'));
+    await waitFor(() => expect(screen.getByText(/Not solved yet/)).toBeTruthy());
+    expect(routerReplace.mock.calls.some(([u]) => /stage=workshop/.test(String(u)))).toBe(true);
+    fireEvent.click(screen.getByTestId('back-to-kay'));
+    expect(await screen.findByTestId('kay-welcome')).toBeTruthy();
+  });
+
+  it('in the conversation Kay asks what a design needs; the answer completes the brief and the Workshop opens on the result', async () => {
+    streamMock.mockResolvedValue({ ok: true });
+    apiPost.mockResolvedValueOnce({ data: { ok: true, stage: 'questions', domain: 'truss', questions: [{ question: 'How tall is the truss?' }] } });
+    apiPost.mockResolvedValueOnce({ data: { ok: true, stage: 'solved', domain: 'truss', answer: TRUSS, claims: [] } });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('design me a pedestrian bridge 30 m span 5 kN steel');
+    await waitFor(() => expect(within(convo()).getByText(/How tall is the truss\?/)).toBeTruthy());
+    expect(screen.getByTestId('kay-home')).toBeTruthy();
+    // an unrelated question in between is Kay's, not part of the brief
+    send('what do engineers mean by a panel?');
+    await waitFor(() => expect(streamMock).toHaveBeenCalledTimes(1));
+    send('3 m tall, 6 panels');
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
+    expect(apiPost.mock.calls[1][1]).toEqual({ prompt: 'design me a pedestrian bridge 30 m span 5 kN steel. 3 m tall, 6 panels' });
+    expect(await screen.findByTestId('back-to-kay')).toBeTruthy();
+    await waitFor(() => expect(within(convo()).getByText(/Solved the truss/)).toBeTruthy());
+  });
+
+  it('a build with no geometry still opens the Workshop on its report (checked / not checked, in your units)', async () => {
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { kind: 'build', title: 'pickling brine', report: {
+        verdict: 'passes_checked', headline: 'all 1 checks pass; 0 not checked', units: { mass: 'oz' }, parts: [], masses: [],
+        checked: [{ solver: 'chem.solution', target: 'BRINE', targetName: 'brine', status: 'PASS', check: 'salt mass_fraction ≤ max', pass: true, demand: '10.7 %', capacity: '12 %', utilization: 0.89, basis: 'recipe' }],
+        computed: [], gaps: [], questions: [], assumptions: [], sources: [] } } });
+      args.onToken('The brine checks out.');
+      return { ok: true };
+    });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('make a pickling brine with 1 oz salt in a cup of water');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/);
+    expect(screen.getByText(/10\.7 % vs 12 %/)).toBeTruthy();
+    expect(screen.queryByTestId('beam-viewport')).toBeNull();
+  });
+
+  it('a build can be worked on: pick a part, change it in any unit, the server re-checks and the report follows', async () => {
+    const report = (headline: string, height: string, status: 'fail' | 'pass') => ({
+      verdict: status === 'fail' ? 'fails' : 'passes_checked', headline, units: { length: 'in' },
+      parts: [{ id: 'BOARD', name: 'board', kind: 'Part', shape: 'box', material: 'white-pine', children: [] }], masses: [],
+      checked: [{ solver: 'structure.frame', target: 'SHELF', targetName: 'shelf', status: status === 'fail' ? 'FAIL' : 'PASS', check: 'books: M1 von Mises ≤ Fy / 2', pass: status === 'pass', demand: status === 'fail' ? '2650 psi' : '663 psi', capacity: '2393 psi', utilization: null, basis: 'the person', part: 'BOARD' }],
+      computed: [], gaps: [], questions: [], assumptions: [], sources: [],
+      partStatus: { BOARD: status },
+      parameters: [{ id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: height, dim: 'length' }],
+    });
+    const mesh = { kind: 'mesh', title: 'wall shelf model', positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2], partRanges: [{ id: 'BOARD', name: 'board', nodeName: 'board', i0: 0, i1: 3 }] };
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { ...mesh, buildId: 'bld_1', report: report('1 of 1 checks fail', '3/4 in', 'fail') } });
+      args.onToken('The board is overstressed.');
+      return { ok: true };
+    });
+    apiPost.mockResolvedValueOnce({ data: { ok: true, artifact: { ...mesh, buildId: 'bld_1', report: report('all 1 checks pass; 0 not checked', '1 1/2 in', 'pass') } } });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('build a 3 ft pine shelf for 72 lb of books');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('build-part-BOARD'));
+    expect(screen.getByTestId('build-part-status').textContent).toBe('fails a check');
+    const h = screen.getByLabelText('height') as HTMLInputElement;
+    fireEvent.change(h, { target: { value: '1 1/2 in' } });
+    fireEvent.blur(h);
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/api/conkay/build/bld_1/edit', { edits: [{ id: 'BOARD:geometry.height', value: '1 1/2 in' }] }, expect.anything()));
+    await waitFor(() => expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/));
+    expect(screen.getByTestId('build-part-status').textContent).toBe('passes its checks');
+    expect((screen.getByLabelText('height') as HTMLInputElement).value).toBe('1 1/2 in');
+    // with the build open, what is typed goes to Kay with that build's id (she edits and sizes THIS build)
+    send('make it thicker');
+    await waitFor(() => expect(streamMock.mock.calls.at(-1)?.[0].buildId).toBe('bld_1'));
+  });
+
+  it('a re-check the server refuses leaves the build as it was and says why', async () => {
+    streamMock.mockImplementation(async (args: { onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_build', ok: true, artifact: { kind: 'build', title: 'brine', buildId: 'bld_2', report: {
+        verdict: 'unchecked', headline: 'nothing was checked against a limit yet', units: {}, parts: [{ id: 'BRINE', name: 'brine', kind: 'Part', children: [] }], masses: [],
+        checked: [], computed: [], gaps: [], questions: [], assumptions: [], sources: [], partStatus: {},
+        parameters: [{ id: 'PACK:props.frameModel.factorOfSafety.value', node: 'PACK', nodeName: 'pack', label: 'safety factor', value: '2', dim: 'ratio' }] } } });
+      return { ok: true };
+    });
+    apiPost.mockResolvedValueOnce({ data: { ok: false, error: 'invalid_edit', errors: ['pack safety factor: a positive number'] } });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('make a brine');
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    const sf = screen.getByLabelText('safety factor') as HTMLInputElement;
+    fireEvent.change(sf, { target: { value: '0' } });
+    fireEvent.blur(sf);
+    expect(await screen.findByText(/a positive number/)).toBeTruthy();
+    expect(sf.value).toBe('2');
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/nothing was checked/);
+  });
+
+  it('?build=<id> reopens a saved build on its report; an unknown id says so', async () => {
+    apiGet.mockImplementation(async (url: string) => (url === '/api/conkay/build/bld_9'
+      ? { data: { ok: true, artifact: { kind: 'build', title: 'cooler wall', buildId: 'bld_9', report: {
+        verdict: 'passes_checked', headline: 'all 1 checks pass; 0 not checked', units: {}, parts: [], masses: [],
+        checked: [{ solver: 'thermal.conduction-1d', target: 'WALL', targetName: 'wall', status: 'PASS', check: 'peak temperature ≤ limit', pass: true, demand: '70 °F', capacity: '86 °F', utilization: null, basis: 'the person' }],
+        computed: [], gaps: [], questions: [], assumptions: [], sources: [] } } } }
+      : url === '/api/conkay/build/nope' ? { data: { ok: false, error: 'not_found' } } : { data: { items: [] } }));
+    search = 'build=bld_9';
+    render(<ConKayWorkspace />);
+    expect(await screen.findByTestId('build-report')).toBeTruthy();
+    expect(screen.getByTestId('build-headline').textContent).toMatch(/all 1 checks pass/);
+    cleanup();
+    search = 'build=nope';
+    render(<ConKayWorkspace />);
+    expect(await screen.findByText('That build was not found in your account.')).toBeTruthy();
+  });
+
+  it('when Kay builds a 3D model the Workshop opens to show it', async () => {
+    streamMock.mockImplementation(async (args: { onToken: (c: string) => void; onToolCall: (c: unknown) => void }) => {
+      args.onToolCall({ tool: 'conkay_design', ok: true, artifact: { kind: 'mesh', title: 'shelf concept', positions: [0, 0, 0, 1, 0, 0, 0, 1, 0], indices: [0, 1, 2] } });
+      args.onToken('The shelf concept is on the table.');
+      return { ok: true };
+    });
+    render(<ConKayWorkspace />);
+    await screen.findByTestId('kay-welcome');
+    send('design a wooden shelf 1.2 m wide that holds 50 kg');
+    await waitFor(() => expect(screen.queryByTestId('kay-welcome')).toBeNull());
+    expect(await screen.findByTestId('back-to-kay')).toBeTruthy();
+    expect(within(convo()).getByText('The shelf concept is on the table.')).toBeTruthy();
+    // back to the conversation stays there, with the model still built
+    fireEvent.click(screen.getByTestId('back-to-kay'));
+    expect(await screen.findByTestId('kay-home')).toBeTruthy();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByTestId('back-to-kay')).toBeNull();
   });
 });

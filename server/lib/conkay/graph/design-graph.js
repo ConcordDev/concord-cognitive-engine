@@ -26,6 +26,8 @@ export class DesignGraph {
   constructor(compiled) {
     this.design = compiled.design;
     this.materialOverrides = compiled.materialOverrides;
+    // Materials defined for this design (values with their sources), next to the library.
+    this.customMaterials = compiled.customMaterials || {};
     this.nodes = new Map(compiled.nodes.map((n) => [n.id, n]));
     this.edgeList = compiled.edges;
     this.loadCases = compiled.loadCases;
@@ -74,7 +76,7 @@ export class DesignGraph {
     if (!n) return { ok: false, error: `no node "${id}"` };
     const before = getPath(n, path);
     if (path === "material") {
-      if (!getMaterial(value)) return { ok: false, error: `unknown material "${value}"` };
+      if (!getMaterial(value) && !this.customMaterials[value]) return { ok: false, error: `unknown material "${value}"` };
       n.material = value;
     } else if (path.startsWith("geometry.")) {
       const param = path.slice("geometry.".length);
@@ -152,7 +154,7 @@ export class DesignGraph {
   /** Effective material for a node: library properties plus user overrides. */
   materialOf(id) {
     const n = this.node(id);
-    const m = n?.material ? getMaterial(n.material) : null;
+    const m = n?.material ? (getMaterial(n.material) || this.customMaterials[n.material] || null) : null;
     if (!m) return null;
     const o = this.materialOverrides[m.id];
     if (!o) return m;

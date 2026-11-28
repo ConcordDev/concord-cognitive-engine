@@ -16,6 +16,7 @@
 //   requirements: [{ id, label, of: { solver, target, output }, max?: q, min?: q }]
 // }
 
+import { PROFILE_SHAPES, compileProfileShape } from "../geometry/shapes.js";
 import { parseQuantity } from "./units.js";
 import { softenDesignIR } from "./soften-ir.js";
 import { getMaterial } from "../materials/index.js";
@@ -61,6 +62,8 @@ export const SHAPES = nullDict({
   // Rectangular hollow section (square/rect tube): outside width × height,
   // uniform wall, sharp corners (corner radii not modelled).
   "rect-tube": ["length", "width", "height", "wall"],
+  // Round hollow section (pipe, tube): outside diameter and wall.
+  "round-tube": ["length", "outerDiameter", "wall"],
   // A closed body skin approximated as an ellipsoid of the given overall
   // length × width × height: area, mass and frontal area come from these.
   "ellipsoid-shell": ["length", "width", "height", "thickness"],
@@ -153,6 +156,51 @@ const TYPED_VEHICLE_PROPS = { frontalArea: "area", airDensity: "density", frontA
 
 export const LIMITS = { nodes: 2000, edges: 5000, loadCases: 200, requirements: 500 };
 
+// A design-scoped material's properties: IR key → [field solvers read, dimension].
+export const CUSTOM_MATERIAL_PROPS = Object.freeze({
+  density: ["densityKgM3", "density"],
+  youngsModulus: ["youngsModulusPa", "pressure"],
+  yield: ["yieldPa", "pressure"],
+  ultimate: ["ultimatePa", "pressure"],
+  allowableStress: ["allowableStressPa", "pressure"],
+  poisson: ["poisson", "ratio"],
+  specificHeat: ["specificHeatJkgK", "specific_heat"],
+  conductivity: ["conductivityWmK", "thermal_conductivity"],
+  costPerKg: ["costPerKgUsd", "price_per_mass"],
+});
+/** { label?, category?, source?, <prop>: "value unit" | { value, source } } → a material solvers can read. */
+export function compileCustomMaterial(id, o) {
+  const errors = [];
+  if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(id)) return { errors: ["a material id is letters, digits, dots, dashes or underscores"] };
+  if (!o || typeof o !== "object") return { errors: ["needs its values and their source"] };
+  const m = { id, label: String(o.label || id).slice(0, 120), category: String(o.category || "design-defined").slice(0, 40), basis: "cited", designScoped: true, sources: {} };
+  for (const f of Object.values(CUSTOM_MATERIAL_PROPS)) m[f[0]] = null;
+  const defaultSource = o.source ? String(o.source).slice(0, 400) : null;
+  let any = 0;
+  for (const [k, v] of Object.entries(o)) {
+    if (["label", "category", "source", "note", "description"].includes(k)) continue;
+    if (k === "solidus" || k === "meltingPoint") {
+      const q = parseQuantity(typeof v === "object" && v ? v.value : v, "temperature");
+      if (!q.ok) { errors.push(`${k}: ${q.error}`); continue; }
+      m.solidusC = q.si - 273.15; m.sources.solidusC = (typeof v === "object" && v?.source) || defaultSource; any++;
+      if (!m.sources.solidusC) errors.push(`${k}: no source (say where the value comes from)`);
+      continue;
+    }
+    const spec = CUSTOM_MATERIAL_PROPS[k];
+    if (!spec) { errors.push(`${k}: not a material property ConKay uses (${Object.keys(CUSTOM_MATERIAL_PROPS).join(", ")}, solidus)`); continue; }
+    const raw = typeof v === "object" && v && !Array.isArray(v) && "value" in v ? v.value : v;
+    const src = (typeof v === "object" && v?.source ? String(v.source).slice(0, 400) : null) || defaultSource;
+    const q = parseQuantity(raw, spec[1]);
+    if (!q.ok) { errors.push(`${k}: ${q.error}`); continue; }
+    if (!(q.si >= 0)) { errors.push(`${k}: must not be negative`); continue; }
+    if (!src) { errors.push(`${k}: no source (say where the value comes from: a textbook section, a datasheet, or "stated by the user")`); continue; }
+    m[spec[0]] = q.si; m.sources[spec[0]] = src; any++;
+  }
+  if (!any && !errors.length) errors.push("has no values: give at least its density (with a source)");
+  m.source = defaultSource || Object.values(m.sources)[0] || null;
+  return { errors, material: Object.freeze(m) };
+}
+
 export function compileDesignIR(ir) {
   const errors = [];
   if (!ir || typeof ir !== "object") return { ok: false, errors: ["design IR must be an object"] };
@@ -166,12 +214,24 @@ export function compileDesignIR(ir) {
   const design = { id: String(ir.design?.id || "design"), name: String(ir.design?.name || ir.design?.id || "Untitled design") };
 
   const MATERIAL_OVERRIDE_KEYS = ["costPerKgUsd", "source"];
+  const MATERIAL_TEXT_KEYS = ["label", "note", "description"];
   const materialOverrides = {};
+  const customMaterials = {};
+  const refusedMaterials = new Set();
   for (const [id, o] of Object.entries(ir.materials || {})) {
-    if (!getMaterial(id)) { errors.push(`materials.${id}: unknown material`); continue; }
+    if (!getMaterial(id)) {
+      // A material the library doesn't carry (a hardwood, a polymer, a liquid): defined for this design, every value
+      // with where it came from (a textbook section, a datasheet, the person). A value with no source is refused.
+      const r = compileCustomMaterial(id, o);
+      if (r.errors.length) { errors.push(...r.errors.map((e) => `materials.${id}: ${e}`)); refusedMaterials.add(id); }
+      else customMaterials[id] = r.material;
+      continue;
+    }
     // Never silently drop or replace a user input: the only material override the engine applies is cost. A supplied
     // stiffness / strength / density (E, yield, ...) would otherwise be discarded and the library value used in its place.
     for (const k of Object.keys(o && typeof o === "object" ? o : {})) {
+      // Descriptive text (a label, a note) replaces no library value: allowed.
+      if (MATERIAL_TEXT_KEYS.includes(k)) continue;
       if (!MATERIAL_OVERRIDE_KEYS.includes(k)) errors.push(`materials.${id}.${k}: not usable - only ${MATERIAL_OVERRIDE_KEYS.join(", ")} can be overridden, so the library value would silently replace yours; remove it or add the material as a library entry`);
     }
     const entry = { source: o?.source ? String(o.source) : "user-supplied" };
@@ -318,13 +378,18 @@ export function compileDesignIR(ir) {
       node.props.vehicle = veh;
     }
     if (n.material != null) {
-      if (!getMaterial(n.material)) errors.push(`${where}: unknown material "${n.material}"`);
+      if (refusedMaterials.has(n.material)) { /* its own errors above say why */ } else if (!getMaterial(n.material) && !customMaterials[n.material]) errors.push(`${where}: unknown material "${n.material}" (define it under materials with its values and their source, or use a library id)`);
       else node.material = n.material;
     }
-    if (n.geometry != null) {
+    if (n.geometry != null && PROFILE_SHAPES.has(n.geometry.shape)) {
+      // extrude / revolve / loft: point lists and sections, compiled with their exact properties
+      const c = compileProfileShape(n.geometry, `${where}.geometry`);
+      if (c.errors) errors.push(...c.errors);
+      else node.geometry = c.geometry;
+    } else if (n.geometry != null) {
       const shape = n.geometry.shape;
       const shapeKeys = ownArray(SHAPES, shape);
-      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}"`);
+      if (!shapeKeys) errors.push(`${where}: unknown shape "${shape}" (box, plate, cylinder, rod, bolt, round-tube, rect-tube, i-beam, shell, extrude, revolve, loft)`);
       else {
         const geometry = { shape };
         for (const key of shapeKeys) {
@@ -431,7 +496,7 @@ export function compileDesignIR(ir) {
   }
   return {
     ok: true,
-    design: { design, materialOverrides, nodes, edges, loadCases, requirements },
+    design: { design, materialOverrides, customMaterials, nodes, edges, loadCases, requirements },
     ...(softenWarnings.length ? { warnings: softenWarnings } : {}),
   };
 }
