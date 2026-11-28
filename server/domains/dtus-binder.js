@@ -29,6 +29,7 @@ const persist = (d) => { try { globalThis._concordUpsertDTU?.(d); } catch { /* i
 const actorOf = (ctx) => { const id = ctx?.actor?.userId || ctx?.actor?.id || ctx?.userId || null; return id && id !== "anon" && id !== "anonymous" ? String(id) : null; };
 const ID_RE = /^[A-Za-z0-9_:.-]{3,160}$/;
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+// eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
 const clean = (v, max) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
 export const FRAMES = Object.freeze(["plain", "gilt", "ink", "neon", "field", "blueprint"]);

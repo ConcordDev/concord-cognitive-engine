@@ -25,10 +25,24 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y \
     curl \
     ca-certificates \
     python3 \
+    python3-venv \
+    libgl1 \
+    libx11-6 \
     make \
     g++ \
     z3 \
     && rm -rf /var/lib/apt/lists/*
+
+# ConKay's kernels, one venv (lib/conkay/chem/cantera.js falls back to
+# CONKAY_OCC_PYTHON, so both must live in it):
+#   - OpenCascade (cadquery-ocp): real solids, the cad.solid-check volume
+#     cross-check and STEP export of builds (lib/conkay/geometry/conkay_solids_occ.py).
+#     OCP links libGL / libX11 (installed above) even though nothing is rendered.
+#   - Cantera: chemical equilibrium, ignition delay and flame speed (chem.* solvers).
+# Without them those checks report NOT_COMPUTED with how to install them.
+RUN python3 -m venv /opt/conkay-occ \
+    && /opt/conkay-occ/bin/pip install --no-cache-dir cadquery-ocp==7.8.1.1.post1 cantera==3.2.0
+ENV CONKAY_OCC_PYTHON=/opt/conkay-occ/bin/python
 
 WORKDIR /app
 

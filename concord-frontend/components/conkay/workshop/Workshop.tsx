@@ -13,15 +13,19 @@
  * /lenses/conkay, /conkay/demo, /conkay/designs[/id[/live]] and
  * /conkay/workbench all mount this component.
  *
- * Default screen = three things: the object, Kay's ring + command line, a
- * thin rail. Everything else is summoned and dismissed.
+ * ConKay opens on Kay (owner, 2026-11-26: "Kay first"): the conversation
+ * fills the screen (KayHome) and the Workshop — the object, Kay's log, the
+ * rail — slides in when she builds something you asked for, or when you
+ * open it. While the conversation is the whole screen no study is in view,
+ * so nothing typed is read as an edit of the I-beam. Deep links into a view
+ * or a design (and /conkay/designs, /conkay/workbench) open the Workshop.
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
-  Boxes, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal, LayoutGrid, Cpu, Box, ChevronUp, ChevronDown, PanelRightOpen,
+  ArrowLeft, Boxes, Eye, EyeOff, Loader2, MessageSquare, PanelLeft, Save, SlidersHorizontal, LayoutGrid, Cpu, Box, ChevronUp, ChevronDown, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DISPLAY_LABELS, VIEW_LABELS, utilizationColor, type DisplayMode, type ViewPreset } from '@/lib/conkay/beam-view';
@@ -36,7 +40,10 @@ import { DesignBuilder } from '../designs/DesignBuilder';
 import { LiveBuild } from '../designs/LiveBuild';
 import type { BeamCallouts } from '../workspace/BeamViewport';
 import { KayLog, SweepTable } from './KayLog';
+import { KayHome } from './KayHome';
 import { useWorkshopController, type WorkshopController } from './useWorkshopController';
+import { BuildReportCard } from './BuildReportCard';
+import { isBuildReport } from '@/lib/conkay/build-report';
 import './workshop.css';
 import { workshopFontVars } from './workshopFonts';
 
@@ -75,10 +82,18 @@ export function Workshop(props: WorkshopProps) {
   );
 }
 
+type Stage = 'kay' | 'workshop';
+
 function WorkshopInner({ guest = false, initialView, designId: initialDesign = null }: WorkshopProps) {
   const [view, setViewState] = useState<WorkshopView>(initialView ?? 'table');
   const [designId, setDesignId] = useState<string | null>(initialDesign);
   const [logOpen, setLogOpen] = useState(true);
+  const [stage, setStage] = useState<Stage>(initialView || initialDesign ? 'workshop' : 'kay');
+  const stageRef = useRef<Stage>(stage);
+  stageRef.current = stage;
+  const [draft, setDraft] = useState<{ id: number; text: string } | null>(null);
+  // Set when the person sends something; a build that follows opens the Workshop.
+  const asked = useRef(false);
 
   // A newly designed object comes down onto the table through go(), so
   // the URL follows (?design=<id>) and a reload lands on it.
@@ -86,6 +101,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
   const c = useWorkshopController({
     guest,
     onDesigned: (id) => goRef.current('table', id),
+    studyActive: () => stageRef.current === 'workshop',
   });
   const { router, pathname, params } = c;
 
@@ -96,20 +112,37 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
     const qd = params.get('design');
     if (qv === 'table' || qv === 'wall' || qv === 'hood') setViewState(qv);
     if (qd) setDesignId(qd);
+    const qb = params.get('build');
+    if (qb) void c.openBuild(qb);
+    if (qv || qd || qb || params.get('stage') === 'workshop') setStage('workshop');
     // Read once on mount; afterwards the state drives the URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const syncUrl = useCallback((v: WorkshopView, d: string | null) => {
+  const syncUrl = useCallback((v: WorkshopView, d: string | null, st: Stage = 'workshop') => {
     const q = new URLSearchParams(params.toString());
     if (v === 'table') q.delete('view'); else q.set('view', v);
     if (d) q.set('design', d); else q.delete('design');
+    if (st === 'workshop' && v === 'table' && !d) q.set('stage', 'workshop'); else q.delete('stage');
     const s = q.toString();
     router.replace(s ? `${pathname}?${s}` : pathname);
   }, [params, pathname, router]);
   const go = useCallback((v: WorkshopView, d: string | null = designId) => {
-    setViewState(v); setDesignId(d); syncUrl(v, d);
+    setStage('workshop'); setViewState(v); setDesignId(d); syncUrl(v, d, 'workshop');
   }, [designId, syncUrl]);
   goRef.current = go;
+  const toKay = useCallback(() => {
+    asked.current = false;
+    setStage('kay'); setViewState('table'); setDesignId(null); syncUrl('table', null, 'kay');
+  }, [syncUrl]);
+  const sendFromKay = useCallback((t: string) => { asked.current = true; setDraft(null); void c.send(t); }, [c]);
+
+  // Kay built something you asked for (a design, a 3D model, a study solve):
+  // the Workshop opens beside the conversation to show it.
+  const built = Boolean(c.design || c.viewMesh || c.build || c.status === 'solving');
+  useEffect(() => {
+    // Once shown, the build has been seen: going back to the conversation stays there.
+    if (stage === 'kay' && asked.current && built) { asked.current = false; go('table', null); }
+  }, [built, stage, go]);
   const openDesign = useCallback((id: string) => go('table', id), [go]);
   const closeDesign = useCallback(() => go('wall', null), [go]);
 
@@ -122,6 +155,9 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
         </div>
       )}
 
+      {stage === 'kay' ? (
+        <KayHome c={c} onSend={sendFromKay} draft={draft} onDraft={(t) => setDraft({ id: Date.now(), text: t })} onOpenWorkshop={() => go('table', null)} />
+      ) : (<>
       {/* Phone / tablet: the three panes as tabs */}
       <div role="tablist" aria-label="Workspace panels" className="m-2 flex gap-1 rounded-full border border-[color:var(--ws-line)] p-1 lg:hidden">
         {([['model', 'Table', Boxes], ['chat', 'Kay', MessageSquare], ['browse', 'Browse', PanelLeft]] as const).map(([id, label, Icon]) => (
@@ -139,6 +175,10 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
             <div className="ws-glow-text text-[17px] font-semibold tracking-[0.32em] text-[color:var(--ws-arc)]">CONKAY</div>
             <div className="ws-label mt-0.5">The workshop</div>
           </div>
+          <button type="button" onClick={toKay} data-testid="back-to-kay"
+            className="flex items-center gap-2 rounded-md border border-[color:var(--ws-line-strong)] px-2.5 py-1.5 text-[13px] text-[color:var(--ws-text)] transition-colors hover:bg-[color:var(--ws-arc-soft)]">
+            <ArrowLeft className="h-4 w-4" aria-hidden /> Back to the conversation
+          </button>
           <nav aria-label="Workshop views" className="flex flex-col gap-0.5">
             {VIEWS.map((v) => (
               <button key={v.id} type="button" onClick={() => go(v.id)} aria-current={view === v.id ? 'page' : undefined}
@@ -179,7 +219,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
           {view === 'wall' && <Wall c={c} onOpenDesign={openDesign} />}
           {view === 'hood' && (designId ? <HoodDesign id={designId} onBack={() => go('table', designId)} /> : <HoodStudy c={c} onTable={() => go('table', null)} />)}
           {(view !== 'table' || !designId) && (
-            <VoiceComposer variant="workshop" busy={c.busy || c.status === 'solving'} onSend={(t) => { if (view !== 'table' || designId) go('table', null); void c.send(t); }} speakText={c.speak} lastLine={logOpen ? null : lastKayLine(c)} />
+            <VoiceComposer variant="workshop" busy={c.busy || c.status === 'solving'} placeholder={c.build ? 'Ask Kay about this build, or describe something new to build' : undefined} onSend={(t) => { if (view !== 'table' || designId) go('table', null); void c.send(t); }} speakText={c.speak} lastLine={logOpen ? null : lastKayLine(c)} />
           )}
         </div>
 
@@ -191,6 +231,7 @@ function WorkshopInner({ guest = false, initialView, designId: initialDesign = n
         )}
         {!logOpen && c.mobileTab === 'chat' && <div className="flex min-h-0 flex-col lg:hidden"><KayLog c={c} /></div>}
       </div>
+      </>)}
     </div>
   );
 }
@@ -206,7 +247,10 @@ function lastKayLine(c: WorkshopController): string | null {
 // ── The table: the study ─────────────────────────────────────────────────────
 
 function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen: boolean; onOpenLog: () => void }) {
-  const { inputs, setInputs, result, ws, status, busy, design, viewMesh } = c;
+  const { inputs, setInputs, result, ws, status, busy, design, viewMesh, build } = c;
+  const report = build?.report && isBuildReport(build.report) ? build.report : null;
+  const closeBuild = () => { c.setBuild(null); c.setViewMesh(null); c.setSelectedPart(null); };
+  const stepHref = build?.buildId ? `/api/conkay/build/${encodeURIComponent(build.buildId)}/step` : undefined;
   const fresh = Boolean(result) && !ws.stale;
   const callouts: BeamCallouts | null = useMemo(() => (
     result && fresh ? {
@@ -228,13 +272,13 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
         <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className={cn('h-2 w-2 shrink-0 rounded-full', led)} aria-hidden />
-            {viewMesh ? (
-              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-[color:var(--ws-text)]" data-testid="viewport-model-title">{viewMesh.title || 'ConKay model'}</span>
+            {viewMesh || report ? (
+              <span className="min-w-0 max-w-[16rem] truncate text-sm font-medium capitalize text-[color:var(--ws-text)]" data-testid="viewport-model-title">{(viewMesh || build)?.title || 'ConKay model'}</span>
             ) : (
               <input value={inputs.name} onChange={(e) => setInputs({ ...inputs, name: e.target.value.slice(0, 80) })} aria-label="Study name"
                 className="min-w-0 max-w-[16rem] truncate bg-transparent text-sm font-medium tracking-wide text-[color:var(--ws-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--ws-line-strong)]" />
             )}
-            <span className="ws-label hidden truncate sm:inline">· {c.workspaceName} · mm / N / MPa</span>
+            <span className="ws-label hidden truncate sm:inline">· {c.workspaceName}{report ? ' · checked by ConKay’s solvers' : ' · mm / N / MPa'}</span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {!logOpen && (
@@ -252,9 +296,10 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
         </div>
 
         {c.saveOpen && <SaveStrip c={c} />}
+        {c.buildError ? <p role="alert" className="absolute inset-x-3 top-11 z-20 rounded-md border border-[color:var(--ws-line-strong)] bg-[color:var(--ws-deep)] px-3 py-2 text-[12px] text-[color:var(--ws-amber)]">{c.buildError}</p> : null}
 
         {design && <DesignPane design={design} onClose={() => c.setDesign(null)} />}
-        {!design && !viewMesh && ws.fresh && status !== 'loading' && (
+        {!design && !viewMesh && !report && ws.fresh && status !== 'loading' && (
           <StartScreen busy={busy} onPick={(t) => void c.send(t)} onBeam={ws.startBeam} />
         )}
         {viewMesh && meshOk ? (
@@ -263,9 +308,15 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
               positions={viewMesh.positions} indices={viewMesh.indices} url={viewMesh.url} color={viewMesh.color} title={viewMesh.title}
               units={viewMesh.units} geometryUnits={viewMesh.geometryUnits} bbox_mm={viewMesh.bbox_mm} scaleNote={viewMesh.scaleNote}
               extents_mm={viewMesh.extents_mm} partList={viewMesh.partList} partRanges={viewMesh.partRanges} engineering={viewMesh.engineering}
-              className="absolute inset-0" testId="viewport-model"
+              partStatus={report?.partStatus} selectedPart={report ? c.selectedPart : undefined} onPickPart={report ? c.setSelectedPart : undefined}
+              className="absolute inset-x-0 bottom-0 top-10" testId="viewport-model"
             />
-            <div className="ws-glass absolute right-3 top-11 z-10 flex max-h-[calc(100%-4.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
+            {report ? (
+              <BuildReportCard report={report} title={build?.title} onClose={closeBuild}
+                selected={c.selectedPart} onSelect={c.setSelectedPart} onEdit={c.editBuild} onSize={c.sizeBuild} onUncertainty={c.checkUncertainty} lastSizing={build?.sizing ?? null} busy={c.buildBusy} stepHref={stepHref}
+                className="absolute z-20 bg-[color:var(--ws-glass-strong)] max-sm:inset-x-2 max-sm:bottom-2 max-sm:max-h-[48%] sm:right-3 sm:top-[4.75rem] sm:max-h-[calc(100%-5.5rem)] sm:w-72 sm:max-w-[calc(100%-1.5rem)]" />
+            ) : (
+            <div className="ws-glass absolute right-3 top-[4.75rem] z-20 flex max-h-[calc(100%-5.5rem)] w-60 max-w-[calc(100%-1.5rem)] flex-col rounded-lg" data-testid="viewport-parts">
               <div className="flex items-center justify-between gap-2 border-b border-[color:var(--ws-line)] px-3 py-2 text-xs font-medium text-[color:var(--ws-text)]">
                 <span className="flex items-center gap-1.5"><Boxes className="h-3.5 w-3.5" aria-hidden /> Parts{viewMesh.partList?.length ? ` (${viewMesh.partList.length})` : ''}</span>
                 <button type="button" onClick={() => c.setViewMesh(null)} className="rounded px-1.5 py-0.5 text-[11px] text-[color:var(--ws-arc)] hover:bg-[color:var(--ws-arc-soft)]">Back to study</button>
@@ -285,16 +336,21 @@ function StudyTable({ c, logOpen, onOpenLog }: { c: WorkshopController; logOpen:
                 {typeof viewMesh.triangleCount === 'number' ? `${viewMesh.triangleCount} triangles · ` : ''}drag to orbit
               </p>
             </div>
+            )}
           </>
+        ) : report ? (
+          <div className="absolute inset-0 flex items-start justify-center overflow-y-auto px-3 pb-3 pt-11">
+            <BuildReportCard report={report} title={build?.title} onClose={closeBuild} onEdit={c.editBuild} onSize={c.sizeBuild} lastSizing={build?.sizing ?? null} busy={c.buildBusy} stepHref={stepHref} className="w-full max-w-xl" />
+          </div>
         ) : (
           <BeamViewport
             dims={inputs.dims} support={inputs.support} utilization={c.utilization} view={c.view} display={c.display} showDims={c.showDims}
             leftInset={c.paramsOpen ? 0.22 : 0} solving={status === 'solving'} callouts={callouts}
-            onDimFocus={(key) => { c.setParamsOpen(true); c.setMobileTab('model'); setTimeout(() => c.paramRef.current?.focus(key), 50); }}
+            onDimFocus={(key) => { c.setParamsOpen(true); c.setMobileTab('model'); requestAnimationFrame(() => requestAnimationFrame(() => c.paramRef.current?.focus(key))); }}
           />
         )}
 
-        {!viewMesh && (
+        {!viewMesh && !report && (
           <div className="ws-glass absolute left-3 top-11 z-10 w-52 max-w-[calc(100%-1.5rem)] rounded-lg">
             <button type="button" onClick={() => c.setParamsOpen((v) => !v)} aria-expanded={c.paramsOpen} className="flex w-full items-center justify-between px-3 py-2">
               <span className="ws-label flex items-center gap-1.5"><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden /> Parameters</span>

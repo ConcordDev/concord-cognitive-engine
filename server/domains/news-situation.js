@@ -121,10 +121,10 @@ export function registerNewsSituation(registerLensAction, { getNewsState, catego
         }
         if (st.basis === "mentioned" && st.places.length > 1) {
           const keys = [...new Set(st.places.map((p) => p.key))].sort();
-          for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+          for (let i = 0; i < keys.length; i++) {for (let j = i + 1; j < keys.length; j++) {
             const id = `${keys[i]}|${keys[j]}`;
             arcs.set(id, { a: keys[i], b: keys[j], count: (arcs.get(id)?.count || 0) + 1 });
-          }
+          }}
         }
       }
       const buckets = new Map();

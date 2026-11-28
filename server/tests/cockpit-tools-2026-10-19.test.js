@@ -135,8 +135,9 @@ test("conkay_design returns a concept 3D assembly for phone stand / truss / gear
   assert.equal(buildConceptAssembly("a dragon"), null);
 });
 
-test("ConKay plan: CAD → conkay_design, free-form 3D → generate_3d, yes → last brief", () => {
-  assert.equal(conkayTurnPlan("make a CAD model of a phone stand", []).fallbackCall.tool, "conkay_design");
+test("ConKay plan: CAD → a checked build, free-form 3D → generate_3d, yes → last brief", () => {
+  // An engineered object is a general build (Kay plans it, the solvers check it); 2026-11-26.
+  assert.equal(conkayTurnPlan("make a CAD model of a phone stand", []).fallbackCall.tool, "conkay_build");
   assert.equal(conkayTurnPlan("generate a 3d model of a dragon", []).fallbackCall.tool, "generate_3d");
   const H = [{ role: "user", content: "design a steel cantilever bracket 300 mm long holding 2 kN" }, { role: "assistant", content: "Want me to run it through conkay_design.from-brief?" }];
   const p = conkayTurnPlan("Yes run it", H);

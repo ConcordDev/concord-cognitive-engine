@@ -41,8 +41,12 @@
 }
 
 /* Glass pane with HUD corner brackets. */
+/* No position here: this stylesheet is unlayered, so a position set on
+   .ws-glass overrode the `absolute` utility on every positioned glass card
+   (they fell into the page flow). The corner brackets need a positioned box,
+   so .ws-corners carries it; no corner-bracket element is absolute. */
+.ws-corners { position: relative; }
 .ws-glass {
-  position: relative;
   background: var(--ws-glass);
   border: 1px solid var(--ws-line);
   backdrop-filter: blur(14px) saturate(1.2);
@@ -113,6 +117,9 @@
  * ───────────────────────────────────────────────────────────────────── */
 .workshop .bg-\[\#040a13\],
 .workshop .bg-\[\#050d18\] { background-color: transparent; }
+/* An opened design covers the study: it stays opaque (it used to inherit the
+   transparency above, so the beam and its parameter card showed through). */
+.workshop .ws-overlay { background-color: var(--ws-deep); }
 .workshop .bg-\[\#06101c\],
 .workshop .bg-\[\#06101c\]\/80,
 .workshop .bg-\[\#06101c\]\/85,

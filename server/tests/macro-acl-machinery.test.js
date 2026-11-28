@@ -28,6 +28,7 @@ function populationMaps() {
     macroAcl.set(`${domain}.${name}`, rule);
   const allowDomain = (domain, rule = { roles: ["owner", "admin", "member"], scopes: ["*"] }) =>
     macroAclDomain.set(domain, rule);
+  // eslint-disable-next-line no-new-func -- compiles a slice of server.js to test one handler in isolation
   const factory = new Function("allowMacro", "allowDomain", block + "\nreturn true;");
   factory(allowMacro, allowDomain);
   return { macroAcl, macroAclDomain };

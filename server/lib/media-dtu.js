@@ -488,12 +488,17 @@ export function setMediaPrivacy(STATE, mediaId, privacy) {
   if (privacy !== "public" && privacy !== "private" && privacy !== "followers-only") {
     return { ok: false, error: "invalid privacy" };
   }
-  const dtu = STATE._media?.mediaDTUs?.get?.(mediaId);
+  // A row not yet in memory (e.g. after a restart) is recalled from SQLite,
+  // and the new privacy is written back there, so a release that made its
+  // media public stays public across restarts.
+  const media = getMediaState(STATE);
+  const dtu = media.mediaDTUs.get(mediaId) || recallMedia(STATE, mediaId);
   if (!dtu) return { ok: false, error: "Media not found" };
   dtu.privacy = privacy;
   dtu.scope = privacy === "public" ? "global" : "user";
   dtu.updatedAt = new Date().toISOString();
   if (STATE.dtus?.set) STATE.dtus.set(mediaId, dtu);
+  rememberMedia(STATE, dtu);
   return { ok: true, mediaDTU: dtu };
 }
 

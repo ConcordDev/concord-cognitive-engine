@@ -138,6 +138,11 @@ describe("education catalog — DB persistence (durable, restart-equivalent)", (
     const courseId = course.result.course.id;
     const p1 = call(db, "authorA", "discussions-post", { courseId, text: "question from A" });
     assert.equal(p1.ok, true);
+    // The forum belongs to the course's people: an outsider can't post or read.
+    assert.equal(call(db, "userB", "discussions-post", { courseId, text: "drive-by" }).ok, false);
+    assert.equal(call(db, "userC", "discussions-list", { courseId }).result.discussions.length, 0);
+    assert.equal(call(db, "userB", "enrollments-enroll", { courseId }).ok, true);
+    assert.equal(call(db, "userC", "enrollments-enroll", { courseId }).ok, true);
     const p2 = call(db, "userB", "discussions-post", { courseId, text: "reply from B" });
     assert.equal(p2.ok, true);
 
@@ -155,6 +160,9 @@ describe("education catalog — DB persistence (durable, restart-equivalent)", (
     assert.equal(up.result.upvotes, 1);
     const rowAfterUpvote = db.prepare("SELECT upvotes FROM edu_discussions WHERE id = ?").get(p1.result.post.id);
     assert.equal(rowAfterUpvote.upvotes, 1);
+    // one vote per person, and none on your own post
+    assert.equal(call(db, "userC", "discussions-upvote", { id: p1.result.post.id }).ok, false);
+    assert.equal(call(db, "authorA", "discussions-upvote", { id: p1.result.post.id }).ok, false);
   });
 
   it("cohorts persist into edu_cohorts; join/leave from a different user land in the roster_json column", () => {

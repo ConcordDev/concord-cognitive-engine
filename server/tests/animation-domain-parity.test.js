@@ -195,9 +195,11 @@ describe("animation video export", () => {
 });
 
 describe("animation audio waveform sync", () => {
+  // A soundtrack needs a real source (an upload or an http(s) link): the domain
+  // refuses a track with neither, so these tests give it a link.
   it("audio-waveform-set stores peaks and audio-sync-map maps to frames", () => {
     const a = newAnim();
-    const t = call("audio-track-add", ctxA, { animId: a.id, name: "Score", startSec: 1 }).result.track;
+    const t = call("audio-track-add", ctxA, { animId: a.id, name: "Score", startSec: 1, url: "https://example.com/score.mp3" }).result.track;
     const ws = call("audio-waveform-set", ctxA, {
       animId: a.id, trackId: t.id, peaks: [0.1, 0.9, 0.4, 1], durationSec: 2,
     });
@@ -211,7 +213,7 @@ describe("animation audio waveform sync", () => {
 
   it("audio-waveform-set rejects an empty peaks array", () => {
     const a = newAnim();
-    const t = call("audio-track-add", ctxA, { animId: a.id, name: "X" }).result.track;
+    const t = call("audio-track-add", ctxA, { animId: a.id, name: "X", url: "https://example.com/x.mp3" }).result.track;
     assert.equal(call("audio-waveform-set", ctxA, { animId: a.id, trackId: t.id, peaks: [] }).ok, false);
   });
 });

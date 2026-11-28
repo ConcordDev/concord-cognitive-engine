@@ -86,13 +86,26 @@ function sectionFromGeometry(g) {
   if (g.shape === "round-tube") return { shape: "round-tube", od: g.od ?? g.outerDiameter, wall: g.wall };
   if (g.shape === "i-beam") return { shape: "i-beam", height: g.height, flangeWidth: g.flangeWidth, flangeThickness: g.flangeThickness, webThickness: g.webThickness };
   if (g.shape === "rect" || g.shape === "bar") return { shape: "rect", width: g.width, height: g.height };
+  // A part's own shape, read as a member section: a board (box) is width × height across its length, a plate
+  // spans along its length with its thickness as the depth, a rod or cylinder is a solid round.
+  if (g.shape === "box") return { shape: "rect", width: g.width, height: g.height };
+  if (g.shape === "plate") return { shape: "rect", width: g.width, height: g.thickness };
+  if (g.shape === "rod" || g.shape === "cylinder") return { shape: "round", diameter: g.diameter };
+  // An extruded profile: its exact section properties (Green's theorem; the profile's b axis is the
+  // member's height direction). Torsion constant J is Saint-Venant's estimate, said so in the warnings.
+  if (g.shape === "extrude" && g.derived?.A > 0) {
+    const d = g.derived;
+    const notes = [`J by Saint-Venant's estimate A⁴/(4π²Ip)${d.hollow ? "; not valid for a hollow or thin-walled section, so torsional results for it are unreliable" : ""}`];
+    if (Math.abs(d.Iab) > 1e-3 * Math.sqrt(d.Iaa * d.Ibb)) notes.push("unsymmetric section: its principal axes are rotated from the profile axes and bending is taken about the profile axes (skew bending not modelled)");
+    return { shape: "properties", A: d.A, Iz: d.Iaa, Iy: d.Ibb, J: d.J, cy: d.cMaxA, cz: d.cMaxB, depth: d.depth, tauPerT: Math.max(d.cMaxA, d.cMaxB) / d.J, notes };
+  }
   return null;
 }
 
 function materialProps(mat) {
   if (!mat || !(mat.youngsModulusPa > 0)) return { error: "material needs E" };
   if (!(mat.poisson > 0)) return { error: `material ${mat.id} has no Poisson ratio: G not computed` };
-  return { E: mat.youngsModulusPa, G: mat.youngsModulusPa / (2 * (1 + mat.poisson)), fy: mat.yieldPa ?? null, id: mat.id, source: mat.source };
+  return { E: mat.youngsModulusPa, G: mat.youngsModulusPa / (2 * (1 + mat.poisson)), nu: mat.poisson, fy: mat.yieldPa ?? null, id: mat.id, source: mat.source };
 }
 
 export const frameStructure = registerSolver({
@@ -112,12 +125,14 @@ export const frameStructure = registerSolver({
     const fm = ctx.get(id, "props.frameModel");
     const inputs = {};
     const members = [];
+    const sectionNotes = [];
     for (const m of fm.members || []) {
       let section, mat;
       if (m.part) {
         // a member may override its part's section where the part is cut (an access opening over a length)
         section = m.section || sectionFromGeometry(ctx.get(m.part, "geometry"));
-        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (rect-tube, round-tube, i-beam, rect)` };
+        if (!section) return { notComputed: `member ${m.id}: part ${m.part} has no frame section (box, plate, rod, cylinder, rect-tube, round-tube, i-beam, extrude)` };
+        if (Array.isArray(section.notes)) for (const t of section.notes) sectionNotes.push(`member ${m.id} (${m.part}): ${t}`);
         mat = ctx.material(m.part);
         if (!mat) return { notComputed: `member ${m.id}: part ${m.part} has no material` };
       } else {
@@ -129,7 +144,7 @@ export const frameStructure = registerSolver({
       if (mp.error) return { notComputed: `member ${m.id}: ${mp.error}` };
       // a part split into several members at joints is checked for beam-theory validity on its own length
       const partLen = m.part ? ctx.get(m.part, "geometry.length") : null;
-      members.push({ id: m.id, i: m.i, j: m.j, section, E: mp.E, G: mp.G, fy: mp.fy, segments: m.segments, part: m.part || null, ...(m.endSprings ? { endSprings: m.endSprings } : {}), ...(Number.isFinite(partLen) ? { checkLength: partLen } : {}) });
+      members.push({ id: m.id, i: m.i, j: m.j, section, E: mp.E, G: mp.G, nu: mp.nu, fy: mp.fy, segments: m.segments, part: m.part || null, ...(m.endSprings ? { endSprings: m.endSprings } : {}), ...(Number.isFinite(partLen) ? { checkLength: partLen } : {}) });
       inputs[`member.${m.id}`] = { value: { section, material: mp.id, part: m.part || null }, source: mp.source };
     }
     // shear panels → equivalent diagonals (not stress-checked as members; checked as panels below)
@@ -156,7 +171,7 @@ export const frameStructure = registerSolver({
     const panelMember = new Set(panelInfo.flatMap((p) => p.diagonals.map((d) => d.id)));
     const fs = fm.factorOfSafety?.value ?? 1;
     const reqBuckling = fm.buckling?.requiredFactor?.value ?? 1;
-    const warnings = [...panelWarnings];
+    const warnings = [...panelWarnings, ...sectionNotes];
     const scaleable = new Map();
     const loadCases = [];
     for (const lc of fm.loadCases || []) {
@@ -229,6 +244,17 @@ export const frameStructure = registerSolver({
       const structural = c.members.filter((mr) => !panelMember.has(mr.id));
       for (const mr of structural) {
         if (mr.fy && !stiffnessOnly.has(c.id)) margins.push({ check: `${c.id}: ${mr.id} von Mises ≤ Fy / ${fs}`, demand: mr.worst.vonMises, capacity: mr.fy / fs, unit: "Pa" });
+        // A thin round tube crumples (local shell buckling) before it yields. Classical critical stress
+        // σcr = E t / (R √(3(1−ν²))) with NASA SP-8007's knockdown for bending, γ = 1 − 0.731 (1 − e^(−φ)),
+        // φ = √(R/t) / 16 (NASA SP-8007, Buckling of Thin-Walled Circular Cylinders, 1968, §4.1.2).
+        const inMember = members.find((x) => x.id === mr.id);
+        const sec = inMember?.section;
+        if (sec?.shape === "round-tube" && sec.wall > 0 && !stiffnessOnly.has(c.id)) {
+          const t = sec.wall, R = (sec.od - t) / 2, nu = inMember.nu ?? 0.3;
+          const gamma = 1 - 0.731 * (1 - Math.exp(-Math.sqrt(R / t) / 16));
+          const sigmaCr = (gamma * inMember.E * t) / (R * Math.sqrt(3 * (1 - nu * nu)));
+          margins.push({ check: `${c.id}: ${mr.id} thin-wall local buckling ≤ σcr / ${fs}`, demand: mr.worst.vonMises, capacity: sigmaCr / fs, unit: "Pa", basis: "NASA SP-8007 (bending knockdown)" });
+        }
         if (mr.fy && (!gov || mr.worst.vonMises / mr.fy > gov.worst.vonMises / gov.fy)) gov = mr;
       }
       if (structural.some((mr) => !mr.fy)) warnings.push(`${c.id}: members without a yield strength are not stress-checked: ${structural.filter((mr) => !mr.fy).map((mr) => mr.id).join(", ")}`);

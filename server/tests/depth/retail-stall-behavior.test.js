@@ -73,6 +73,7 @@ describe("retail stall — custom price tag", () => {
     const r = await shop.run("cart-add-custom-line", { cartId, name: evil, price: 1 });
     const name = r.result.cart.lines[0].name;
     assert.ok(name.length <= 60);
+    // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
     assert.doesNotMatch(name, /[\u0000-\u001f]/);
     assert.ok(name.startsWith("<img src=x"), "stored verbatim as text; the client renders it as text");
   });

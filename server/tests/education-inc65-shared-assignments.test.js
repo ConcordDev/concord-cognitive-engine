@@ -146,6 +146,8 @@ describe("education INC-65 — shared assignments, hidden ids, roster join", () 
     const course = call("courses-create", ctx1, { title: "Visible Course", instructor: "Dr One" });
     const courseId = course.result.course.id;
     call("discussions-post", ctx1, { courseId, text: "prompt from the author" });
+    // a learner joins the course before they can take part in its discussion
+    assert.equal(call("enrollments-enroll", ctx2, { courseId }).ok, true);
     call("discussions-post", ctx2, { courseId, text: "reply from the learner" });
 
     const cohort = call("cohorts-create", ctx1, { title: "Section A", instructor: "Dr One", courseId, capacity: 10 });
@@ -167,7 +169,6 @@ describe("education INC-65 — shared assignments, hidden ids, roster join", () 
     assert.ok(searchBy2.result.matches.some((c) => c.id === courseId));
     assertNoRawId(searchBy2, acct1, "acct2 courses-search");
 
-    assert.equal(call("enrollments-enroll", ctx2, { courseId }).ok, true);
     const enrolled = call("enrollments-list", ctx2, {});
     assert.ok(enrolled.result.enrollments.some((e) => e.courseId === courseId));
     assertNoRawId(enrolled, acct1, "acct2 enrollments-list");

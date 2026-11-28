@@ -13,6 +13,7 @@ import {
   registerGeneratedAsset,
 } from '../lib/asset-gen/generate-asset.js';
 import { resolveCurrentBest, promoteVersion } from '../lib/evo-asset/registry.js';
+import { buildFromBrief, saveBuild, loadBuild, listBuilds, editBuild, openBuild, buildStepFile, sizeSavedBuild, uncertaintyForSavedBuild } from '../lib/conkay/build/index.js';
 
 const ARCHETYPES = Object.freeze(['sword', 'spear', 'staff', 'mace', 'shield']);
 // Accept compound FE prompts like "longsword" / "warhammer→mace" without forcing
@@ -279,6 +280,116 @@ export default function createConkayDesignRouter({ requireAuth, db }) {
         error: e instanceof Error ? e.message : String(e),
       });
     }
+  });
+
+  /**
+   * POST /api/conkay/build — build anything: { brief, answers?: [{ ask, answer }], id? }
+   * Kay plans the design graph (model), every applicable solver checks it,
+   * → { ok, id, summary, report, artifact } or { ok:false, error, message }.
+   */
+  router.post('/build', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const brief = String(req.body?.brief ?? req.body?.text ?? '').slice(0, 4000);
+    if (!brief.trim()) return res.status(400).json({ ok: false, error: 'brief_required', message: 'Tell Kay what to build.' });
+    const answers = (Array.isArray(req.body?.answers) ? req.body.answers : [])
+      .filter((a) => a && String(a.answer ?? '').trim()).slice(0, 12)
+      .map((a) => ({ ask: String(a.ask ?? '').slice(0, 400), answer: String(a.answer).slice(0, 1000) }));
+    const prior = req.body?.id ? loadBuild(db, req.body.id, userId) : null;
+    if (req.body?.id && !prior) return res.status(404).json({ ok: false, error: 'not_found' });
+    try {
+      const result = await buildFromBrief({ brief: prior?.brief || brief, answers, previous: prior?.plan?.ir || null, db, userId });
+      const id = saveBuild(db, { id: prior?.id || null, userId, brief: prior?.brief || brief, answers, result });
+      if (!result.ok) return res.status(result.error === 'no_model' ? 503 : 422).json({ ok: false, id, error: result.error, message: result.message, errors: result.errors });
+      res.json({ ok: true, id, summary: result.summary, report: result.report, ir: result.ir, artifact: result.artifact });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'build_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * POST /api/conkay/build/:id/edit — { edits: [{ id, value }] } (ids from report.parameters;
+   * values in any unit). Every solver re-runs; no model. → { ok, report, artifact, applied }.
+   */
+  router.post('/build/:id/edit', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const edits = Array.isArray(req.body?.edits) ? req.body.edits.slice(0, 50) : [];
+    if (!edits.length) return res.status(400).json({ ok: false, error: 'edits_required' });
+    try {
+      const r = await editBuild(db, { id: req.params.id, userId, edits });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json({ ok: true, id: r.id, report: r.report, artifact: r.artifact, applied: r.applied, ir: r.ir });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'edit_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * POST /api/conkay/build/:id/size — { variables: [{ id, min, max } | { id, stock: [...] }] }:
+   * the lightest design in those bounds on which every check passes (no model; every number
+   * from a solver run). → { ok, feasible, sizing, report?, artifact? }.
+   */
+  router.post('/build/:id/size', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const variables = Array.isArray(req.body?.variables) ? req.body.variables.slice(0, 12) : [];
+    if (!variables.length) return res.status(400).json({ ok: false, error: 'variables_required', message: 'Say which sizes may change, with their bounds or stock sizes.' });
+    try {
+      const r = await sizeSavedBuild(db, { id: req.params.id, userId, variables });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'size_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /**
+   * POST /api/conkay/build/:id/uncertainty — { samples?, seed?, loadCoV?, dimensionCoV?, scatter? }:
+   * how sure every check is (Monte Carlo over material, load and size scatter; read-only).
+   */
+  router.post('/build/:id/uncertainty', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    const b = req.body || {};
+    const num = (v) => (v == null || v === '' ? undefined : Number(v));
+    try {
+      const r = await uncertaintyForSavedBuild(db, { id: req.params.id, userId, samples: num(b.samples), seed: num(b.seed), loadCoV: num(b.loadCoV), dimensionCoV: num(b.dimensionCoV), scatter: b.scatter && typeof b.scatter === 'object' ? b.scatter : undefined });
+      if (!r.ok) return res.status(r.error === 'not_found' ? 404 : 422).json(r);
+      res.json(r);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'uncertainty_failed', message: String(e?.message || e) });
+    }
+  });
+
+  /** GET /api/conkay/build/:id/step — the build as real B-rep solids (STEP AP214), from OpenCascade. */
+  router.get('/build/:id/step', auth, async (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    if (!userId) return res.status(401).json({ ok: false, error: 'auth_required' });
+    try {
+      const r = await buildStepFile(db, req.params.id, userId);
+      if (!r.ok) {
+        const code = r.error === 'not_found' ? 404 : r.error === 'kernel' ? 503 : 422;
+        return res.status(code).json({ ok: false, error: r.error, message: r.message || (r.error === 'kernel' ? 'The CAD kernel is not available here, so a solid STEP file cannot be made.' : undefined), errors: r.errors });
+      }
+      res.setHeader('Content-Type', 'application/step');
+      res.setHeader('Content-Disposition', `attachment; filename="${r.name}.step"`);
+      res.send(r.step);
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'step_failed', message: String(e?.message || e) });
+    }
+  });
+
+  router.get('/build/:id', auth, (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    const o = userId ? openBuild(db, req.params.id, userId) : null;
+    if (!o) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true, build: o.build, artifact: o.artifact });
+  });
+
+  router.get('/builds', auth, (req, res) => {
+    const userId = req.user?.id || req.user?.userId || null;
+    res.json({ ok: true, builds: userId ? listBuilds(db, userId, Number(req.query.limit) || 20) : [] });
   });
 
   return router;

@@ -14,7 +14,7 @@ import { BufferAttribute, BufferGeometry, Mesh, MeshStandardMaterial, Plane, Ray
 import { dimensionLabel, displayScale, gridStep, isUnitless, scaleBarLength, spanMm, type MeshSize } from '@/lib/mesh/scale-readout';
 import {
   applySectionClip, massLabel, measureDistance, partVisibility, pushMeasurePoint, sectionAt, STEP_EXPORT, VIEW_DIRECTION, visibleIndices,
-  type ClipObject, type PartRange, type StandardView, type Vec3,
+  PART_STATUS_COLOR, type ClipObject, type PartCheckStatus, type PartRange, type StandardView, type Vec3,
 } from '@/lib/mesh/engineering-view';
 import { meshToGlb, meshToStep, meshToStl } from '@/lib/mesh/mesh-export';
 
@@ -28,6 +28,10 @@ export interface MeshArtifact extends MeshSize {
   partList?: Array<{ name: string; size_mm?: number[] | { x?: number; y?: number; z?: number }; nodeName?: string }>;
   partRanges?: PartRange[];
   engineering?: { massKg?: number | null; massNote?: string | null };
+  /** A ConKay build: each part's worst check (by node id) colours it, and parts can be picked. */
+  partStatus?: Record<string, PartCheckStatus>;
+  selectedPart?: string | null;
+  onPickPart?: (id: string | null) => void;
   /** Container classes; defaults to the chat card size. */
   className?: string;
   testId?: string;
@@ -43,7 +47,10 @@ function sizeText(size: number[] | { x?: number; y?: number; z?: number } | unde
   return '';
 }
 
-function Part({ positions, indices, color, scale, clip }: { positions: number[]; indices: number[]; color?: string | null; scale: number; clip: Plane[] }) {
+function Part({ positions, indices, color, scale, clip, selected, onPick, testId }: {
+  positions: number[]; indices: number[]; color?: string | null; scale: number; clip: Plane[];
+  selected?: boolean; onPick?: () => void; testId?: string;
+}) {
   const geometry = useMemo(() => {
     const src = scale === 1 ? positions : positions.map((n) => n * scale);
     const g = new BufferGeometry();
@@ -53,9 +60,11 @@ function Part({ positions, indices, color, scale, clip }: { positions: number[];
     return g;
   }, [positions, indices, scale]);
   return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial color={color || '#94a3b8'} metalness={0.3} roughness={0.5} clippingPlanes={clip} />
-      <Edges threshold={20} color="#0f172a" />
+    <mesh geometry={geometry} name={testId}
+      onClick={onPick ? (e) => { e.stopPropagation(); onPick(); } : undefined}>
+      <meshStandardMaterial color={color || '#94a3b8'} metalness={0.3} roughness={0.5} clippingPlanes={clip}
+        emissive={selected ? '#38bdf8' : '#000000'} emissiveIntensity={selected ? 0.35 : 0} />
+      <Edges threshold={20} color={selected ? '#e0f2fe' : '#0f172a'} />
     </mesh>
   );
 }
@@ -174,13 +183,17 @@ function downloadBytes(bytes: ArrayBuffer | Uint8Array, filename: string, mime: 
 export default function MeshArtifactView({
   positions, indices, url, color, className, testId,
   units, geometryUnits, bbox_mm, scaleNote, extents_mm, partList, partRanges, engineering,
+  partStatus, selectedPart, onPickPart,
 }: MeshArtifact) {
   const hasPositions = Array.isArray(positions) && positions.length >= 9 && Array.isArray(indices) && indices.length >= 3;
   const mediaUrl = typeof url === 'string' && MEDIA_URL.test(url) ? url : '';
   const { scene, failed } = useGlbScene(mediaUrl || undefined, color);
   const showPositions = hasPositions && (!mediaUrl || failed);
   const scale = displayScale({ usingPositions: showPositions, geometryUnits, units });
-  const shell = `${className ?? 'h-56 w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_center,#0b2340_0%,#050b14_70%)] ring-1 ring-sky-400/20'} relative`;
+  // A caller that positions the view (absolute / fixed, e.g. the Workshop table) keeps that position;
+  // appending `relative` after it collapsed the view to a strip.
+  const positioned = /\b(?:absolute|fixed)\b/.test(className ?? '');
+  const shell = `${className ?? 'h-56 w-full overflow-hidden rounded-lg bg-[radial-gradient(ellipse_at_center,#0b2340_0%,#050b14_70%)] ring-1 ring-sky-400/20'}${positioned ? '' : ' relative'}`;
   const size: MeshSize = { units, geometryUnits, bbox_mm, scaleNote, extents_mm };
   const span = spanMm(size);
   const step = span > 0 ? gridStep(span) : 0;
@@ -202,10 +215,12 @@ export default function MeshArtifactView({
   );
   const onPoint = useCallback((p: Vec3) => setMeasurePts((cur) => pushMeasurePoint(cur, p)), []);
   const distance = measurePts.length === 2 ? measureDistance(measurePts[0], measurePts[1]) : null;
-  const parts = (partList && partList.length > 0 ? partList : [{ name: 'model' }]).map((p, i) => ({
-    id: p.nodeName || partRanges?.[i]?.nodeName || p.name,
-    label: p.name,
-  }));
+  const parts: Array<{ id: string; label: string; pick?: string }> = partStatus && partRanges?.length
+    ? partRanges.map((r, i) => ({ id: r.nodeName || r.name || String(i), label: r.name || r.id || `part ${i + 1}`, pick: r.id || r.nodeName || r.name || String(i) }))
+    : (partList && partList.length > 0 ? partList : [{ name: 'model' }]).map((p, i) => ({
+      id: p.nodeName || partRanges?.[i]?.nodeName || p.name,
+      label: p.name,
+    }));
   const exportPositions = hasPositions ? (scale === 1 ? positions! : positions!.map((n) => n * scale)) : null;
   const exportIndices = hasPositions ? indices! : null;
   const save = (kind: 'stl' | 'glb' | 'step') => {
@@ -233,6 +248,7 @@ export default function MeshArtifactView({
       ) : (
         <Canvas
           key={view}
+          onPointerMissed={onPickPart && !measuring ? () => onPickPart(null) : undefined}
           orthographic={view !== 'orbit'}
           camera={view === 'orbit' ? { position: camPosition, fov: 40 } : { position: camPosition, zoom: span > 0 ? 200 / span : 1 }}
           dpr={1}
@@ -254,7 +270,19 @@ export default function MeshArtifactView({
           <SectionApplier planes={planes} />
           <MeasureProbe enabled={measuring} onPoint={onPoint} />
           <Bounds fit clip observe margin={1.3}>
-            {showPositions && shownIndices.length >= 3 ? <Part positions={positions!} indices={shownIndices} color={color} scale={scale} clip={planes} /> : scene ? <primitive object={scene} /> : null}
+            {showPositions && partStatus && partRanges?.length ? (
+              // A build: one mesh per part, coloured by its worst check; click to inspect it.
+              partRanges.map((r, i) => {
+                const pid = r.id || r.nodeName || r.name || String(i);
+                if (!partVisibility(r.nodeName || r.name || '', hiddenSet, isolated)) return null;
+                if (!Number.isFinite(r.i0) || !Number.isFinite(r.i1) || (r.i1 as number) - (r.i0 as number) < 3) return null;
+                return (
+                  <Part key={pid} positions={positions!} indices={indices!.slice(r.i0, r.i1)} scale={scale} clip={planes}
+                    color={PART_STATUS_COLOR[partStatus[pid] || 'unchecked']} selected={selectedPart === pid}
+                    onPick={onPickPart && !measuring ? () => onPickPart(selectedPart === pid ? null : pid) : undefined} testId={`part-mesh-${pid}`} />
+                );
+              })
+            ) : showPositions && shownIndices.length >= 3 ? <Part positions={positions!} indices={shownIndices} color={color} scale={scale} clip={planes} /> : scene ? <primitive object={scene} /> : null}
           </Bounds>
           <OrbitControls makeDefault enableDamping />
         </Canvas>
@@ -270,7 +298,7 @@ export default function MeshArtifactView({
         <span data-testid="mesh-mass">{massLabel(engineering) || (unitless ? '' : '')}</span>
         <button type="button" data-testid="export-stl" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('stl')}>STL</button>
         <button type="button" data-testid="export-glb" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('glb')}>GLB</button>
-        <button type="button" data-testid="export-step" disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('step')}>{STEP_EXPORT.label}</button>
+        <button type="button" data-testid="export-step" title={STEP_EXPORT.note} disabled={!exportPositions} className="rounded px-1.5 py-0.5 hover:bg-[var(--nb-wash,rgba(255,255,255,0.1))] disabled:opacity-40" onClick={() => save('step')}>{STEP_EXPORT.label}</button>
       </div>
       {sectionOn ? (
         <label className="pointer-events-auto absolute left-2 top-8 z-10 text-[11px] text-[color:var(--nb-ink,#e4e4e7)]">
@@ -287,15 +315,22 @@ export default function MeshArtifactView({
         {parts.map((p) => {
           const shown = partVisibility(p.id, hiddenSet, isolated);
           return (
-            <li key={p.id} className="flex gap-1">
-              <span>{p.label}</span>
+            <li key={p.id} className="flex items-center gap-1">
+              {p.pick && onPickPart ? (
+                <button type="button" data-testid={`part-pick-${p.pick}`} aria-pressed={selectedPart === p.pick}
+                  onClick={() => onPickPart(selectedPart === p.pick ? null : p.pick!)}
+                  className={selectedPart === p.pick ? 'font-semibold text-sky-300' : ''}>
+                  <span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: PART_STATUS_COLOR[partStatus?.[p.pick] || 'unchecked'] }} />
+                  {p.label}
+                </button>
+              ) : <span>{p.label}</span>}
               <button type="button" data-testid={`part-hide-${p.id}`} aria-pressed={!shown} onClick={() => setHidden((cur) => cur.includes(p.id) ? cur.filter((x) => x !== p.id) : [...cur, p.id])}>{shown ? 'Hide' : 'Show'}</button>
               <button type="button" data-testid={`part-isolate-${p.id}`} aria-pressed={isolated === p.id} onClick={() => setIsolated((cur) => cur === p.id ? null : p.id)}>Isolate</button>
             </li>
           );
         })}
       </ul>
-      <p data-testid="step-note" className="pointer-events-none absolute bottom-10 right-2 z-10 max-w-[14rem] text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">{STEP_EXPORT.note}</p>
+      {partStatus ? null : <p data-testid="step-note" className="pointer-events-none absolute bottom-10 right-2 z-10 max-w-[14rem] text-[10px] text-[color:var(--nb-muted,#a1a1aa)]">{STEP_EXPORT.note}</p>}
     </div>
   );
 }

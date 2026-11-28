@@ -247,3 +247,47 @@ in both modes.
 ---
 
 *Counts re-verified 2026-10-28 (remaining-work audit, fix queue Q67): the grep counts in this map were re-run against main `02910bbb` and corrected where stale — the code had grown past the map. See `docs/audit/REMAINING-WORK-AUDIT-2026-10-28.md`, rows L1–L21.*
+
+## 2026-11-26 — The Reading Room (redesign; supersedes the dispositions above)
+
+- **Courses are real, and anyone can teach.** A course is a draft visible
+  only to its creator until published; a lesson holds a markdown reading, a
+  video (uploaded media or an https/YouTube/Vimeo link) and a check, and
+  only the creator edits it (`education.rr-*`, `server/domains/reading-room.js`,
+  rules in `server/lib/reading-room.js`, migration 517). A paid course is
+  sold through the marketplace (`dtu.create` → `marketplace.list` →
+  `purchaseWithRoyalties`); preview lessons are open, the rest are locked
+  until bought, and buying grants the lesson videos. Nobody can set a
+  course's rating: it comes from learners' reviews.
+- **Completion is earned.** Before, `lessons-complete` accepted any lesson id
+  and the author could certify themselves with a `Math.random` code and a
+  typed-in institution. Now a lesson with a check is done only when an
+  attempt passes (graded on the server; answers never leave it until a pass,
+  including through the older `courses-get`/`courses-list`), a lesson
+  without one only once it was opened, and a certificate needs every lesson,
+  is never issued to the course's own creator, carries an `RR-` code from a
+  crypto alphabet, and verifies publicly (`GET /api/education/public/certificates/:code`).
+- **The margin belongs to the course's people.** Discussions were readable
+  and writable by anyone who could see the catalogue page, and lesson Q&A
+  lived in each asker's private bucket where nobody could answer it. Now a
+  course's discussion is for its creator and enrolled learners; a lesson's
+  Q&A is that discussion tagged with the lesson and the video moment, the
+  asker accepts an answer, and votes are one per person (`edu_discussion_votes`).
+- **Honest failures.** The tutor (`rr-tutor`, `tutor-ask`) and card drafting
+  (`quiz-from-text`) say plainly when no language model is running instead
+  of returning an error string as an answer; `quiz-mint-deck` counts only
+  the cards it kept.
+- **Found on the way:** `lib/media-dtu.js#setMediaPrivacy` changed privacy
+  in memory only and skipped rows not yet recalled, so a release's media
+  went private again after a restart (music, film, podcast and course
+  videos). It now recalls from SQLite and persists; pinned in
+  `server/tests/media-index-persist.test.js`. The OpenTDB feed now goes
+  through `fetchPublicUrl`.
+- **Dropped from this lens:** the Genome / Path / Proof engine tabs and the
+  trivia feed panel (their macros stay registered); the old components under
+  `components/education/` other than `ClassroomShell` (used by the shell
+  preview).
+- Tests: `server/tests/depth/education-reading-room-behavior.test.js` (16),
+  `concord-frontend/tests/education-reading-room.test.tsx` (13); older
+  education suites updated where they pinned unearned completion, the old
+  certificate, open forums or self-upvotes.

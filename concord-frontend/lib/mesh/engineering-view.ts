@@ -87,6 +87,8 @@ export function axisSpan(positions: number[], axis: 0 | 1 | 2): { min: number; m
 }
 
 export interface PartRange {
+  /** The design-graph node id (a ConKay build), for picking and per-part status. */
+  id?: string;
   name?: string;
   nodeName?: string;
   i0?: number;
@@ -124,3 +126,9 @@ export const STEP_EXPORT = {
   label: 'STEP (faceted)',
   note: 'Faceted triangle STEP (AP214-style). Not an OpenCascade or SolidWorks B-rep solid.',
 } as const;
+
+/** A build part's worst check → its colour on the model. */
+export type PartCheckStatus = 'pass' | 'warn' | 'fail' | 'unchecked';
+export const PART_STATUS_COLOR: Record<PartCheckStatus, string> = {
+  pass: '#34d399', warn: '#fbbf24', fail: '#f87171', unchecked: '#94a3b8',
+};

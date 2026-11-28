@@ -3980,6 +3980,7 @@ export default function registerRetailActions(registerLensAction) {
   // Strip control characters; collapse whitespace. Text is rendered as
   // text by the client, this only keeps stored names sane.
   function cleanText(v, max) {
+    // eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
     return String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
   }
 
@@ -4102,11 +4103,11 @@ export default function registerRetailActions(registerLensAction) {
     if (!customer) return { ok: false, error: "customer not found" };
     const mine = (s.orders.get(userId) || []).filter((o) => o.customerId === customerId);
     const bySku = new Map();
-    for (const o of mine) for (const l of o.lines) {
+    for (const o of mine) {for (const l of o.lines) {
       const e = bySku.get(l.sku) || { sku: l.sku, name: l.name, qty: 0, revenue: 0 };
       e.qty += l.qty; e.revenue = r2(e.revenue + l.qty * l.unitPrice);
       bySku.set(l.sku, e);
-    }
+    }}
     const favorite = Array.from(bySku.values()).filter((e) => !String(e.sku).startsWith("CUSTOM-"))
       .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue || a.sku.localeCompare(b.sku))[0] || null;
     const times = mine.map(orderTime).filter(Number.isFinite);

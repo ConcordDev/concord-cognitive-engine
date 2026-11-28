@@ -1,0 +1,202 @@
+// The build report shows what the solvers checked, in the person's units,
+// and what nothing checked with its reason. Values are rendered as given.
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { BuildReportCard, formatProbability } from '@/components/conkay/workshop/BuildReportCard';
+import { isBuildReport, type BuildReport } from '@/lib/conkay/build-report';
+
+const report: BuildReport = {
+  verdict: 'fails', headline: '1 of 2 checks fail', units: { length: 'ft', pressure: 'psi' },
+  parts: [{ id: 'SHELF', name: 'wall shelf', kind: 'Assembly', children: [{ id: 'BOARD', name: 'board', kind: 'Part', material: 'white-pine', shape: 'box', children: [] }] }],
+  masses: [{ id: 'BOARD', name: 'board', mass: '3.4 lb (1.54 kg)' }],
+  checked: [
+    { solver: 'structure.frame', target: 'SHELF', targetName: 'wall shelf', status: 'FAIL', check: 'books: M1 von Mises ≤ Fy / 2', pass: false, demand: '2650 psi (18.27 MPa)', capacity: '2393 psi (16.5 MPa)', utilization: 1.11, basis: 'the person' },
+    { solver: 'electrical.dc-budget', target: 'PACK', targetName: 'lamp power', status: 'PASS', check: 'runtime ≥ required', pass: true, demand: '3 h', capacity: '3.5 h', utilization: 0.86, basis: 'the person' },
+  ],
+  computed: [],
+  gaps: [{ target: 'BOARD', targetName: 'board', solver: 'cost.part', reason: 'no price per kg for Eastern white pine' }],
+  questions: [{ ask: 'What wall is it going on?', blocking: false, default: 'wood studs' }],
+  assumptions: ['books spread evenly'],
+  sources: [{ for: 'pine density', book: 'University Physics Volume 1', section: '14.1', url: 'https://openstax.org/x' }],
+};
+
+describe('BuildReportCard', () => {
+  it('recognises a report', () => {
+    expect(isBuildReport(report)).toBe(true);
+    expect(isBuildReport({ kind: 'mesh' })).toBe(false);
+  });
+  it('shows checks with their numbers and pass/fail, and the gaps with reasons', () => {
+    render(<BuildReportCard report={report} title="wall shelf" />);
+    expect(screen.getByTestId('build-headline').textContent).toBe('1 of 2 checks fail');
+    const checked = screen.getByTestId('build-checked');
+    expect(within(checked).getByText(/2650 psi \(18\.27 MPa\) vs 2393 psi/)).toBeTruthy();
+    expect(within(checked).getByLabelText('fails')).toBeTruthy();
+    expect(within(checked).getByLabelText('passes')).toBeTruthy();
+    expect(screen.getByText('What wall is it going on?', { exact: false })).toBeTruthy();
+    // nothing-checked list is collapsed when something was checked; opens on click
+    fireEvent.click(within(screen.getByTestId('build-gaps')).getByRole('button'));
+    expect(screen.getByText(/no price per kg for Eastern white pine/)).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-parts')).getByRole('button'));
+    expect(screen.getByText('3.4 lb (1.54 kg)')).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-sources')).getByRole('button'));
+    expect(screen.getByRole('link', { name: /University Physics Volume 1/ }).getAttribute('href')).toBe('https://openstax.org/x');
+  });
+});
+
+describe('BuildReportCard — working on a build', () => {
+  const withParams: BuildReport = {
+    ...report,
+    partStatus: { BOARD: 'fail' },
+    checked: report.checked.map((c, i) => (i === 0 ? { ...c, part: 'BOARD' } : c)),
+    parameters: [
+      { id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: '3/4 in', dim: 'length' },
+      { id: 'BOARD:material', node: 'BOARD', nodeName: 'board', label: 'material', value: 'white-pine', dim: 'material', options: ['white-pine', 'steel-a36'] },
+      { id: 'SHELF:props.frameModel.loadCases.0.udl.0.w.2', node: 'SHELF', nodeName: 'wall shelf', label: 'books: spread load on M1 (z)', value: '-24.3 lbf/ft', dim: 'force_per_length' },
+    ],
+  };
+
+  it('picking a part shows its status, its checks and its values; an edit is sent in the units typed', async () => {
+    const onEdit = vi.fn(async () => ({ ok: true }));
+    const onSelect = vi.fn();
+    const { rerender } = render(<BuildReportCard report={withParams} onSelect={onSelect} onEdit={onEdit} />);
+    fireEvent.click(screen.getByTestId('build-part-BOARD'));
+    expect(onSelect).toHaveBeenCalledWith('BOARD');
+    rerender(<BuildReportCard report={withParams} selected="BOARD" onSelect={onSelect} onEdit={onEdit} />);
+    const focus = screen.getByTestId('build-part-focus');
+    expect(within(focus).getByTestId('build-part-status').textContent).toBe('fails a check');
+    expect(within(focus).getByText(/von Mises/)).toBeTruthy();
+    expect(within(focus).queryByText(/runtime/)).toBeNull();
+    const h = within(focus).getByLabelText('height') as HTMLInputElement;
+    expect(h.value).toBe('3/4 in');
+    fireEvent.change(h, { target: { value: '1 1/2 in' } });
+    fireEvent.keyDown(h, { key: 'Enter' });
+    fireEvent.blur(h);
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith([{ id: 'BOARD:geometry.height', value: '1 1/2 in' }]));
+    fireEvent.change(within(focus).getByLabelText('material'), { target: { value: 'steel-a36' } });
+    await waitFor(() => expect(onEdit).toHaveBeenLastCalledWith([{ id: 'BOARD:material', value: 'steel-a36' }]));
+  });
+
+  it('a refused edit says why and puts the value back', async () => {
+    const onEdit = vi.fn(async () => ({ ok: false, errors: ['board height: expected a length, got "5 kg" (a mass)'] }));
+    render(<BuildReportCard report={withParams} selected="BOARD" onSelect={vi.fn()} onEdit={onEdit} />);
+    const h = screen.getByLabelText('height') as HTMLInputElement;
+    fireEvent.change(h, { target: { value: '5 kg' } });
+    fireEvent.blur(h);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/expected a length/);
+    expect(h.value).toBe('3/4 in');
+  });
+
+  it('loads and the safety factor are edited under Loads and settings', async () => {
+    const onEdit = vi.fn(async () => ({ ok: true }));
+    render(<BuildReportCard report={withParams} onSelect={vi.fn()} onEdit={onEdit} />);
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    const load = screen.getByLabelText('books: spread load on M1 (z)') as HTMLInputElement;
+    expect(load.value).toBe('-24.3 lbf/ft');
+    fireEvent.change(load, { target: { value: '40 lbf/ft' } });
+    fireEvent.blur(load);
+    await waitFor(() => expect(onEdit).toHaveBeenCalledWith([{ id: 'SHELF:props.frameModel.loadCases.0.udl.0.w.2', value: '40 lbf/ft' }]));
+  });
+});
+
+describe('BuildReportCard — STEP', () => {
+  it('offers the solid STEP download when the build is saved', () => {
+    render(<BuildReportCard report={report} stepHref="/api/conkay/build/bld_1/step" />);
+    const a = screen.getByTestId('build-step');
+    expect(a.getAttribute('href')).toBe('/api/conkay/build/bld_1/step');
+    expect(a.hasAttribute('download')).toBe(true);
+  });
+  it('no saved build, no STEP link', () => {
+    render(<BuildReportCard report={report} />);
+    expect(screen.queryByTestId('build-step')).toBeNull();
+  });
+});
+
+describe('BuildReportCard — conditions', () => {
+  it('a part\'s conditions (flight speed) are under Loads and settings, its sizes under the part', () => {
+    const r: BuildReport = { ...report, partStatus: { W: 'fail' }, parts: [{ id: 'W', name: 'wing', kind: 'Part', shape: 'loft', children: [] }],
+      parameters: [
+        { id: 'W:geometry.sections.0.chord', node: 'W', nodeName: 'wing', label: 'section 1 chord', value: '320 mm', dim: 'length' },
+        { id: 'W:props.aero.speed', node: 'W', nodeName: 'wing', label: 'flight speed', value: '25 m/s', dim: 'velocity' },
+      ] };
+    render(<BuildReportCard report={r} selected="W" onSelect={vi.fn()} onEdit={vi.fn(async () => ({ ok: true }))} />);
+    expect(within(screen.getByTestId('build-part-params')).queryByLabelText('flight speed')).toBeNull();
+    expect(within(screen.getByTestId('build-part-params')).getByLabelText('section 1 chord')).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('build-settings')).getByRole('button', { name: /Loads and settings/ }));
+    expect((screen.getByLabelText('flight speed') as HTMLInputElement).value).toBe('25 m/s');
+  });
+});
+
+describe('BuildReportCard — size it with the solvers', () => {
+  const r: BuildReport = { ...report, partStatus: { BOARD: 'pass' },
+    parameters: [
+      { id: 'BOARD:geometry.length', node: 'BOARD', nodeName: 'board', label: 'length', value: '3 ft', dim: 'length' },
+      { id: 'BOARD:geometry.height', node: 'BOARD', nodeName: 'board', label: 'height', value: '3/4 in', dim: 'length' },
+    ] };
+  const open = () => fireEvent.click(within(screen.getByTestId('build-size-section')).getByRole('button', { name: /Size it with the solvers/ }));
+
+  it('offers the cross-section sizes (not the span) with bounds ¼×–4× in their own unit, and sends what is ticked', async () => {
+    const onSize = vi.fn(async () => ({ ok: true, sizing: { feasible: true, evaluations: 47, before: { mass: 1.549, feasible: true }, after: { mass: 0.592, worstUtilization: 1 },
+      changes: [{ id: 'BOARD:geometry.height', label: 'board height', from: '3/4 in', to: '0.28679 in', atBound: null }], binding: [{ check: 'books: M1 von Mises ≤ Fy / 2', target: 'SHELF', utilization: 1 }] } }));
+    render(<BuildReportCard report={r} onSize={onSize} onEdit={vi.fn(async () => ({ ok: true }))} />);
+    open();
+    expect((screen.getByLabelText('size board length') as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByLabelText('size board height') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('board height min') as HTMLInputElement).value).toBe('0.188 in');
+    expect((screen.getByLabelText('board height max') as HTMLInputElement).value).toBe('3 in');
+    fireEvent.click(screen.getByTestId('build-size-run'));
+    await waitFor(() => expect(onSize).toHaveBeenCalledWith([{ id: 'BOARD:geometry.height', min: '0.188 in', max: '3 in' }]));
+    const res = await screen.findByTestId('build-size-result');
+    expect(res.textContent).toMatch(/3\/4 in → 0\.28679 in/);
+    expect(res.textContent).toMatch(/1\.55 kg → 0\.592 kg/);
+    expect(res.textContent).toMatch(/set by: books: M1 von Mises/);
+  });
+
+  it('bounds that cannot work: the message and the checks that still fail', async () => {
+    const onSize = vi.fn(async () => ({ ok: true, sizing: { feasible: false, evaluations: 2, before: { mass: 1.5, feasible: true }, message: 'No design within these bounds passes every check.', failingAtLimits: [{ check: 'books: M1 von Mises ≤ Fy / 2', target: 'SHELF', utilization: 2.1 }] } }));
+    render(<BuildReportCard report={r} onSize={onSize} />);
+    open();
+    fireEvent.click(screen.getByTestId('build-size-run'));
+    const inf = await screen.findByTestId('build-size-infeasible');
+    expect(inf.textContent).toMatch(/No design within these bounds/);
+    expect(inf.textContent).toMatch(/von Mises ≤ Fy \/ 2 \(210 %\)/);
+  });
+});
+
+describe('BuildReportCard — how sure is it', () => {
+  const run = (check: string, p: { p: number; low: number; high: number; zeroFailures?: boolean }, u: number) => ({
+    samples: 1000, seed: 1, mode: 'm', probabilityAnyNotMet: p, warnings: ['Eastern white pine: not varied — no sourced scatter'],
+    checks: [{ solver: 'structure.frame', target: 'SHELF', check, basis: null, nominalUtilization: u, utilization: { p05: u * 0.8, p50: u, p95: u * 1.3 }, failures: Math.round(p.p * 1000), probabilityNotMet: p, driver: { input: 'board strength', correlation: -0.95 } }],
+    inputs: [{ input: 'board strength', cov: 0.25, distribution: 'lognormal', source: 'JCSS Probabilistic Model Code Part 3.05' }],
+    method: 'Monte Carlo, 1000 samples', assumption: 'library values taken as the mean',
+  });
+
+  it('probabilities read honestly: an interval, or a bound when nothing failed', () => {
+    expect(formatProbability({ p: 0.098, low: 0.0857, high: 0.1118 }, 1000)).toBe('9.8 % (8.57–11.2 %)');
+    expect(formatProbability({ p: 0, low: 0, high: 0.002991, zeroFailures: true }, 1000)).toBe('under 0.3 % (none of 1000 failed)');
+  });
+
+  it('runs on the build with the stated scatter and shows both runs, the driver, the sources and what was not varied', async () => {
+    const onUncertainty = vi.fn(async () => ({ ok: true, uncertainty: {
+      asWritten: run('books: M1 von Mises ≤ Fy / 2', { p: 0.098, low: 0.0857, high: 0.1118 }, 0.7),
+      withoutSafetyFactors: run('books: M1 von Mises ≤ Fy / 1', { p: 0, low: 0, high: 0.002991, zeroFailures: true }, 0.35) } }));
+    render(<BuildReportCard report={report} onUncertainty={onUncertainty} />);
+    fireEvent.click(within(screen.getByTestId('build-uncertainty-section')).getByRole('button', { name: /How sure is it\?/ }));
+    fireEvent.change(screen.getByLabelText('load scatter (CoV)'), { target: { value: '20' } });
+    fireEvent.click(screen.getByTestId('build-uncertainty-run'));
+    await waitFor(() => expect(onUncertainty).toHaveBeenCalledWith({ samples: 1000, loadCoV: 0.2, dimensionCoV: 0.01 }));
+    const aw = await screen.findByTestId('build-uncertainty-as-written');
+    expect(aw.textContent).toMatch(/not met 9\.8 % \(8\.57–11\.2 %\)/);
+    expect(aw.textContent).toMatch(/moved most by board strength/);
+    expect(screen.getByTestId('build-uncertainty-real').textContent).toMatch(/under 0\.3 % \(none of 1000 failed\)/);
+    expect(screen.getByTestId('build-uncertainty').textContent).toMatch(/JCSS Probabilistic Model Code Part 3\.05/);
+    expect(screen.getByTestId('build-uncertainty').textContent).toMatch(/not varied/);
+  });
+
+  it('an error is said, not hidden', async () => {
+    render(<BuildReportCard report={report} onUncertainty={vi.fn(async () => ({ ok: false, errors: ['samples: between 20 and 5000'] }))} />);
+    fireEvent.click(within(screen.getByTestId('build-uncertainty-section')).getByRole('button', { name: /How sure is it\?/ }));
+    fireEvent.click(screen.getByTestId('build-uncertainty-run'));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/samples/);
+  });
+});
