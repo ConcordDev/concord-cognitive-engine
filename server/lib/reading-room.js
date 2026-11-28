@@ -14,6 +14,7 @@
 import crypto from "node:crypto";
 
 export const LIMITS = { body: 60_000, questions: 25, options: 8, lessons: 200, title: 160 };
+// eslint-disable-next-line no-control-regex -- strips control characters from user text on purpose
 const clean = (v, n) => String(v ?? "").replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").trim().slice(0, n);
 const parse = (s, d) => { try { const v = JSON.parse(s); return v ?? d; } catch { return d; } };
 const now = () => Math.floor(Date.now() / 1000);
